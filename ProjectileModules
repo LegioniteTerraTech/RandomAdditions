@@ -1,0 +1,58 @@
+(needs the mod to work you know)
+        //--------------------------------------------------------------------------------------------------
+        //                                          PROJECTILES
+        //--------------------------------------------------------------------------------------------------
+        /* Throw this within your JSONBLOCK's FireData m_BulletPrefab to initiate them
+        
+        // a module that makes sure SeekingProjectile stays active even on ground collision
+        /*
+           "RandomAdditions.KeepSeekingProjectile": {},// that's literally all it is.
+         */
+         
+        // a module that ensures block kill when paired with Projectile
+        /*
+           "RandomAdditions.OHKOProjectile": {},// that's literally all it is.
+         */
+         
+        // a module that allows you projectiles to become bowling balls or act very heavy
+        "RandomAdditions.WeightedProjectile":{ // launch bowling balls but they actually have proper weight
+            "ProjectileMass": 4,        // The Mass you want the projectile to have
+            "CustomGravity": false,     // enable the parameter below - WARNING overrides all grav settings! (and breaks WeaponAimMod!)
+            "GravityAndSpeedScale": 1.0,// The percent (1.0 is 100%) force gravity pulls down on this and the speed it travels at 
+            //so you can have dramatic super-heavy projectiles that move slow through the air
+        },
+        
+        // With Watermod installed, any missile that goes into the water with this projectile type
+        //   will change their thrust value to the one specified here.
+           "RandomAdditions.TorpedoProjectile": {
+                "SubmergedThrust" : 0.5,                //Thrust to apply underwater
+                "ThrustUntilProjectileDeath" : false,   //Should we thrust until we explode?
+           },
+            // Make sure to add a new GameObject with the name "_subProp" and position it to where 
+            //   the thrust should be if it isn't using a missile reference.
+            
+        
+        //A projectile that floats off (gravitationally-ish) in the specified direction with the specified force. 
+        //  Can be used to create floating mines or balloon-like ordinances.
+        /* Throw this within your JSONBLOCK's FireData m_BulletPrefab
+        "RandomAdditions.GravitateProjectile":{ // Add a special movement effect to your projectile
+            "WorldGravitateDirection":  {"x": 0, "y": 1, "z": 0}, // Gravitate direction
+            "GravitatePosition":        {"x": 0, "y": 0, "z": 0}, // Center of the gravitation
+            "WorldGravitateStrength": 1,        // Force of the gravitation
+
+            "WorldAugmentedDragEnabled": false, // Should this projectile slow down faster? (WARNING! MESSES WITH AIMING WEAPONS!)
+            "WorldAugmentedDragStrength": 1,    // The strength of the drag effect  [MULTIPLIER!]
+
+            //-----------------------------------------------------------------------------
+            "MovementDampening": 10,            // Dampener for the operations below
+
+            "WorldHeightBiasEnabled": false,    // Should this float at a set altitude?
+            "WorldHeightBias": 1,               // The height to float at
+
+            "AffectedByWater": false,           // Should this projectile act differently in water?
+            "WaterDepth": 1,                    // The depth to float at in relation to water (overrides WorldHeightBias)
+            "WaterDepthSeekingStrength": 1,     // The strength we should try to enforce the depth  [MULTIPLIER!]
+        },
+        */
+        //I mean well it lets you do sideways gravity but that's sorta strange at the moment.
+        //  maybe that will change down the line but for now it's kinda pointless
