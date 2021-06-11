@@ -1,0 +1,60 @@
+        //--------------------------------------------------------------------------------------------------
+        //                                           BLOCK MODULES
+        //--------------------------------------------------------------------------------------------------
+        /* Throw this within your JSONBLOCK to initate them
+        
+        //Rescale blocks to chunk size when put on conveyor
+       "RandomAdditions.TankBlockScaler": {
+            "AimedDownscale": 0.5, // Multiplier for the scale when on conveyor
+        },
+            
+        
+        // A module that acts as a storage for a single type of resource, but lag-free and without colliders
+        //   Relies on ModuleItemStore to keep the stacks of a single type, with only one node to stack from
+        //     and also requires it to have max stack height 3 each.
+        //  For this reason I can only recommend the GSO Filtered Node Silo for reference with this module
+        //    otherwise issues may follow!
+
+        "RandomAdditions.ModuleItemSilo":{ // Add internal resource storage capacity to your block
+            "StoresBlocksInsteadOfChunks": false,   // Send blocks the the SCU instead of storing chunks?
+            "UseShrinkAnim": true,                  // Do we shrink the items when storing?
+
+            // For Chunks: 
+            "MaxCapacity": 10,                      // Max resource storage capacity
+            "DestroyContentsOnDestruction": false,  // Is this silo that dirty cheap that if it explodes it destroys all chunks inside?
+        },
+        //Check out SiloGauge too as you will be needing one of those to display what's inside
+        
+        /* Throw this within your JSONBLOCK inside of a GameObject you want to display for
+        "RandomAdditions.SiloGauge":{ // Add a gauge for your ModuleItemSilo
+            "MaxHeightMultiplier": 5,      // Scaling of the mesh at full capacity
+            "MinHeightMultiplier": 1,      // Scaling of the mesh at empty
+            "DisplayDampener": 3,          // Dampener for the updating of the display
+
+            "AllowCustomTextures": false,       // Use the existing textures?
+            "UseResourceColorsForGauge": false, // Use stored resource colors for the gauge?
+        },
+        
+        /* Throw this within your JSONBLOCK inside of a GameObject you want to display for
+        "RandomAdditions.SiloDisplay": {},// Will re-texture any model you assign it to the item stored in the silo.
+        
+        
+        "RandomAdditions.ModuleReinforced":{ // Add a special resistance to your block
+            "DoDamagableSwitch": false, // Should we switch the DamageableType of this block?
+            "TypeToSwitch": 0,          // DamageableType to switch to
+
+            "ModifyAoEDamage": false,    // Enable AoE damage changing? (only handles Explosion, not shotguns)
+            "ExplosionMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
+
+            "UseMultipliers": true,     // Should the multipliers be used?
+            "DamagableMultipliers"{
+                "Standard":     1,      // Standard multiplier
+                "Bullet":       1,      // Bullet multiplier
+                "Energy":       1,      // Energy multiplier
+                "Explosive":    1,      // Explosive multiplier
+                "Impact":       1,      // Impact multiplier
+                "Fire":         1,      // Fire multiplier
+                "Cutting":      1,      // Cutting multiplier
+                "Plasma":       1,      // Plasma multiplier
+            },
+        },
