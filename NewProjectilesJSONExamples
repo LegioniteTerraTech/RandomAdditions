@@ -7,6 +7,8 @@
         // a module that makes sure SeekingProjectile stays active even on ground collision
         "RandomAdditions.KeepSeekingProjectile": {},// that's literally all it is.
          
+        // For use with weapons like the Ethreal Lancer, mostly to reduce lag with phasing
+        "RandomAdditions.LanceProjectile": {},// that's literally all it is.
          
         // a module that ensures block kill when paired with Projectile
         "RandomAdditions.OHKOProjectile": {},// that's literally all it is.
@@ -39,13 +41,13 @@
             "WorldGravitateStrength": 1,        // Force of the gravitation
 
             "WorldAugmentedDragEnabled": false, // Should this projectile slow down faster? (WARNING! MESSES WITH AIMING WEAPONS!)
-            "WorldAugmentedDragStrength": 1,    // The strength of the drag effect  [MULTIPLIER!]
+            "WorldAugmentedDragStrength": 0.1,    // The strength of the drag effect  [MULTIPLIER!]
 
             //-----------------------------------------------------------------------------
-            "MovementDampening": 10,            // Dampener for the operations below
+            "MovementDampening": 30,            // Dampener for the operations below
 
             "WorldHeightBiasEnabled": false,    // Should this float at a set altitude?
-            "WorldHeightBias": 1,               // The height to float at
+            "WorldHeightBias": 50,               // The height to float at
 
             "AffectedByWater": false,           // Should this projectile act differently in water?
             "WaterDepth": 1,                    // The depth to float at in relation to water (overrides WorldHeightBias)
