@@ -1,9 +1,0 @@
-﻿{
-  "Id": "legionite.randomadditions",
-  "DisplayName": "Random Additions",
-  "Author": "Legionite",
-  "Version": "0.1.0",
-  "Enable": true,
-  "AssemblyName": "RandomAdditions.dll",
-  "EntryMethod": "RandomAdditions.KickStart.Main"
-}
