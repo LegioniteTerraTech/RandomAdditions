@@ -7,6 +7,13 @@
        "RandomAdditions.TankBlockScaler": {
             "AimedDownscale": 0.5, // Multiplier for the scale when on conveyor
         },
+        
+        
+        "RandomAdditions.ModuleClock":{ // Add the ability to timekeep
+          "DisplayTime": true,     // Rotate a GameObject called "TimeObject" depending on the time
+          "DigitalTime": false,     // Display on a "HUD" window?
+          "ControlTime": false,     // Can this be R-clicked to open a menu to control time?
+        },
             
         
         // A module that acts as a storage for a single type of resource, but lag-free and without colliders
@@ -47,7 +54,7 @@
             "ExplosionMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
 
             "UseMultipliers": true,     // Should the multipliers be used?
-            "DamagableMultipliers"{
+            //----- DamagableMultipliers -----
                 "Standard":     1,      // Standard multiplier
                 "Bullet":       1,      // Bullet multiplier
                 "Energy":       1,      // Energy multiplier
@@ -56,5 +63,5 @@
                 "Fire":         1,      // Fire multiplier
                 "Cutting":      1,      // Cutting multiplier
                 "Plasma":       1,      // Plasma multiplier
-            },
+            //--------------------------------
         },
