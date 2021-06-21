@@ -106,29 +106,19 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ModuleCustomDamageType.cs" />
-    <Compile Include="AI\AIEPathing.cs" />
-    <Compile Include="AI\AIEBeam.cs" />
-    <Compile Include="AI\AIEWeapons.cs" />
-    <Compile Include="AI\EEscort.cs" />
-    <Compile Include="AI\EGeneral.cs" />
-    <Compile Include="AI\EProspector.cs" />
     <Compile Include="GravitateProjectile.cs" />
     <Compile Include="GlobalClock.cs" />
     <Compile Include="GUIClock.cs" />
-    <Compile Include="GUIAIManager.cs" />
     <Compile Include="KeepSeekingProjectile.cs" />
     <Compile Include="LanceProjectile.cs" />
     <Compile Include="LogHandler.cs" />
     <Compile Include="ModuleClock.cs" />
     <Compile Include="ModuleDeathInsurance.cs" />
     <Compile Include="ModuleItemFixedHolderBeam.cs" />
-    <Compile Include="ModuleHarvestReciever.cs" />
     <Compile Include="ModuleItemSilo.cs" />
     <Compile Include="OHKOProjectile.cs" />
     <Compile Include="ModuleReinforced.cs" />
-    <Compile Include="AI\AIEnhancedCore.cs" />
     <Compile Include="PatchBatch.cs" />
-    <Compile Include="AI\AIEDrive.cs" />
     <Compile Include="SiloDisplay.cs" />
     <Compile Include="SiloGauge.cs" />
     <Compile Include="TankBlockScaler.cs" />

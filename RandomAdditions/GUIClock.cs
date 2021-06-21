@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
-using UnityEngine.UI;
+﻿using UnityEngine;
 
 namespace RandomAdditions
 {
     public class GUIClock : MonoBehaviour
     {
         //Handles the displays for clocks
+        private static bool firstLaunch = false;
         public static bool isCurrentlyOpen = false;
         public static bool allowTimeControl = false;
 
@@ -24,7 +19,7 @@ namespace RandomAdditions
         public static int day = 0;
         public static int month = 0;
         public static int year = 0;
-        public static int PosX = (Screen.width / 2 - 100);
+        public static int PosX = 0;
         public static int PosY = 0;
 
 
@@ -36,6 +31,9 @@ namespace RandomAdditions
             GUIWindow = new GameObject();
             GUIWindow.AddComponent<GUIDisplay>();
             GUIWindow.SetActive(false);
+            PosX = (Screen.width / 2 - 100);
+            PosY = 0;
+            TimeWindow = new Rect(PosX, PosY, 200, 140);
         }
         public static void LaunchGUI(TankBlock tonk)
         {
@@ -49,6 +47,13 @@ namespace RandomAdditions
         public static void TryOpenTimeWindow(Tank tonk)
         {
             currentTank = tonk;
+            if (!firstLaunch)
+            {
+                firstLaunch = true;
+                PosX = (Screen.width / 2 - 100);
+                PosY = 0;
+                TimeWindow = new Rect(PosX, PosY, 200, 140);
+            }
             if (tonk.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
             {
                 if (!isCurrentlyOpen)
@@ -103,9 +108,9 @@ namespace RandomAdditions
             year = (Singleton.Manager<ManTimeOfDay>.inst.GameDay / 365) + 2021;
             day = (int)Mathf.Repeat(Singleton.Manager<ManTimeOfDay>.inst.GameDay, 32);
             if (allowTimeControl)
-                TimeWindow = new Rect(PosX, PosY, 200f, 140f);
+                TimeWindow.height = 140f;
             else
-                TimeWindow = new Rect(PosX, PosY, 200f, 100f);
+                TimeWindow.height = 100f;
         }
 
         private static void GUIHandler(int ID)
@@ -147,13 +152,6 @@ namespace RandomAdditions
             GUI.DragWindow();
         }
 
-        public static void SetOption()
-        {
-            Singleton.Manager<ManSFX>.inst.PlayUISFX(ManSFX.UISfxType.AIFollow);
-            CloseClockWindow();
-        }
-
-
         public static void LaunchClockWindow()
         {
             isCurrentlyOpen = true;
@@ -165,15 +163,5 @@ namespace RandomAdditions
             isCurrentlyOpen = false;
             GUIWindow.SetActive(false);
         }
-
-        /*
-        private void Update()
-        {
-            if (allowTimeControl)
-                TimeWindow = new Rect(PosX, PosY, 200f, 140f);
-            else
-                TimeWindow = new Rect(PosX, PosY, 200f, 100f);
-        }
-        */
     }
 }

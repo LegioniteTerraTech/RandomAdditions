@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace RandomAdditions
 {
@@ -17,7 +12,7 @@ namespace RandomAdditions
             "TypeToSwitch": 0,          // DamageableType to switch to
 
             "ModifyAoEDamage": false,    // Enable AoE damage changing? (only handles Explosion, not shotguns)
-            "ExplosionMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
+            "AoEMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
 
             "UseMultipliers": true,     // Should the multipliers below be used?
             //----- DamagableMultipliers -----

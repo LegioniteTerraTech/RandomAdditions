@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace RandomAdditions
@@ -21,10 +17,17 @@ namespace RandomAdditions
         {
             logOverride = overrideString;
             customLog = true;
-            Debug.Log("RandomAdditions: FORCING CRASH!!!");
-            Tank LithobreakerX = null;
-            string crashQueue = LithobreakerX.GetComponent<Rigidbody>().mass.ToString();
-            Debug.Log("RandomAdditions: " + crashQueue + LithobreakerX); //CRASH IT!  CRASH IT NOW!!!
+            if (!FiredBigDisplay)
+            {
+                Debug.Log("RandomAdditions: FORCING CRASH!!!");
+                Tank LithobreakerX = null;
+                string crashQueue = LithobreakerX.GetComponent<Rigidbody>().mass.ToString();
+                Debug.Log("RandomAdditions: " + crashQueue + LithobreakerX); //CRASH IT!  CRASH IT NOW!!!
+            }
+            else 
+            {
+                //GUIIngameErrorPopup.Launch(logOverride);
+            }
         }
 
         public void Initiate()

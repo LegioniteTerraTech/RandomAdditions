@@ -11,76 +11,23 @@ namespace RandomAdditions
     {
     }
 
-    internal class Patches
+    internal static class Patches
     {
-        [HarmonyPatch(typeof(ModuleTechController))]
-        [HarmonyPatch("ExecuteControl")]//On Control
-        private class PatchControlSystem
-        {
-            private static bool Prefix(ModuleTechController __instance)
-            {
-                if (KickStart.EnableBetterAI)
-                {
-                    try
-                    {
-                        var aI = __instance.transform.root.GetComponent<Tank>().AI;
-                        var tank = __instance.transform.root.GetComponent<Tank>();
-                        if (!tank.PlayerFocused && aI.HasAIModules && tank.IsFriendly() && !Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
-                        {
-                            //Debug.Log("RandomAdditions: (TankAIHelper) is " + tank.gameObject.GetComponent<AIEnhancedCore.TankAIHelper>().wasEscort);
-                            var tankAIHelp = tank.gameObject.GetComponent<AI.AIEnhancedCore.TankAIHelper>();
-                            if (tankAIHelp.lastAIType == AITreeType.AITypes.Escort || (tankAIHelp.wasEscort && tankAIHelp.lastAIType == AITreeType.AITypes.Escort) || tankAIHelp.unanchorCountdown > 0)
-                            {
-                                //Debug.Log("RandomAdditions: Patched Tank ExecuteControl(TankAIHelper)");
-                                tankAIHelp.BetterAI(__instance.block.tank.control);
-                                return false;
-                            }
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.Log("RandomAdditions: Failiure on handling AI addition!");
-                        Debug.Log(e);
-                    }
-                }
-                return true;
-            }
-        }
-
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnPool")]//On Creation
-        private class PatchTankToHelpAIAndClocks
+        private static class PatchTankToHelpClocks
         {
             private static void Postfix(Tank __instance)
             {
-                //Debug.Log("RandomAdditions: Patched Tank OnPool(TankAIHelper & TimeTank)");
+                //Debug.Log("RandomAdditions: Patched Tank OnPool(TimeTank)");
                 var ModuleAdd2 = __instance.gameObject.AddComponent<GlobalClock.TimeTank>();
                 ModuleAdd2.Initiate();
-                var ModuleAdd = __instance.gameObject.AddComponent<AI.AIEnhancedCore.TankAIHelper>();
-                ModuleAdd.Subscribe(__instance);
-                __instance.gameObject.GetComponent<AI.AIEnhancedCore.TankAIHelper>();
             }
         }
-
-        /*
-        [HarmonyPatch(typeof(TankBeam))]
-        [HarmonyPatch("Update")]//Give the AI some untangle help
-        private class PatchTankBeamToHelpAI
-        {
-            private static void Postfix(TankBeam __instance)
-            {
-                //Debug.Log("RandomAdditions: Patched TankBeam Update(TankAIHelper)");
-                var ModuleCheck = __instance.gameObject.GetComponent<AIEnhancedCore.TankAIHelper>();
-                if (ModuleCheck != null)
-                {
-                }
-            }
-        }
-        */
 
         [HarmonyPatch(typeof(TankBlock))]
         [HarmonyPatch("PrePool")]//On Creation
-        private class PatchAllBlocksForInstaDeath
+        private static class PatchAllBlocksForInstaDeath
         {
             private static void Postfix(TankBlock __instance)
             {
@@ -99,218 +46,6 @@ namespace RandomAdditions
             }
         }
 
-        [HarmonyPatch(typeof(ModuleAIBot))]
-        [HarmonyPatch("OnPool")]//On Creation
-        private class ImproveAI
-        {
-            private static void Postfix(ModuleAIBot __instance)
-            {
-                var valid = __instance.GetComponent<AI.AIEnhancedCore.ModuleAIExtension>();
-                if (valid)
-                {
-                    valid.OnPool();
-                }
-                else
-                {
-                    var ModuleAdd = __instance.gameObject.AddComponent<AI.AIEnhancedCore.ModuleAIExtension>();
-                    ModuleAdd.OnPool();
-                    // Now retrofit AIs
-                    try
-                    {
-                        var name = __instance.gameObject.name;
-                        if (name == "GSO_AI_Module_Guard_111")
-                        {
-                            ModuleAdd.Aegis = true;
-                            ModuleAdd.Prospector = true;//Temp until main intended function arrives
-                        }
-                        if (name == "GSO_AIAnchor_121")
-                        {
-                            ModuleAdd.Aegis = true;
-                            ModuleAdd.Prospector = true;//Temp until main intended function arrives
-                            ModuleAdd.MaxCombatRange = 150;
-                        }
-                        else if (name == "GC_AI_Module_Guard_222")
-                        {
-                            ModuleAdd.Prospector = true;
-                            ModuleAdd.MeleePreferred = true;
-                        }
-                        else if (name == "VEN_AI_Module_Guard_111")
-                        {
-                            ModuleAdd.Aviator = true;
-                            ModuleAdd.Prospector = true;//Temp until main intended function arrives
-                            ModuleAdd.CirclePreferred = true;
-                            ModuleAdd.MaxCombatRange = 300;
-                        }
-                        else if (name == "HE_AI_Module_Guard_112")
-                        {
-                            ModuleAdd.Assault = true;
-                            ModuleAdd.Prospector = true;//Temp until main intended function arrives
-                            ModuleAdd.MaxCombatRange = 200;
-                        }
-                        else if (name == "HE_AI_Turret_111")
-                        {
-                            ModuleAdd.Assault = true;
-                            ModuleAdd.Prospector = true;//Temp until main intended function arrives
-                            ModuleAdd.MaxCombatRange = 150;
-                        }
-                        else if (name == "BF_AI_Module_Guard_212")
-                        {
-                            ModuleAdd.Astrotech = true;
-                            ModuleAdd.Prospector = true;//Temp until main intended function arrives
-                            ModuleAdd.AdvAvoidence = true;
-                            ModuleAdd.MaxCombatRange = 175;
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.Log("RandomAdditions: CRASH ON HANDLING EXISTING AIS");
-                        Debug.Log(e);
-                    }
-                }
-            }
-        }
-
-
-        [HarmonyPatch(typeof(ResourceDispenser))]
-        [HarmonyPatch("OnSpawn")]//On World Spawn
-        private class PatchResourcesToHelpAI
-        {
-            private static void Prefix(ResourceDispenser __instance)
-            {
-                //Debug.Log("RandomAdditions: Added resource to list (OnSpawn)");
-                if (!AI.AIEnhancedCore.Minables.Contains(__instance.transform))
-                    AI.AIEnhancedCore.Minables.Add(__instance.transform);
-                else
-                    Debug.Log("RandomAdditions: RESOURCE WAS ALREADY ADDED! (OnSpawn)");
-            }
-        }
-
-        [HarmonyPatch(typeof(ResourceDispenser))]
-        [HarmonyPatch("Regrow")]//On World Spawn
-        private class PatchResourceRegrowToHelpAI
-        {
-            private static void Prefix(ResourceDispenser __instance)
-            {
-                //Debug.Log("RandomAdditions: Added resource to list (OnSpawn)");
-                if (!AI.AIEnhancedCore.Minables.Contains(__instance.transform))
-                    AI.AIEnhancedCore.Minables.Add(__instance.transform);
-                //else
-                //    Debug.Log("RandomAdditions: RESOURCE WAS ALREADY ADDED! (OnSpawn)");
-            }
-        }
-
-        [HarmonyPatch(typeof(ResourceDispenser))]
-        [HarmonyPatch("Die")]//On resource destruction
-        private class PatchResourceDeathToHelpAI
-        {
-            private static void Prefix(ResourceDispenser __instance)
-            {
-                //Debug.Log("RandomAdditions: Removed resource from list (Die)");
-                if (AI.AIEnhancedCore.Minables.Contains(__instance.transform))
-                {
-                    AI.AIEnhancedCore.Minables.Remove(__instance.transform);
-                }
-                else
-                    Debug.Log("RandomAdditions: RESOURCE WAS ALREADY REMOVED! (Die)");
-            }
-        }
-
-        [HarmonyPatch(typeof(ResourceDispenser))]
-        [HarmonyPatch("OnRecycle")]//On World Destruction
-        private class PatchResourceRecycleToHelpAI
-        {
-            private static void Prefix(ResourceDispenser __instance)
-            {
-                //Debug.Log("RandomAdditions: Removed resource from list (OnRecycle)");
-                if (AI.AIEnhancedCore.Minables.Contains(__instance.transform))
-                {
-                    AI.AIEnhancedCore.Minables.Remove(__instance.transform);
-                }
-                //else
-                //    Debug.Log("RandomAdditions: RESOURCE WAS ALREADY REMOVED! (OnRecycle)");
-
-            }
-        }
-
-        [HarmonyPatch(typeof(ModuleItemPickup))]
-        [HarmonyPatch("OnPool")]//On Creation
-        private class MarkReceiver
-        {
-            private static void Postfix(ModuleItemPickup __instance)
-            {
-                var valid = __instance.GetComponent<ModuleItemHolder>();
-                if (valid)
-                {
-                    if (valid.IsFlag(ModuleItemHolder.Flags.Receiver))
-                    {
-                        var ModuleAdd = __instance.gameObject.AddComponent<ModuleHarvestReciever>();
-                        ModuleAdd.OnPool();
-                    }
-                }
-            }
-        }
-
-        /*
-        [HarmonyPatch(typeof(TechAI))]
-        [HarmonyPatch("SetCurrentTree")]//On Creation
-        private class DetectAIChangePatch
-        {
-            private static void Prefix(TechAI __instance, ref AITreeType aiTreeType)
-            {
-                if (aiTreeType != null)
-                {
-                    FieldInfo currentTreeActual = typeof(TechAI).GetField("m_CurrentAITreeType", BindingFlags.NonPublic | BindingFlags.Instance);
-                    if ((AITreeType)currentTreeActual.GetValue(__instance) != aiTreeType)
-                    {
-                        //
-                    }
-                }
-            }
-        }
-        */
-
-        [HarmonyPatch(typeof(RadialMenu))]
-        [HarmonyPatch("InitMenu")]//On Creation
-        private class DetectAIRadialAction
-        {
-            private static void Prefix(RadialMenu __instance)
-            {
-                GUIAIManager.GetTank();
-            }
-        }
-
-
-        [HarmonyPatch(typeof(UIRadialMenuOption))]//UIRadialMenuOptionWithWarning
-        [HarmonyPatch("IsInside")]//On AI option
-        private class DetectAIRadialMenuAction
-        {
-            private static void Prefix(UIRadialMenuOption __instance)
-            {
-                if (__instance.gameObject.name == "Bottom_Left_Button")
-                {
-                    if (__instance.gameObject.GetComponent<UIRadialMenuOptionWithWarning>())
-                        GUIAIManager.LaunchSubMenuClickable();
-                }
-            }
-        }
-
-        [HarmonyPatch(typeof(TankControl))]
-        [HarmonyPatch("CopySchemesFrom")]//On Split
-        private class SetMTAIAuto
-        {
-            private static void Prefix(TankControl __instance, ref TankControl other)
-            {
-                if (__instance.Tech.blockman.IterateBlockComponents<ModuleWheels>().Count() > 0 || __instance.Tech.blockman.IterateBlockComponents<ModuleHover>().Count() > 0)
-                    __instance.gameObject.GetComponent<AI.AIEnhancedCore.TankAIHelper>().DediAI = AI.AIEnhancedCore.DediAIType.Escort;
-                else
-                {
-                    if (__instance.Tech.blockman.IterateBlockComponents<ModuleWeapon>().Count() > 0)
-                        __instance.gameObject.GetComponent<AI.AIEnhancedCore.TankAIHelper>().DediAI = AI.AIEnhancedCore.DediAIType.MTTurret;
-                    else
-                        __instance.gameObject.GetComponent<AI.AIEnhancedCore.TankAIHelper>().DediAI = AI.AIEnhancedCore.DediAIType.MTSlave;
-                }
-            }
-        }
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -318,7 +53,7 @@ namespace RandomAdditions
         //Allow rescale of blocks on grab
         [HarmonyPatch(typeof(Visible))]
         [HarmonyPatch("SetHolder")]//On tractor grab
-        private class PatchVisibleForBlocksRescaleOnConveyor
+        private static class PatchVisibleForBlocksRescaleOnConveyor
         {
             private static void Prefix(Visible __instance, ref ModuleItemHolder.Stack stack)
             {
@@ -349,7 +84,7 @@ namespace RandomAdditions
         //Allow disabling of physics on mobile bases
         [HarmonyPatch(typeof(ModuleItemHolderBeam))]
         [HarmonyPatch("UpdateFloat")]//On Creation
-        private class PatchModuleItemHolderBeamForStatic
+        private static class PatchModuleItemHolderBeamForStatic
         {
             private static void Prefix(ModuleItemHolderBeam __instance, ref Visible item)
             {
@@ -361,11 +96,11 @@ namespace RandomAdditions
 
                     if ((bool)item.pickup)
                     {
-                        item.pickup.ClearRigidBody(immediate: true);
+                        item.pickup.ClearRigidBody(true);
                     }
                     else if ((bool)item.block)
                     {
-                        item.block.ClearRigidBody(immediate: true);
+                        item.block.ClearRigidBody(true);
                     }
                     m_HeldPhysicsItems.Remove(item);
                     if (item.UsePrevHeldPos)
@@ -380,7 +115,7 @@ namespace RandomAdditions
         //Allow disabling of physics on mobile bases
         [HarmonyPatch(typeof(ModuleItemHolderBeam))]
         [HarmonyPatch("OnTechAnchored")]//On Creation
-        private class PatchModuleItemHolderBeamForStatic2
+        private static class PatchModuleItemHolderBeamForStatic2
         {
             private static bool Prefix(ModuleItemHolderBeam __instance)
             {
@@ -397,7 +132,7 @@ namespace RandomAdditions
         //Return items on crafting cancelation
         [HarmonyPatch(typeof(ModuleItemConsume))]
         [HarmonyPatch("CancelRecipe")]//On Creation
-        private class PatchModuleItemConsumerToReturn
+        private static class PatchModuleItemConsumerToReturn
         {
             private static void Prefix(ModuleItemConsume __instance)
             {
@@ -436,7 +171,7 @@ namespace RandomAdditions
         //Return items on fabgrab
         [HarmonyPatch(typeof(ModuleItemConsume))]
         [HarmonyPatch("ResetState")]//On Creation
-        private class PatchModuleItemConsumerResetToReturn
+        private static class PatchModuleItemConsumerResetToReturn
         {
             private static void Prefix(ModuleItemConsume __instance)
             {
@@ -490,7 +225,7 @@ namespace RandomAdditions
         //Handle internal silo stacks and input fake values
         [HarmonyPatch(typeof(ModuleItemHolder.Stack))]
         [HarmonyPatch("OfferAllItemsToCollector")]//On Creation
-        private class PatchModuleItemHolderStack
+        private static class PatchModuleItemHolderStack
         {
             private static void Prefix(ModuleItemHolder.Stack __instance, ref ItemSearchCollector collector)
             {

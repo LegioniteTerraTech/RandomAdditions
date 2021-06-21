@@ -15,16 +15,12 @@ namespace RandomAdditions
     {
         const string ModName = "RandomAdditions";
 
-        public static bool EnableBetterAI = true;
         public static bool isWaterModPresent = false;
-        public static int AIDodgeCheapness = 30;
         public static GameObject logMan;
 
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
 
         // NativeOptions Parameters
-        public static OptionToggle betterAI;
-        public static OptionRange dodgePeriod;
         public static OptionToggle AltDateFormat;
 
 
@@ -33,7 +29,7 @@ namespace RandomAdditions
             //Where the fun begins
 
             //Initiate the madness
-            HarmonyInstance harmonyInstance = HarmonyInstance.Create("legionite.randomadditions.core");
+            HarmonyInstance harmonyInstance = HarmonyInstance.Create("legionite.randomadditions");
             try
             {
                 harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
@@ -44,8 +40,6 @@ namespace RandomAdditions
                 Debug.Log(e);
             }
             GlobalClock.ClockManager.Initiate();
-            AI.AIEnhancedCore.TankAIManager.Initiate();
-            GUIAIManager.Initiate();
             GUIClock.Initiate();
             logMan = new GameObject("logMan");
             logMan.AddComponent<LogHandler>();
@@ -59,17 +53,10 @@ namespace RandomAdditions
 
 
             ModConfig thisModConfig = new ModConfig();
-            thisModConfig.BindConfig<KickStart>(null, "EnableBetterAI");
-            thisModConfig.BindConfig<KickStart>(null, "AIDodgeCheapness");
             thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
 
 
             var RandomProperties = ModName;
-            betterAI = new OptionToggle("Rebuilt AI", RandomProperties, EnableBetterAI);
-            betterAI.onValueSaved.AddListener(() => { EnableBetterAI = betterAI.SavedValue; thisModConfig.WriteConfigJsonFile(); });
-            dodgePeriod = new OptionRange("AI Dodging (Higher = better performance but less AI accuraccy)", RandomProperties, AIDodgeCheapness, 1, 61, 5);
-            dodgePeriod.onValueSaved.AddListener(() => { AIDodgeCheapness = (int)dodgePeriod.SavedValue; thisModConfig.WriteConfigJsonFile(); });
-
             AltDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
             AltDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = AltDateFormat.SavedValue; });
         }

@@ -39,7 +39,7 @@ namespace RandomAdditions
                 {
                     addedThrustPosition = isTransformPresent.transform.localPosition;
                     addedThrustDirection = thisTrans.InverseTransformDirection(isTransformPresent.transform.forward);
-                    Debug.Log("RandomAdditions: Projectile " + gameObject.name + " Thrust is " + addedThrustDirection + " | and position is " + addedThrustPosition);
+                    //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " Thrust is " + addedThrustDirection + " | and position is " + addedThrustPosition);
                 }
                 else
                 {
@@ -66,7 +66,7 @@ namespace RandomAdditions
                     isSubmerged = true;
                     if (ThrustUntilProjectileDeath || !killThrust)
                     {
-                        Debug.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
+                        //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
                         fetchedRBody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
                     }
                 }
