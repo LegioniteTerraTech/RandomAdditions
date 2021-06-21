@@ -1,7 +1,0 @@
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\bin\Release\mod.json
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\bin\Release\RandomAdditions.dll
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\bin\Release\RandomAdditions.pdb
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Release\RandomAdditions.csprojAssemblyReference.cache
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Release\RandomAdditions.csproj.CoreCompileInputs.cache
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Release\RandomAdditions.dll
-C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Release\RandomAdditions.pdb
