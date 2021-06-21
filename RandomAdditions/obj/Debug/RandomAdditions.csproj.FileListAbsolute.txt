@@ -1,0 +1,7 @@
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\bin\Debug\RandomAdditions.dll
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\bin\Debug\RandomAdditions.pdb
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Debug\RandomAdditions.csprojAssemblyReference.cache
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Debug\RandomAdditions.csproj.CoreCompileInputs.cache
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Debug\RandomAdditions.dll
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\obj\Debug\RandomAdditions.pdb
+C:\Users\Legionite\Desktop\RandomAdditions\RandomAdditions\RandomAdditions\bin\Debug\mod.json
