@@ -8,6 +8,7 @@ namespace RandomAdditions.AI
 {
     class AIEnhancedCore
     {
+        //Deprecated class, kept for cleanup reasons
         public enum DediAIType
         {   //like the old plans, we make the AI do stuff
             // COMBAT
