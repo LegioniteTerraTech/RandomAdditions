@@ -214,7 +214,7 @@ namespace RandomAdditions
                 sGauge.UpdateGauge();
             }
         }
-            public void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
+        public void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
         {
             if (HartStep == TechHolders.Heartbeat.PrePass)
             {

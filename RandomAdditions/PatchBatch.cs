@@ -46,6 +46,19 @@ namespace RandomAdditions
             }
         }
 
+
+        [HarmonyPatch(typeof(ResourcePickup))]
+        [HarmonyPatch("OnPool")]//On Creation
+        private static class PatchAllChunks
+        {
+            private static void Postfix(ResourcePickup __instance)
+            {
+                //Debug.Log("RandomAdditions: Patched ResourcePickup OnPool(ModulePickupIgnore)");
+                var chunk = __instance.gameObject;
+                chunk.AddComponent<ItemIgnoreCollision>();
+            }
+        }
+
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -68,6 +81,26 @@ namespace RandomAdditions
                             ModuleScale.Downscale = true;
                             ModuleScale.enabled = true;
                             //Debug.Log("RandomAdditions: Queued Rescale Down");
+
+                            var ModuleCheck = stack.myHolder.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
+                            if (ModuleCheck != null)
+                            {
+                                int firedCount = 0;
+                                //item.gameObject.transform.parent = __instance.transform.root;
+                                GameObject stackTank = stack.myHolder.transform.root.gameObject;
+                                foreach (Collider collTonk in stackTank.GetComponentsInChildren<Collider>())
+                                {
+                                    foreach (Collider collVis in __instance.gameObject.GetComponentsInChildren<Collider>())
+                                    {
+                                        if (collVis.enabled && collVis.gameObject.layer != Globals.inst.layerShieldBulletsFilter)
+                                        {
+                                            Physics.IgnoreCollision(collTonk, collVis);
+                                            firedCount++;
+                                        }
+                                    }
+                                }
+                                Debug.Log("RandomAdditions: made " + __instance.name + " ignore " + firedCount + " colliders.");
+                            }
                         }
                         else
                         {
@@ -75,7 +108,39 @@ namespace RandomAdditions
                             ModuleScale.Downscale = false;
                             ModuleScale.enabled = true;
                             //Debug.Log("RandomAdditions: Queued Rescale Up");
+
+                            foreach (Collider collVis in __instance.gameObject.GetComponentsInChildren<Collider>())
+                            {
+                                //Reset them collodos
+                                if (collVis.enabled)
+                                {   //BUT NO TOUCH THE DISABLED ONES
+                                    collVis.enabled = false;
+                                    collVis.enabled = true;
+                                }
+                            }
+                            //Debug.Log("RandomAdditions: reset " + __instance.name + "'s active colliders");
+
                         }
+                    }
+                }
+                if ((bool)__instance.pickup)
+                {
+                    //Debug.Log("RandomAdditions: Overwrote visible to handle resources");
+                    if (stack != null)
+                    {
+
+                        var ModuleCheck = stack.myHolder.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
+                        if (ModuleCheck != null)
+                        {
+                            if (ModuleCheck.FixateToTech)
+                                __instance.gameObject.GetComponent<ItemIgnoreCollision>().UpdateCollision(true);
+                            if (ModuleCheck.AllowOtherTankCollision)
+                                __instance.gameObject.GetComponent<ItemIgnoreCollision>().AllowOtherTankCollisions = true;
+                        }
+                    }
+                    else
+                    {
+                        __instance.gameObject.GetComponent<ItemIgnoreCollision>().UpdateCollision(false);
                     }
                 }
             }
@@ -89,32 +154,47 @@ namespace RandomAdditions
             private static void Prefix(ModuleItemHolderBeam __instance, ref Visible item)
             {
                 var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
-                if (ModuleCheck != null && item.pickup.rbody != null)
+                if (ModuleCheck != null)
                 {
-                    FieldInfo lockGet = typeof(ModuleItemHolderBeam).GetField("m_HeldPhysicsItems", BindingFlags.NonPublic | BindingFlags.Instance);
-                    HashSet <Visible> m_HeldPhysicsItems = (HashSet<Visible>)lockGet.GetValue(__instance);
+                    if (item.pickup.rbody != null)
+                    {
+                        FieldInfo lockGet = typeof(ModuleItemHolderBeam).GetField("m_HeldPhysicsItems", BindingFlags.NonPublic | BindingFlags.Instance);
+                        HashSet<Visible> m_HeldPhysicsItems = (HashSet<Visible>)lockGet.GetValue(__instance);
+                        if ((bool)item.pickup)
+                        {
+                            item.pickup.ClearRigidBody(true);
+                            m_HeldPhysicsItems.Remove(item);
+                        }
+                        /*
+                        else if ((bool)item.block)
+                        {   //Unsupported
+                            item.block.ClearRigidBody(true);
+                            m_HeldPhysicsItems.Remove(item);
+                        }
+                        */
+                        if (item.UsePrevHeldPos)
+                        {
+                            item.PrevHeldPos = WorldPosition.FromScenePosition(item.trans.position);
+                        }
+                        //Debug.Log("RandomAdditions: Overwrote trac beams to remain on");
+                    }
+                    FieldInfo scaleGet = typeof(ModuleItemHolderBeam).GetField("m_ScaleChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+                    bool m_ScaleChanged = (bool)scaleGet.GetValue(__instance);
 
-                    if ((bool)item.pickup)
+                    if (m_ScaleChanged)
                     {
-                        item.pickup.ClearRigidBody(true);
+                        item.trans.SetLocalScaleIfChanged(new Vector3(1f, 1f, 1f));
+                        m_ScaleChanged = false; 
+                        scaleGet.SetValue(__instance, m_ScaleChanged);
                     }
-                    else if ((bool)item.block)
-                    {
-                        item.block.ClearRigidBody(true);
-                    }
-                    m_HeldPhysicsItems.Remove(item);
-                    if (item.UsePrevHeldPos)
-                    {
-                        item.PrevHeldPos = WorldPosition.FromScenePosition(item.trans.position);
-                    }
-                    //Debug.Log("RandomAdditions: Overwrote trac beams to remain on");
+                    return;
                 }
             }
         }
 
         //Allow disabling of physics on mobile bases
         [HarmonyPatch(typeof(ModuleItemHolderBeam))]
-        [HarmonyPatch("OnTechAnchored")]//On Creation
+        [HarmonyPatch("OnTechAnchored")]
         private static class PatchModuleItemHolderBeamForStatic2
         {
             private static bool Prefix(ModuleItemHolderBeam __instance)
@@ -129,9 +209,38 @@ namespace RandomAdditions
             }
         }
 
+        //Override and send operations over to ModuleItemFixedHolderBeam
+        [HarmonyPatch(typeof(ModuleItemHolderBeam))]
+        [HarmonyPatch("SetPositionsInStack")]
+        private static class PatchModuleItemHolderBeamForStatic3
+        {
+            private static bool Prefix(ModuleItemHolderBeam __instance)
+            {
+                var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
+                if (ModuleCheck != null)
+                {
+                    //__instance.
+                    /*
+                    FieldInfo stackGrab = typeof(ModuleItemHolderBeam).
+                        GetField("m_StackData", BindingFlags.NonPublic | BindingFlags.Instance);
+                    Type stackDataS = typeof(ModuleItemHolderBeam).
+                        GetField("StackData", BindingFlags.NonPublic).FieldType;
+                    stackDataS = stackGrab.get.GetValue(__instance);
+                    for (int i = 0; i < stackData.stack.items.Count; i++)
+                    {
+                    }
+                    */
+                    if (ModuleCheck.FixateToTech)
+                        return false;
+                }
+                return true;
+            }
+        }
+
+
         //Return items on crafting cancelation
         [HarmonyPatch(typeof(ModuleItemConsume))]
-        [HarmonyPatch("CancelRecipe")]//On Creation
+        [HarmonyPatch("CancelRecipe")]
         private static class PatchModuleItemConsumerToReturn
         {
             private static void Prefix(ModuleItemConsume __instance)
@@ -344,9 +453,11 @@ namespace RandomAdditions
                         Debug.Log("RandomAdditions: omae wa - mou shindeiru");
                         return;
                     }
-                    catch { }
-                    otherCollider.GetComponentInParent<ModuleDeathInsurance>().TryQueueUnstoppableDeath();
-                    Debug.Log("RandomAdditions: omae wa - mou shindeiru");
+                    catch
+                    {
+                        otherCollider.GetComponentInParent<ModuleDeathInsurance>().TryQueueUnstoppableDeath();
+                        Debug.Log("RandomAdditions: omae wa - mou shindeiru");
+                    }
                     //Singleton.Manager<ManDamage>.inst.DealDamage(damageable, m_Damage, m_DamageType, m_Weapon, Shooter, hitPoint, __instance.rbody.velocity);
                     //__instance.Recycle(worldPosStays: false);
                 }
@@ -569,6 +680,9 @@ namespace RandomAdditions
                 reportBox.Find("Description").gameObject.SetActive(false);
                 reportBox.Find("Submit").gameObject.SetActive(false);
                 reportBox.Find("Email").gameObject.SetActive(false);
+
+                //reportBox.Find(" Title").GetComponent<Text>().text = "<b>BUG REPORTER [MODDED!]</b>";
+
 
                 UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) CONTINUE ANYWAYS";
                 //Debug.Log("RandomAdditions: Cleaned Bug Reporter UI");

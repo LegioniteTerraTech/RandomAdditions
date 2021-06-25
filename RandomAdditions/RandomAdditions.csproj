@@ -107,6 +107,7 @@
   <ItemGroup>
     <None Include="ModuleCustomDamageType.cs" />
     <Compile Include="AI\AIEnhancedCore.cs" />
+    <Compile Include="ItemIgnoreCollision.cs" />
     <Compile Include="GravitateProjectile.cs" />
     <Compile Include="GlobalClock.cs" />
     <Compile Include="GUIClock.cs" />
