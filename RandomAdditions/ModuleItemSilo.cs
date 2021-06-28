@@ -570,9 +570,9 @@ namespace RandomAdditions
             {
                 Visible toManage;
                 if (!StoresBlocksInsteadOfChunks)
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
                 else
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Block, (int)GetBlockType), siloSpawn.position, Quaternion.identity);
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Block, (int)GetBlockType), siloSpawn.position, Quaternion.identity, true);
                 stack.Take(toManage);
                 ReleaseAnimating.Add(toManage);
             }
@@ -580,9 +580,9 @@ namespace RandomAdditions
             {
                 Visible toManage;
                 if (!StoresBlocksInsteadOfChunks)
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
                 else
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Block, (int)GetBlockType), siloSpawn.position, Quaternion.identity);
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Block, (int)GetBlockType), siloSpawn.position, Quaternion.identity, true);
                 stack.Take(toManage);
                 //toManage.SetHolder(null, true);
                 toManage.SetGrabTimeout(1);//disable grabbing of it
@@ -722,9 +722,9 @@ namespace RandomAdditions
                 }
                 while (SavedCount > 0)
                 {
-                    //var itemSpawn2 = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Scenery, (int)SceneryTypes.Pillar), siloSpawn.position, Quaternion.identity);
+                    //var itemSpawn2 = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Scenery, (int)SceneryTypes.Pillar), siloSpawn.position, Quaternion.identity, true);
                     SavedCount--;
-                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
+                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
                     itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
                 }
             }
@@ -745,7 +745,7 @@ namespace RandomAdditions
             while (SavedCount > MaxCapacity)
             {
                 SavedCount--;
-                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
+                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
                 itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
             }
         }
