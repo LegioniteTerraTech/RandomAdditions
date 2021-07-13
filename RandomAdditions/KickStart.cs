@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Reflection;
-using Harmony;
+using HarmonyLib;
 using UnityEngine;
 using ModHelper.Config;
 using Nuterra.NativeOptions;
@@ -29,7 +29,7 @@ namespace RandomAdditions
             //Where the fun begins
 
             //Initiate the madness
-            HarmonyInstance harmonyInstance = HarmonyInstance.Create("legionite.randomadditions");
+            Harmony harmonyInstance = new Harmony("legionite.randomadditions");
             try
             {
                 harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
