@@ -13,6 +13,7 @@ namespace RandomAdditions
 
     internal static class Patches
     {
+        // Major Patches
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnPool")]//On Creation
         private static class PatchTankToHelpClocks
@@ -27,7 +28,7 @@ namespace RandomAdditions
 
         [HarmonyPatch(typeof(TankBlock))]
         [HarmonyPatch("PrePool")]//On Creation
-        private static class PatchAllBlocksForInstaDeath
+        private static class PatchAllBlocksForOHKOProjectile
         {
             private static void Postfix(TankBlock __instance)
             {
@@ -46,7 +47,6 @@ namespace RandomAdditions
             }
         }
 
-
         [HarmonyPatch(typeof(ResourcePickup))]
         [HarmonyPatch("OnPool")]//On Creation
         private static class PatchAllChunks
@@ -59,10 +59,12 @@ namespace RandomAdditions
             }
         }
 
+
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
+        // Custom Block Modules
         //Allow rescale of blocks on grab
         [HarmonyPatch(typeof(Visible))]
         [HarmonyPatch("SetHolder")]//On tractor grab
@@ -184,7 +186,7 @@ namespace RandomAdditions
                     if (m_ScaleChanged)
                     {
                         item.trans.SetLocalScaleIfChanged(new Vector3(1f, 1f, 1f));
-                        m_ScaleChanged = false; 
+                        m_ScaleChanged = false;
                         scaleGet.SetValue(__instance, m_ScaleChanged);
                     }
                     return;
@@ -237,11 +239,33 @@ namespace RandomAdditions
             }
         }
 
+        //Let BurnerJet do it's job accurately
+        [HarmonyPatch(typeof(BoosterJet))]
+        [HarmonyPatch("FixedUpdate")]
+        private static class RunModuleBoosterBurner
+        {
+            private static void Prefix(BoosterJet __instance)
+            {
+                var ModuleCheck = __instance.gameObject.GetComponent<BurnerJet>();
+                if (ModuleCheck != null)
+                {
+                    if (!ModuleCheck.isSetup)
+                        ModuleCheck.Initiate(__instance);
+                    ModuleCheck.Run(__instance.IsFiring);
+                }
+            }
+        }
+
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        // Try make crafting a bit more bearable
 
         //Return items on crafting cancelation
         [HarmonyPatch(typeof(ModuleItemConsume))]
         [HarmonyPatch("CancelRecipe")]
-        private static class PatchModuleItemConsumerToReturn
+        private static class PatchModuleItemConsumerToReturnInputs
         {
             private static void Prefix(ModuleItemConsume __instance)
             {
@@ -253,20 +277,43 @@ namespace RandomAdditions
 
                 try
                 {
-                    for (int C = 0; C < fetchedRecipe.m_InputItems.Length; C++)
+                    if (ejectorTransform != null)
                     {
-                        ItemTypeInfo compare = fetchedRecipe.m_InputItems[C].m_Item;
-                        int totRequest = fetchedRecipe.m_InputItems[C].m_Quantity;
-                        List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
-                        int notAvail = notAvailR.Count;
-
-                        //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
-                        int ToReturn = totRequest - notAvail;
-                        //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
-                        for (int E = 0; E < ToReturn; E++)
+                        for (int C = 0; C < fetchedRecipe.m_InputItems.Length; C++)
                         {
-                            var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
-                            itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                            ItemTypeInfo compare = fetchedRecipe.m_InputItems[C].m_Item;
+                            int totRequest = fetchedRecipe.m_InputItems[C].m_Quantity;
+                            List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
+                            int notAvail = notAvailR.Count;
+
+                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            int ToReturn = totRequest - notAvail;
+                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            for (int E = 0; E < ToReturn; E++)
+                            {
+                                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
+                                itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                            }
+                        }
+                    }
+                    else
+                    {   // Else it has the resources coming out of an Output
+                        int fireTimesOut = fetchedRecipeS.outputQueue.Count;
+                        for (int C = 0; C < fetchedRecipe.m_InputItems.Length; C++)
+                        {
+                            ItemTypeInfo compare = fetchedRecipe.m_InputItems[C].m_Item;
+                            int totRequest = fetchedRecipe.m_InputItems[C].m_Quantity;
+                            List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
+                            int notAvail = notAvailR.Count;
+
+                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            int ToReturn = totRequest - notAvail;
+                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            for (int E = 0; E < ToReturn; E++)
+                            {
+                                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, __instance.transform.position, Quaternion.identity);
+                                itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
+                            }   // we just assume that the output is upright
                         }
                     }
                 }
@@ -280,7 +327,7 @@ namespace RandomAdditions
         //Return items on fabgrab
         [HarmonyPatch(typeof(ModuleItemConsume))]
         [HarmonyPatch("ResetState")]//On Creation
-        private static class PatchModuleItemConsumerResetToReturn
+        private static class PatchModuleItemConsumerToReturnOnReset
         {
             private static void Prefix(ModuleItemConsume __instance)
             {
@@ -289,23 +336,65 @@ namespace RandomAdditions
                 RecipeTable.Recipe fetchedRecipe = fetchedRecipeS.currentRecipe;
                 FieldInfo ejectGet = typeof(ModuleItemConsume).GetField("m_KickLocator", BindingFlags.NonPublic | BindingFlags.Instance);
                 Transform ejectorTransform = (Transform)ejectGet.GetValue(__instance);
+                FieldInfo isFinished = typeof(ModuleItemConsume).GetField("OperatingBeatsLeft", BindingFlags.NonPublic | BindingFlags.Instance);
+                
 
                 try
                 {
-                    for (int C = 0; C < fetchedRecipe.m_InputItems.Length; C++)
+                    if (ejectorTransform != null)
                     {
-                        ItemTypeInfo compare = fetchedRecipe.m_InputItems[C].m_Item;
-                        int totRequest = fetchedRecipe.m_InputItems[C].m_Quantity;
-                        List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
-                        int notAvail = notAvailR.Count;
-
-                        //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
-                        int ToReturn = totRequest - notAvail;
-                        //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
-                        for (int E = 0; E < ToReturn; E++)
+                        for (int C = 0; C < fetchedRecipe.m_InputItems.Length; C++)
                         {
-                            var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
-                            itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                            ItemTypeInfo compare = fetchedRecipe.m_InputItems[C].m_Item;
+                            int totRequest = fetchedRecipe.m_InputItems[C].m_Quantity;
+                            List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
+                            int notAvail = notAvailR.Count;
+
+                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            int ToReturn = totRequest - notAvail;
+                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            for (int E = 0; E < ToReturn; E++)
+                            {
+                                if (compare.ObjectType == ObjectTypes.Block)
+                                {
+                                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnBlock((BlockTypes)compare.ItemType, ejectorTransform.position, Quaternion.identity);
+                                    itemSpawn.InitNew();
+                                    itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                                }
+                                else
+                                {
+                                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
+                                    itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {   // Else it has the resources coming out of an Output
+                        for (int C = 0; C < fetchedRecipe.m_InputItems.Length; C++)
+                        {
+                            ItemTypeInfo compare = fetchedRecipe.m_InputItems[C].m_Item;
+                            int totRequest = fetchedRecipe.m_InputItems[C].m_Quantity;
+                            List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
+                            int notAvail = notAvailR.Count;
+
+                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            int ToReturn = totRequest - notAvail;
+                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            for (int E = 0; E < ToReturn; E++)
+                            {
+                                if (compare.ObjectType == ObjectTypes.Block)
+                                {
+                                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnBlock((BlockTypes)compare.ItemType, __instance.transform.position, Quaternion.identity);
+                                    itemSpawn.InitNew();
+                                    itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
+                                }
+                                else
+                                {
+                                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, __instance.transform.position, Quaternion.identity);
+                                    itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
+                                }
+                            }
                         }
                     }
                 }
@@ -313,28 +402,108 @@ namespace RandomAdditions
                 {
                     //Debug.Log("RandomAdditions: CONSUME INPUTS - Nothing more to eject.");
                 }
+                /* // Output emergency throwout -  doesn't work as the devs mess something up down the line
+                 * //   And null something that they can still pull somehow on their end
                 try
-                {
-                    int fireTimesOut = fetchedRecipeS.outputQueue.Count;
-                    for (int C = 0; C < fireTimesOut; C++)
+                {   // Output emergency throwout
+                    //if ((int)isFinished.GetValue(__instance) == 1)
+                    //{
+                    //    Debug.Log("RandomAdditions: CONSUME (Output throwout) - Queued");
+                    //}
+                    Debug.Log("RandomAdditions: CONSUME (Output throwout) - Queued");
+                    if (ejectorTransform != null)
                     {
-                        ItemTypeInfo toEject = fetchedRecipeS.outputQueue.Pop();
-                        var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(toEject, ejectorTransform.position, Quaternion.identity);
-                        itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - what");
+                        Stack<ItemTypeInfo> reMatch = new Stack<ItemTypeInfo>();
+
+                        for (int Queue = fetchedRecipe.m_OutputItems.Length - 1; Queue >= 0; Queue--)
+                        {   // shove to the queue to shove out all at once
+                            RecipeTable.Recipe.ItemSpec itemSpec = fetchedRecipe.m_OutputItems[Queue];
+                            for (int N = 0; N < itemSpec.m_Quantity; N++)
+                            {
+                                reMatch.Push(itemSpec.m_Item);
+                            }
+                        }
+                        int fireTimesOut = reMatch.Count;
+                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - " + fireTimesOut + " items in reserve");
+                        for (int C = 0; C < fireTimesOut; C++)
+                        {
+                            ItemTypeInfo toEject = reMatch.Pop();
+                            if (toEject.ObjectType == ObjectTypes.Block)
+                            {
+                                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnBlock((BlockTypes)toEject.ItemType, ejectorTransform.position, Quaternion.identity);
+                                itemSpawn.InitNew();
+                                itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                            }
+                            else
+                            {
+                                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(toEject, ejectorTransform.position, Quaternion.identity);
+                                itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                            }
+                        }
+                    }
+                    else
+                    {   // Else it has the resources coming out of an Output
+                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - 0");
+                        Stack<ItemTypeInfo> reMatch = new Stack<ItemTypeInfo>();
+                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - 0.5");
+
+                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - 1");
+                        int fireTimesOut;
+                        try
+                        {
+                            int queuepre = fetchedRecipe.m_OutputItems.Length;
+                            Debug.Log("RandomAdditions: CONSUME (Output throwout) - count " + queuepre);
+                            for (int Queue = queuepre - 1; Queue >= 0; Queue--)
+                            {   // shove to the queue to shove out all at once
+
+                                _ = reMatch.Count;
+                                Debug.Log("RandomAdditions: CONSUME (Output throwout) - 2");
+                                RecipeTable.Recipe.ItemSpec itemSpec = fetchedRecipe.m_OutputItems[Queue];
+                                for (int N = 0; N < itemSpec.m_Quantity; N++)
+                                {
+                                    Debug.Log("RandomAdditions: CONSUME (Output throwout) - 3");
+                                    reMatch.Push(itemSpec.m_Item);
+                                }
+                            }
+                            fireTimesOut = reMatch.Count;
+                        }
+                        catch 
+                        {
+                            fireTimesOut = fetchedRecipeS.outputQueue.Count;
+                        }
+                        Debug.Log("RandomAdditions: CONSUME (Output throwout - Fallback) - " + fireTimesOut + " items in reserve");
+                        for (int C = 0; C < fireTimesOut; C++)
+                        {
+                            ItemTypeInfo toEject = reMatch.Pop();
+                            if (toEject.ObjectType == ObjectTypes.Block)
+                            {
+                                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnBlock((BlockTypes)toEject.ItemType, __instance.transform.position, Quaternion.identity);
+                                itemSpawn.InitNew();
+                                itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
+                            }
+                            else
+                            {
+                                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(toEject, __instance.transform.position, Quaternion.identity);
+                                itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
+                            }
+                        }
                     }
                 }
-                catch
+                catch (Exception e)
                 {
+
+                    Debug.Log("RandomAdditions: CONSUME OUTPUTS - " + e);
                     //Debug.Log("RandomAdditions: CONSUME OUTPUTS - Nothing more to eject.");
                 }
-
+                */
             }
         }
 
         //Handle internal silo stacks and input fake values
         [HarmonyPatch(typeof(ModuleItemHolder.Stack))]
         [HarmonyPatch("OfferAllItemsToCollector")]//On Creation
-        private static class PatchModuleItemHolderStack
+        private static class PatchModuleItemHolderStackToSeeInternalSiloContents
         {
             private static void Prefix(ModuleItemHolder.Stack __instance, ref ItemSearchCollector collector)
             {
@@ -379,6 +548,7 @@ namespace RandomAdditions
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
+        // Custom Projectiles
 
         //Make sure that WeightedProjectile is checked for and add changes
         [HarmonyPatch(typeof(Projectile))]
@@ -412,7 +582,7 @@ namespace RandomAdditions
                 if (ModuleCheck != null)
                 {
                     ModuleCheck.SetProjectileMass();
-                    Debug.Log("RandomAdditions: Overwrote Mass");
+                    Debug.Log("RandomAdditions: Overwrote Mass - This enables physics collisions and will make the projectile more scary.");
                 }
             }
         }
@@ -501,7 +671,7 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<WeightedProjectile>();
                 if (ModuleCheck != null)
                 {
-                    if (shooter != null && ModuleCheck.CustomGravity)
+                    if (shooter != null && ModuleCheck.CustomGravity && ModuleCheck.CustomGravityFractionSpeed)
                     {
                         Vector3 final = ((__instance.rbody.velocity - shooter.rbody.velocity) * ModuleCheck.GravityAndSpeedScale) + shooter.rbody.velocity;
                         Debug.Log("RandomAdditions: Scaled WeightedProjectile Speed from " + __instance.rbody.velocity + " to " + final);
@@ -535,6 +705,11 @@ namespace RandomAdditions
             }
         }
 
+
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        // Both used for Custom Blocks and Projectiles
+        
         // Allow blocks to have one special resistance
         [HarmonyPatch(typeof(Damageable))]
         [HarmonyPatch("Damage")]//On damage handling
@@ -586,29 +761,6 @@ namespace RandomAdditions
                         //CRASH THE GAME!
                         LogHandler.ForceCrashReporterCustom("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
                     }
-
-
-
-
-                    /*
-                    if (info.DamageType == modifPresent.TypeToResist)
-                    {
-                        if (modifPresent.IsResistedProof)
-                        {
-                            //Debug.Log("RandomAdditions: Damage denied");
-                            info.ApplyDamageMultiplier(0f);//take zero-zilch damage from the type to resist
-                        }
-                        else
-                        {
-                            //Debug.Log("RandomAdditions: Damage weakened");
-                            info.ApplyDamageMultiplier(modifPresent.ResistMultiplier);
-                        }
-                    }
-                    else if (modifPresent.DoDamagablePenalty)
-                    {
-                        info.ApplyDamageMultiplier(Mathf.Max(modifPresent.PenaltyMultiplier, 1));
-                    }
-                    */
                 }
             }
         }
@@ -641,6 +793,7 @@ namespace RandomAdditions
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
+        // The NEW crash handler with useful mod-crash-related information
 
         [HarmonyPatch(typeof(UIScreenBugReport))]
         [HarmonyPatch("Show")]//On error screen text field

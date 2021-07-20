@@ -9,6 +9,8 @@ namespace RandomAdditions
 
         public void TryQueueUnstoppableDeath()
         {
+            if (ManGameMode.inst.IsCurrentModeMultiplayer())
+                return; // Cannot exploit this in MP - the presence of such a powerful weapon (in unmodded) can cause many issues.
             var thisInst = gameObject.GetComponent<ModuleDeathInsurance>();
             var tankBloc = gameObject.GetComponent<TankBlock>();
             if (tankBloc.IsNotNull() && tankBloc.tank.IsNotNull())

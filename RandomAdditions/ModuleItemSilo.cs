@@ -105,7 +105,7 @@ namespace RandomAdditions
             disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>();
             itemStore = gameObject.GetComponent<ModuleItemStore>();
             itemHold = gameObject.GetComponent<ModuleItemHolder>();
-            itemHold.OverrideStackCapacity(3);
+            itemHold.OverrideStackCapacity(3);  //  MUST be 3
             siloSpawn = gameObject.transform.Find("_siloSpawn");
             input = gameObject.transform.Find("_input");
             output = gameObject.transform.Find("_output");
@@ -265,6 +265,9 @@ namespace RandomAdditions
             }
         }
 
+        /// <summary>
+        /// On 3rd item, we store to the silo
+        /// </summary>
         private void CheckItem3()
         {
             if (!StoresBlocksInsteadOfChunks)
@@ -445,7 +448,10 @@ namespace RandomAdditions
                     break;
             }
         }
-
+        
+        /// <summary>
+        /// If there's only one item, we extract from the silo
+        /// </summary>
         private void CheckItem1()
         {
             if (!StoresBlocksInsteadOfChunks)
@@ -594,6 +600,9 @@ namespace RandomAdditions
             }
         }
 
+        /// <summary>
+        /// Run chunk "animator" module
+        /// </summary>
         private void Update()
         {
             int fireTimes = AbsorbAnimating.Count;
@@ -755,7 +764,7 @@ namespace RandomAdditions
 
         [Serializable]
         private new class SerialData : SerialData<SerialData>
-        {
+        {   // This could be optimised for storage down the line
             public ChunkTypes savedChunk;
             public BlockTypes savedBlock;
             public int savedCount;

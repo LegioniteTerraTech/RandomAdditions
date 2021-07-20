@@ -114,6 +114,7 @@
     <Compile Include="KeepSeekingProjectile.cs" />
     <Compile Include="LanceProjectile.cs" />
     <Compile Include="LogHandler.cs" />
+    <Compile Include="BurnerJet.cs" />
     <Compile Include="ModuleClock.cs" />
     <Compile Include="ModuleDeathInsurance.cs" />
     <Compile Include="ModuleItemFixedHolderBeam.cs" />
