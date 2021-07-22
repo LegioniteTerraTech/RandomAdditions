@@ -15,13 +15,9 @@ namespace RandomAdditions
         public bool Downscale = true;
         public float AimedDownscale = 0.5f;
         public int attempts = 25;
-        private TankBlock tankBlock;
-        private Visible visible;
 
         public void OnPool()
         {
-            visible = gameObject.GetComponent<Visible>();
-            tankBlock = gameObject.GetComponent<TankBlock>();
             if (AimedDownscale < 0 || AimedDownscale > 0.5)
             {
                 //Debug.Log("RandomAdditions: TankBlockScaler value is invalid on block " + gameObject.name + "!  Overriding to 0.5!");

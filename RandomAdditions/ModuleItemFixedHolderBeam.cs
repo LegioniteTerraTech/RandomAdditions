@@ -9,7 +9,7 @@ namespace RandomAdditions
     public class ModuleItemFixedHolderBeam : Module
     {
         /*
-           "RandomAdditions.ModuleItemFixedHolderBeam": {},// that's literally all it is.
+           "RandomAdditions.ModuleItemFixedHolderBeam": {},// Lock and load.
         */
 
         public bool FixateToTech = true;

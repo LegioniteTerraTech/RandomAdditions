@@ -11,7 +11,7 @@ namespace RandomAdditions
     public class BurnerJet : MonoBehaviour
     {   // Warning: IGNORES SHIELDS
         /* // Has to go in the same GameObject as the BoosterJet (NOT ModuleBooster!!!) to function! 
-           "RandomAdditions.BurnerJet": {// Burns
+           "RandomAdditions.BurnerJet": {// Burn & yeet
              "UseDamage": true,             // Enable damage dealing - note that enemies being affected still turn red with this off
              "DamagePerSecond": 30,         // Damage dealt per second
              "Radius": 4,                   // Width/Height Radius of the spheroid

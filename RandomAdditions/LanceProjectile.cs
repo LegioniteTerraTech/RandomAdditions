@@ -6,7 +6,7 @@ namespace RandomAdditions
     {
         // For use with weapons like the Ethreal Lancer, mostly to reduce lag with phasing
         /*
-           "RandomAdditions.LanceProjectile": {},// that's literally all it is.
+           "RandomAdditions.LanceProjectile": {},// Phase without the mass lag.
          */
         public Projectile project;
         private void OnTriggerEnter(Collider other)

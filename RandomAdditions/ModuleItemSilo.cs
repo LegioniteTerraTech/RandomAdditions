@@ -98,13 +98,24 @@ namespace RandomAdditions
 
         private int StackSet = 2;
         private bool isSaving = false;
+        /*
+        private bool isSaving {
+            get {
+                return Saving;
+            }
+            set
+            {
+                Debug.Log("RandomAdditions: ModuleItemSilo - setting value " + value);
+                Saving = value;
+            }
+        }*/
 
 
         public void OnPool()
         {
             TankBlock = gameObject.GetComponent<TankBlock>();
-            TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
-            TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
+            TankBlock.AttachEvent.Subscribe(OnAttach);
+            TankBlock.DetachEvent.Subscribe(OnDetach);
 
             gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>();
             disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>();
@@ -205,12 +216,13 @@ namespace RandomAdditions
         {
             TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
+            TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat); 
             UpdateGaugesAndDisplays();
             isSaving = false;
         }
         private void OnDetach()
         {
+            //Debug.Log("RandomAdditions: isSaving " + isSaving);
             if (!isSaving)
             {   // cant eject when the world is saving
                 if (SavedCount > 0)
@@ -221,10 +233,10 @@ namespace RandomAdditions
                         TankBlock.tank.TechAudio.PlayOneshot(sound);
                     }
                     catch { }
+                    // SILO COMPROMISED!  EJECT ALL!
+                    EmergencyEjectAllContents();
+                    UpdateGaugesAndDisplays();
                 }
-                // SILO COMPROMISED!  EJECT ALL!
-                EmergencyEjectAllContents();
-                UpdateGaugesAndDisplays();
             }
             TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
@@ -242,7 +254,6 @@ namespace RandomAdditions
                 //Debug.Log("RandomAdditions: fill is " + GetChunkCountPercent);
                 CheckRelease();
                 WasSearched = false;
-                isSaving = false;
                 UpdateGaugesAndDisplays();
             }
         }
@@ -252,6 +263,7 @@ namespace RandomAdditions
             GetBlockType = BlockTypes.GSOAIController_111;
             SavedCount = 0;
             SavedChunkColor = Color.black;
+            isSaving = false;
         }
 
 
@@ -846,7 +858,19 @@ namespace RandomAdditions
         {
             if (saving)
             {   // On general saving
-                isSaving = true;
+                //var tile = Singleton.Manager<ManWorld>.inst.TileManager.LookupTile(transform.position);
+                //tile.
+                //Debug.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
+                if (Singleton.Manager<ManPointer>.inst.targetVisible)
+                {
+                    if (!Singleton.Manager<ManPointer>.inst.targetVisible.block == TankBlock)
+                    {
+                        isSaving = true;// only disable ejecting when the world is removed
+                    }
+                    // The block saves every time it is grabbed, but for what purpose if it's being removed?!
+                }
+                else
+                    isSaving = true;// only disable ejecting when the world is removed
                 if (!Singleton.Manager<ManScreenshot>.inst.TakingSnapshot)
                 {   // Only save on world save
                     SerialData serialData = new SerialData()

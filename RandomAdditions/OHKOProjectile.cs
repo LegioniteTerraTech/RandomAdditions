@@ -3,10 +3,11 @@
 namespace RandomAdditions
 {
     public class OHKOProjectile : MonoBehaviour
-    {
+    {   // You know the story of David and Goliath? -
+        //   This is david
         // a module that ensures block kill when paired with Projectile
         /*
-           "RandomAdditions.OHKOProjectile": {},// that's literally all it is.
+           "RandomAdditions.OHKOProjectile": {},// Ensure erad.
          */
     }
 }

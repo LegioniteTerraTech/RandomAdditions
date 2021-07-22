@@ -117,6 +117,7 @@
     <Compile Include="BurnerJet.cs" />
     <Compile Include="ModuleClock.cs" />
     <Compile Include="ModuleDeathInsurance.cs" />
+    <Compile Include="ModuleFuelEnergyGenerator.cs" />
     <Compile Include="ModuleItemFixedHolderBeam.cs" />
     <Compile Include="ModuleItemSilo.cs" />
     <Compile Include="OHKOProjectile.cs" />
