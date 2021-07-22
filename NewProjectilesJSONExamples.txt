@@ -5,23 +5,32 @@
         /* Throw this within your JSONBLOCK's FireData m_BulletPrefab to initiate them
         
         // a module that makes sure SeekingProjectile stays active even on ground collision
-        "RandomAdditions.KeepSeekingProjectile": {},// that's literally all it is.
+        "RandomAdditions.KeepSeekingProjectile": {},// Keep seeking no matter what.
+
+-----------------------------------------------------------------------------------------------------
          
         // For use with weapons like the Ethreal Lancer, mostly to reduce lag with phasing
-        "RandomAdditions.LanceProjectile": {},// that's literally all it is.
+        "RandomAdditions.LanceProjectile": {},// Phase without the mass lag.
+
+-----------------------------------------------------------------------------------------------------
          
+        // You know the story of David and Goliath? -
+        //   This is david
         // a module that ensures block kill when paired with Projectile
-        "RandomAdditions.OHKOProjectile": {},// that's literally all it is.
+        "RandomAdditions.OHKOProjectile": {},// Ensure erad.
          
+-----------------------------------------------------------------------------------------------------
          
         // a module that allows you projectiles to become bowling balls or act very heavy
         "RandomAdditions.WeightedProjectile":{ // launch bowling balls but they actually have proper weight
             "ProjectileMass": 4,        // The Mass you want the projectile to have
-            "CustomGravity": false,     // enable the parameter below - WARNING overrides all grav settings! (and breaks WeaponAimMod!)
+            "CustomGravity": false,     // enable the parameters below - WARNING! breaks WeaponAimMod!
+            "CustomGravityFractionSpeed": true, // Slow down the projectile's speed so that it doesn't overaim too badly
             "GravityAndSpeedScale": 1.0,// The percent (1.0 is 100%) force gravity pulls down on this and the speed it travels at 
             //so you can have dramatic super-heavy projectiles that move slow through the air
         },
-        
+
+-----------------------------------------------------------------------------------------------------
         
         // With Watermod installed, any missile that goes into the water with this projectile type
         //   will change their thrust value to the one specified here.
@@ -32,6 +41,7 @@
         // Make sure to add a new GameObject with the name "_subProp" and position it to where 
         //   the thrust should be if it isn't using a missile reference.
             
+-----------------------------------------------------------------------------------------------------
         
         //A projectile that floats off (gravitationally-ish) in the specified direction with the specified force. 
         //  Can be used to create floating mines or balloon-like ordinances.
@@ -55,3 +65,17 @@
         },
         //I mean well it lets you do sideways gravity but that's sorta strange at the moment.
         //  maybe that will change down the line but for now it's kinda pointless
+
+-----------------------------------------------------------------------------------------------------
+
+
+	Need help? Let me know on the official TerraTech Community Discord!
+
+
+
+
+
+
+
+
+

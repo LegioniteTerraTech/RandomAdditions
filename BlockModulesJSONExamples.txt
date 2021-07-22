@@ -8,13 +8,15 @@
             "AimedDownscale": 0.5, // Multiplier for the scale when on conveyor
         },
         
+-----------------------------------------------------------------------------------
         
         "RandomAdditions.ModuleClock":{ // Add the ability to timekeep
-          "DisplayTime": true,     // Rotate a GameObject called "TimeObject" depending on the time
+          "DisplayTime": true,      // Rotate a GameObject called "TimeObject" depending on the time
           "DigitalTime": false,     // Display on a "HUD" window?
           "ControlTime": false,     // Can this be R-clicked to open a menu to control time?
         },
             
+-----------------------------------------------------------------------------------
         
         // A module that acts as a storage for a single type of resource, but lag-free and without colliders
         //   Relies on ModuleItemStore to keep the stacks of a single type, with only one node to stack from
@@ -25,6 +27,7 @@
         "RandomAdditions.ModuleItemSilo":{ // Add internal resource storage capacity to your block
             "StoresBlocksInsteadOfChunks": false,   // Send blocks the the SCU instead of storing chunks?
             "UseShrinkAnim": true,                  // Do we shrink the items when storing?
+            "MaxOutputRate": 0,                     // Max Rate this silo can output at - also determines stack heights. Leave at 0 to auto-set
 
             // For Chunks: 
             "MaxCapacity": 10,                      // Max resource storage capacity
@@ -32,6 +35,8 @@
         },
         //Check out SiloGauge too as you will be needing one of those to display what's inside
         
+-----------------------------------------------------------------------------------
+
         /* Throw this within your JSONBLOCK inside of a GameObject you want to display for
         "RandomAdditions.SiloGauge":{ // Add a gauge for your ModuleItemSilo
             "MaxHeightMultiplier": 5,      // Scaling of the mesh at full capacity
@@ -45,6 +50,7 @@
         /* Throw this within your JSONBLOCK inside of a GameObject you want to display for
         "RandomAdditions.SiloDisplay": {},// Will re-texture any model you assign it to the item stored in the silo.
         
+-------------------------------------------------------------------------------
         
         "RandomAdditions.ModuleReinforced":{ // Add a special resistance to your block
             "DoDamagableSwitch": false, // Should we switch the DamageableType of this block?
@@ -65,3 +71,49 @@
                 "Plasma":       1,      // Plasma multiplier
             //--------------------------------
         },
+
+-----------------------------------------------------------------------------------
+
+	// Has to go in the same GameObject as the BoosterJet (NOT ModuleBooster!!!) to function! 
+           "RandomAdditions.BurnerJet": {// Burn & yeet
+             "UseDamage": true,             // Enable damage dealing - note that enemies being affected still turn red with this off
+             "DamagePerSecond": 30,         // Damage dealt per second
+             "Radius": 4,                   // Width/Height Radius of the spheroid
+             "RadiusStretchMultiplier": 3,  // Length Radius of the Spheroid
+             "RadiusFalloff": 3,            // the damage will falloff beyond this
+             "DamageType": "Fire",          // DamageType to deal against target
+             "FriendlyFire": false,         // Can deal damage against allied Techs
+             // ---------------------------------------------------------------------
+             "UseRecoil": false,            // Enable enemy yeet
+             "Backforce": 30,               // the force applied on each enemy block affected
+           }
+
+-----------------------------------------------------------------------------------
+
+        "RandomAdditions.ModuleFuelEnergyGenerator":{ // Burn fuel, get power
+            "GenerateCondition": "Manual",   // Manual for shift to generate,  Automatic to generate when full
+            "FuelConsumeRate": 10,          // Rate to consume the fuel
+            "FuelToEnergyRate": 1.0,        // Rate to convert fuel to energy
+            // fuel burning * FuelToEnergyRate = generated energy
+        },
+
+-----------------------------------------------------------------------------------
+
+           "RandomAdditions.ModuleLudicrousSpeedButton": {// it's like a pacemaker but only fastest
+	     // LEFT-click to activate
+             "Rate" : 0.1,// must be below 0.2, above 0.01
+             // The higher it is, THE MORE IT WILL DRAIN
+           },
+
+-----------------------------------------------------------------------------------------------------
+
+
+	Need help? Let me know on the official TerraTech Community Discord!
+
+
+
+
+
+
+
+
