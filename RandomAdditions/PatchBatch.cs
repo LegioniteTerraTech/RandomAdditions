@@ -153,7 +153,7 @@ namespace RandomAdditions
         [HarmonyPatch("UpdateFloat")]//On Creation
         private static class PatchModuleItemHolderBeamForStatic
         {
-            private static void Prefix(ModuleItemHolderBeam __instance, ref Visible item)
+            private static bool Prefix(ModuleItemHolderBeam __instance, ref Visible item)
             {
                 var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
@@ -189,8 +189,20 @@ namespace RandomAdditions
                         m_ScaleChanged = false;
                         scaleGet.SetValue(__instance, m_ScaleChanged);
                     }
-                    return;
+                    return false;
                 }
+                else
+                {
+                    try
+                    {
+                        if (!__instance.block.tank.IsAnchored && item.rbody == null)
+                        {
+                            item.pickup.InitRigidbody();
+                        }
+                    }
+                    catch { }
+                }
+                return true;
             }
         }
 
@@ -505,8 +517,8 @@ namespace RandomAdditions
         [HarmonyPatch("OfferAllItemsToCollector")]//On Creation
         private static class PatchModuleItemHolderStackToSeeInternalSiloContents
         {
-            private static void Prefix(ModuleItemHolder.Stack __instance, ref ItemSearchCollector collector)
-            {
+            private static void Postfix(ModuleItemHolder.Stack __instance, ref ItemSearchCollector collector)
+            {   
                 var ModuleCheck = __instance.myHolder.gameObject.GetComponent<ModuleItemSilo>();
                 if (ModuleCheck != null)
                 {
@@ -515,11 +527,11 @@ namespace RandomAdditions
                         int count = ModuleCheck.SavedCount;
                         if (count > 0)
                         {
-                            if (__instance.items[0].m_ItemType.ObjectType == ObjectTypes.Chunk)
+                            if (!ModuleCheck.StoresBlocksInsteadOfChunks)
                             {
                                 for (int i = 0; i < count; i++)
                                 {
-                                    collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)__instance.items[0].pickup.ChunkType));
+                                    collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)ModuleCheck.GetChunkType));
                                     //Debug.Log("RandomAdditions: Added " + __instance.items[0].pickup.ChunkType.ToString() + " to available recipie items");
                                 }
                                 //Debug.Log("RandomAdditions: Searched silo (Chunks)");
@@ -530,7 +542,7 @@ namespace RandomAdditions
                                 {
                                     try
                                     {
-                                        collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Block, (int)__instance.items[0].block.BlockType));
+                                        collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Block, (int)ModuleCheck.GetBlockType));
                                     }
                                     catch { }// Chances are we can't get modded blocks with this
                                 }
@@ -642,7 +654,7 @@ namespace RandomAdditions
         [HarmonyPatch("HandleCollision")]//On direct hit
         private class PatchProjectileCollisionForOverride
         {
-            private static void Postfix(Projectile __instance, ref Collider otherCollider)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            private static void Postfix(Projectile __instance)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile)");
                 var ModuleCheck = __instance.gameObject.GetComponent<KeepSeekingProjectile>();
@@ -759,7 +771,7 @@ namespace RandomAdditions
                         Debug.Log("RandomAdditions: Type " + info.DamageType.ToString());
                         Debug.Log("RandomAdditions: Update ModuleReinforced and also Patch!");
                         //CRASH THE GAME!
-                        LogHandler.ForceCrashReporterCustom("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
+                        LogHandler.ThrowWarning("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
                     }
                 }
             }
@@ -865,7 +877,7 @@ namespace RandomAdditions
 
                     var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Explanation"), UIObj.transform, false);
                     Vector3 offset = errorList.localPosition;
-                    offset.y = offset.y - 340;
+                    offset.y -= 340;
                     errorList.localPosition = offset;
                     var errorText = errorList.gameObject.GetComponent<Text>();
                     //errorText.alignByGeometry = true;
@@ -882,7 +894,7 @@ namespace RandomAdditions
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b> \nTake note of all your unofficial mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
                     var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Explanation"), UIObj.transform, false);
                     Vector3 offset = errorList.localPosition;
-                    offset.y = offset.y - 340;
+                    offset.y -= 340;
                     errorList.localPosition = offset;
                     var errorText = errorList.gameObject.GetComponent<Text>();
                     //errorText.alignByGeometry = true;

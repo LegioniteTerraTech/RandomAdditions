@@ -84,7 +84,7 @@ namespace RandomAdditions
                         Physics.IgnoreCollision(coll, collThis, true);
                     }
                 }
-                Debug.Log("RandomAdditions: Disabled all collision between " + gameObject.name + " and " + tankToIgnore.name);
+                //Debug.Log("RandomAdditions: Disabled all collision between " + gameObject.name + " and " + tankToIgnore.name);
                 IgnoredTank = tankToIgnore;
             }
         }

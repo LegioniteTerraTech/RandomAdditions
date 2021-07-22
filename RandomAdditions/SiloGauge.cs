@@ -20,10 +20,10 @@ namespace RandomAdditions
 
         public float MaxHeightMultiplier = 5;
         public float MinHeightMultiplier = 1;
+        public float DisplayDampener = 3;
 
         public bool AllowCustomTextures = false;
         public bool UseResourceColorsForGauge = false;
-        public float DisplayDampener = 3;
 
 
         internal ModuleItemSilo siloMain;
@@ -45,7 +45,7 @@ namespace RandomAdditions
                 shaders = shaders.Where(s => s.name == "Standard"); ////Standard
                 shader = shaders.ElementAt(1);
                 if (shader.IsNull())
-                    LogHandler.ForceCrashReporterCustom("RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
+                    LogHandler.ThrowWarning("RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
             }
             shade = shader;
             var meshV = gameObject.GetComponent<MeshRenderer>();

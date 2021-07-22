@@ -33,7 +33,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleClock NEEDS a GameObject in hierarchy named \"TimeObject\" for the hour hand!\nOtherwise set DisplayTime to false!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    LogHandler.ThrowWarning("RandomAdditions: \nModuleClock NEEDS a GameObject in hierarchy named \"TimeObject\" for the hour hand!\nOtherwise set DisplayTime to false!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     thisInst.DisplayTime = false;
                 }
             }

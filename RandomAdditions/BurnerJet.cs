@@ -107,7 +107,10 @@ namespace RandomAdditions
                             if (UseDamage)
                                 Singleton.Manager<ManDamage>.inst.DealDamage(viss.block.GetComponent<Damageable>(), DamagePerSecond * MultiplyCalc * DamageDelayCount * Time.deltaTime, DamageType, this, transform.root.GetComponent<Tank>());
                             if (UseRecoil)
-                                viss.block.tank.ApplyForceOverTime(Effector.forward * Backforce, viss.block.centreOfMassWorld, DamageDelayCount * Time.deltaTime);
+                            {
+                                if ((bool)viss.block.tank)
+                                    viss.block.tank.ApplyForceOverTime(Effector.forward * (Backforce * CurrentStrength * (viss.block.tank.blockman.blockTableSize / 2)), viss.block.centreOfMassWorld, DamageDelayCount * Time.deltaTime);
+                            }
                             InArea.Add(viss.block);
                         }
                         catch { }
@@ -133,6 +136,8 @@ namespace RandomAdditions
             foreach (TankBlock damg in InArea)
             {
                 damg.damage.MultiplayerFakeDamagePulse();
+                if (UseRecoil && !damg.tank && damg.rbody.IsNotNull())
+                    damg.rbody.AddForceAtPosition(Effector.forward * (Backforce * CurrentStrength), damg.CentreOfMass, ForceMode.Impulse);
             }
         }
 

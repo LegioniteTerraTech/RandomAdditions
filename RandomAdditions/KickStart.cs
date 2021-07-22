@@ -18,9 +18,11 @@ namespace RandomAdditions
         public static bool isWaterModPresent = false;
         public static GameObject logMan;
 
+        public static bool DebugPopups = false;
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
 
         // NativeOptions Parameters
+        public static OptionToggle allowPopups;
         public static OptionToggle AltDateFormat;
 
 
@@ -41,6 +43,7 @@ namespace RandomAdditions
             }
             GlobalClock.ClockManager.Initiate();
             GUIClock.Initiate();
+            ModuleLudicrousSpeedButton.Initiate();
             logMan = new GameObject("logMan");
             logMan.AddComponent<LogHandler>();
             logMan.GetComponent<LogHandler>().Initiate();
@@ -53,10 +56,13 @@ namespace RandomAdditions
 
 
             ModConfig thisModConfig = new ModConfig();
+            thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
             thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
 
 
             var RandomProperties = ModName;
+            allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
+            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; });
             AltDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
             AltDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = AltDateFormat.SavedValue; });
         }

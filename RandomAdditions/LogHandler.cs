@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using UnityEngine;
 
 namespace RandomAdditions
@@ -6,6 +7,7 @@ namespace RandomAdditions
     public class LogHandler : MonoBehaviour
     {
         //Get the log errors and display them if needed
+        private static LogHandler inst;
         private static bool FiredBigDisplay = false;
 
         private string logFilterNed = "nothing";
@@ -13,6 +15,16 @@ namespace RandomAdditions
         private static bool customLog = false;
         private static string logOverride = "Uh-oh this was queued wrong!  Make sure you use: \nRandomAdditions.LogHandler.ForceCrashReporterCustom(string yourInput)\n to get the right output!";
 
+        private static StringBuilder Warnings = new StringBuilder();
+        private static bool WarningQueued = false;
+
+        public void Initiate()
+        {
+            Application.logMessageReceived += SaveLatestIncursion;
+            inst = this;
+        }
+
+        /* // - legacy: ThrowWarning is safer
         public static void ForceCrashReporterCustom(string overrideString)
         {
             logOverride = overrideString;
@@ -29,11 +41,27 @@ namespace RandomAdditions
                 //GUIIngameErrorPopup.Launch(logOverride);
             }
         }
-
-        public void Initiate()
+        */
+        public static void ThrowWarning(string Text)
         {
-            Application.logMessageReceived += SaveLatestIncursion;
+            if (Warnings.Length > 0)
+            {
+                Warnings.Append("\n");
+                Warnings.Append("--------------------\n");
+            }
+            Warnings.Append(Text);
+            if (!WarningQueued && inst.IsNotNull())
+            {
+                inst.Invoke("ActuallyThrowWarning", 0);// next Update
+                WarningQueued = true;
+            }
         }
+        public void ActuallyThrowWarning()
+        {
+            Singleton.Manager<ManUI>.inst.ShowErrorPopup(Warnings.ToString());
+            WarningQueued = false;
+        }
+
 
         private void SaveLatestIncursion(string logString, string stackTrace, LogType type)
         {

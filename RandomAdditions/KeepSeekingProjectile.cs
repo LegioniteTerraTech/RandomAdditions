@@ -6,7 +6,7 @@ namespace RandomAdditions
     {
         // a module that makes sure SeekingProjectile stays active even on ground collision
         /*
-           "RandomAdditions.KeepSeekingProjectile": {},// that's literally all it is.
+           "RandomAdditions.KeepSeekingProjectile": {},// Keep seeking no matter what
          */
         public bool wasThisSeeking = false;
     }

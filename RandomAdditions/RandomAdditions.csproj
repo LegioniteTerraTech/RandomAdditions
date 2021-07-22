@@ -125,6 +125,7 @@
     <Compile Include="SiloDisplay.cs" />
     <Compile Include="SiloGauge.cs" />
     <Compile Include="TankBlockScaler.cs" />
+    <Compile Include="ModuleLudicrousSpeedButton.cs" />
     <Compile Include="TorpedoProjectile.cs" />
     <Compile Include="WeightedProjectile.cs" />
     <Compile Include="KickStart.cs" />

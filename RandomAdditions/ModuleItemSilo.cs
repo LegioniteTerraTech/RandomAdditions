@@ -17,6 +17,7 @@ namespace RandomAdditions
         "RandomAdditions.ModuleItemSilo":{ // Add internal resource storage capacity to your block
             "StoresBlocksInsteadOfChunks": false,   // Send blocks the the SCU instead of storing chunks?
             "UseShrinkAnim": true,                  // Do we shrink the items when storing?
+            "MaxOutputRate": 0,                     // Max Rate this silo can output at - also determines stack heights. Leave at 0 to auto-set
 
             // For Chunks: 
             "MaxCapacity": 10,                      // Max resource storage capacity
@@ -37,6 +38,7 @@ namespace RandomAdditions
         //Collection (General)
         public bool StoresBlocksInsteadOfChunks = false;
         public bool UseShrinkAnim = true;
+        public int MaxOutputRate = 0;
         private float ReleaseOffset = 0.2f;
         private bool ImmedeateOutput = true;
         //public bool KeepAtLeastOneItemOut = true;//WIP
@@ -94,6 +96,9 @@ namespace RandomAdditions
         private List<Vector3> ReleaseAnimatingPos = new List<Vector3>();
         private List<ModuleItemHolder.Stack> ReleaseTargetNode = new List<ModuleItemHolder.Stack>();
 
+        private int StackSet = 2;
+        private bool isSaving = false;
+
 
         public void OnPool()
         {
@@ -105,18 +110,20 @@ namespace RandomAdditions
             disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>();
             itemStore = gameObject.GetComponent<ModuleItemStore>();
             itemHold = gameObject.GetComponent<ModuleItemHolder>();
-            itemHold.OverrideStackCapacity(3);  //  MUST be 3
             siloSpawn = gameObject.transform.Find("_siloSpawn");
             input = gameObject.transform.Find("_input");
             output = gameObject.transform.Find("_output");
+            int possibleAPs = 0;
             if (StoresBlocksInsteadOfChunks)
             {
                 SavedChunkColor = new Color(0.46f, 0.52f, 46f, 1);
                 foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                 {
+                    if (stack.apConnectionIndices.Length > possibleAPs)
+                        possibleAPs = stack.apConnectionIndices.Length;
                     if (!stack.CanAcceptObjectType(ObjectTypes.Block))
                     {
-                        LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle blocks instead of chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 1!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle blocks instead of chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 1!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                         break;
                     }
                 }
@@ -125,16 +132,31 @@ namespace RandomAdditions
             {
                 foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                 {
+                    if (stack.apConnectionIndices.Length > possibleAPs)
+                        possibleAPs = stack.apConnectionIndices.Length;
                     if (!stack.CanAcceptObjectType(ObjectTypes.Chunk))
                     {
-                        LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 0!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 0!</b>\nThis operation cannot be handled automatically.\n  Cause of error - Block " + TankBlock.name);
                         break;
                     }
                 }
             }
+            int stackOverride;
+            if (MaxOutputRate > 0)
+            {
+                stackOverride = MaxOutputRate * 2;
+                StackSet = MaxOutputRate;
+            }
+            else
+            {
+                stackOverride = possibleAPs * 2;
+                StackSet = possibleAPs;
+            }
+            itemHold.OverrideStackCapacity(stackOverride);  //  MUST be at least 2
+            Debug.Log("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
             if (gauges.Length == 0)
             {
-                Debug.Log("RandomAdditions: Detected no gauges on silo!");
+                Debug.Log("RandomAdditions: ModuleItemSilo - Detected no gauges on silo!\n  Cause of error - Block " + TankBlock.name);
             }
             else
             {
@@ -145,7 +167,7 @@ namespace RandomAdditions
             }
             if (disps.Length == 0)
             {
-                Debug.Log("RandomAdditions: Detected no displays on silo.");
+                Debug.Log("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Cause of error - Block " + TankBlock.name);
             }
             else
             {
@@ -156,119 +178,88 @@ namespace RandomAdditions
             }
             if (siloSpawn.IsNull())
             {
-                Debug.Log("RandomAdditions: SILO SPAWN NOT SET!!!  defaulting to center of silo!");
+                Debug.Log("RandomAdditions: ModuleItemSilo - SILO SPAWN NOT SET!!!  defaulting to center of silo! \n  Cause of error - Block " + TankBlock.name);
                 siloSpawn = transform;
             }
             if (input.IsNull())
             {
-                Debug.Log("RandomAdditions: INPUT NOT SET!!!  defaulting to the spot _siloSpawn is set to!");
+                Debug.Log("RandomAdditions: ModuleItemSilo - INPUT NOT SET!!!  defaulting to the spot _siloSpawn is set to! \n  Cause of error - Block " + TankBlock.name);
                 input = siloSpawn;
             }
             if (output.IsNull())
             {
-                Debug.Log("RandomAdditions: OUTPUT SPAWN NOT SET!!!  defaulting to the spot _siloSpawn is set to!");
+                Debug.Log("RandomAdditions: OUTPUT SPAWN NOT SET!!!  defaulting to the spot _siloSpawn is set to!\n  Cause of error - Block " + TankBlock.name);
                 output = siloSpawn;
             }
             if (itemStore.IsNull())
             {
                 //Debug.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
-                LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.  \nIf you are doing this without ModuleItemStore, you are doing it WRONG!!!  \n<b>THE RESOURCES WILL HANDLE BADLY!!!</b>\nCause of error - Block " + gameObject.name);
+                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.  \nIf you are doing this without ModuleItemStore, you are doing it WRONG!!!  \n<b>THE BLOCK WILL NOT DO ANYTHING!!!</b>\n  Cause of error - Block " + TankBlock.name);
             }
             if (MaxCapacity <= 0)
             {
-                LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\nCause of error - Block " + gameObject.name);
+                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\n  Cause of error - Block " + TankBlock.name);
             }
         }
-        public void OnAttach()
+        private void OnAttach()
         {
             TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
             UpdateGaugesAndDisplays();
+            isSaving = false;
         }
-        public void OnDetach()
+        private void OnDetach()
         {
-            if (SavedCount > 0)
-            {
-                TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemCannonDelivered);
-                try
+            if (!isSaving)
+            {   // cant eject when the world is saving
+                if (SavedCount > 0)
                 {
-                    TankBlock.tank.TechAudio.PlayOneshot(sound);
+                    TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemCannonDelivered);
+                    try
+                    {
+                        TankBlock.tank.TechAudio.PlayOneshot(sound);
+                    }
+                    catch { }
                 }
-                catch { }
+                // SILO COMPROMISED!  EJECT ALL!
+                EmergencyEjectAllContents();
+                UpdateGaugesAndDisplays();
             }
             TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
-            // SILO COMPROMISED!  EJECT ALL!
-            EmergencyEjectAllContents();
         }
-        public void UpdateGaugesAndDisplays()
-        {
-            foreach (SiloDisplay sDisp in disps)
-            {
-                sDisp.UpdateDisplay();
-            }
-            foreach (SiloGauge sGauge in gauges)
-            {
-                sGauge.UpdateGauge();
-            }
-        }
-        public void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
+        private void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
         {
             if (HartStep == TechHolders.Heartbeat.PrePass)
             {
-                CheckItem3();
+                CheckStore();
             }
             if (HartStep == TechHolders.Heartbeat.PostPass)
             {
                 GetChunkCountPercent = (float)SavedCount / (float)MaxCapacity;
                 //Debug.Log("RandomAdditions: fill is " + GetChunkCountPercent);
-                CheckItem1();
+                CheckRelease();
                 WasSearched = false;
+                isSaving = false;
                 UpdateGaugesAndDisplays();
-                /*
-                if (EjectOnOverspeed && SavedCount > 0 && TankBlock.tank.IsNotNull())
-                {
-                    TankBlock.PreExplodePulse = false;
-                    if (EmergencyEjectSpeed - 10 < TankBlock.tank.GetForwardSpeed())
-                    {
-                        if (!queuedBlink && !TankBlock.PreExplodePulse)
-                        {
-                            TankBlock.PreExplodePulse = true;
-                            queuedBlink = true;
-                        }
-                    }
-                    else
-                    {
-                        if (queuedBlink)
-                        {
-                            TankBlock.PreExplodePulse = false;
-                            queuedBlink = false;
-                        }
-                    }
-                    if (EmergencyEjectSpeed < TankBlock.tank.GetForwardSpeed())
-                    {
-                        Debug.Log("RandomAdditions: Silo " + gameObject.name + " has gone over their maximum stable speed and will eject everything to prevent exploding!");
-                        EmergencyEjectAllContents();
-                    }
-                }
-                else
-                {
-                    if (queuedBlink)
-                    {
-                        TankBlock.PreExplodePulse = false;
-                        queuedBlink = false;
-                    }
-                }
-                */
             }
         }
+        private void OnSpawn()
+        {   // reset for new blocks/new spawns
+            GetChunkType = ChunkTypes.Null;
+            GetBlockType = BlockTypes.GSOAIController_111;
+            SavedCount = 0;
+            SavedChunkColor = Color.black;
+        }
 
+
+        // Conveyor step actions
         /// <summary>
         /// On 3rd item, we store to the silo
         /// </summary>
-        private void CheckItem3()
+        private void CheckStore()
         {
             if (!StoresBlocksInsteadOfChunks)
             {
@@ -276,8 +267,11 @@ namespace RandomAdditions
                 {
                     foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                     {
-                        if (stack.NumItems > 2)
+                        int FireTimes = stack.NumItems - StackSet;
+                        for (int step = 0; step < FireTimes; step++)
                         {
+                            if (SavedCount >= MaxCapacity)
+                                break;
                             var toManage = stack.FirstItem;
                             if (SavedCount == 0)
                             {
@@ -288,7 +282,7 @@ namespace RandomAdditions
                             }
                             if (toManage.pickup.ChunkType == GetChunkType)
                             {
-                                StoreAnim(toManage);
+                                QueueStoreAnim(toManage);
                                 SavedCount++;
                                 if (SavedCount >= MaxCapacity)
                                     break;
@@ -296,10 +290,10 @@ namespace RandomAdditions
                             else
                             {
                                 Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
-                                toManage.InBeam = false;//DROP IT NOW!!!
+                                toManage.SetHolder(null, true);//DROP IT NOW!!!
                                 if (toManage.InBeam == true)
                                 {
-                                    LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid chunk");
+                                    LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid chunk");
                                 }
                             }
                         }
@@ -316,8 +310,11 @@ namespace RandomAdditions
             {
                 foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                 {
-                    if (stack.NumItems > 2)
+                    int FireTimes = stack.NumItems - StackSet;
+                    for (int step = 0; step < FireTimes; step++)
                     {
+                        if (SavedCount >= MaxCapacity)
+                            break;
                         var toManage = stack.FirstItem;
                         if (SavedCount == 0)
                         {
@@ -326,7 +323,7 @@ namespace RandomAdditions
                         }
                         if (toManage.block.BlockType == GetBlockType)
                         {
-                            StoreAnim(toManage);
+                            QueueStoreAnim(toManage);
                             if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
                             else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
                             {
@@ -341,14 +338,135 @@ namespace RandomAdditions
                             toManage.InBeam = false;//DROP IT NOW!!!
                             if (toManage.InBeam == true)
                             {
-                                LogHandler.ForceCrashReporterCustom("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
+                                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
                             }
                         }
                     }
                 }
             }
         }
-        private void StoreAnim(Visible toManage)
+
+        /// <summary>
+        /// If there's only one item, we extract from the silo
+        /// </summary>
+        private void CheckRelease()
+        {
+            if (!StoresBlocksInsteadOfChunks)
+            {
+                if (SavedCount > 0)
+                {
+                    foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
+                    {
+                        int FireTimes = stack.NumItems - StackSet;
+                        for (int step = 0; step > FireTimes; step--)
+                        {
+                            if (GetChunkType == ChunkTypes.Null)
+                            {
+                                Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
+                                SavedCount = 0;
+                                break;
+                            }
+                            SavedCount--;
+                            QueueReleaseAnim(stack);
+                            if (SavedCount <= 0)
+                            {
+                                Empty = true;
+                                GetChunkType = ChunkTypes.Null;
+                                //Reset color for gauge referencing
+                                SaveTextureOfChunk();
+                                if (SavedCount < 0)
+                                {
+                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
+                                    SavedCount = 0;// well... we can't compensate for negatives can we...
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
+                {
+                    if (GetBlockType == BlockTypes.GSOAIController_111)
+                        break;
+                    int FireTimes = stack.NumItems - StackSet;
+                    for (int step = 0; step > FireTimes; step--)
+                    {
+                        if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted)
+                        {
+                            if (GetBlockType == BlockTypes.GSOAIController_111)
+                            {
+                                Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
+                                break;
+                            }
+                            QueueReleaseAnim(stack);
+                            SavedCount = MaxCapacity;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                int availQuant;
+                                bool isMP = Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer();
+                                if (isMP)
+                                {
+                                    if (Singleton.Manager<NetInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
+                                    {
+                                        availQuant = Singleton.Manager<NetInventory>.inst.GetQuantity(GetBlockType);
+                                        if (availQuant > 0)
+                                        {
+                                            availQuant--;
+                                            Singleton.Manager<NetInventory>.inst.SetBlockCount(GetBlockType, availQuant);
+
+                                            QueueReleaseAnim(stack);
+                                            SavedCount = availQuant;
+                                            if (availQuant <= 0)
+                                            {
+                                                Empty = true;
+                                                GetBlockType = BlockTypes.GSOAIController_111;
+                                                if (availQuant < 0)
+                                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if (Singleton.Manager<SingleplayerInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
+                                    {
+                                        availQuant = Singleton.Manager<SingleplayerInventory>.inst.GetQuantity(GetBlockType);
+                                        if (availQuant > 0)
+                                        {
+                                            availQuant--;
+                                            Singleton.Manager<SingleplayerInventory>.inst.SetBlockCount(GetBlockType, availQuant);
+
+                                            QueueReleaseAnim(stack);
+                                            SavedCount = availQuant;
+                                            if (availQuant <= 0)
+                                            {
+                                                Empty = true;
+                                                GetBlockType = BlockTypes.GSOAIController_111;
+                                                if (availQuant < 0)
+                                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // "Animations"
+        private void QueueStoreAnim(Visible toManage)
         {
             TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemResourceConsumed);
             try
@@ -372,9 +490,65 @@ namespace RandomAdditions
             AbsorbAnimating.Add(toManage);
             AbsorbAnimatingPos.Add(transform.InverseTransformPoint(toManage.centrePosition));
         }
+        private void QueueReleaseAnim(ModuleItemHolder.Stack stack)
+        {
+            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemResourceProduced);
+            try
+            {
+                TankBlock.tank.TechAudio.PlayOneshot(sound);
+            }
+            catch { }
+            if (ImmedeateOutput)
+            {
+                Visible toManage;
+                if (!StoresBlocksInsteadOfChunks)
+                {
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
+                }
+                else
+                {
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnBlock(GetBlockType, siloSpawn.position, Quaternion.identity).visible;
+                    toManage.block.InitNew();
+                }
+                stack.Take(toManage);
+                ReleaseAnimating.Add(toManage);
+            }
+            else
+            {
+                Visible toManage;
+                if (!StoresBlocksInsteadOfChunks)
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
+                else
+                {
+                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnBlock(GetBlockType, siloSpawn.position, Quaternion.identity).visible;
+                    toManage.block.InitNew();
+                }
+                stack.Take(toManage);
+                //toManage.SetHolder(null, true);
+                toManage.SetGrabTimeout(1);//disable grabbing of it
+                toManage.SetItemCollectionTimeout(1);//disable more
+                toManage.SetInteractionTimeout(1);// disable ALL
+                ReleaseTargetNode.Add(stack);
+                ReleaseAnimating.Add(toManage);
+                ReleaseAnimatingPos.Add(transform.InverseTransformPoint(toManage.centrePosition));
+            }
+        }
 
+
+        // Utilities
+        public void UpdateGaugesAndDisplays()
+        {
+            foreach (SiloDisplay sDisp in disps)
+            {
+                sDisp.UpdateDisplay();
+            }
+            foreach (SiloGauge sGauge in gauges)
+            {
+                sGauge.UpdateGauge();
+            }
+        }
         private void SaveTextureOfChunk()
-        {   
+        {
             switch (GetChunkType)
             {
                 case ChunkTypes.Wood:
@@ -448,158 +622,46 @@ namespace RandomAdditions
                     break;
             }
         }
-        
-        /// <summary>
-        /// If there's only one item, we extract from the silo
-        /// </summary>
-        private void CheckItem1()
+        private void TryHandleSpeed()
         {
-            if (!StoresBlocksInsteadOfChunks)
+            /*
+            if (EjectOnOverspeed && SavedCount > 0 && TankBlock.tank.IsNotNull())
             {
-                if (SavedCount > 0)
+                TankBlock.PreExplodePulse = false;
+                if (EmergencyEjectSpeed - 10 < TankBlock.tank.GetForwardSpeed())
                 {
-                    foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
+                    if (!queuedBlink && !TankBlock.PreExplodePulse)
                     {
-                        if (stack.NumItems < 2)
-                        {
-                            if (GetChunkType == ChunkTypes.Null)
-                            {
-                                Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
-                                SavedCount = 0;
-                                break;
-                            }
-                            SavedCount--;
-                            ReleaseAnim(stack);
-                            if (SavedCount <= 0)
-                            {
-                                Empty = true;
-                                GetChunkType = ChunkTypes.Null;
-                                //Reset color for gauge referencing
-                                SaveTextureOfChunk();
-                                if (SavedCount < 0)
-                                {
-                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
-                                    SavedCount = 0;// well... we can't compensate for negatives can we...
-                                }
-                                break;
-                            }
-                        }
+                        TankBlock.PreExplodePulse = true;
+                        queuedBlink = true;
                     }
+                }
+                else
+                {
+                    if (queuedBlink)
+                    {
+                        TankBlock.PreExplodePulse = false;
+                        queuedBlink = false;
+                    }
+                }
+                if (EmergencyEjectSpeed < TankBlock.tank.GetForwardSpeed())
+                {
+                    Debug.Log("RandomAdditions: Silo " + gameObject.name + " has gone over their maximum stable speed and will eject everything to prevent exploding!");
+                    EmergencyEjectAllContents();
                 }
             }
             else
             {
-                foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
+                if (queuedBlink)
                 {
-                    if (GetBlockType == BlockTypes.GSOAIController_111)
-                        break;
-                    if (stack.NumItems < 2)
-                    {
-                        if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted)
-                        {
-                            if (GetBlockType == BlockTypes.GSOAIController_111)
-                            {
-                                Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
-                                break;
-                            }
-                            ReleaseAnim(stack);
-                            SavedCount = MaxCapacity;
-                        }
-                        else
-                        {
-                            try
-                            {
-                                int availQuant;
-                                bool isMP = Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer();
-                                if (isMP)
-                                {
-                                    if (Singleton.Manager<NetInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
-                                    {
-                                        availQuant = Singleton.Manager<NetInventory>.inst.GetQuantity(GetBlockType);
-                                        if (availQuant > 0)
-                                        {
-                                            availQuant--;
-                                            Singleton.Manager<NetInventory>.inst.SetBlockCount(GetBlockType, availQuant);
-
-                                            ReleaseAnim(stack);
-                                            SavedCount = availQuant;
-                                            if (availQuant <= 0)
-                                            {
-                                                Empty = true;
-                                                GetBlockType = BlockTypes.GSOAIController_111;
-                                                if (availQuant < 0)
-                                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (Singleton.Manager<SingleplayerInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
-                                    {
-                                        availQuant = Singleton.Manager<SingleplayerInventory>.inst.GetQuantity(GetBlockType);
-                                        if (availQuant > 0)
-                                        {
-                                            availQuant--;
-                                            Singleton.Manager<SingleplayerInventory>.inst.SetBlockCount(GetBlockType, availQuant);
-
-                                            ReleaseAnim(stack);
-                                            SavedCount = availQuant;
-                                            if (availQuant <= 0)
-                                            {
-                                                Empty = true;
-                                                GetBlockType = BlockTypes.GSOAIController_111;
-                                                if (availQuant < 0)
-                                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            catch { }
-                        }
-                    }
+                    TankBlock.PreExplodePulse = false;
+                    queuedBlink = false;
                 }
-            }
-        }
-        private void ReleaseAnim(ModuleItemHolder.Stack stack)
-        {
-            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemResourceProduced);
-            try
-            {
-                TankBlock.tank.TechAudio.PlayOneshot(sound);
-            }
-            catch { }
-            if (ImmedeateOutput)
-            {
-                Visible toManage;
-                if (!StoresBlocksInsteadOfChunks)
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
-                else
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Block, (int)GetBlockType), siloSpawn.position, Quaternion.identity, true);
-                stack.Take(toManage);
-                ReleaseAnimating.Add(toManage);
-            }
-            else
-            {
-                Visible toManage;
-                if (!StoresBlocksInsteadOfChunks)
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
-                else
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Block, (int)GetBlockType), siloSpawn.position, Quaternion.identity, true);
-                stack.Take(toManage);
-                //toManage.SetHolder(null, true);
-                toManage.SetGrabTimeout(1);//disable grabbing of it
-                toManage.SetItemCollectionTimeout(1);//disable more
-                toManage.SetInteractionTimeout(1);// disable ALL
-                ReleaseTargetNode.Add(stack);
-                ReleaseAnimating.Add(toManage);
-                ReleaseAnimatingPos.Add(transform.InverseTransformPoint(toManage.centrePosition));
-            }
+            }*/
         }
 
+
+        // Main
         /// <summary>
         /// Run chunk "animator" module
         /// </summary>
@@ -643,22 +705,26 @@ namespace RandomAdditions
                         float scaler = 1;
                         if (toManage.GetComponent<TankBlockScaler>())
                             scaler = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
-                        if (0.9f * scaler < toManage.trans.localScale.y)
+                        if (0.9f * scaler < toManage.trans.localScale.y || !UseShrinkAnim)
                         {
                             toManage.trans.localScale = Vector3.one * scaler;
                             ReleaseAnimating.RemoveAt(step);
                             step--;
                             fireTimes2--;
                         }
-                        if (UseShrinkAnim)
+                        else if (UseShrinkAnim)
                         {
                             if (toManage.trans.localScale.y == scaler)
                                 toManage.trans.localScale = (Vector3.one / 4) * scaler;
-                            toManage.trans.localScale = Vector3.one * (((1 - toManage.trans.localScale.y) / 8) + toManage.trans.localScale.y) * scaler;
+                            toManage.trans.localScale = Vector3.one * ((((1 - toManage.trans.localScale.y) / 8) + toManage.trans.localScale.y) * scaler);
                         }
                     }
                     else
+                    {
                         ReleaseAnimating.RemoveAt(step);
+                        step--;
+                        fireTimes2--;
+                    }
                 }
                 else
                 {
@@ -692,12 +758,15 @@ namespace RandomAdditions
                         ReleaseTargetNode.RemoveAt(step);
                         ReleaseAnimating.RemoveAt(step);
                         ReleaseAnimatingPos.RemoveAt(step);
+                        step--;
+                        fireTimes2--;
                     }
                 }
             }
         }
 
 
+        // Chunk saving
         public void EmergencyEjectAllContents()
         {
             foreach (Visible toManage in AbsorbAnimating)
@@ -733,7 +802,7 @@ namespace RandomAdditions
                 {
                     //var itemSpawn2 = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Scenery, (int)SceneryTypes.Pillar), siloSpawn.position, Quaternion.identity, true);
                     SavedCount--;
-                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
+                    var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
                     itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
                 }
             }
@@ -754,14 +823,15 @@ namespace RandomAdditions
             while (SavedCount > MaxCapacity)
             {
                 SavedCount--;
-                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity, true);
+                var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
                 itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
             }
+            UpdateGaugesAndDisplays();
         }
 
 
 
-
+        // Save operations
         [Serializable]
         private new class SerialData : SerialData<SerialData>
         {   // This could be optimised for storage down the line
@@ -772,44 +842,40 @@ namespace RandomAdditions
             public float savedColorG;
             public float savedColorB;
         }
-
         private void OnSerialize(bool saving, TankPreset.BlockSpec blockSpec)
         {
             if (saving)
-            {   //Save to snap
-                SerialData serialData = new SerialData()
-                {
-                    savedChunk = GetChunkType,
-                    savedBlock = GetBlockType,
-                    savedCount = SavedCount,
-                    savedColorR = SavedChunkColor.r,
-                    savedColorG = SavedChunkColor.g,
-                    savedColorB = SavedChunkColor.b
-                };
-                serialData.Store(blockSpec.saveState);
+            {   // On general saving
+                isSaving = true;
+                if (!Singleton.Manager<ManScreenshot>.inst.TakingSnapshot)
+                {   // Only save on world save
+                    SerialData serialData = new SerialData()
+                    {
+                        savedChunk = GetChunkType,
+                        savedBlock = GetBlockType,
+                        savedCount = SavedCount,
+                        savedColorR = SavedChunkColor.r,
+                        savedColorG = SavedChunkColor.g,
+                        savedColorB = SavedChunkColor.b
+                    };
+                    serialData.Store(blockSpec.saveState);
+                }
             }
             else
             {   //Load from snap
                 try
                 {
+                    isSaving = false;
                     SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
                     if (serialData2 != null)
                     {
                         GetBlockType = serialData2.savedBlock;
-                        if (Singleton.Manager<ManSpawn>.inst.IsTechSpawning)//no load resources for new Tech
-                        {
-                            GetChunkType = ChunkTypes.Null;
-                            SavedCount = 0;
-                            SavedChunkColor = Color.black;
-                        }
-                        else
-                        {
-                            GetChunkType = serialData2.savedChunk;
-                            SavedCount = serialData2.savedCount;
-                            SavedChunkColor.r = serialData2.savedColorR;
-                            SavedChunkColor.g = serialData2.savedColorG;
-                            SavedChunkColor.b = serialData2.savedColorB;
-                        }
+
+                        GetChunkType = serialData2.savedChunk;
+                        SavedCount = serialData2.savedCount;
+                        SavedChunkColor.r = serialData2.savedColorR;
+                        SavedChunkColor.g = serialData2.savedColorG;
+                        SavedChunkColor.b = serialData2.savedColorB;
                     }
                 }
                 catch { }
