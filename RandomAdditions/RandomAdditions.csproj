@@ -105,7 +105,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ModuleCustomDamageType.cs" />
+    <None Include="CustomDamageType.cs" />
     <Compile Include="AI\AIEnhancedCore.cs" />
     <Compile Include="ItemIgnoreCollision.cs" />
     <Compile Include="GravitateProjectile.cs" />
