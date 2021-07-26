@@ -3,6 +3,9 @@
         //--------------------------------------------------------------------------------------------------
         /* Throw this within your JSONBLOCK to initate them
         
+	"RandomAdditions.ModuleItemFixedHolderBeam": {},// Lock and load.
+
+-----------------------------------------------------------------------------------
         //Rescale blocks to chunk size when put on conveyor
        "RandomAdditions.TankBlockScaler": {
             "AimedDownscale": 0.5, // Multiplier for the scale when on conveyor
