@@ -100,7 +100,7 @@
 -----------------------------------------------------------------------------------
 
            "RandomAdditions.ModuleLudicrousSpeedButton": {// it's like a pacemaker but only fastest
-	     // LEFT-click to activate
+	     // RIGHT-click to activate
              "Rate" : 0.1,// must be below 0.2, above 0.01
              // The higher it is, THE MORE IT WILL DRAIN
            },
