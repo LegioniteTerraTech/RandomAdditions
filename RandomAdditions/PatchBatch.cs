@@ -79,10 +79,13 @@ namespace RandomAdditions
                         //Debug.Log("RandomAdditions: Overwrote visible to handle resources");
                         if (stack != null)
                         {
-                            var ModuleScale = __instance.gameObject.GetComponent<TankBlockScaler>();
-                            ModuleScale.Downscale = true;
-                            ModuleScale.enabled = true;
-                            //Debug.Log("RandomAdditions: Queued Rescale Down");
+                            if (KickStart.AutoScaleBlocksInSCU || !stack.myHolder.gameObject.GetComponent<ModuleHeart>())
+                            {
+                                var ModuleScale = __instance.gameObject.GetComponent<TankBlockScaler>();
+                                ModuleScale.Downscale = true;
+                                ModuleScale.enabled = true;
+                                //Debug.Log("RandomAdditions: Queued Rescale Down");
+                            }
 
                             var ModuleCheck = stack.myHolder.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
                             if (ModuleCheck != null)
@@ -158,7 +161,7 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
                 {
-                    if (item.pickup.rbody != null)
+                    if (item.rbody != null)
                     {
                         FieldInfo lockGet = typeof(ModuleItemHolderBeam).GetField("m_HeldPhysicsItems", BindingFlags.NonPublic | BindingFlags.Instance);
                         HashSet<Visible> m_HeldPhysicsItems = (HashSet<Visible>)lockGet.GetValue(__instance);
@@ -567,13 +570,13 @@ namespace RandomAdditions
         [HarmonyPatch("PrePool")]//On Creation
         private class PatchProjectilePre
         {
+            static FieldInfo collodo = typeof(Projectile).GetField("m_Collider", BindingFlags.NonPublic | BindingFlags.Instance);
             private static void Postfix(Projectile __instance)
             {
                 //Debug.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
                 var ModuleCheck = __instance.gameObject.GetComponent<LanceProjectile>();
                 if (ModuleCheck != null)
                 {
-                    FieldInfo collodo = typeof(Projectile).GetField("m_Collider", BindingFlags.NonPublic | BindingFlags.Instance);
                     Collider fetchedCollider = (Collider)collodo.GetValue(__instance);
                     fetchedCollider.isTrigger = true;// Make it not collide
                     ModuleCheck.project = __instance;
@@ -797,6 +800,26 @@ namespace RandomAdditions
                         __instance.DamageableType = ManDamage.DamageableType.Standard;
                     }
                 }
+            }
+        }
+
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        // Game tweaks
+
+        [HarmonyPatch(typeof(TankCamera))]
+        [HarmonyPatch("SetCameraShake")]//On annoying camera shake
+        private class GetOutOfHereCameraShakeShack
+        {
+            static FieldInfo shaker = typeof(TankCamera).GetField("m_CameraShakeTimeRemaining", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static bool Prefix(TankCamera __instance)
+            {
+                if (KickStart.NoShake)
+                {
+                    shaker.SetValue(__instance, 0);
+                    return false;
+                }
+                return true;
             }
         }
 

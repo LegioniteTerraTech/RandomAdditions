@@ -20,10 +20,14 @@ namespace RandomAdditions
 
         public static bool DebugPopups = false;
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
+        public static bool NoShake = false; 
+        public static bool AutoScaleBlocksInSCU = false;
 
         // NativeOptions Parameters
         public static OptionToggle allowPopups;
-        public static OptionToggle AltDateFormat;
+        public static OptionToggle altDateFormat;
+        public static OptionToggle noCameraShake;
+        public static OptionToggle scaleBlocksInSCU;
 
 
         public static void Main()
@@ -58,13 +62,19 @@ namespace RandomAdditions
             ModConfig thisModConfig = new ModConfig();
             thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
             thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
+            thisModConfig.BindConfig<KickStart>(null, "NoShake");
+            thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
 
 
             var RandomProperties = ModName;
             allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
             allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; });
-            AltDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
-            AltDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = AltDateFormat.SavedValue; });
+            altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
+            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; });
+            noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, NoShake);
+            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; });
+            scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, AutoScaleBlocksInSCU);
+            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
         }
 
         public static bool LookForMod(string name)
