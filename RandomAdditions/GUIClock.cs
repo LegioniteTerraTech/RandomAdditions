@@ -73,22 +73,26 @@ namespace RandomAdditions
             currentTime = Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay;
             if (currentTank.IsNotNull())
             {
-                if (currentTank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
+                if (currentTank.GetComponent<GlobalClock.TimeTank>())
                 {
-                    if (!isCurrentlyOpen)
+                    if (currentTank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
                     {
-                        LaunchClockWindow();
+                        if (!isCurrentlyOpen)
+                        {
+                            LaunchClockWindow();
+                        }
+                        else
+                            UpdateInfo();
                     }
                     else
-                        UpdateInfo();
+                    {
+                        if (isCurrentlyOpen)
+                            CloseClockWindow();
+                        else
+                            UpdateInfo();
+                    }
                 }
-                else
-                {
-                    if (isCurrentlyOpen)
-                        CloseClockWindow();
-                    else
-                        UpdateInfo();
-                }
+                // else there's strangely no TimeTank assigned!? SKIP!
             }
         }
 
