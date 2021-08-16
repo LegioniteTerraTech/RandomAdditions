@@ -896,7 +896,7 @@ namespace RandomAdditions
                 try
                 {   //<color=#f23d3dff></color> - tried that but it's too hard to read
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
-                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  \nTake note of all your unofficial mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
+                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  \nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
 
                     var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Explanation"), UIObj.transform, false);
                     Vector3 offset = errorList.localPosition;
