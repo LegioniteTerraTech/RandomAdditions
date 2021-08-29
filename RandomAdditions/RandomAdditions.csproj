@@ -105,30 +105,33 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CustomDamageType.cs" />
+    <None Include="GlobalChanges\CustomDamageType.cs" />
     <Compile Include="AI\AIEnhancedCore.cs" />
-    <Compile Include="ItemIgnoreCollision.cs" />
-    <Compile Include="GravitateProjectile.cs" />
-    <Compile Include="GlobalClock.cs" />
-    <Compile Include="GUIClock.cs" />
-    <Compile Include="KeepSeekingProjectile.cs" />
-    <Compile Include="LanceProjectile.cs" />
+    <Compile Include="GlobalChanges\ItemIgnoreCollision.cs" />
+    <Compile Include="ProjectileModules\InterceptProjectile.cs" />
+    <Compile Include="ProjectileManager.cs" />
+    <Compile Include="ProjectileModules\GravitateProjectile.cs" />
+    <Compile Include="GlobalChanges\GlobalClock.cs" />
+    <Compile Include="GlobalChanges\GUIClock.cs" />
+    <Compile Include="ProjectileModules\KeepSeekingProjectile.cs" />
+    <Compile Include="ProjectileModules\LanceProjectile.cs" />
     <Compile Include="LogHandler.cs" />
-    <Compile Include="BurnerJet.cs" />
-    <Compile Include="ModuleClock.cs" />
-    <Compile Include="ModuleDeathInsurance.cs" />
-    <Compile Include="ModuleFuelEnergyGenerator.cs" />
-    <Compile Include="ModuleItemFixedHolderBeam.cs" />
-    <Compile Include="ModuleItemSilo.cs" />
-    <Compile Include="OHKOProjectile.cs" />
+    <Compile Include="BlockModules\BurnerJet.cs" />
+    <Compile Include="BlockModules\ModuleClock.cs" />
+    <Compile Include="GlobalChanges\ModuleDeathInsurance.cs" />
+    <Compile Include="BlockModules\ModuleFuelEnergyGenerator.cs" />
+    <Compile Include="BlockModules\ModuleItemFixedHolderBeam.cs" />
+    <Compile Include="BlockModules\ModuleItemSilo.cs" />
+    <Compile Include="ProjectileModules\OHKOProjectile.cs" />
     <Compile Include="ModuleReinforced.cs" />
     <Compile Include="PatchBatch.cs" />
-    <Compile Include="SiloDisplay.cs" />
-    <Compile Include="SiloGauge.cs" />
-    <Compile Include="TankBlockScaler.cs" />
-    <Compile Include="ModuleLudicrousSpeedButton.cs" />
-    <Compile Include="TorpedoProjectile.cs" />
-    <Compile Include="WeightedProjectile.cs" />
+    <Compile Include="ProjectileModules\SeekingProjectileIgnoreLock.cs" />
+    <Compile Include="BlockModules\SiloDisplay.cs" />
+    <Compile Include="BlockModules\SiloGauge.cs" />
+    <Compile Include="GlobalChanges\TankBlockScaler.cs" />
+    <Compile Include="BlockModules\ModuleLudicrousSpeedButton.cs" />
+    <Compile Include="ProjectileModules\TorpedoProjectile.cs" />
+    <Compile Include="ProjectileModules\WeightedProjectile.cs" />
     <Compile Include="KickStart.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

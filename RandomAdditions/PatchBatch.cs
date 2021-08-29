@@ -599,6 +599,30 @@ namespace RandomAdditions
                     ModuleCheck.SetProjectileMass();
                     Debug.Log("RandomAdditions: Overwrote Mass - This enables physics collisions and will make the projectile more scary.");
                 }
+                var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
+                if (ModuleCheckI != null)
+                {   // Handle intercept
+                    __instance.gameObject.layer = Globals.inst.layerTank;
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(MissileProjectile))]
+        [HarmonyPatch("OnSpawn")]//On Creation
+        private class PatchProjectileSpawn
+        {
+            private static void Prefix(Projectile __instance)
+            {
+                ProjectileManager.Add(__instance);
+            }
+        }
+        [HarmonyPatch(typeof(MissileProjectile))]
+        [HarmonyPatch("OnRecycle")]
+        private class PatchProjectileRemove2
+        {
+            private static void Prefix(Projectile __instance)
+            {
+                ProjectileManager.Remove(__instance);
             }
         }
 
@@ -606,6 +630,7 @@ namespace RandomAdditions
         [HarmonyPatch("HandleCollision")]//On direct hit
         private class PatchProjectileCollision
         {
+            static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
             private static void Prefix(Projectile __instance, ref Collider otherCollider)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile & OHKOProjectile)");
@@ -617,6 +642,16 @@ namespace RandomAdditions
                     {
                         ModuleCheckS.wasThisSeeking = validation.enabled; //Keep going!
                     }
+                }
+                var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
+                if (ModuleCheckI != null)
+                {   // Handle intercept
+                    if (otherCollider.IsNotNull())
+                        if (otherCollider.GetComponent<Projectile>())
+                        {
+                            death.SetValue(otherCollider.GetComponent<Projectile>(), 0);
+                            death.SetValue(__instance, 0);
+                        }
                 }
                 var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
                 if (ModuleCheck != null)
@@ -683,6 +718,11 @@ namespace RandomAdditions
             private static void Postfix(Projectile __instance, ref Tank shooter)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile Fire(WeightedProjectile)");
+                var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
+                if (ModuleCheckI != null)
+                {
+                    ModuleCheckI.Reset();
+                }
                 var ModuleCheck = __instance.gameObject.GetComponent<WeightedProjectile>();
                 if (ModuleCheck != null)
                 {
@@ -701,12 +741,66 @@ namespace RandomAdditions
             }
         }
 
+        
+        [HarmonyPatch(typeof(SeekingProjectile))]
+        [HarmonyPatch("OnPool")]
+        private class PatchPooling
+        {
+            private static void Postfix(SeekingProjectile __instance)
+            {
+                var ModuleCheck = __instance.gameObject.GetComponent<InterceptProjectile>();
+                if (ModuleCheck != null)
+                {
+                    ModuleCheck.GrabValues();
+                }
+            }
+        }
+
+        //Allow ignoring of lock-on
+        [HarmonyPatch(typeof(SeekingProjectile))]
+        [HarmonyPatch("GetManualTarget")]
+        private class PatchLockOn
+        {
+            private static bool Prefix(SeekingProjectile __instance, ref Visible __result)
+            {
+                var ModuleCheck = __instance.gameObject.GetComponent<SeekingProjectileIgnoreLock>();
+                if (ModuleCheck != null)
+                {
+                    __result = null;
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(SeekingProjectile))]
+        [HarmonyPatch("FixedUpdate")]
+        private class PatchHomingForIntercept
+        {
+            private static bool Prefix(SeekingProjectile __instance)
+            {
+                var ModuleCheck = __instance.gameObject.GetComponent<InterceptProjectile>();
+                if (ModuleCheck != null)
+                {
+                    if (ModuleCheck.Aiming)
+                    {
+                        if (ModuleCheck.OverrideAiming(__instance))
+                            if (ModuleCheck.ForcedAiming)
+                                return false;
+                        if (ModuleCheck.OnlyDefend)
+                            return false;
+                    }
+                }
+                return true;
+            }
+        }
+
         //Add torpedo functionality
         [HarmonyPatch(typeof(MissileProjectile))]
         [HarmonyPatch("DeactivateBoosters")]
         private class PatchMissileProjectileEnd
         {
-            private static void Postfix(Projectile __instance)
+            private static void Postfix(MissileProjectile __instance)
             {
                 //Debug.Log("RandomAdditions: Patched MissileProjectile DeactivateBoosters(TorpedoProjectile)");
                 if (KickStart.isWaterModPresent)

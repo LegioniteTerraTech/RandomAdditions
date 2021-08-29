@@ -23,6 +23,8 @@ namespace RandomAdditions
         public static bool NoShake = false; 
         public static bool AutoScaleBlocksInSCU = false;
 
+        internal static ModConfig config;
+
         // NativeOptions Parameters
         public static OptionToggle allowPopups;
         public static OptionToggle altDateFormat;
@@ -64,17 +66,17 @@ namespace RandomAdditions
             thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
             thisModConfig.BindConfig<KickStart>(null, "NoShake");
             thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
-
+            config = thisModConfig;
 
             var RandomProperties = ModName;
             allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
-            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; });
+            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; config.WriteConfigJsonFile(); });
             altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
-            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; });
+            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; config.WriteConfigJsonFile(); });
             noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, NoShake);
-            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; });
+            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; config.WriteConfigJsonFile(); });
             scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, AutoScaleBlocksInSCU);
-            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
+            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; config.WriteConfigJsonFile(); });
         }
 
         public static bool LookForMod(string name)
