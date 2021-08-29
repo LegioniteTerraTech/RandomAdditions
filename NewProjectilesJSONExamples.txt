@@ -68,6 +68,23 @@
 
 -----------------------------------------------------------------------------------------------------
 
+        // a module that makes sure SeekingProjectile does not obey player lock-on
+        /*
+           "RandomAdditions.SeekingProjectileIgnoreLock": {},// no seek player lock target!
+         */
+-----------------------------------------------------------------------------------------------------
+
+    //Allows a projectile to collide with Projectiles and home in on MissileProjectile
+    /*
+        "RandomAdditions.InterceptProjectile":{ // Add a special movement effect to your projectile
+            "ForcedAiming": false, // If there's a projectile, this will always aim at it first
+            "Aiming":       true,  // If there's a projectile, this will aim at it if there's no enemy in range
+            "OnlyDefend":   false, // will not home in on enemies
+            "InterceptMultiplier":   3, // How much to multiply the aiming strength if targeting a missile
+        },
+    */
+-----------------------------------------------------------------------------------------------------
+
 
 	Need help? Let me know on the official TerraTech Community Discord!
 

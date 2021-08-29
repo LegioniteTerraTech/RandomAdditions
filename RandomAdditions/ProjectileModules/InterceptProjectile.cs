@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace RandomAdditions
 {
-    //Allows a projectile to collide with MissileProjectile
+    //Allows a projectile to collide with Projectiles and home in on MissileProjectile
     /*
         "RandomAdditions.InterceptProjectile":{ // Add a special movement effect to your projectile
             "ForcedAiming": false, // If there's a projectile, this will always aim at it first
