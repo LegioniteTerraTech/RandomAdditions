@@ -1,88 +1,86 @@
 (needs the mod to work you know)
-        //--------------------------------------------------------------------------------------------------
-        //                                          PROJECTILES
-        //--------------------------------------------------------------------------------------------------
-        /* Throw this within your JSONBLOCK's FireData m_BulletPrefab to initiate them
+    //--------------------------------------------------------------------------------------------------
+    //                                          PROJECTILES
+    //--------------------------------------------------------------------------------------------------
+    /* Throw this within your JSONBLOCK's FireData m_BulletPrefab to initiate them
+    
+    // a module that makes sure SeekingProjectile stays active even on ground collision
+    "RandomAdditions.KeepSeekingProjectile": {},// Keep seeking no matter what.
+
+-----------------------------------------------------------------------------------------------------
+     
+    // For use with weapons like the Ethreal Lancer, mostly to reduce lag with phasing
+    "RandomAdditions.LanceProjectile": {},// Phase without the mass lag.
+
+-----------------------------------------------------------------------------------------------------
+     
+    // You know the story of David and Goliath? -
+    //   This is david
+    // a module that ensures block kill when paired with Projectile
+    "RandomAdditions.OHKOProjectile": {},// Ensure erad.
+     
+-----------------------------------------------------------------------------------------------------
+     
+    // a module that allows you projectiles to become bowling balls or act very heavy
+    "RandomAdditions.WeightedProjectile":{ // launch bowling balls but they actually have proper weight
+        "ProjectileMass": 4,        // The Mass you want the projectile to have
+        "CustomGravity": false,     // enable the parameters below - WARNING! breaks WeaponAimMod!
+        "CustomGravityFractionSpeed": true, // Slow down the projectile's speed so that it doesn't overaim too badly
+        "GravityAndSpeedScale": 1.0,// The percent (1.0 is 100%) force gravity pulls down on this and the speed it travels at 
+        //so you can have dramatic super-heavy projectiles that move slow through the air
+    },
+
+-----------------------------------------------------------------------------------------------------
+    
+    // With Watermod installed, any missile that goes into the water with this projectile type
+    //   will change their thrust value to the one specified here.
+    "RandomAdditions.TorpedoProjectile": {
+       "SubmergedThrust" : 0.5,                //Thrust to apply underwater
+       "ThrustUntilProjectileDeath" : false,   //Should we thrust until we explode?
+    },
+    // Make sure to add a new GameObject with the name "_subProp" and position it to where 
+    //   the thrust should be if it isn't using a missile reference.
         
-        // a module that makes sure SeekingProjectile stays active even on ground collision
-        "RandomAdditions.KeepSeekingProjectile": {},// Keep seeking no matter what.
-
 -----------------------------------------------------------------------------------------------------
-         
-        // For use with weapons like the Ethreal Lancer, mostly to reduce lag with phasing
-        "RandomAdditions.LanceProjectile": {},// Phase without the mass lag.
+    
+    //A projectile that floats off (gravitationally-ish) in the specified direction with the specified force. 
+    //  Can be used to create floating mines or balloon-like ordinances.
+    "RandomAdditions.GravitateProjectile":{ // Add a special movement effect to your projectile
+        "WorldGravitateDirection":  {"x": 0, "y": 1, "z": 0}, // Gravitate direction
+        "GravitatePosition":        {"x": 0, "y": 0, "z": 0}, // Center of the gravitation
+        "WorldGravitateStrength": 1,        // Force of the gravitation
 
------------------------------------------------------------------------------------------------------
-         
-        // You know the story of David and Goliath? -
-        //   This is david
-        // a module that ensures block kill when paired with Projectile
-        "RandomAdditions.OHKOProjectile": {},// Ensure erad.
-         
------------------------------------------------------------------------------------------------------
-         
-        // a module that allows you projectiles to become bowling balls or act very heavy
-        "RandomAdditions.WeightedProjectile":{ // launch bowling balls but they actually have proper weight
-            "ProjectileMass": 4,        // The Mass you want the projectile to have
-            "CustomGravity": false,     // enable the parameters below - WARNING! breaks WeaponAimMod!
-            "CustomGravityFractionSpeed": true, // Slow down the projectile's speed so that it doesn't overaim too badly
-            "GravityAndSpeedScale": 1.0,// The percent (1.0 is 100%) force gravity pulls down on this and the speed it travels at 
-            //so you can have dramatic super-heavy projectiles that move slow through the air
-        },
+        "WorldAugmentedDragEnabled": false, // Should this projectile slow down faster? (WARNING! MESSES WITH AIMING WEAPONS!)
+        "WorldAugmentedDragStrength": 0.1,    // The strength of the drag effect  [MULTIPLIER!]
 
------------------------------------------------------------------------------------------------------
-        
-        // With Watermod installed, any missile that goes into the water with this projectile type
-        //   will change their thrust value to the one specified here.
-        "RandomAdditions.TorpedoProjectile": {
-           "SubmergedThrust" : 0.5,                //Thrust to apply underwater
-           "ThrustUntilProjectileDeath" : false,   //Should we thrust until we explode?
-        },
-        // Make sure to add a new GameObject with the name "_subProp" and position it to where 
-        //   the thrust should be if it isn't using a missile reference.
-            
------------------------------------------------------------------------------------------------------
-        
-        //A projectile that floats off (gravitationally-ish) in the specified direction with the specified force. 
-        //  Can be used to create floating mines or balloon-like ordinances.
-        "RandomAdditions.GravitateProjectile":{ // Add a special movement effect to your projectile
-            "WorldGravitateDirection":  {"x": 0, "y": 1, "z": 0}, // Gravitate direction
-            "GravitatePosition":        {"x": 0, "y": 0, "z": 0}, // Center of the gravitation
-            "WorldGravitateStrength": 1,        // Force of the gravitation
+        //-----------------------------------------------------------------------------
+        "MovementDampening": 30,            // Dampener for the operations below
 
-            "WorldAugmentedDragEnabled": false, // Should this projectile slow down faster? (WARNING! MESSES WITH AIMING WEAPONS!)
-            "WorldAugmentedDragStrength": 0.1,    // The strength of the drag effect  [MULTIPLIER!]
+        "WorldHeightBiasEnabled": false,    // Should this float at a set altitude?
+        "WorldHeightBias": 50,               // The height to float at
 
-            //-----------------------------------------------------------------------------
-            "MovementDampening": 30,            // Dampener for the operations below
-
-            "WorldHeightBiasEnabled": false,    // Should this float at a set altitude?
-            "WorldHeightBias": 50,               // The height to float at
-
-            "AffectedByWater": false,           // Should this projectile act differently in water?
-            "WaterDepth": 1,                    // The depth to float at in relation to water (overrides WorldHeightBias)
-            "WaterDepthSeekingStrength": 1,     // The strength we should try to enforce the depth  [MULTIPLIER!]
-        },
-        //I mean well it lets you do sideways gravity but that's sorta strange at the moment.
-        //  maybe that will change down the line but for now it's kinda pointless
+        "AffectedByWater": false,           // Should this projectile act differently in water?
+        "WaterDepth": 1,                    // The depth to float at in relation to water (overrides WorldHeightBias)
+        "WaterDepthSeekingStrength": 1,     // The strength we should try to enforce the depth  [MULTIPLIER!]
+    },
+    //I mean well it lets you do sideways gravity but that's sorta strange at the moment.
+    //  maybe that will change down the line but for now it's kinda pointless
 
 -----------------------------------------------------------------------------------------------------
 
-        // a module that makes sure SeekingProjectile does not obey player lock-on
-        /*
-           "RandomAdditions.SeekingProjectileIgnoreLock": {},// no seek player lock target!
-         */
+    // a module that makes sure SeekingProjectile does not obey player lock-on
+   "RandomAdditions.SeekingProjectileIgnoreLock": {},// no seek player lock target!
+
 -----------------------------------------------------------------------------------------------------
 
-    //Allows a projectile to collide with Projectiles and home in on MissileProjectile
-    /*
-        "RandomAdditions.InterceptProjectile":{ // Add a special movement effect to your projectile
-            "ForcedAiming": false, // If there's a projectile, this will always aim at it first
-            "Aiming":       true,  // If there's a projectile, this will aim at it if there's no enemy in range
-            "OnlyDefend":   false, // will not home in on enemies
-            "InterceptMultiplier":   3, // How much to multiply the aiming strength if targeting a missile
-        },
-    */
+    //Allows a projectile to collide with Projectiles and home in on MissileProjectile\
+    "RandomAdditions.InterceptProjectile":{ // Add a special movement effect to your projectile
+        "ForcedAiming": false, // If there's a projectile, this will always aim at it first
+        "Aiming":       true,  // If there's a projectile, this will aim at it if there's no enemy in range
+        "OnlyDefend":   false, // will not home in on enemies
+        "InterceptMultiplier":   3, // How much to multiply the aiming strength if targeting a missile
+    },
+    
 -----------------------------------------------------------------------------------------------------
 
 
