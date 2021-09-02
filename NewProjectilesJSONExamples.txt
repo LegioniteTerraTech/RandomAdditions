@@ -84,6 +84,29 @@
 -----------------------------------------------------------------------------------------------------
 
 
+    // Spawns MORE projectiles on host projectile "Explosion"
+    // DO NOT TRY TO CHAIN OPERATE!!!!
+    //   I mean there's almost no limit on how far you can daisy-chain this.
+    //   - Watch your sanity and your framerate impact - I take no blame if you overdo it 
+    //     and your computer crashes.
+    //
+    //  Additionally, you can make a GameObject called "_splitSpawn" to control the angle 
+    //    the split projectiles are launched.
+    //    - ! This can be messed up by m_BulletSpin !
+        "RandomAdditions.SpiltProjectile":{ 
+            "SpawnAmount": 4,               // How many of these SplitPayloads to spawn - Max 100
+            "UseSeeking": false,            // Enable Seeking for the SplitPayload
+
+            "DeployOnExplode": true,        // Deploy on explosion
+            "DeployOnEveryExplode": false,  // Deploy each time this explodes
+
+            "DeployInFlight": false,        // Deply over time while airborne
+            "ShotCooldown": 1.0,            // Rate per second to deploy SplitPayloads
+        },// ^ Reference an existing FireData (and be sure to edit it) below this
+
+-----------------------------------------------------------------------------------------------------
+
+
 	Need help? Let me know on the official TerraTech Community Discord!
 
 

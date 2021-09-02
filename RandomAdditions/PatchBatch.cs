@@ -718,6 +718,12 @@ namespace RandomAdditions
             private static void Postfix(Projectile __instance, ref Tank shooter)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile Fire(WeightedProjectile)");
+                var Split = __instance.GetComponent<SpiltProjectile>();
+                if ((bool)Split)
+                {
+                    Split.Reset(__instance);
+                }
+
                 var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
                 if (ModuleCheckI != null)
                 {
@@ -741,7 +747,21 @@ namespace RandomAdditions
             }
         }
 
-        
+        [HarmonyPatch(typeof(Projectile))]
+        [HarmonyPatch("SpawnExplosion")]//On Fire
+        private class PatchProjectileForSplit
+        {
+            private static void Postfix(Projectile __instance)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            {
+                var Split = __instance.GetComponent<SpiltProjectile>();
+                if ((bool)Split)
+                {
+                    Split.OnExplosion();
+                }
+            }
+        }
+
+
         [HarmonyPatch(typeof(SeekingProjectile))]
         [HarmonyPatch("OnPool")]
         private class PatchPooling
@@ -830,9 +850,12 @@ namespace RandomAdditions
                 var modifPresent = __instance.gameObject.GetComponent<ModuleReinforced>();
                 if (modifPresent != null)
                 {
-                    if (modifPresent.ModifyAoEDamage && info.Source.GetComponent<Explosion>().IsNotNull())
+                    if ((bool)info.Source)
                     {
-                        info.ApplyDamageMultiplier(modifPresent.AoEMultiplier);
+                        if (modifPresent.ModifyAoEDamage && info.Source.GetComponent<Explosion>())
+                        {
+                            info.ApplyDamageMultiplier(modifPresent.ExplosionMultiplier);
+                        }
                     }
                     if (modifPresent.UseMultipliers)
                     {
@@ -893,6 +916,20 @@ namespace RandomAdditions
                     {
                         __instance.DamageableType = ManDamage.DamageableType.Standard;
                     }
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(BubbleShield))]
+        [HarmonyPatch("OnSpawn")]//On spawn
+        private class PatchShieldsToActuallyBeShieldTyping
+        {
+            private static void Postfix(BubbleShield __instance)
+            {
+                if (KickStart.TrueShields && __instance.Damageable.DamageableType == ManDamage.DamageableType.Standard)
+                {
+                    __instance.Damageable.DamageableType = ManDamage.DamageableType.Shield;
+                    //Debug.Log("RandomAdditions: PatchShieldsToActuallyBeShieldTyping - Changed " + __instance.transform.root.name + " to actually be shield typing");
                 }
             }
         }

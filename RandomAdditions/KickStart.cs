@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
@@ -22,6 +23,7 @@ namespace RandomAdditions
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
         public static bool NoShake = false; 
         public static bool AutoScaleBlocksInSCU = false;
+        public static bool TrueShields = true;
 
         internal static ModConfig config;
 
@@ -30,6 +32,8 @@ namespace RandomAdditions
         public static OptionToggle altDateFormat;
         public static OptionToggle noCameraShake;
         public static OptionToggle scaleBlocksInSCU;
+        public static OptionToggle realShields;
+
 
 
         public static void Main()
@@ -66,9 +70,12 @@ namespace RandomAdditions
             thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
             thisModConfig.BindConfig<KickStart>(null, "NoShake");
             thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
+            thisModConfig.BindConfig<KickStart>(null, "TrueShields");
             config = thisModConfig;
 
             var RandomProperties = ModName;
+            realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, TrueShields);
+            realShields.onValueSaved.AddListener(() => { TrueShields = realShields.SavedValue; config.WriteConfigJsonFile(); });
             allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
             allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; config.WriteConfigJsonFile(); });
             altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);

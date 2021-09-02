@@ -12,7 +12,7 @@ namespace RandomAdditions
             "TypeToSwitch": 0,          // DamageableType to switch to
 
             "ModifyAoEDamage": false,    // Enable AoE damage changing? (only handles Explosion, not shotguns)
-            "AoEMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
+            "ExplosionMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
 
             "UseMultipliers": true,     // Should the multipliers below be used?
             //----- DamagableMultipliers -----
@@ -32,7 +32,7 @@ namespace RandomAdditions
         public ManDamage.DamageableType TypeToSwitch = ManDamage.DamageableType.Standard;
 
         public bool ModifyAoEDamage = false;
-        public float AoEMultiplier = 1.0f;
+        public float ExplosionMultiplier = 1.0f;
 
         public bool UseMultipliers = true;
 

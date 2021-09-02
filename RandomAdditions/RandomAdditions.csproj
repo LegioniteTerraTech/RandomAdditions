@@ -105,6 +105,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <None Include="GlobalChanges\CustomDamageType.cs" />
     <Compile Include="AI\AIEnhancedCore.cs" />
     <Compile Include="GlobalChanges\ItemIgnoreCollision.cs" />
