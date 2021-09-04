@@ -14,7 +14,7 @@ namespace RandomAdditions
         public Transform TimeObject;        // the dial
 
 
-        public bool IsAttached = false;
+        public bool IsAttached { get { return TankBlock.IsAttached; } }
         public int SavedTime = 0;
 
 
@@ -22,7 +22,6 @@ namespace RandomAdditions
         {
             TankBlock = gameObject.GetComponent<TankBlock>();
             var thisInst = gameObject.GetComponent<ModuleClock>();
-            GlobalClock.clocks.Add(thisInst);
             TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
             TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
             if (thisInst.DisplayTime)
@@ -41,7 +40,7 @@ namespace RandomAdditions
 
         public void OnAttach()
         {
-            IsAttached = true;
+            GlobalClock.clocks.Add(this);
             if (ControlTime)
             {
                 TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
@@ -57,7 +56,7 @@ namespace RandomAdditions
 
         public void OnDetach()
         {
-            IsAttached = false;
+            GlobalClock.clocks.Remove(this);
             if (ControlTime)
             {
                 TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));

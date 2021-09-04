@@ -64,13 +64,13 @@ namespace RandomAdditions
             {
                 foreach (ModuleClock clunk in clocks)
                 {
-                    if (clunk.ControlTime)
+                    if (clunk.ControlTime && clunk.IsAttached)
                     {
                         SavedTime = clunk.SavedTime;
+                        SetTime();
                         break;
                     }
                 }
-                SetTime();
             }
             public void SetAllTimeControllers()
             {
@@ -82,9 +82,10 @@ namespace RandomAdditions
             }
             public void SetTime()
             {
-                //var thisInst = gameObject.GetComponent<ModuleClock>();
+                Debug.Log("RandomAdditions: Time Change external queued!");
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                     Singleton.Manager<ManTimeOfDay>.inst.SetTimeOfDay(SavedTime, 0, 0, false);
+                Debug.Log("RandomAdditions: Time Changed to " + Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay);
             }
 
             public bool UpdateClocks()
@@ -92,10 +93,13 @@ namespace RandomAdditions
                 bool timeControl = false;
                 foreach (ModuleClock clunk in clocks)
                 {
-                    if (!timeControl)
-                        timeControl = clunk.SetClock();
-                    else
-                        clunk.SetClock();
+                    if (clunk.IsAttached)
+                    {
+                        if (!timeControl)
+                            timeControl = clunk.SetClock();
+                        else
+                            clunk.SetClock();
+                    }
                 }
                 return timeControl;
             }
