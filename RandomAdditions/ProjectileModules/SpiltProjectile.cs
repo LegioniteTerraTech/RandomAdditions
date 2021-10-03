@@ -29,7 +29,7 @@ namespace RandomAdditions
     */
     public class SpiltProjectile : MonoBehaviour
     {
-        public int SpawnAmount = 3;
+        public int SpawnAmount = 4;
         public bool UseSeeking = false;
 
         public bool DeployOnExplode = true;

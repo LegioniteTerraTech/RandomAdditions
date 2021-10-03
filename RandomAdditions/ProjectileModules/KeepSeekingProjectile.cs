@@ -6,8 +6,11 @@ namespace RandomAdditions
     {
         // a module that makes sure SeekingProjectile stays active even on ground collision
         /*
-           "RandomAdditions.KeepSeekingProjectile": {},// Keep seeking no matter what
+           "RandomAdditions.KeepSeekingProjectile": {
+                "KeepBoosting": false, // Keep boosting even after a collision
+            },// Keep seeking no matter what
          */
+        public bool KeepBoosting = false;
         public bool wasThisSeeking = false;
     }
 }

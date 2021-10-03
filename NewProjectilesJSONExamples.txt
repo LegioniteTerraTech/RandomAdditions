@@ -48,16 +48,17 @@
     "RandomAdditions.GravitateProjectile":{ // Add a special movement effect to your projectile
         "WorldGravitateDirection":  {"x": 0, "y": 1, "z": 0}, // Gravitate direction
         "GravitatePosition":        {"x": 0, "y": 0, "z": 0}, // Center of the gravitation
-        "WorldGravitateStrength": 1,        // Force of the gravitation
+        "WorldGravitateStrength": 0.01,     // Force of the gravitation
 
         "WorldAugmentedDragEnabled": false, // Should this projectile slow down faster? (WARNING! MESSES WITH AIMING WEAPONS!)
-        "WorldAugmentedDragStrength": 0.1,    // The strength of the drag effect  [MULTIPLIER!]
+        "WorldAugmentedDragStrength": 0.1,  // The strength of the drag effect  [MULTIPLIER!]
 
         //-----------------------------------------------------------------------------
         "MovementDampening": 30,            // Dampener for the operations below
-
+    
         "WorldHeightBiasEnabled": false,    // Should this float at a set altitude?
-        "WorldHeightBias": 50,               // The height to float at
+        "WorldHeightBias": 50,              // The height to float at
+        "WorldUseTerrainOffset": false,     // Should this projectile float in relation to the height above terrain/water?
 
         "AffectedByWater": false,           // Should this projectile act differently in water?
         "WaterDepth": 1,                    // The depth to float at in relation to water (overrides WorldHeightBias)
@@ -75,10 +76,24 @@
 
     //Allows a projectile to collide with Projectiles and home in on MissileProjectile\
     "RandomAdditions.InterceptProjectile":{ // Add a special movement effect to your projectile
+        // General
+        "InterceptRange":   2, // The range when this projectile applies it's damage
+        "StartDelay": 3,     // The frame delay before the projectile starts intercepting [3 - 255]
+        "InterceptedExplode": true, // Any projectile intercepted by this will explode (no damage)
+        "PointDefDamage":   0, // How much damage to apply when target projectile is hit 
+                               // - leave at zero to use the WeaponRound damage
+        
+        // Jammers / Flares
+        "IsFlare": false,           // Will fool MissileProjectiles into heading after itself
+        "DistractsMoreThanOne": true,  // Distract more than one projectile
+        "ConstantDistract": false,  // Keep trying to fool projectiles after launch
+        "DistractChance": 2,        // The chance to fool the target projectile (out of 100)
+
+        // SeekingProjectile
         "ForcedAiming": false, // If there's a projectile, this will always aim at it first
         "Aiming":       true,  // If there's a projectile, this will aim at it if there's no enemy in range
         "OnlyDefend":   false, // will not home in on enemies
-        "InterceptMultiplier":   3, // How much to multiply the aiming strength if targeting a missile
+        "InterceptMultiplier": 3,// How much to multiply the aiming strength if targeting a missile
     },
     
 -----------------------------------------------------------------------------------------------------

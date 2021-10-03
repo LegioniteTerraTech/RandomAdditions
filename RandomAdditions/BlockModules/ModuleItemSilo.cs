@@ -205,7 +205,7 @@ namespace RandomAdditions
             if (itemStore.IsNull())
             {
                 //Debug.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.  \nIf you are doing this without ModuleItemStore, you are doing it WRONG!!!  \n<b>THE BLOCK WILL NOT DO ANYTHING!!!</b>\n  Cause of error - Block " + TankBlock.name);
+                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly. \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + TankBlock.name);
             }
             if (MaxCapacity <= 0)
             {
@@ -279,36 +279,7 @@ namespace RandomAdditions
                 {
                     foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                     {
-                        int FireTimes = stack.NumItems - StackSet;
-                        for (int step = 0; step < FireTimes; step++)
-                        {
-                            if (SavedCount >= MaxCapacity)
-                                break;
-                            var toManage = stack.FirstItem;
-                            if (SavedCount == 0)
-                            {
-                                Empty = false;
-                                GetChunkType = toManage.pickup.ChunkType;
-                                //Save the chunk's color for gauge referencing
-                                SaveTextureOfChunk();
-                            }
-                            if (toManage.pickup.ChunkType == GetChunkType)
-                            {
-                                QueueStoreAnim(toManage);
-                                SavedCount++;
-                                if (SavedCount >= MaxCapacity)
-                                    break;
-                            }
-                            else
-                            {
-                                Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
-                                toManage.SetHolder(null, true);//DROP IT NOW!!!
-                                if (toManage.InBeam == true)
-                                {
-                                    LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid chunk");
-                                }
-                            }
-                        }
+                        HandleStoreStackChunks(stack);
                     }
                 }
                 else if (SavedCount > MaxCapacity)
@@ -322,38 +293,7 @@ namespace RandomAdditions
             {
                 foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                 {
-                    int FireTimes = stack.NumItems - StackSet;
-                    for (int step = 0; step < FireTimes; step++)
-                    {
-                        if (SavedCount >= MaxCapacity)
-                            break;
-                        var toManage = stack.FirstItem;
-                        if (SavedCount == 0)
-                        {
-                            Empty = false;
-                            GetBlockType = toManage.block.BlockType;
-                        }
-                        if (toManage.block.BlockType == GetBlockType)
-                        {
-                            QueueStoreAnim(toManage);
-                            if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
-                            else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
-                            {
-                                Singleton.Manager<NetInventory>.inst.HostAddItem(GetBlockType, 1);
-                            }
-                            else
-                                Singleton.Manager<SingleplayerInventory>.inst.HostAddItem(GetBlockType, 1);
-                        }
-                        else
-                        {
-                            Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
-                            toManage.InBeam = false;//DROP IT NOW!!!
-                            if (toManage.InBeam == true)
-                            {
-                                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
-                            }
-                        }
-                    }
+                    HandleStoreStackBlocks(stack);
                 }
             }
         }
@@ -369,31 +309,7 @@ namespace RandomAdditions
                 {
                     foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                     {
-                        int FireTimes = stack.NumItems - StackSet;
-                        for (int step = 0; step > FireTimes; step--)
-                        {
-                            if (GetChunkType == ChunkTypes.Null)
-                            {
-                                Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
-                                SavedCount = 0;
-                                break;
-                            }
-                            SavedCount--;
-                            QueueReleaseAnim(stack);
-                            if (SavedCount <= 0)
-                            {
-                                Empty = true;
-                                GetChunkType = ChunkTypes.Null;
-                                //Reset color for gauge referencing
-                                SaveTextureOfChunk();
-                                if (SavedCount < 0)
-                                {
-                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
-                                    SavedCount = 0;// well... we can't compensate for negatives can we...
-                                }
-                                break;
-                            }
-                        }
+                        HandleReleaseStackChunks(stack);
                     }
                 }
             }
@@ -403,75 +319,177 @@ namespace RandomAdditions
                 {
                     if (GetBlockType == BlockTypes.GSOAIController_111)
                         break;
-                    int FireTimes = stack.NumItems - StackSet;
-                    for (int step = 0; step > FireTimes; step--)
+                    HandleReleaseStackBlocks(stack);
+                }
+            }
+        }
+
+        // Item handling
+        private void HandleStoreStackChunks(ModuleItemHolder.Stack stack)
+        {
+            int FireTimes = stack.NumItems - StackSet;
+            for (int step = 0; step < FireTimes; step++)
+            {
+                if (SavedCount >= MaxCapacity)
+                    break;
+                var toManage = stack.FirstItem;
+                if (SavedCount == 0)
+                {
+                    Empty = false;
+                    GetChunkType = toManage.pickup.ChunkType;
+                    //Save the chunk's color for gauge referencing
+                    SaveTextureOfChunk();
+                }
+                if (toManage.pickup.ChunkType == GetChunkType)
+                {
+                    QueueStoreAnim(toManage);
+                    SavedCount++;
+                    if (SavedCount >= MaxCapacity)
+                        break;
+                }
+                else
+                {
+                    Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                    toManage.SetHolder(null, true);//DROP IT NOW!!!
+                    if (toManage.InBeam == true)
                     {
-                        if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted)
+                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid chunk");
+                    }
+                }
+            }
+        }
+        private void HandleStoreStackBlocks(ModuleItemHolder.Stack stack)
+        {
+            int FireTimes = stack.NumItems - StackSet;
+            for (int step = 0; step < FireTimes; step++)
+            {
+                if (SavedCount >= MaxCapacity)
+                    break;
+                var toManage = stack.FirstItem;
+                if (SavedCount == 0)
+                {
+                    Empty = false;
+                    GetBlockType = toManage.block.BlockType;
+                }
+                if (toManage.block.BlockType == GetBlockType)
+                {
+                    QueueStoreAnim(toManage);
+                    if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
+                    else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
+                    {
+                        Singleton.Manager<NetInventory>.inst.HostAddItem(GetBlockType, 1);
+                    }
+                    else
+                        Singleton.Manager<SingleplayerInventory>.inst.HostAddItem(GetBlockType, 1);
+                }
+                else
+                {
+                    Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                    toManage.InBeam = false;//DROP IT NOW!!!
+                    if (toManage.InBeam == true)
+                    {
+                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
+                    }
+                }
+            }
+        }
+        private void HandleReleaseStackChunks(ModuleItemHolder.Stack stack)
+        {
+            int FireTimes = stack.NumItems - StackSet;
+            for (int step = 0; step > FireTimes; step--)
+            {
+                if (GetChunkType == ChunkTypes.Null)
+                {
+                    Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
+                    SavedCount = 0;
+                    break;
+                }
+                SavedCount--;
+                QueueReleaseAnim(stack);
+                if (SavedCount <= 0)
+                {
+                    Empty = true;
+                    GetChunkType = ChunkTypes.Null;
+                    //Reset color for gauge referencing
+                    SaveTextureOfChunk();
+                    if (SavedCount < 0)
+                    {
+                        Debug.Log("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
+                        SavedCount = 0;// well... we can't compensate for negatives can we...
+                    }
+                    break;
+                }
+            }
+        }
+        private void HandleReleaseStackBlocks(ModuleItemHolder.Stack stack)
+        {
+            int FireTimes = stack.NumItems - StackSet;
+            for (int step = 0; step > FireTimes; step--)
+            {
+                if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted)
+                {
+                    if (GetBlockType == BlockTypes.GSOAIController_111)
+                    {
+                        Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
+                        break;
+                    }
+                    QueueReleaseAnim(stack);
+                    SavedCount = MaxCapacity;
+                }
+                else
+                {
+                    try
+                    {
+                        int availQuant;
+                        bool isMP = Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer();
+                        if (isMP)
                         {
-                            if (GetBlockType == BlockTypes.GSOAIController_111)
+                            if (Singleton.Manager<NetInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
                             {
-                                Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
-                                break;
+                                availQuant = Singleton.Manager<NetInventory>.inst.GetQuantity(GetBlockType);
+                                if (availQuant > 0)
+                                {
+                                    availQuant--;
+                                    Singleton.Manager<NetInventory>.inst.SetBlockCount(GetBlockType, availQuant);
+
+                                    QueueReleaseAnim(stack);
+                                    SavedCount = availQuant;
+                                    if (availQuant <= 0)
+                                    {
+                                        Empty = true;
+                                        GetBlockType = BlockTypes.GSOAIController_111;
+                                        if (availQuant < 0)
+                                            Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                        break;
+                                    }
+                                }
                             }
-                            QueueReleaseAnim(stack);
-                            SavedCount = MaxCapacity;
                         }
                         else
                         {
-                            try
+                            if (Singleton.Manager<SingleplayerInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
                             {
-                                int availQuant;
-                                bool isMP = Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer();
-                                if (isMP)
+                                availQuant = Singleton.Manager<SingleplayerInventory>.inst.GetQuantity(GetBlockType);
+                                if (availQuant > 0)
                                 {
-                                    if (Singleton.Manager<NetInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
-                                    {
-                                        availQuant = Singleton.Manager<NetInventory>.inst.GetQuantity(GetBlockType);
-                                        if (availQuant > 0)
-                                        {
-                                            availQuant--;
-                                            Singleton.Manager<NetInventory>.inst.SetBlockCount(GetBlockType, availQuant);
+                                    availQuant--;
+                                    Singleton.Manager<SingleplayerInventory>.inst.SetBlockCount(GetBlockType, availQuant);
 
-                                            QueueReleaseAnim(stack);
-                                            SavedCount = availQuant;
-                                            if (availQuant <= 0)
-                                            {
-                                                Empty = true;
-                                                GetBlockType = BlockTypes.GSOAIController_111;
-                                                if (availQuant < 0)
-                                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (Singleton.Manager<SingleplayerInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
+                                    QueueReleaseAnim(stack);
+                                    SavedCount = availQuant;
+                                    if (availQuant <= 0)
                                     {
-                                        availQuant = Singleton.Manager<SingleplayerInventory>.inst.GetQuantity(GetBlockType);
-                                        if (availQuant > 0)
-                                        {
-                                            availQuant--;
-                                            Singleton.Manager<SingleplayerInventory>.inst.SetBlockCount(GetBlockType, availQuant);
-
-                                            QueueReleaseAnim(stack);
-                                            SavedCount = availQuant;
-                                            if (availQuant <= 0)
-                                            {
-                                                Empty = true;
-                                                GetBlockType = BlockTypes.GSOAIController_111;
-                                                if (availQuant < 0)
-                                                    Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
-                                                break;
-                                            }
-                                        }
+                                        Empty = true;
+                                        GetBlockType = BlockTypes.GSOAIController_111;
+                                        if (availQuant < 0)
+                                            Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                        break;
                                     }
                                 }
                             }
-                            catch { }
                         }
                     }
+                    catch { }
                 }
             }
         }

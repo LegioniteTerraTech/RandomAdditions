@@ -20,8 +20,8 @@ namespace RandomAdditions
         public bool Active = false;
         public float Rate = 0.1f;
 
-        private const float drainMain = 10;// stacks FAST - per conveyor PLUS this
-        private const float buttonDrain = 50;// stacks FAST - per conveyor PLUS this
+        private const float drainMain = 10;// stacks FAST - per conveyor
+        private const float buttonDrain = 50;// PLUS this
         private Tank tonk;
         private TankBlock TankBlock;
         private ModuleEnergy Energy;

@@ -10,16 +10,17 @@ namespace RandomAdditions
         "RandomAdditions.GravitateProjectile":{ // Add a special movement effect to your projectile
             "WorldGravitateDirection":  {"x": 0, "y": 1, "z": 0}, // Gravitate direction
             "GravitatePosition":        {"x": 0, "y": 0, "z": 0}, // Center of the gravitation
-            "WorldGravitateStrength": 0.01,        // Force of the gravitation
+            "WorldGravitateStrength": 0.01,     // Force of the gravitation
 
             "WorldAugmentedDragEnabled": false, // Should this projectile slow down faster? (WARNING! MESSES WITH AIMING WEAPONS!)
-            "WorldAugmentedDragStrength": 0.1,    // The strength of the drag effect  [MULTIPLIER!]
+            "WorldAugmentedDragStrength": 0.1,  // The strength of the drag effect  [MULTIPLIER!]
 
             //-----------------------------------------------------------------------------
             "MovementDampening": 30,            // Dampener for the operations below
-
+        
             "WorldHeightBiasEnabled": false,    // Should this float at a set altitude?
-            "WorldHeightBias": 50,               // The height to float at
+            "WorldHeightBias": 50,              // The height to float at
+            "WorldUseTerrainOffset": false,     // Should this projectile float in relation to the height above terrain/water?
 
             "AffectedByWater": false,           // Should this projectile act differently in water?
             "WaterDepth": 1,                    // The depth to float at in relation to water (overrides WorldHeightBias)
@@ -32,6 +33,7 @@ namespace RandomAdditions
         public Vector3 WorldGravitateDirection = Vector3.up;
         public Vector3 GravitateCenter = Vector3.zero;
         public float WorldGravitateStrength = 0.01f;
+        public bool WorldUseTerrainOffset = false;
         public bool WorldAugmentedDragEnabled = false;
         public float WorldAugmentedDragStrength = 0.1f;
 
@@ -53,6 +55,14 @@ namespace RandomAdditions
         */
 
         //AutoCollection
+        public float floatHeight 
+        {
+            get {
+                if (WorldUseTerrainOffset)
+                    return OffsetFromGround();
+                return WorldHeightBias;
+            }
+        }
         private float movementDampening = 10;
         private float heightModifier = 1;
         private bool hasFiredOnce = false;
@@ -73,6 +83,29 @@ namespace RandomAdditions
                 movementDampening = MovementDampening;
             hasFiredOnce = true;
         }
+        public float OffsetFromGround()
+        {
+            float final_y;
+            float input = thisTrans.position.y;
+            bool terrain = Singleton.Manager<ManWorld>.inst.GetTerrainHeight(thisTrans.position, out float height);
+            if (terrain)
+                final_y = height + WorldHeightBias;
+            else
+                final_y = WorldHeightBias;
+
+            if (KickStart.isWaterModPresent)
+            {
+                if (KickStart.WaterHeight > height)
+                    final_y = KickStart.WaterHeight + WorldHeightBias;
+            }
+            if (input < final_y)
+            {
+                input = final_y;
+            }
+
+            return input;
+        }
+
 
         private void FixedUpdate()
         {
@@ -87,14 +120,14 @@ namespace RandomAdditions
                 }
                 else if (WorldHeightBiasEnabled)
                 {
-                    heightModifier = Mathf.Clamp((WorldHeightBias - gameObject.transform.position.y) / movementDampening, -1, 1);
+                    heightModifier = Mathf.Clamp((floatHeight - transform.position.y) / movementDampening, -1, 1);
                 }
                 else
                     heightModifier = 1;
             }
             else if (WorldHeightBiasEnabled)
             {
-                heightModifier = Mathf.Clamp((WorldHeightBias - gameObject.transform.position.y) / movementDampening, -1, 1);
+                heightModifier = Mathf.Clamp((floatHeight - transform.position.y) / movementDampening, -1, 1);
             }
             else
                 heightModifier = 1;

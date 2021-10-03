@@ -24,6 +24,12 @@ namespace RandomAdditions
         public static bool NoShake = false; 
         public static bool AutoScaleBlocksInSCU = false;
         public static bool TrueShields = true;
+        public static bool InterceptedExplode = true;   // Projectiles intercepted will explode
+        //public static bool CheapInterception = false;   // Force the Point-Defense Systems to grab the first target it "finds"
+        public static float ProjectileHealthMultiplier = 1;
+        public static int GlobalBlockReplaceChance = 50;
+        public static bool MandateSeaReplacement = true;
+        public static bool MandateLandReplacement = false;
 
         internal static ModConfig config;
 
@@ -34,6 +40,19 @@ namespace RandomAdditions
         public static OptionToggle scaleBlocksInSCU;
         public static OptionToggle realShields;
 
+        public static OptionRange replaceChance;
+        public static OptionToggle rpSea;
+        public static OptionToggle rpLand;
+
+        public static float WaterHeight
+        {
+            get
+            {
+                float outValue = -25;
+                try { outValue = WaterMod.QPatch.WaterHeight; } catch { }
+                return outValue;
+            }
+        }
 
 
         public static void Main()
@@ -71,6 +90,9 @@ namespace RandomAdditions
             thisModConfig.BindConfig<KickStart>(null, "NoShake");
             thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
             thisModConfig.BindConfig<KickStart>(null, "TrueShields");
+            thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
+            thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
+            thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
             config = thisModConfig;
 
             var RandomProperties = ModName;
@@ -84,6 +106,12 @@ namespace RandomAdditions
             noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; config.WriteConfigJsonFile(); });
             scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, AutoScaleBlocksInSCU);
             scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; config.WriteConfigJsonFile(); });
+            replaceChance = new OptionRange("Chance for modded block spawns", RandomProperties, GlobalBlockReplaceChance, 0, 100, 10);
+            replaceChance.onValueSaved.AddListener(() => { GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); config.WriteConfigJsonFile(); });
+            rpLand = new OptionToggle("Force Land Block Replacement", RandomProperties, MandateLandReplacement);
+            rpLand.onValueSaved.AddListener(() => { MandateLandReplacement = rpLand.SavedValue; config.WriteConfigJsonFile(); });
+            rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, MandateSeaReplacement);
+            rpSea.onValueSaved.AddListener(() => { MandateSeaReplacement = rpSea.SavedValue; config.WriteConfigJsonFile(); });
         }
 
         public static bool LookForMod(string name)

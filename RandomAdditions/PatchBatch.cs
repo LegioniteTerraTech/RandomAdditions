@@ -44,6 +44,10 @@ namespace RandomAdditions
                 var run = block.GetComponent<TankBlockScaler>();
                 run.OnPool();
                 run.enabled = false;
+
+                var rp = block.GetComponent<ModuleReplace>();
+                if ((bool)rp)
+                    rp.Init(__instance);
             }
         }
 
@@ -270,6 +274,47 @@ namespace RandomAdditions
                 }
             }
         }
+
+        // Disable firing when intercepting
+        [HarmonyPatch(typeof(ModuleWeapon))]
+        [HarmonyPatch("Process")]
+        private static class ProcessOverride
+        {
+            private static bool Prefix(ModuleWeapon __instance, ref int __result)
+            {
+                var ModuleCheck = __instance.gameObject.GetComponent<ModulePointDefense>();
+                if (ModuleCheck != null)
+                {
+                    if (ModuleCheck.DisabledWeapon)
+                    {
+                        __result = 0;
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        // Trying to change this will put a huge strain on the game
+        /*
+        [HarmonyPatch(typeof(ManWheels.Wheel))]
+        [HarmonyPatch("MainThread_PostUpdate")]
+        private static class TryMakeRotateAccurate
+        {
+            private static void Postfix(ManWheels.Wheel __instance, ref int __result)
+            {
+                if (__instance.wheelParams.strafeSteeringSpeed > 0f)
+                {
+                    float f = -90f * strafing * ((float)Math.PI / 180f);
+                    float num3 = Mathf.Sin(f);
+                    float m = (s_SteerRotMat.m00 = Mathf.Cos(f));
+                    __instance.s_SteerRotMat.m02 = num3;
+                    __instance.s_SteerRotMat.m20 = 0f - num3;
+                    __instance.s_SteerRotMat.m22 = m;
+                    __instance.tireFrame.SetRotationIfChanged((tireFrameMatrix * s_SteerRotMat).rotation);
+                }
+            }
+        }*/
 
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -558,6 +603,37 @@ namespace RandomAdditions
             }
         }
 
+        [HarmonyPatch(typeof(ManPop))]
+        [HarmonyPatch("OnSpawned")]//On enemy base bomb landing
+        private static class PerformBlocksSwapOperation
+        {
+            private static bool TankExists(TrackedVisible tv)
+            {
+                if (tv != null)
+                {
+                    if (tv.visible != null)
+                    {
+                        if (ManWorld.inst.CheckIsTileAtPositionLoaded(tv.Position))
+                        {
+                            if (tv.visible.tank != null)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            private static void Postfix(ref TrackedVisible tv)
+            {   // Change the parts on the Tech with blocks with ModuleReplace attached
+                if (!TankExists(tv))
+                    return;
+                Tank tank = tv.visible.tank;
+                ReplaceManager.TryReplaceBlocks(tank);
+            }
+        }
+
 
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -582,6 +658,12 @@ namespace RandomAdditions
                     ModuleCheck.project = __instance;
                     Debug.Log("RandomAdditions: Overwrote Collision");
                 }
+                var pHP = __instance.gameObject.GetComponent<ProjectileHealth>();
+                if (!(bool)pHP)
+                {
+                    pHP = __instance.gameObject.AddComponent<ProjectileHealth>();
+                    pHP.GetHealth();
+                }
             }
         }
 
@@ -599,11 +681,12 @@ namespace RandomAdditions
                     ModuleCheck.SetProjectileMass();
                     Debug.Log("RandomAdditions: Overwrote Mass - This enables physics collisions and will make the projectile more scary.");
                 }
+                /*
                 var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
                 if (ModuleCheckI != null)
                 {   // Handle intercept
                     __instance.gameObject.layer = Globals.inst.layerTank;
-                }
+                }*/
             }
         }
 
@@ -616,8 +699,18 @@ namespace RandomAdditions
                 ProjectileManager.Add(__instance);
             }
         }
-        [HarmonyPatch(typeof(MissileProjectile))]
+
+        [HarmonyPatch(typeof(Projectile))]
         [HarmonyPatch("OnRecycle")]
+        private class PatchProjectileRemove
+        {
+            private static void Prefix(Projectile __instance)
+            {
+                ProjectileManager.Remove(__instance);
+            }
+        }
+        [HarmonyPatch(typeof(Projectile))]
+        [HarmonyPatch("Destroy")]
         private class PatchProjectileRemove2
         {
             private static void Prefix(Projectile __instance)
@@ -647,11 +740,13 @@ namespace RandomAdditions
                 if (ModuleCheckI != null)
                 {   // Handle intercept
                     if (otherCollider.IsNotNull())
-                        if (otherCollider.GetComponent<Projectile>())
+                    {
+                        var pHP = otherCollider.GetComponent<ProjectileHealth>();
+                        if ((bool)pHP)
                         {
-                            death.SetValue(otherCollider.GetComponent<Projectile>(), 0);
-                            death.SetValue(__instance, 0);
+                            pHP.TakeDamage(ModuleCheckI.PointDefDamage, KickStart.InterceptedExplode);
                         }
+                    }
                 }
                 var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
                 if (ModuleCheck != null)
@@ -715,7 +810,7 @@ namespace RandomAdditions
         [HarmonyPatch("Fire")]//On Fire
         private class PatchProjectileFire
         {
-            private static void Postfix(Projectile __instance, ref Tank shooter)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            private static void Postfix(Projectile __instance, ref FireData fireData, ref Tank shooter)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile Fire(WeightedProjectile)");
                 var Split = __instance.GetComponent<SpiltProjectile>();
@@ -727,7 +822,11 @@ namespace RandomAdditions
                 var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
                 if (ModuleCheckI != null)
                 {
-                    ModuleCheckI.Reset();
+                    var pd = fireData.GetComponent<ModulePointDefense>();
+                    if ((bool)pd)
+                        ModuleCheckI.Reset(pd.Target);
+                    else
+                        ModuleCheckI.Reset();
                 }
                 var ModuleCheck = __instance.gameObject.GetComponent<WeightedProjectile>();
                 if (ModuleCheck != null)
@@ -743,6 +842,25 @@ namespace RandomAdditions
                 if (ModuleCheck2 != null)
                 {
                     ModuleCheck2.OnFire();
+                }
+                var ModuleCheck3 = __instance.gameObject.GetComponent<ProjectileHealth>();
+                if (ModuleCheck3 != null)
+                {
+                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity))
+                    {
+                        ProjectileManager.Add(__instance);
+                        //ModuleCheck3.GetHealth(true);
+                    }
+                    else
+                        UnityEngine.Object.Destroy(ModuleCheck3);
+                }
+                else
+                {
+                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity))
+                    {
+                        ProjectileManager.Add(__instance);
+                        //ModuleCheck3.GetHealth(true);
+                    }
                 }
             }
         }
@@ -799,15 +917,21 @@ namespace RandomAdditions
         {
             private static bool Prefix(SeekingProjectile __instance)
             {
-                var ModuleCheck = __instance.gameObject.GetComponent<InterceptProjectile>();
+                var ModuleCheck = __instance.gameObject.GetComponent<DistractedProjectile>();
                 if (ModuleCheck != null)
                 {
-                    if (ModuleCheck.Aiming)
+                    if (ModuleCheck.Distracted(__instance))
+                        return false;
+                }
+                var ModuleCheck2 = __instance.gameObject.GetComponent<InterceptProjectile>();
+                if (ModuleCheck2 != null)
+                {
+                    if (ModuleCheck2.Aiming)
                     {
-                        if (ModuleCheck.OverrideAiming(__instance))
-                            if (ModuleCheck.ForcedAiming)
+                        if (ModuleCheck2.OverrideAiming(__instance))
+                            if (ModuleCheck2.ForcedAiming)
                                 return false;
-                        if (ModuleCheck.OnlyDefend)
+                        if (ModuleCheck2.OnlyDefend)
                             return false;
                     }
                 }
@@ -834,13 +958,31 @@ namespace RandomAdditions
             }
         }
 
+        // make MissileProjectle obey KeepSeekingProjectile
+        [HarmonyPatch(typeof(MissileProjectile))]
+        [HarmonyPatch("OnDelayedDeathSet")]
+        private class PatchMissileProjectileOnCollide
+        {
+            private static bool Prefix(MissileProjectile __instance)
+            {
+                //Debug.Log("RandomAdditions: Patched MissileProjectile OnDelayedDeathSet(KeepSeekingProjectile)");
+                var ModuleCheck = __instance.gameObject.GetComponent<KeepSeekingProjectile>();
+                if (ModuleCheck != null)
+                {
+                    if (ModuleCheck.KeepBoosting)
+                        return false;
+                }
+                return true;
+            }
+        }
 
-        //-----------------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------------
-        // Both used for Custom Blocks and Projectiles
-        
-        // Allow blocks to have one special resistance
-        [HarmonyPatch(typeof(Damageable))]
+
+       //-----------------------------------------------------------------------------------------------
+       //-----------------------------------------------------------------------------------------------
+       // Both used for Custom Blocks and Projectiles
+
+       // Allow blocks to have one special resistance
+       [HarmonyPatch(typeof(Damageable))]
         [HarmonyPatch("Damage")]//On damage handling
         private class PatchDamageable
         {
