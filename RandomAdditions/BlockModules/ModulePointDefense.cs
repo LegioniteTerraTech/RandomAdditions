@@ -133,8 +133,25 @@ namespace RandomAdditions
             if (SeperateFromGun)
                 ForcePulse = true;
             barrelStep = 0;
-            if (!(bool)OverrideMaterial)
-                OverrideMaterial = new Material(Shader.Find("Sprites/Default"));
+            if (!ForcePulse)
+            {
+                if ((bool)GetComponent<FireData>())
+                {
+                    if ((bool)GetComponent<FireData>().m_BulletPrefab)
+                    {
+                        if ((bool)GetComponent<FireData>().m_BulletPrefab.GetComponent<InterceptProjectile>())
+                        {
+                            return;
+                        }
+                    }
+                }
+                LogHandler.ThrowWarning("ModulePointDefense: Turret " + TankBlock.name + "'s FireData.m_BulletPrefab needs InterceptProjectile to work properly!");
+            }
+            else
+            {
+                if (!(bool)OverrideMaterial)
+                    OverrideMaterial = new Material(Shader.Find("Sprites/Default"));
+            }
             //Debug.Log("RandomAdditions: ModulePointDefense - Registered on block " + TankBlock.name + " ModuleWeaponGun: " + (bool)gunBase);
         }
         public void OnDrain()
@@ -426,6 +443,8 @@ namespace RandomAdditions
             if ((bool)TankBlock.tank.rbody)
                 tankVelo = TankBlock.tank.rbody.velocity;
             float velo = gunBase.GetVelocity();
+            if (velo < 1)
+                velo = 1;
             Vector3 veloVec = LockedTarget.velocity * Time.fixedDeltaTime;
             Vector3 posVec = LockedTarget.position - gunBase.GetFireTransform().position;
             float roughDist = (posVec + veloVec).magnitude / (velo * Time.fixedDeltaTime);
@@ -444,7 +463,7 @@ namespace RandomAdditions
                 }
             }
             Vector3 targPos = LockedTarget.position + (veloVec * roughDist) - (tankVelo * Time.fixedDeltaTime);
-            if (!((bool)gunBase && gunBase.AimWithTrajectory()))
+            if (!gunBase.AimWithTrajectory())
                 return targPos;
             // Aim with rough predictive trajectory
             velo *= velo;

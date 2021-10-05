@@ -12,6 +12,7 @@ namespace RandomAdditions
         //public bool Fast = false;
         private float MaxHealth = 0;
         private float Health = 10;
+        private bool exploded = false;
         private Projectile proj;
 
         const float FastProjectileSpeed = 135;
@@ -41,7 +42,7 @@ namespace RandomAdditions
                     else
                         MaxHealth = 10;
                 }
-
+                exploded = false;
                 Health = MaxHealth;
 
                 //Debug.Log("RandomAdditions: ProjectileHealth - Init on " + gameObject.name + ", health " + Health);
@@ -71,7 +72,7 @@ namespace RandomAdditions
             {
                 //death.SetValue(proj, true);
                 //death2.SetValue(proj, 0);
-                if (doExplode && KickStart.InterceptedExplode)
+                if (!exploded && doExplode && KickStart.InterceptedExplode)
                 {
                     Transform explodo = (Transform)explode.GetValue(proj);
                     if ((bool)explodo)
@@ -82,6 +83,7 @@ namespace RandomAdditions
                             ForceExplode(explodo, false);
                         }
                     }
+                    exploded = true;
                 }
 
                 proj.Recycle(worldPosStays: false);

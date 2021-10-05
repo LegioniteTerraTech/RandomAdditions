@@ -56,6 +56,7 @@ namespace RandomAdditions
         private Projectile proj;
         private Rigidbody rbody;
         private bool init = false;
+        private bool hitFast = false;
         private byte startDelay = 3;
         private byte timer = 3;
         private bool AimAtTarg = false;
@@ -64,8 +65,9 @@ namespace RandomAdditions
 
         private Rigidbody LockedTarget;
 
-        public void Reset(Rigidbody target = null)
+        public void Reset(Rigidbody target = null, bool hitFast = false)
         {
+            this.hitFast = hitFast;
             LockedTarget = target;
             timer = startDelay;
             //Debug.Log("RandomAdditions: InterceptProjectile - RESET");
@@ -168,6 +170,7 @@ namespace RandomAdditions
         public bool GetOrTrack(out Rigidbody rbodyT)
         {
             bool update = false;
+            bool updateBullet = false;
             if (timer <= 3)
             {
                 if (IsFlare && ConstantDistract)
@@ -175,7 +178,8 @@ namespace RandomAdditions
                     if (UnityEngine.Random.Range(1, 100) <= DistractChance)
                         DistractedProjectile.Distract(LockedTarget, rbody);
                 }
-                update = true;
+                update = IsFlare || !enabled;
+                updateBullet = true;
                 timer = 7;
             }
             timer--;
@@ -194,10 +198,10 @@ namespace RandomAdditions
 
             if (update)
             {
-                if (ProjectileManager.GetClosestProjectile(this, Range, out Rigidbody rbodyCatch, out List<Rigidbody> rbodys))
+                if (ProjectileManager.GetClosestProjectile(this, Range, out Rigidbody rbodyCatch2, out List<Rigidbody> rbodys))
                 {
-                    rbodyT = rbodyCatch;
-                    LockedTarget = rbodyCatch;
+                    rbodyT = rbodyCatch2;
+                    LockedTarget = rbodyCatch2;
                     //Debug.Log("RandomAdditions: InterceptProjectile - LOCK");
                     if (IsFlare)
                     {
@@ -206,11 +210,40 @@ namespace RandomAdditions
                             if (DistractsMoreThanOne)
                                 DistractedProjectile.DistractAll(rbodys, rbody);
                             else
-                                DistractedProjectile.Distract(rbodyCatch, rbody);
+                                DistractedProjectile.Distract(rbodyCatch2, rbody);
 
                         }
                     }
                     return true;
+                }
+            }
+            else if (updateBullet)
+            {
+                if ((bool)proj.Shooter)
+                {
+                    var PD = proj.Shooter.GetComponent<TankPointDefense>();
+                    if ((bool)PD)
+                    {
+                        if (PD.GetFetchedTargets(-1, out List<Rigidbody> rbodys, !hitFast))
+                        {
+                            Rigidbody rbodyCatch = rbodys.First();
+                            rbodyT = rbodyCatch;
+                            LockedTarget = rbodyCatch;
+                            //Debug.Log("RandomAdditions: InterceptProjectile - LOCK");
+                            if (IsFlare)
+                            {
+                                if (UnityEngine.Random.Range(1, 100) <= DistractChance)
+                                {
+                                    if (DistractsMoreThanOne)
+                                        DistractedProjectile.DistractAll(rbodys, rbody);
+                                    else
+                                        DistractedProjectile.Distract(rbodyCatch, rbody);
+
+                                }
+                            }
+                            return true;
+                        }
+                    }
                 }
             }
             rbodyT = null;
@@ -233,6 +266,8 @@ namespace RandomAdditions
                 Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, transform.position).GetComponent<Explosion>();
                 if (boom2 != null)
                 {
+                    boom2.m_EffectRadiusMaxStrength = 1;
+                    boom2.m_EffectRadius = 2;
                     boom2.DoDamage = false;
                 }
             }

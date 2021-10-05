@@ -60,7 +60,7 @@ namespace RandomAdditions
             Fired = false;
             if (DeployInFlight)
                 Timer = 0;
-
+            
             direct = transform.Find("_splitSpawn");
             if (!(bool)direct)
                 direct = transform;
@@ -70,7 +70,7 @@ namespace RandomAdditions
             {
                 SplitPayload = fire.m_BulletPrefab;
                 SplitCasing = fire.m_BulletCasingPrefab;
-                Debug.Log("RandomAdditions: SpiltProjectile - Grabbed FireData for " + gameObject.name);
+                //Debug.Log("RandomAdditions: SpiltProjectile - Grabbed FireData for " + gameObject.name);
             }
             else
             {
@@ -91,7 +91,7 @@ namespace RandomAdditions
             var fire = GetComponent<FireData>();
             if ((bool)fire)
             {
-                Debug.Log("RandomAdditions: Fired SpiltProjectile on " + gameObject.name);
+                //Debug.Log("RandomAdditions: Fired SpiltProjectile on " + gameObject.name);
                 float velocityHandler = fire.m_MuzzleVelocity;
                 if (velocityHandler < 0.1)
                     velocityHandler = 0.1f;

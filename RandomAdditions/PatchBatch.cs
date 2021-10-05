@@ -736,6 +736,7 @@ namespace RandomAdditions
                         ModuleCheckS.wasThisSeeking = validation.enabled; //Keep going!
                     }
                 }
+                /*
                 var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
                 if (ModuleCheckI != null)
                 {   // Handle intercept
@@ -747,7 +748,7 @@ namespace RandomAdditions
                             pHP.TakeDamage(ModuleCheckI.PointDefDamage, KickStart.InterceptedExplode);
                         }
                     }
-                }
+                }*/
                 var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
                 if (ModuleCheck != null)
                 {
@@ -824,7 +825,7 @@ namespace RandomAdditions
                 {
                     var pd = fireData.GetComponent<ModulePointDefense>();
                     if ((bool)pd)
-                        ModuleCheckI.Reset(pd.Target);
+                        ModuleCheckI.Reset(pd.Target, pd.CanInterceptFast);
                     else
                         ModuleCheckI.Reset();
                 }

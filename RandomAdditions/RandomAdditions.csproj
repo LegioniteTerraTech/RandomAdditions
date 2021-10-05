@@ -144,6 +144,7 @@
     <Compile Include="ProjectileModules\TorpedoProjectile.cs" />
     <Compile Include="ProjectileModules\WeightedProjectile.cs" />
     <Compile Include="KickStart.cs" />
+    <Compile Include="ProjectileOctree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

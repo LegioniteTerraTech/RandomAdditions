@@ -88,6 +88,8 @@ namespace RandomAdditions
         }
         public bool GetTargetsRequest(float energyCost)
         {
+            if (tank.beam.IsActive)
+                return false;
             if (!fetchedTargets)
             {
                 if (!ProjectileManager.GetListProjectiles(this, BiasDefendRange / (1 + (TechSpeed() / 33)), out List<Rigidbody> rbodyCatch))
@@ -154,6 +156,7 @@ namespace RandomAdditions
                 if (maxRangeC > BiasDefendRange)
                     BiasDefendRange = maxRangeC;
             }
+            Debug.Log("RandomAdditions: TankPointDefense - BiasDefendCenter of " + tank.name + " changed to " + BiasDefendCenter);
             needsBiasCheck = false;
         }
         public bool GetFetchedTargets(float energyCost, out List<Rigidbody> fetchedProj, bool missileOnly = true)
@@ -170,9 +173,9 @@ namespace RandomAdditions
         public bool GetNewTarget(out Rigidbody fetched, bool missileOnly = true)
         {
             fetched = null;
-            List<Rigidbody> fetchedProj = null;
             if (!GetTargetsRequest(0))
                 return false;
+            List<Rigidbody> fetchedProj;
             if (missileOnly)
                 fetchedProj = this.fetchedProj;
             else
