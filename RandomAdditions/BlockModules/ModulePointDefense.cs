@@ -368,6 +368,11 @@ namespace RandomAdditions
                         UpdateLockOn();
                         return true;
                     }
+                    else if (block.tank.control.FireControl)
+                    {
+                        firing = false;
+                        DisabledWeapon = false;
+                    }
                     else
                         firing = false;
                 }
@@ -405,6 +410,11 @@ namespace RandomAdditions
                             DisabledWeapon = true;
                         UpdateLockOn();
                         return true;
+                    }
+                    else if (block.tank.control.FireControl)
+                    {
+                        firing = false;
+                        DisabledWeapon = false;
                     }
                     else
                         firing = false;
