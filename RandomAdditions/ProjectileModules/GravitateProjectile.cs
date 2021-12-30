@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class GravitateProjectile : RandomAdditions.GravitateProjectile { };
 namespace RandomAdditions
 {
     public class GravitateProjectile : MonoBehaviour

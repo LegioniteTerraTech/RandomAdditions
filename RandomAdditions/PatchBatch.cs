@@ -34,7 +34,6 @@ namespace RandomAdditions
             {
                 //Debug.Log("RandomAdditions: Patched TankBlock OnPool(ModuleDeathInsurance & TankBlockScaler)");
                 var block = __instance.gameObject;
-                block.AddComponent<ModuleDeathInsurance>();
                 if (!(bool)block.GetComponent<TankBlockScaler>())
                 {   //This allows for an override to be concocted if the block maker wants to specify a custom size
                     var setComp = block.AddComponent<TankBlockScaler>();
@@ -724,7 +723,7 @@ namespace RandomAdditions
         private class PatchProjectileCollision
         {
             static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
-            private static void Prefix(Projectile __instance, ref Collider otherCollider)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            private static void Prefix(Projectile __instance, ref Damageable damageable, ref Collider otherCollider)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile & OHKOProjectile)");
                 var ModuleCheckS = __instance.gameObject.GetComponent<KeepSeekingProjectile>();
@@ -750,29 +749,28 @@ namespace RandomAdditions
                     }
                 }*/
                 var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
-                if (ModuleCheck != null)
+                if ((bool)damageable && ModuleCheck != null)
                 {
-                    var validation = otherCollider.GetComponentInParent<ModuleDeathInsurance>();
+                    var validation = damageable.GetComponent<TankBlock>();
                     if (!validation)
                     {
                         //Debug.Log("RandomAdditions: did not hit possible block");
                         return;
                     }
 
-                    if (__instance.Shooter.IsFriendly(otherCollider.GetComponent<TankBlock>().tank.Team) || otherCollider.GetComponent<TankBlock>().tank.IsNeutral())
+                    if (__instance.Shooter.IsFriendly(validation.tank.Team) || validation.tank.IsNeutral())
                         return;// Stop friendly-fire
 
                     //Debug.Log("RandomAdditions: queued block death");
                     try
                     {
-                        otherCollider.GetComponent<ModuleDeathInsurance>().TryQueueUnstoppableDeath();
+                        ModuleDeathInsurance.TryQueueUnstoppableDeath(validation);
                         Debug.Log("RandomAdditions: omae wa - mou shindeiru");
                         return;
                     }
                     catch
                     {
-                        otherCollider.GetComponentInParent<ModuleDeathInsurance>().TryQueueUnstoppableDeath();
-                        Debug.Log("RandomAdditions: omae wa - mou shindeiru");
+                        Debug.Log("RandomAdditions: Error on applying ModuleDeathInsurance!");
                     }
                     //Singleton.Manager<ManDamage>.inst.DealDamage(damageable, m_Damage, m_DamageType, m_Weapon, Shooter, hitPoint, __instance.rbody.velocity);
                     //__instance.Recycle(worldPosStays: false);
@@ -820,7 +818,7 @@ namespace RandomAdditions
                     Split.Reset(__instance);
                 }
 
-                var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
+                var ModuleCheckI = __instance.GetComponent<InterceptProjectile>();
                 if (ModuleCheckI != null)
                 {
                     var pd = fireData.GetComponent<ModulePointDefense>();
@@ -829,7 +827,7 @@ namespace RandomAdditions
                     else
                         ModuleCheckI.Reset();
                 }
-                var ModuleCheck = __instance.gameObject.GetComponent<WeightedProjectile>();
+                var ModuleCheck = __instance.GetComponent<WeightedProjectile>();
                 if (ModuleCheck != null)
                 {
                     if (shooter != null && ModuleCheck.CustomGravity && ModuleCheck.CustomGravityFractionSpeed)
@@ -839,25 +837,29 @@ namespace RandomAdditions
                         __instance.rbody.velocity = final;
                     }
                 }
-                var ModuleCheck2 = __instance.gameObject.GetComponent<TorpedoProjectile>();
+                var ModuleCheck2 = __instance.GetComponent<TorpedoProjectile>();
                 if (ModuleCheck2 != null)
                 {
                     ModuleCheck2.OnFire();
                 }
-                var ModuleCheck3 = __instance.gameObject.GetComponent<ProjectileHealth>();
+                var ModuleCheck3 = __instance.GetComponent<ProjectileHealth>();
+                var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
                 if (ModuleCheck3 != null)
                 {
-                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity))
+                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
                     {
                         ProjectileManager.Add(__instance);
                         //ModuleCheck3.GetHealth(true);
                     }
                     else
+                    {
+                        //Debug.Log("RandomAdditions: ASSERT - Abberation in Projectile!  " + __instance.gameObject.name);
                         UnityEngine.Object.Destroy(ModuleCheck3);
+                    }
                 }
                 else
                 {
-                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity))
+                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
                     {
                         ProjectileManager.Add(__instance);
                         //ModuleCheck3.GetHealth(true);
@@ -990,53 +992,57 @@ namespace RandomAdditions
             private static void Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
             {
                 //Debug.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
-                var modifPresent = __instance.gameObject.GetComponent<ModuleReinforced>();
-                if (modifPresent != null)
+                try
                 {
-                    if ((bool)info.Source)
+                    var modifPresent = __instance.gameObject.GetComponent<ModuleReinforced>();
+                    if (modifPresent != null)
                     {
-                        if (modifPresent.ModifyAoEDamage && info.Source.GetComponent<Explosion>())
+                        if ((bool)info.Source)
                         {
-                            info.ApplyDamageMultiplier(modifPresent.ExplosionMultiplier);
+                            if (modifPresent.ModifyAoEDamage && info.Source.GetComponent<Explosion>())
+                            {
+                                info.ApplyDamageMultiplier(modifPresent.ExplosionMultiplier);
+                            }
                         }
-                    }
-                    if (modifPresent.UseMultipliers)
-                    {
-                        var multi = __instance.gameObject.GetComponent<ModuleReinforced>();
-                        switch (info.DamageType)
+                        if (modifPresent.UseMultipliers)
                         {
-                            case ManDamage.DamageType.Standard:
-                                info.ApplyDamageMultiplier(multi.Standard);
-                                return;
-                            case ManDamage.DamageType.Bullet:
-                                info.ApplyDamageMultiplier(multi.Bullet);
-                                return;
-                            case ManDamage.DamageType.Energy:
-                                info.ApplyDamageMultiplier(multi.Energy);
-                                return;
-                            case ManDamage.DamageType.Explosive:
-                                info.ApplyDamageMultiplier(multi.Explosive);
-                                return;
-                            case ManDamage.DamageType.Impact:
-                                info.ApplyDamageMultiplier(multi.Impact);
-                                return;
-                            case ManDamage.DamageType.Cutting:
-                                info.ApplyDamageMultiplier(multi.Cutting);
-                                return;
-                            case ManDamage.DamageType.Fire:
-                                info.ApplyDamageMultiplier(multi.Fire);
-                                return;
-                            case ManDamage.DamageType.Plasma:
-                                info.ApplyDamageMultiplier(multi.Plasma);
-                                return;
+                            var multi = __instance.gameObject.GetComponent<ModuleReinforced>();
+                            switch (info.DamageType)
+                            {
+                                case ManDamage.DamageType.Standard:
+                                    info.ApplyDamageMultiplier(multi.Standard);
+                                    return;
+                                case ManDamage.DamageType.Bullet:
+                                    info.ApplyDamageMultiplier(multi.Bullet);
+                                    return;
+                                case ManDamage.DamageType.Energy:
+                                    info.ApplyDamageMultiplier(multi.Energy);
+                                    return;
+                                case ManDamage.DamageType.Explosive:
+                                    info.ApplyDamageMultiplier(multi.Explosive);
+                                    return;
+                                case ManDamage.DamageType.Impact:
+                                    info.ApplyDamageMultiplier(multi.Impact);
+                                    return;
+                                case ManDamage.DamageType.Cutting:
+                                    info.ApplyDamageMultiplier(multi.Cutting);
+                                    return;
+                                case ManDamage.DamageType.Fire:
+                                    info.ApplyDamageMultiplier(multi.Fire);
+                                    return;
+                                case ManDamage.DamageType.Plasma:
+                                    info.ApplyDamageMultiplier(multi.Plasma);
+                                    return;
+                            }
+                            Debug.Log("RandomAdditions: !! NEW DAMAGE TYPE DETECTED !!   ALERT CODER!!!");
+                            Debug.Log("RandomAdditions: Type " + info.DamageType.ToString());
+                            Debug.Log("RandomAdditions: Update ModuleReinforced and also Patch!");
+                            //THROW THE GAME!
+                            LogHandler.ThrowWarning("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
                         }
-                        Debug.Log("RandomAdditions: !! NEW DAMAGE TYPE DETECTED !!   ALERT CODER!!!");
-                        Debug.Log("RandomAdditions: Type " + info.DamageType.ToString());
-                        Debug.Log("RandomAdditions: Update ModuleReinforced and also Patch!");
-                        //CRASH THE GAME!
-                        LogHandler.ThrowWarning("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
                     }
                 }
+                catch { }
             }
         }
 
@@ -1094,6 +1100,20 @@ namespace RandomAdditions
                     return false;
                 }
                 return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(PlayerFreeCamera))]
+        [HarmonyPatch("Enable")]//EXTEND RANGE
+        private class MORE_RANGE
+        {
+            static FieldInfo overr = typeof(PlayerFreeCamera).GetField("maxDistanceFromTank", BindingFlags.NonPublic | BindingFlags.Instance);
+            static FieldInfo underr = typeof(PlayerFreeCamera).GetField("groundClearance", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static void Prefix(PlayerFreeCamera __instance)
+            {
+                overr.SetValue(__instance, 250f);    // max "safe" range - 2.5x vanilla
+                underr.SetValue(__instance, -25f);   // cool fights underground - You can do this in Build Beam so it makes sense
+                Debug.Log("RandomAdditions: EXTENDED Free cam range");
             }
         }
 

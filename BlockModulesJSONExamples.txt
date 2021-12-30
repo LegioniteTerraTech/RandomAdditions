@@ -147,10 +147,12 @@
         "DefenseEnergyCost": 0,     // How much it takes to maintain passive defense
         "DefendRange": 50,          // The range of which this can find and track projectiles
         "RotateRate": 50,           // How fast we should rotate the turret when dealing with a projectile
-        "FireSFXType": 2,           // Same as ModuleWeapon but for Pulse
-        // - does not handle looping audio since the devs made it inconceivably hard to figure out how to stop looping correctly
+        "ShareFireSFX": true,          // Share the firing noise with ModuleWeapon 
+        // - Note this is almost always needed for guns with looping audio (guns with visible spinning parts like the HE Autocannon or BF Gatling Laser)
+        "FireSFXType": 2,           // Same as ModuleWeapon but for Pulse. Ignored when ShareFireSFX is true
 
         // Pulse Beam effect (hitscan mode)
+        "PulseAimCone": 15         // The max aiming rotation: Input Value [1-100] ~ Degrees(5-360)
         "AllAtOnce": true,         // Will this fire all lasers at once
         "HitChance": 45,           // Out of 100
         "PointDefenseDamage": 1,   // How much damage to deal to the target projectile
@@ -170,6 +172,85 @@
         "SeperateFromGun": false,        // Handle this seperately - Will also set ForcePulse to true
         "OverrideEnemyAiming": false,    // Will this prioritize projectiles over the enemy? - Also allow firing when spacebar is pressed
     },
+
+    // Simplified standalone laser module (Does not need ModuleWeaponGun)
+    "RandomAdditions.ModulePointDefense": { // A block module that shoots beams that hit hostile projectiles
+        "DefendOnly": true,        // Do not fire on spacebar
+        "CanInterceptFast": true,  // Can this also shoot fast projectiles?
+        "ForcePulse": true,        // Force the hitscan pulse effect
+        "SpoolOnEnemy": true,       // Spin the barrels when an enemy is in range
+        "LockOnDelay": 8,           // Frames this will not track for - Set to 0 to maximize scanning rate
+            // WARNING - May negatively impact performance under 8!
+        "LockOnStrength": 15,       // Will to keep lock on a projectile that's fast and/or far
+            // WARNING - May negatively impact performance under 10!
+        "DefenseCooldown": 1,       // How long until it fires the next intercept
+        "DefenseEnergyCost": 0,     // How much it takes to maintain passive defense
+        "DefendRange": 50,          // The range of which this can find and track projectiles
+        "FireSFXType": 2,           // Same as ModuleWeapon but for Pulse
+        // - does not handle looping audio since the devs made it inconceivably hard to figure out how to stop looping correctly
+
+        // Pulse Beam effect (hitscan mode)
+        "PulseAimCone": 15         // The max aiming rotation: Input Value [1-100] ~ Degrees(5-360)
+        "AllAtOnce": true,         // Will this fire all lasers at once
+        "HitChance": 45,           // Out of 100
+        "PointDefenseDamage": 1,   // How much damage to deal to the target projectile
+        "PulseEnergyCost": 0,      // How much it takes to fire a pulse
+        "ExplodeOnHit": 1,         // Make the target projectile explode on death (without dealing damage)
+        "PulseSizeStart": 0.5,     // Size of the beam at the launch point
+        "PulseSizeEnd": 0.2,       // Size of the beam at the end point
+        "PulseLifetime": 0,        // How long the pulse VISUAL persists - leave at zero for one frame
+        "OverrideMaterial": null,  // If you want to use custom textures for your beam
+        "DefenseColorStart": {"r": 0.05, "g": 1, "b": 0.3,"a": 0.8},
+        "DefenseColorEnd": {"r": 0.05, "g": 1, "b": 0.3, "a": 0.8},
+    
+        // SeperateFromGun set to true or Without ModuleWeaponGun attachment
+        "MaxPulseTargets": 1,       // The number of projectiles this can deal with when firing
+    },
+
+-----------------------------------------------------------------------------------------------------
+
+    "RandomAdditions.ModuleModeSwitch": { // Add a second Projectile type to your weapon
+      "ModeSwitch": "TargetChargePercentBelow", // See below.
+      /* ModeSwitch Types
+        PrimarySecondary,           // - (Fire slow-firing primary and then fire secondary while waiting for primary to cool down)
+        PrimarySecondarySalvo,      // - (Fire all of the burst shots of the slow-recharging primary and then fire secondary while waiting for primary BurstCooldown to finish)
+        DistanceFar,                // - (Switch when target is beyond SetValue)
+        DistanceClose,              // - (Switch when target is below SetValue)
+        TargetSpeedFast,            // - (Target speed exceeds SetValue or projectile max velocity)
+        TargetSpeedSlow,            // - (Target speed below SetValue or projectile max velocity)
+        TargetHeightHigh,           // - (Target is above SetValue altitude above terrain)
+        TargetHeightLow,            // - (Target is below SetValue altitude above terrain)
+        TargetChargePercentAbove,   // - (Target has shields up)
+        TargetChargePercentBelow,   // - (Target does not have shields or enemy batts out)
+      */
+      "SetValue": 0.1, //The value to check to switch modes
+      "AuxillaryBarrelsStartIndex": 0, //The indexes of barrels after which should be used for the Auxillary weapon. 
+      // Leave at 0 to use all barrels for both types.
+
+      // Module Weapon Swap Stats
+      "m_FireSFXType": "HEHomingMissile", //Firing noise
+      // Module Weapon Gun Swap Stats 
+      //  (any value that ModuleWeaponGun uses will be swapped from here)
+      "m_FireControlMode": "AllAtOnce", //Fires both barrels at once
+      "m_ShotCooldown" : 0.2,           //This is the cooldown between every burst shot.
+      "m_BurstShotCount" : 3,         //Number of shots before the gun "overheats"
+      "m_BurstCooldown" : 2.4,          //
+      "m_CooldownVariancePct": 0.01,
+      "m_SeekingRounds" : true,       //Rounds that home in.
+    },
+-----------------------------------------------------------------------------------------------------
+
+    "RandomAdditions.ModuleRepairAimer": {
+      "HealHealthRate": 1000,   // How much to heal in one pulse
+      "HealPulseCost": 25,      // How much one heal pulse costs
+      "HealPulseDelay": 1,      // Cooldown for the heal pulse
+      "MaxLockOnRange": 70,     // Max range to seek Techs
+      "MaxExtendRange": 110,    // Max range for the transform to move out
+      "RotateSpeed": 30,        // How fast to aim by
+      "ExtendSpeed": 80,        // How fast to extend the beam by
+      "UseCircularEnds": false, // Round off the ends of the line
+    },
+
 -----------------------------------------------------------------------------------------------------
 
 	Need help? Let me know on the official TerraTech Community Discord!

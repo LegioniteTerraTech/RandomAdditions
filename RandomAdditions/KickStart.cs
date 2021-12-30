@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
@@ -17,9 +18,11 @@ namespace RandomAdditions
         const string ModName = "RandomAdditions";
 
         public static bool isWaterModPresent = false;
+        public static bool isTweakTechPresent = false;
         public static GameObject logMan;
 
         public static bool DebugPopups = false;
+        public static bool ImmediateLoadLastSave = true; // Load directly into the last saved save on game startup
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
         public static bool NoShake = false; 
         public static bool AutoScaleBlocksInSCU = false;
@@ -73,6 +76,7 @@ namespace RandomAdditions
             GlobalClock.ClockManager.Initiate();
             GUIClock.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
+            ManModeSwitch.Initiate();
             logMan = new GameObject("logMan");
             logMan.AddComponent<LogHandler>();
             logMan.GetComponent<LogHandler>().Initiate();
@@ -82,10 +86,16 @@ namespace RandomAdditions
                 Debug.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
                 isWaterModPresent = true;
             }
+            if (LookForMod("TweakTech"))
+            {
+                Debug.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
+                isTweakTechPresent = true;
+            }
 
 
             ModConfig thisModConfig = new ModConfig();
             thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
+            thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
             thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
             thisModConfig.BindConfig<KickStart>(null, "NoShake");
             thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
@@ -125,5 +135,10 @@ namespace RandomAdditions
             }
             return false;
         }
+        public static Transform HeavyObjectSearch(Transform trans, string name)
+        {
+            return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand) { return cand.name == "_Target"; });
+        }
+
     }
 }

@@ -5,6 +5,9 @@ using System.Text;
 using System.Reflection;
 using UnityEngine;
 
+[RequireComponent(typeof(ModuleEnergy))]
+public class ModulePointDefense : RandomAdditions.ModulePointDefense { };
+
 namespace RandomAdditions
 {
     // A block module that shoots beams or projectiles that hit hostile projectiles
@@ -23,10 +26,12 @@ namespace RandomAdditions
         "DefenseEnergyCost": 0,     // How much it takes to maintain passive defense
         "DefendRange": 50,          // The range of which this can find and track projectiles
         "RotateRate": 50,           // How fast we should rotate the turret when dealing with a projectile
-        "FireSFXType": 2,           // Same as ModuleWeapon but for Pulse
-        // - does not handle looping audio since the devs made it inconceivably hard to figure out how to stop looping correctly
+        "ShareFireSFX": true,       // Share the firing noise with ModuleWeapon 
+        // - Note this is almost always needed for guns with looping audio (guns with visible spinning parts like the HE Autocannon or BF Gatling Laser)
+        "FireSFXType": 2,           // Same as ModuleWeapon but for Pulse. Ignored when ShareFireSFX is true
 
         // Pulse Beam effect (hitscan mode)
+        "PulseAimCone": 15         // The max aiming rotation: Input Value [1-100] ~ Degrees(5-360)
         "AllAtOnce": true,         // Will this fire all lasers at once
         "HitChance": 45,           // Out of 100
         "PointDefenseDamage": 1,   // How much damage to deal to the target projectile
@@ -66,10 +71,12 @@ namespace RandomAdditions
         public float DefenseCooldown = 1;
         public float DefenseEnergyCost = 0;
         public bool ExplodeOnHit = false;
+        public bool ShareFireSFX = false;
         public TechAudio.SFXType FireSFXType = TechAudio.SFXType.LightMachineGun;
 
         // Pulse Parameters
-        public float HitChance = 45;                 // out of 100
+        public float PulseAimCone = 15;             // out of 100
+        public float HitChance = 45;                // out of 100
         public float PulseEnergyCost = 0;
         public float PointDefenseDamage = 1;
         public float PulseSizeStart = 0.5f;
@@ -85,14 +92,25 @@ namespace RandomAdditions
         public bool OverrideEnemyAiming = false;    // Will this prioritize projectiles over the enemy?
 
         // Handled
-        public bool DisabledWeapon = false;
-        //private int fireTimeout = 0;
+        public bool DisabledWeapon
+        {
+            get { return disabledWeapon; }
+            set
+            {
+                if (value == false)
+                    LockOnFireSFXHalt();
+                disabledWeapon = value;
+            }
+        }
+        private bool disabledWeapon = false;
+
         private int timer = 0;
         private float cooldown = 0;
         private int barrelStep = 0;
         private int barrelC = 0;
         private bool firing = false;
         private bool spooling = false;
+        private float pulseAimAnglef;
 
         internal TankPointDefense def;
         private Transform fireTrans;
@@ -107,6 +125,8 @@ namespace RandomAdditions
         public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
         public Rigidbody Target => LockedTarget;
 
+        private bool isOfficialMod = false;
+
         private float energyToTax = 0;
 
         public void OnPool()
@@ -115,9 +135,12 @@ namespace RandomAdditions
             TankBlock.AttachEvent.Subscribe(OnAttach);
             TankBlock.DetachEvent.Subscribe(OnDetach);
 
-            fireTrans = transform.Find("_fireTrans");
+            fireTrans = KickStart.HeavyObjectSearch(transform, "_fireTrans");
             if (fireTrans == null)
                 fireTrans = gameObject.transform;
+
+            if (Singleton.Manager<ManMods>.inst.IsModdedBlock(block.BlockType))
+                isOfficialMod = true;
 
             aimerMain = GetComponent<TargetAimer>();
             aimers = GetComponentsInChildren<GimbalAimer>().ToList();
@@ -132,7 +155,20 @@ namespace RandomAdditions
                 SeperateFromGun = true;
             if (SeperateFromGun)
                 ForcePulse = true;
+            if ((bool)gunSFX)
+            {
+                if (ShareFireSFX)
+                    FireSFXType = gunSFX.m_FireSFXType;
+            }
+            else
+                ShareFireSFX = false;
             barrelStep = 0;
+            if (PulseAimCone > 100 || PulseAimCone < 1)
+            {
+                PulseAimCone = 15;
+                LogHandler.ThrowWarning("ModulePointDefense: Turret " + TankBlock.name + " has a PulseAimCone out of range!  Make sure it's a value within or including Input Value [1-100] ~ Degrees(5-360)");
+            }
+            pulseAimAnglef = 1 - (PulseAimCone / 50);
             if (!ForcePulse)
             {
                 if ((bool)GetComponent<FireData>())
@@ -189,6 +225,8 @@ namespace RandomAdditions
             if (aimers != null && !SeperateFromGun)
             {
                 Vector3 posAim = GetTargetHeading();
+                if (isOfficialMod)
+                    posAim.x = -posAim.x; // Official modding has flipped x axis
                 if (aimerMain != null)
                     aimerMain.AimAtWorldPos(posAim, RotateRate);
                 else
@@ -268,7 +306,7 @@ namespace RandomAdditions
         private bool LockOnFireQueueBarrel(Vector3 aimPoint, int barrelNum)
         {
             CannonBarrel barry = gunBase.FindCannonBarrelFromIndex(barrelNum);
-            if (Vector3.Dot((aimPoint - barry.projectileSpawnPoint.position).normalized, barry.projectileSpawnPoint.forward) > 0.8f)
+            if (Vector3.Dot((aimPoint - barry.projectileSpawnPoint.position).normalized, barry.projectileSpawnPoint.forward) > pulseAimAnglef)
             {
                 if ((bool)barry.muzzleFlash)
                     barry.muzzleFlash.Fire();
@@ -311,6 +349,8 @@ namespace RandomAdditions
                 {
                     if (tokens <= 0)
                         return fired;
+                    if (Vector3.Dot((rbody.position - fireTrans.position).normalized, fireTrans.forward) < pulseAimAnglef)
+                        continue;
                     FirePulseBeam(fireTrans, rbody);
                     fired = true;
                     tokens--;
@@ -330,10 +370,47 @@ namespace RandomAdditions
                 if (OnAudioTickUpdate != null)
                 {
                     TechAudio.AudioTickData audioTickData = default;
+                    if (ShareFireSFX)
+                    {
+                        audioTickData.module = gunSFX;
+                        audioTickData.provider = gunSFX;
+                    }
+                    else
+                    {
+                        audioTickData.module = this;
+                        audioTickData.provider = this;
+                    }
+                    audioTickData.sfxType = FireSFXType;
+                    audioTickData.numTriggered = firing ? 1 : 0;
+                    audioTickData.triggerCooldown = DefenseCooldown;
+                    audioTickData.isNoteOn = spooling;
+                    audioTickData.adsrTime01 = fireRateFraction;
+                    TechAudio.AudioTickData value = audioTickData;
+                    OnAudioTickUpdate.Send(value, null);
+                }
+            }
+            catch { }
+        }
+        private void LockOnFireSFXHalt()
+        {
+            if (ShareFireSFX)
+            {
+                return;
+            }
+            float fireRateFraction = 0.5f;
+            if ((bool)gunBase)
+            {
+                fireRateFraction = gunBase.GetFireRateFraction();
+            }
+            try
+            {
+                if (OnAudioTickUpdate != null)
+                {
+                    TechAudio.AudioTickData audioTickData = default;
                     audioTickData.module = this;
                     audioTickData.provider = this;
                     audioTickData.sfxType = FireSFXType;
-                    audioTickData.numTriggered = firing ? 1 : 0;
+                    audioTickData.numTriggered = 0;
                     audioTickData.triggerCooldown = DefenseCooldown;
                     audioTickData.isNoteOn = spooling;
                     audioTickData.adsrTime01 = fireRateFraction;
@@ -455,9 +532,9 @@ namespace RandomAdditions
             float velo = gunBase.GetVelocity();
             if (velo < 1)
                 velo = 1;
-            Vector3 veloVec = LockedTarget.velocity * Time.fixedDeltaTime;
+            Vector3 veloVec = LockedTarget.velocity;
             Vector3 posVec = LockedTarget.position - gunBase.GetFireTransform().position;
-            float roughDist = (posVec + veloVec).magnitude / (velo * Time.fixedDeltaTime);
+            float roughDist = posVec.magnitude / velo;
             if (roughDist > 10)
             {   // It's too fast
                 if (def.GetNewTarget(out Rigidbody fetched, !CanInterceptFast))
@@ -466,18 +543,19 @@ namespace RandomAdditions
                     {
                         LockedTarget = fetched;
                         //Debug.Log("RandomAdditions: ModulePointDefense - GetTargetHeading target is too fast or too far to intercept - changing");
-                        veloVec = LockedTarget.velocity * Time.fixedDeltaTime;
+                        veloVec = LockedTarget.velocity;
                         posVec = LockedTarget.position - gunBase.GetFireTransform().position;
-                        roughDist = (posVec + veloVec).magnitude / (velo * Time.fixedDeltaTime);
+                        roughDist = posVec.magnitude / velo;
                     }
                 }
             }
-            Vector3 targPos = LockedTarget.position + (veloVec * roughDist) - (tankVelo * Time.fixedDeltaTime);
+            Vector3 targPos = LockedTarget.position + ((veloVec - tankVelo) * roughDist);
             if (!gunBase.AimWithTrajectory())
                 return targPos;
+
             // Aim with rough predictive trajectory
             velo *= velo;
-            float grav = Physics.gravity.magnitude;
+            float grav = -Physics.gravity.y;
             Vector3 direct = targPos - gunBase.GetFireTransform().position;
             Vector3 directFlat = direct;
             directFlat.y = 0;

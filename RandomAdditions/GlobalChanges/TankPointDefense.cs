@@ -9,6 +9,9 @@ namespace RandomAdditions
 {
     internal class TankPointDefense : MonoBehaviour
     {
+        private static List<TankPointDefense> pDTs = new List<TankPointDefense>();
+        private static bool needsReset = false;
+
         internal Tank tank;
         private List<ModulePointDefense> dTs = new List<ModulePointDefense>();
 
@@ -21,7 +24,6 @@ namespace RandomAdditions
         /// </summary>
         private bool enemyInRange = false;
         private bool needsBiasCheck = false;
-        private bool needsReset = false;
         private bool AdvancedIntercept = false;
         private List<Rigidbody> fetchedProj = new List<Rigidbody>();
         private List<Rigidbody> fetchedAll = new List<Rigidbody>();
@@ -46,6 +48,7 @@ namespace RandomAdditions
                 def = tank.gameObject.AddComponent<TankPointDefense>();
                 def.tank = tank;
                 def.reg = tank.EnergyRegulator;
+                pDTs.Add(def);
             }
 
             if (!def.dTs.Contains(dTurret))
@@ -54,7 +57,7 @@ namespace RandomAdditions
                 Debug.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + dTurret.name + " was already added to " + tank.name + " but an add request was given?!?");
             dTurret.def = def;
             def.needsBiasCheck = true;
-            def.needsReset = true;
+            needsReset = true;
         }
         public static void HandleRemoval(Tank tank, ModulePointDefense dTurret)
         {
@@ -76,7 +79,10 @@ namespace RandomAdditions
             def.needsBiasCheck = true;
 
             if (def.dTs.Count() == 0)
+            {
+                pDTs.Remove(def);
                 Destroy(def);
+            }
         }
 
         public float TechSpeed()
@@ -118,13 +124,16 @@ namespace RandomAdditions
             dTs.First().TaxReserves(energyTax);
             energyTax = 0;
         }
-        private void ResyncDefenses()
+        private static void ResyncDefenses()
         {
             if (!needsReset)
                 return;
-            foreach (ModulePointDefense def in dTs)
+            foreach (TankPointDefense tech in pDTs)
             {
-                def.ResetTiming();
+                foreach (ModulePointDefense def in tech.dTs)
+                {
+                    def.ResetTiming();
+                }
             }
             needsReset = false;
         }

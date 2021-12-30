@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class KeepSeekingProjectile : RandomAdditions.KeepSeekingProjectile { };
 namespace RandomAdditions
 {
     public class KeepSeekingProjectile : MonoBehaviour

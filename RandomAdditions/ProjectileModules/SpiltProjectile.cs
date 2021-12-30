@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
+public class SpiltProjectile : RandomAdditions.SpiltProjectile { };
 namespace RandomAdditions
 {
     // Spawns MORE projectiles on host projectile "Explosion"
@@ -100,7 +101,7 @@ namespace RandomAdditions
                     tankVeloCancel = inst.Shooter.rbody.velocity;
                 else
                     tankVeloCancel = Vector3.zero;
-                tankVeloCancel += inst.rbody.velocity;
+                //tankVeloCancel += inst.rbody.velocity;
                 Vector3 fireVelo = direct.forward + ((inst.rbody.velocity - tankVeloCancel) / velocityHandler);
 
 

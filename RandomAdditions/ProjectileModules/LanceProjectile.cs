@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class LanceProjectile : RandomAdditions.LanceProjectile { };
 namespace RandomAdditions
 {
     public class LanceProjectile : MonoBehaviour

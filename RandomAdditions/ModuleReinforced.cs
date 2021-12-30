@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class ModuleReinforced : RandomAdditions.ModuleReinforced { };
 namespace RandomAdditions
 {
     public class ModuleReinforced : Module

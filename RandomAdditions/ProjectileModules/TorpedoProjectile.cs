@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class TorpedoProjectile : RandomAdditions.TorpedoProjectile { };
 namespace RandomAdditions
 {
     public class TorpedoProjectile : MonoBehaviour

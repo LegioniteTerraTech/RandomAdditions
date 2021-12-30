@@ -7,6 +7,8 @@ using System.Reflection;
 using UnityEngine;
 
 
+[RequireComponent(typeof(ModuleEnergy))]
+public class ModuleFuelEnergyGenerator : RandomAdditions.ModuleFuelEnergyGenerator { };
 namespace RandomAdditions
 {
     [RequireComponent(typeof(ModuleEnergy))]

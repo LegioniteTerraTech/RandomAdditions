@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class SiloDisplay : RandomAdditions.SiloDisplay { };
 namespace RandomAdditions
 {
     public class SiloDisplay : MonoBehaviour

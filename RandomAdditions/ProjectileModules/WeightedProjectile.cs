@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class WeightedProjectile : RandomAdditions.WeightedProjectile { };
 namespace RandomAdditions
 {
     public class WeightedProjectile : MonoBehaviour
@@ -25,19 +26,19 @@ namespace RandomAdditions
         private Projectile fetchedProjectile;
         private bool hasFiredOnce = false;
 
-        public void OnPool()
+        public void FirstUpdate()
         {
             thisTrans = gameObject.transform;
             fetchedRBody = gameObject.GetComponent<Rigidbody>();
             fetchedProjectile = gameObject.GetComponent<Projectile>();
             hasFiredOnce = true;
-            Debug.Log("RandomAdditions: Launched WeightedProjectile on " + gameObject.name);
+            //Debug.Log("RandomAdditions: Launched WeightedProjectile on " + gameObject.name);
         }
 
         private void FixedUpdate()
         {
             if (!hasFiredOnce)
-                OnPool();
+                FirstUpdate();
             if (CustomGravity)
                 ForceProjectileGrav();
         }
@@ -53,8 +54,8 @@ namespace RandomAdditions
         }
         public void ForceProjectileGrav()
         {
-            Vector3 grav = Physics.gravity * fetchedProjectile.GetGravityScale();
-            fetchedRBody.AddForceAtPosition(grav * GravityAndSpeedScale - grav, thisTrans.position, ForceMode.Acceleration);
+            Vector3 grav = Physics.gravity * fetchedProjectile.GetGravityScale() * fetchedRBody.mass;
+            fetchedRBody.AddForceAtPosition(grav * GravityAndSpeedScale - grav, fetchedRBody.centerOfMass);
         }
     }
 }

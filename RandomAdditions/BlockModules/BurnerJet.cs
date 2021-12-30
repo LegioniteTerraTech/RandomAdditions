@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 
+public class BurnerJet : RandomAdditions.BurnerJet { };
 namespace RandomAdditions
 {
     public class BurnerJet : MonoBehaviour

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
+public class ModuleReplace : RandomAdditions.ModuleReplace { };
+
 namespace RandomAdditions
 {
     /*
@@ -510,6 +512,7 @@ namespace RandomAdditions
             Debug.Log("RandomAdditions: ReplaceManager - WeightedRAND failed");
             return replaced.GetRandomEntry();
         }
+        
         public static bool AboveTheSea(Vector3 input)
         {
             if (!KickStart.isWaterModPresent)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+public class ModuleItemSilo : RandomAdditions.ModuleItemSilo { };
 namespace RandomAdditions
 {
     public class ModuleItemSilo : Module

@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
+public class ModuleClock : RandomAdditions.ModuleClock { };
 namespace RandomAdditions
 {
     public class ModuleClock : Module
@@ -28,7 +29,7 @@ namespace RandomAdditions
             {
                 try
                 {
-                    thisInst.TimeObject = transform.Find("TimeObject");
+                    thisInst.TimeObject = KickStart.HeavyObjectSearch(transform, "TimeObject");
                 }
                 catch
                 {

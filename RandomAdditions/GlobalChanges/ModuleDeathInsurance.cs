@@ -2,56 +2,58 @@
 
 namespace RandomAdditions
 {
-    public class ModuleDeathInsurance : Module
+    internal class ModuleDeathInsurance : Module
     {
-        private bool MarkedForDeath = false;
+        private TankBlock TB;
         private float DeathTimer = 300;
 
-        public void TryQueueUnstoppableDeath()
+        public static void TryQueueUnstoppableDeath(TankBlock block)
         {
             if (ManGameMode.inst.IsCurrentModeMultiplayer())
                 return; // Cannot exploit this in MP - the presence of such a powerful weapon (in unmodded) can cause many issues.
-            var thisInst = gameObject.GetComponent<ModuleDeathInsurance>();
-            var tankBloc = gameObject.GetComponent<TankBlock>();
-            if (tankBloc.IsNotNull() && tankBloc.tank.IsNotNull())
+            if ((bool)block)
             {
-                if (Singleton.Manager<ManPlayer>.inst.PlayerIndestructible && ManSpawn.IsPlayerTeam(tankBloc.tank.Team))
-                    return;//Cannot kill invincible
-                if (tankBloc.damage.maxHealth < 0)
+                Tank thisTank = block.transform.root.GetComponent<Tank>();
+                if (thisTank.IsNotNull())
+                {
+                    if (Singleton.Manager<ManPlayer>.inst.PlayerIndestructible && ManSpawn.IsPlayerTeam(thisTank.Team))
+                        return;//Cannot kill invincible
+                }
+                if (block.damage.maxHealth < 0)
                     return;//Cannot kill borked
-                thisInst.MarkedForDeath = true;
-                Tank thisTank = tankBloc.transform.root.GetComponent<Tank>();
+                ModuleDeathInsurance thisInst = block.GetComponent<ModuleDeathInsurance>();
+                if (!(bool)thisInst)
+                {
+                    thisInst = block.gameObject.AddComponent<ModuleDeathInsurance>();
+                }
+                thisInst.TB = block;
                 if (thisTank != null)
-                    Debug.Log("RandomAdditions: Block " + tankBloc.gameObject.name + " on " + thisTank.name + " has been marked for unstoppable death.");
-                thisInst.DeathTimer = tankBloc.damage.SelfDestructTimeRemaining() * 50 + 50;
-                tankBloc.damage.m_DamageDetachFragility = 999000;  //deny all future rigidity
-                tankBloc.damage.AbortSelfDestruct();               //let it suffer a bit longer
-                tankBloc.Separate();                               //detach from Tech
+                    Debug.Log("RandomAdditions: Block " + block.gameObject.name + " on " + thisTank.name + " has been marked for unstoppable death.");
+                thisInst.DeathTimer = thisInst.TB.damage.SelfDestructTimeRemaining() * 50 + 50;
+                thisInst.TB.damage.AbortSelfDestruct();               //let it suffer a bit longer
+                thisInst.TB.Separate();                               //detach from Tech
             }
         }
 
         private void ForceOverrideEverythingAndDie()
         {
             // Make sure that even if killing it fails, the block is unusable
-            gameObject.GetComponent<TankBlock>().LockBlockAttach();
-            gameObject.GetComponent<TankBlock>().LockBlockInteraction();
+            TB.LockBlockAttach();
+            TB.LockBlockInteraction();
             // insta-death
-            MarkedForDeath = false;
             Debug.Log("RandomAdditions: Block has gone poof");
-            gameObject.GetComponent<TankBlock>().damage.SelfDestruct(0);
+            TankBlock cache = TB;
+            Destroy(this);
+            cache.damage.SelfDestruct(0);
         }
 
         private void FixedUpdate()
         {
-            var thisInst = gameObject.GetComponent<ModuleDeathInsurance>();
-            if (thisInst.MarkedForDeath)
-            {
-                Debug.Log("RandomAdditions: DeathClock " + DeathTimer + "!");
-                gameObject.GetComponent<TankBlock>().PreExplodePulse = true;
-                thisInst.DeathTimer--;
-                if (thisInst.DeathTimer <= 0)
-                    ForceOverrideEverythingAndDie();
-            }
+            Debug.Log("RandomAdditions: DeathClock " + DeathTimer + "!");
+            TB.PreExplodePulse = true;
+            DeathTimer--;
+            if (DeathTimer <= 0)
+                ForceOverrideEverythingAndDie();
         }
     }
 }

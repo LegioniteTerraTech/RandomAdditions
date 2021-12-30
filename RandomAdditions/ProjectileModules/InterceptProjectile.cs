@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
+public class InterceptProjectile : RandomAdditions.InterceptProjectile { };
 namespace RandomAdditions
 {
     //Allows a projectile to collide with Projectiles and home in on MissileProjectile
@@ -183,16 +184,19 @@ namespace RandomAdditions
                 timer = 7;
             }
             timer--;
-            if (LockedTarget.IsNotNull() && !LockedTarget.IsSleeping())
+            if (LockedTarget.IsNotNull())
             {
-                if ((LockedTarget.position - rbody.position).sqrMagnitude > Range * Range)
+                if (!LockedTarget.IsSleeping())
                 {
-                    LockedTarget = null;
-                }
-                else
-                {
-                    rbodyT = LockedTarget;
-                    return true;
+                    if ((LockedTarget.position - rbody.position).sqrMagnitude > Range * Range)
+                    {
+                        LockedTarget = null;
+                    }
+                    else
+                    {
+                        rbodyT = LockedTarget;
+                        return true;
+                    }
                 }
             }
 

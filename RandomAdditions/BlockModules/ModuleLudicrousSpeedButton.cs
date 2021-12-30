@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.Reflection;
 using UnityEngine;
 
+public class ModuleLudicrousSpeedButton : RandomAdditions.ModuleLudicrousSpeedButton { };
+
 namespace RandomAdditions
 {
     [RequireComponent(typeof(ModuleEnergy))]

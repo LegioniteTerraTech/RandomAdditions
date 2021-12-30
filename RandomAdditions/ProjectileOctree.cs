@@ -9,7 +9,7 @@ namespace RandomAdditions
 {
     public class ProjectileCubetree
     {   // Dirty cheap octree that's not an octree but a coordinate
-        internal const int CubeSize = 30;
+        internal const int CubeSize = 32;
         //internal bool useCheap = false;
         private static List<Projectile> Projectiles = new List<Projectile>();
         internal List<CubeBranch> CubeBranches = new List<CubeBranch>();
@@ -26,6 +26,7 @@ namespace RandomAdditions
         }
         public bool Remove(Projectile proj)
         {
+            UpdatePos();
             if (proj.IsNull())
             {
                 Debug.Log("RandomAdditions: ProjectileCubetree - Was told to remove NULL");
@@ -57,8 +58,14 @@ namespace RandomAdditions
                 return;
             if (Projectiles.Count > 2000)
             {
-                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles");
-                return;
+                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles, pruning");
+
+                // Prune some
+                for (int count = Projectiles.Count / 2; 0 < count; count--)
+                {
+                    Remove(Projectiles.ElementAt(0));
+                }
+                //return;
             }
             Projectiles.Add(proj);
             IntVector3 CBp = CubeBranch.GetCBPos(proj.trans.position);
@@ -160,9 +167,10 @@ namespace RandomAdditions
             projectiles = new List<Projectile>();
             float CubeHalf = CubeSize / 2;
             float rangeEdge = range + CubeHalf;
-            int count = CubeBranches.Count;
             Vector3 boundsMin = new Vector3(position.x - rangeEdge, position.y - rangeEdge, position.z - rangeEdge);
             Vector3 boundsMax = new Vector3(position.x + rangeEdge, position.y + rangeEdge, position.z + rangeEdge);
+            
+            int count = CubeBranches.Count;
             for (int step = 0; step < count;)
             {
                 CubeBranch CubeB = CubeBranches.ElementAt(step);
@@ -201,8 +209,8 @@ namespace RandomAdditions
             internal List<Projectile> Projectiles = new List<Projectile>();
 
             public static IntVector3 GetCBPos(Vector3 pos)
-            {
-                return new IntVector3((int)(pos.x / CubeSize) * CubeSize, (int)(pos.y / CubeSize) * CubeSize, (int)(pos.z / CubeSize) * CubeSize);
+            {   // note that central cube is bigger
+                return new IntVector3(Mathf.RoundToInt(pos.x / CubeSize) * CubeSize, Mathf.RoundToInt(pos.y / CubeSize) * CubeSize, Mathf.RoundToInt(pos.z / CubeSize) * CubeSize);
             }
             public bool GetProjectiles(out List<Projectile> projO)
             {

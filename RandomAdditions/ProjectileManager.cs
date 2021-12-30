@@ -16,6 +16,9 @@ namespace RandomAdditions
         private static ProjectileCubetree ProjOct = new ProjectileCubetree();
         //private static OctreeProj ProjOct = new OctreeProj();
 
+        private byte timer = 0;
+        private byte delay = 12;
+
         public static void Initiate()
         {
             inst = new GameObject("ProjectileManager").AddComponent<ProjectileManager>();
@@ -23,9 +26,14 @@ namespace RandomAdditions
             Singleton.Manager<ManWorldTreadmill>.inst.OnAfterWorldOriginMoved.Subscribe(OnWorldMovePost);
         }
 
-        private void Update()
+        private void LateUpdate()
         {
-            ProjOct.PostFramePrep();
+            timer++;
+            if (timer >= delay)
+            {
+                ProjOct.PostFramePrep();
+                timer = 0;
+            }
         }
         public static void OnWorldMovePost(IntVector3 moved)
         {
@@ -70,9 +78,9 @@ namespace RandomAdditions
             rbody = null;
             rbodys = null;
             Vector3 pos = iProject.trans.position;
-            float bestVal = Range * Range;
-            if (!ProjOct.NavigateOctree(pos, bestVal, out List<Projectile> Projectiles))
+            if (!ProjOct.NavigateOctree(pos, Range, out List<Projectile> Projectiles))
                 return false;
+            float bestVal = Range * Range;
             float rangeMain = bestVal;
             rbodys = new List<Rigidbody>();
             int projC = Projectiles.Count;
@@ -119,13 +127,13 @@ namespace RandomAdditions
         {
             //Debug.Log("RandomAdditions: GetListProjectiles - Launched!");
             rbodys = null;
-            float bestVal = Range * Range;
             Vector3 pos = iDefend.transform.TransformPoint(iDefend.BiasDefendCenter);
-            if (!ProjOct.NavigateOctree(pos, bestVal, out List<Projectile> Projectiles))
+            if (!ProjOct.NavigateOctree(pos, Range, out List<Projectile> Projectiles))
                 return false;
+            float bestVal = Range * Range;
             rbodys = new List<Rigidbody>();
             int projC = Projectiles.Count;
-            for (int step = 0; step < projC; )
+            for (int step = 0; step < projC;)
             {
                 Projectile project = Projectiles.ElementAt(step);
                 if (!(bool)project)
@@ -172,5 +180,9 @@ namespace RandomAdditions
             return true;
         }
 
+    }
+
+    public class ProjectileIndex : MonoBehaviour
+    {
     }
 }

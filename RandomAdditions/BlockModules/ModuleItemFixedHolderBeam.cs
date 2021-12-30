@@ -4,6 +4,7 @@ using System.Linq;
 using System;
 using UnityEngine;
 
+public class ModuleItemFixedHolderBeam : RandomAdditions.ModuleItemFixedHolderBeam { };
 namespace RandomAdditions
 {
     public class ModuleItemFixedHolderBeam : Module

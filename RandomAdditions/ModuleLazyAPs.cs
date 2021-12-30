@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
+// For Easy Access
+public class ModuleLazyAPs : RandomAdditions.ModuleLazyAPs { };
 namespace RandomAdditions
 {
     // throw APs on blocks that have this module

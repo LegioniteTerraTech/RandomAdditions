@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+public class OHKOProjectile : RandomAdditions.OHKOProjectile { };
 namespace RandomAdditions
 {
     public class OHKOProjectile : MonoBehaviour
