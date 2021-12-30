@@ -92,23 +92,16 @@ namespace RandomAdditions
         public bool OverrideEnemyAiming = false;    // Will this prioritize projectiles over the enemy?
 
         // Handled
-        public bool DisabledWeapon
-        {
-            get { return disabledWeapon; }
-            set
-            {
-                if (value == false)
-                    LockOnFireSFXHalt();
-                disabledWeapon = value;
-            }
-        }
-        private bool disabledWeapon = false;
+        public bool DisabledWeapon = false;
+        private bool cacheDisabled = false;
+        public bool UsingWeapon = false;
 
         private int timer = 0;
         private float cooldown = 0;
         private int barrelStep = 0;
         private int barrelC = 0;
         private bool firing = false;
+        private bool firingCache = false;
         private bool spooling = false;
         private float pulseAimAnglef;
 
@@ -215,11 +208,19 @@ namespace RandomAdditions
         {
             if (cooldown > 0)
                 cooldown -= Time.deltaTime;
-            firing = false;
             if (LockedTarget == null)
             {
                 DisabledWeapon = false;
                 spooling = false;
+
+                if (cacheDisabled == DisabledWeapon)
+                {
+                    UsingWeapon = DisabledWeapon;
+                }
+                else
+                {
+                    LockOnFireSFXHalt();
+                }
                 return;
             }
             if (aimers != null && !SeperateFromGun)
@@ -246,7 +247,7 @@ namespace RandomAdditions
                     {
                         if (!gunBase.FiringObstructed())
                         {
-                            // Proceed to fake firing
+                            // Proceed to firing
                             firing = LockOnFire();
                         }
                     }
@@ -258,7 +259,16 @@ namespace RandomAdditions
                 firing = LockOnFireSimple();
                 spooling = true;
             }
-            LockOnFireSFX();
+
+            if (cacheDisabled == DisabledWeapon)
+            {
+                LockOnFireSFX();
+                UsingWeapon = DisabledWeapon;
+            }
+            else
+            {
+                LockOnFireSFXHalt();
+            }
         }
         private bool LockOnFire()
         {
@@ -360,13 +370,14 @@ namespace RandomAdditions
         }
         private void LockOnFireSFX()
         {
-            float fireRateFraction = 0.5f;
-            if ((bool)gunBase)
-            {
-                fireRateFraction = gunBase.GetFireRateFraction();
-            }
             try
             {
+
+                if ((!DisabledWeapon && ShareFireSFX)) //|| (firingCache != firing))
+                {
+                    LockOnFireSFXHalt();
+                    return;
+                }
                 if (OnAudioTickUpdate != null)
                 {
                     TechAudio.AudioTickData audioTickData = default;
@@ -384,7 +395,7 @@ namespace RandomAdditions
                     audioTickData.numTriggered = firing ? 1 : 0;
                     audioTickData.triggerCooldown = DefenseCooldown;
                     audioTickData.isNoteOn = spooling;
-                    audioTickData.adsrTime01 = fireRateFraction;
+                    audioTickData.adsrTime01 = firing ? 1 : 0;
                     TechAudio.AudioTickData value = audioTickData;
                     OnAudioTickUpdate.Send(value, null);
                 }
@@ -393,36 +404,39 @@ namespace RandomAdditions
         }
         private void LockOnFireSFXHalt()
         {
-            if (ShareFireSFX)
-            {
-                return;
-            }
-            float fireRateFraction = 0.5f;
-            if ((bool)gunBase)
-            {
-                fireRateFraction = gunBase.GetFireRateFraction();
-            }
             try
             {
                 if (OnAudioTickUpdate != null)
                 {
-                    TechAudio.AudioTickData audioTickData = default;
-                    audioTickData.module = this;
-                    audioTickData.provider = this;
+                    TechAudio.AudioTickData audioTickData = default; 
+                    if (ShareFireSFX)
+                    {
+                        audioTickData.module = gunSFX;
+                        audioTickData.provider = gunSFX;
+                    }
+                    else
+                    {
+                        audioTickData.module = this;
+                        audioTickData.provider = this;
+                    }
                     audioTickData.sfxType = FireSFXType;
                     audioTickData.numTriggered = 0;
                     audioTickData.triggerCooldown = DefenseCooldown;
-                    audioTickData.isNoteOn = spooling;
-                    audioTickData.adsrTime01 = fireRateFraction;
+                    audioTickData.isNoteOn = false;
+                    audioTickData.adsrTime01 = 0;
                     TechAudio.AudioTickData value = audioTickData;
                     OnAudioTickUpdate.Send(value, null);
                 }
             }
             catch { }
         }
+        
         public bool TryInterceptProjectile(bool enemyNear)
         {
+            cacheDisabled = DisabledWeapon;
+            firingCache = firing;
             DisabledWeapon = false;
+            firing = false;
             if (!(bool)block.tank)
                 return false;
             if ((bool)gunBase)
@@ -514,9 +528,21 @@ namespace RandomAdditions
                         firing = false;
                 }
             }
-            LockOnFireSFX();
             if (DefendOnly)
                 DisabledWeapon = true;
+
+            if (cacheDisabled == DisabledWeapon)
+            {
+                if (firingCache != firing)
+                {
+                    LockOnFireSFXHalt();
+                }
+                UsingWeapon = DisabledWeapon;
+            }
+            else
+            {
+                LockOnFireSFXHalt();
+            }
             return false;
         }
 

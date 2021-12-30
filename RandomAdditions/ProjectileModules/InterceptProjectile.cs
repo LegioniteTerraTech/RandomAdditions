@@ -136,37 +136,44 @@ namespace RandomAdditions
         public bool FindAndHome(out Vector3 posOut)
         {
             posOut = Vector3.zero;
-            if (!GetOrTrack(out Rigidbody rbodyT))
-                return false;
+            try
+            {
+                if (!GetOrTrack(out Rigidbody rbodyT))
+                    return false;
 
-            float sqrDist = (rbodyT.position - rbody.position).sqrMagnitude;
-            if (sqrDist < InterceptRange * InterceptRange)
-            {
-                try
+                float sqrDist = (rbodyT.position - rbody.position).sqrMagnitude;
+                if (sqrDist < InterceptRange * InterceptRange)
                 {
-                    var targ = LockedTarget.GetComponent<ProjectileHealth>();
-                    if (!(bool)targ)
+                    try
                     {
-                        targ = LockedTarget.gameObject.AddComponent<ProjectileHealth>();
-                        targ.GetHealth();
+                        var targ = LockedTarget.GetComponent<ProjectileHealth>();
+                        if (!(bool)targ)
+                        {
+                            targ = LockedTarget.gameObject.AddComponent<ProjectileHealth>();
+                            targ.GetHealth();
+                        }
+                        LockedTarget.GetComponent<ProjectileHealth>().TakeDamage(PointDefDamage, InterceptedExplode);
+                        ForceExplode();
+                        proj.Recycle(worldPosStays: false);
                     }
-                    LockedTarget.GetComponent<ProjectileHealth>().TakeDamage(PointDefDamage, InterceptedExplode);
-                    ForceExplode();
-                    proj.Recycle(worldPosStays: false);
+                    catch
+                    {
+                        Debug.Log("RandomAdditions: InterceptProjectile - Target found but has no ProjectileHealth!?");
+                    }
                 }
-                catch
+                if (sqrDist < Range / 4)
                 {
-                    Debug.Log("RandomAdditions: InterceptProjectile - Target found but has no ProjectileHealth!?");
+                    posOut = rbodyT.position;
                 }
+                else
+                    posOut = rbodyT.position + (rbodyT.velocity * Time.deltaTime);
+                //Debug.Log("RandomAdditions: InterceptProjectile - Homing at " + posOut);
+                return true;
             }
-            if (sqrDist < Range / 4)
+            catch
             {
-                posOut = rbodyT.position;
+                return false;
             }
-            else
-                posOut = rbodyT.position + (rbodyT.velocity * Time.deltaTime);
-            //Debug.Log("RandomAdditions: InterceptProjectile - Homing at " + posOut);
-            return true;
         }
         public bool GetOrTrack(out Rigidbody rbodyT)
         {
@@ -184,7 +191,7 @@ namespace RandomAdditions
                 timer = 7;
             }
             timer--;
-            if (LockedTarget.IsNotNull())
+            if ((bool)LockedTarget)
             {
                 if (!LockedTarget.IsSleeping())
                 {

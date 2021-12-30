@@ -284,7 +284,7 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<ModulePointDefense>();
                 if (ModuleCheck != null)
                 {
-                    if (ModuleCheck.DisabledWeapon)
+                    if (ModuleCheck.UsingWeapon)
                     {
                         __result = 0;
                         return false;
