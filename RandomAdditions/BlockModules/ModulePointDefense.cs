@@ -227,10 +227,10 @@ namespace RandomAdditions
             {
                 Vector3 posAim = GetTargetHeading();
                 if (isOfficialMod)
-                {
+                {   // Official modding has flipped x axis for GAMEOBJECTS (not models like unofficial)
                     Vector3 localVec = transform.InverseTransformPoint(posAim);
                     localVec.x = -localVec.x;
-                    posAim = transform.TransformPoint(localVec); // Official modding has flipped x axis for GAMEOBJECTS
+                    posAim = transform.TransformPoint(localVec);
                 }
                 if (aimerMain != null)
                     aimerMain.AimAtWorldPos(posAim, RotateRate);
