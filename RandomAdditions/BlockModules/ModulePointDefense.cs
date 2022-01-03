@@ -59,7 +59,7 @@ namespace RandomAdditions
         TankBlock TankBlock;
 
         // General parameters
-        public bool DefendOnly = false;      
+        public bool DefendOnly = false;
         public bool CanInterceptFast = false;       // Can this also shoot fast projectiles?
         public bool AllAtOnce = true;
         public bool ForcePulse = false;
@@ -82,7 +82,7 @@ namespace RandomAdditions
         public float PulseSizeStart = 0.5f;
         public float PulseSizeEnd = 0.2f;
         public float PulseLifetime = 0;
-        public Material OverrideMaterial = null; 
+        public Material OverrideMaterial = null;
         public Color DefenseColorStart = new Color(0.05f, 1f, 0.3f, 0.8f);
         public Color DefenseColorEnd = new Color(0.05f, 1f, 0.3f, 0.8f);
         public int MaxPulseTargets = 1;
@@ -408,7 +408,7 @@ namespace RandomAdditions
             {
                 if (OnAudioTickUpdate != null)
                 {
-                    TechAudio.AudioTickData audioTickData = default; 
+                    TechAudio.AudioTickData audioTickData = default;
                     if (ShareFireSFX)
                     {
                         audioTickData.module = gunSFX;
@@ -430,7 +430,7 @@ namespace RandomAdditions
             }
             catch { }
         }
-        
+
         public bool TryInterceptProjectile(bool enemyNear)
         {
             cacheDisabled = DisabledWeapon;
@@ -546,7 +546,95 @@ namespace RandomAdditions
             return false;
         }
 
+        private Vector3 GetTargetHeading()
+        {   // The projectile intercept coding is too expensive on terratech's gun spam levels 
+            //  - will have to find a cheaper, less accurate but functional alternative
 
+            if (ForcePulse)
+                return LockedTarget.position;
+            Vector3 tankVelo = Vector3.zero;
+            if ((bool)TankBlock.tank.rbody)
+                tankVelo = TankBlock.tank.rbody.velocity;
+            float velo = gunBase.GetVelocity();
+            if (velo < 1)
+                velo = 1;
+            //Debug.Log("TweakTech: RoughPredictAim - " + GravSpeedModifier);
+            Vector3 targPos = LockedTarget.position;
+            Vector3 VeloDiff = LockedTarget.velocity - tankVelo;
+            if (!gunBase.AimWithTrajectory())
+            {
+                Vector3 posVec = targPos - gunBase.GetFireTransform().position;
+                float roughDist = posVec.magnitude / velo;
+                return targPos + (VeloDiff * roughDist);
+            }
+            else
+            {
+                float grav = -Physics.gravity.y;
+                Vector3 posVec = targPos - gunBase.GetFireTransform().position;
+                float MaxRangeVelo = velo * 0.7071f;
+                float MaxTime = MaxRangeVelo / grav;
+                float MaxDist = MaxTime * MaxRangeVelo;
+
+                float veloVecMag = posVec.magnitude;
+                float distDynamic = veloVecMag / MaxDist;
+                if (distDynamic > 1)
+                    distDynamic = 1;
+                float roughTime = veloVecMag / (velo * (0.7071f + ((1 - distDynamic) * 0.2929f)));
+                // this works I don't even know how
+                Vector3 VeloDiffCorrected = VeloDiff;
+                VeloDiffCorrected.y = 0;
+                // The power of cos at 45 degrees compels thee
+                VeloDiffCorrected = VeloDiffCorrected.magnitude * 0.7071f * VeloDiffCorrected.normalized;
+                VeloDiffCorrected.y = VeloDiff.y;
+                targPos = targPos + (VeloDiffCorrected * roughTime);
+                float roughDist = VeloDiff.magnitude / velo;
+                if (roughDist > LockOnStrength)
+                {   // It's too fast
+                    if (def.GetNewTarget(out Rigidbody fetched, !CanInterceptFast))
+                    {
+                        if (LockedTarget != fetched)
+                        {
+                            LockedTarget = fetched;
+                            targPos = LockedTarget.position;
+                            posVec = targPos - gunBase.GetFireTransform().position;
+                            VeloDiff = LockedTarget.velocity - tankVelo;
+
+                            veloVecMag = posVec.magnitude;
+                            distDynamic = veloVecMag / MaxDist;
+                            if (distDynamic > 1)
+                                distDynamic = 1;
+                            roughTime = veloVecMag / (velo * (0.7071f + ((1 - distDynamic) * 0.2929f)));
+                            // this works I don't even know how
+                            VeloDiffCorrected = VeloDiff;
+                            VeloDiffCorrected.y = 0;
+                            // The power of cos at 45 degrees compels thee
+                            VeloDiffCorrected = VeloDiffCorrected.magnitude * 0.7071f * VeloDiffCorrected.normalized;
+                            VeloDiffCorrected.y = VeloDiff.y;
+                            targPos = targPos + (VeloDiffCorrected * roughTime);
+                            roughDist = VeloDiff.magnitude / velo;
+                        }
+                    }
+                }
+
+                // Aim with rough predictive trajectory
+                velo *= velo;
+                Vector3 direct = targPos - gunBase.GetFireTransform().position;
+                Vector3 directFlat = direct;
+                directFlat.y = 0;
+                float distFlat = directFlat.sqrMagnitude;
+                float height = direct.y + direct.y;
+
+                float vertOffset = (velo * velo) - grav * (grav * distFlat + (height * velo));
+                if (vertOffset < 0)
+                    targPos.y += (velo / grav) - direct.y;
+                else
+                    targPos.y += ((velo - Mathf.Sqrt(vertOffset)) / grav) - direct.y;
+                return targPos;
+            }
+        }
+
+
+        /* // Old, Obsolete code - uses code from 
         private Vector3 GetTargetHeading()
         {   // The projectile intercept coding is too expensive on terratech's gun spam levels 
             //  - will have to find a cheaper, less accurate but functional alternative
@@ -594,7 +682,8 @@ namespace RandomAdditions
             else
                 targPos.y += ((velo - Mathf.Sqrt(vertOffset)) / grav) - direct.y;
             return targPos;
-        }
+        }*/
+
         private bool GetProjectile()
         {
             bool getProj = false;
@@ -664,7 +753,7 @@ namespace RandomAdditions
             //var line = trans.Find("ShotLine");
             //if (!(bool)line)
             //{
-                gO = Instantiate(new GameObject("ShotLine"), trans, false);
+            gO = Instantiate(new GameObject("ShotLine"), trans, false);
             //}
             //else
             //    gO = line.gameObject;
