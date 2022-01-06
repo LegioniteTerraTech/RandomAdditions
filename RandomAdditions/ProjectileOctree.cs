@@ -14,6 +14,7 @@ namespace RandomAdditions
         private static List<Projectile> Projectiles = new List<Projectile>();
         internal List<CubeBranch> CubeBranches = new List<CubeBranch>();
         private bool updatedThisFrame = false;
+        private bool bloated = false;
 
         public void PostFramePrep()
         {
@@ -21,8 +22,23 @@ namespace RandomAdditions
         }
         public void PurgeAll()
         {
-            //Projectiles = new List<Projectile>();
-            //CubeBranches = new List<CubeBranch>();
+            Projectiles.Clear();
+            CubeBranches.Clear();
+        }
+        public void PruneCubeBranches()
+        {
+            bloated = true;
+            for (int count = CubeBranches.Count / 2; 0 < count; count--)
+            {
+                CubeBranch CB = CubeBranches.ElementAt(0);
+                if (CB != null)
+                {
+                    foreach (Projectile proj in CB.Projectiles)
+                        Projectiles.Remove(proj);
+                }
+                CubeBranches.RemoveAt(0);
+            }
+            bloated = false;
         }
         public bool Remove(Projectile proj)
         {
@@ -77,9 +93,10 @@ namespace RandomAdditions
                     return;
                 }
             }
-            if (CubeBranches.Count > 200)
+            if (CubeBranches.Count >= 250)
             {
-                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max");
+                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max, pruning");
+                PruneCubeBranches();
                 return;
             }
             CubeBranch CB = new CubeBranch();
@@ -103,7 +120,7 @@ namespace RandomAdditions
                     return;
                 }
             }
-            if (CubeBranches.Count > 200)
+            if (CubeBranches.Count >= 250)
             {
                 Debug.Log("RandomAdditions: ProjectileCubetree(ManageCubeBranch) - exceeded max");
                 return;

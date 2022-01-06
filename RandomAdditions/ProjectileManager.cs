@@ -24,8 +24,12 @@ namespace RandomAdditions
             inst = new GameObject("ProjectileManager").AddComponent<ProjectileManager>();
             Debug.Log("RandomAdditions: Created ProjectileManager.");
             Singleton.Manager<ManWorldTreadmill>.inst.OnAfterWorldOriginMoved.Subscribe(OnWorldMovePost);
+            ManGameMode.inst.ModeSwitchEvent.Subscribe(OnModeSwitch);
         }
-
+        public static void OnModeSwitch()
+        {
+            ProjOct.PurgeAll();
+        }
         private void LateUpdate()
         {
             timer++;

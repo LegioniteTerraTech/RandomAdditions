@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using UnityEngine;
+using CustomModules;
 
 [RequireComponent(typeof(ModuleEnergy))]
 public class ModulePointDefense : RandomAdditions.ModulePointDefense { };
@@ -226,7 +227,12 @@ namespace RandomAdditions
             if (aimers != null && !SeperateFromGun)
             {
                 Vector3 posAim = GetTargetHeading();
-                if (isOfficialMod)
+                bool nuterraSteamBlock = false;
+                if (KickStart.isNuterraSteamPresent)
+                {
+                    nuterraSteamBlock = (bool)GetComponent<CustomModules.LegacyModule.ModuleCustomBlock>();
+                }
+                if (isOfficialMod && !nuterraSteamBlock)
                 {   // Official modding has flipped x axis for GAMEOBJECTS (not models like unofficial)
                     Vector3 localVec = transform.InverseTransformPoint(posAim);
                     localVec.x = -localVec.x;

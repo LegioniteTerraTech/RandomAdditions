@@ -19,6 +19,9 @@ namespace RandomAdditions
 
         public static bool isWaterModPresent = false;
         public static bool isTweakTechPresent = false;
+
+        internal static bool isNuterraSteamPresent = false;
+
         public static GameObject logMan;
 
         public static bool DebugPopups = false;
@@ -90,6 +93,11 @@ namespace RandomAdditions
             {
                 Debug.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
                 isTweakTechPresent = true;
+            }
+            if (LookForMod("NuterraSteam"))
+            {
+                Debug.Log("TACtical_AI: Found NuterraSteam!  Making sure blocks work!");
+                isNuterraSteamPresent = true;
             }
 
 
