@@ -33,7 +33,7 @@
             "MaxOutputRate": 0,                     // Max Rate this silo can output at - also determines stack heights. Leave at 0 to auto-set
 
             // For Chunks: 
-            "MaxCapacity": 10,                      // Max resource storage capacity
+            "MaxCapacity": 10,                      // How many chunks this stores inside - Does not account for chunks left outside
             "DestroyContentsOnDestruction": false,  // Is this silo that dirty cheap that if it explodes it destroys all chunks inside?
         },
         //Check out SiloGauge too as you will be needing one of those to display what's inside
