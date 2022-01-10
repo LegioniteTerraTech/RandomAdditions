@@ -735,21 +735,8 @@ namespace RandomAdditions
                         ModuleCheckS.wasThisSeeking = validation.enabled; //Keep going!
                     }
                 }
-                /*
-                var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
-                if (ModuleCheckI != null)
-                {   // Handle intercept
-                    if (otherCollider.IsNotNull())
-                    {
-                        var pHP = otherCollider.GetComponent<ProjectileHealth>();
-                        if ((bool)pHP)
-                        {
-                            pHP.TakeDamage(ModuleCheckI.PointDefDamage, KickStart.InterceptedExplode);
-                        }
-                    }
-                }*/
                 var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
-                if ((bool)damageable && ModuleCheck != null)
+                if ((bool)damageable && ModuleCheck != null && (ManNetwork.IsHost || !ManNetwork.IsNetworked))
                 {
                     var validation = damageable.GetComponent<TankBlock>();
                     if (!validation)
@@ -757,6 +744,8 @@ namespace RandomAdditions
                         //Debug.Log("RandomAdditions: did not hit possible block");
                         return;
                     }
+                    if (!ModuleCheck.InstaKill)
+                        return;
 
                     if (__instance.Shooter.IsFriendly(validation.tank.Team) || validation.tank.IsNeutral())
                         return;// Stop friendly-fire
@@ -772,8 +761,6 @@ namespace RandomAdditions
                     {
                         Debug.Log("RandomAdditions: Error on applying ModuleDeathInsurance!");
                     }
-                    //Singleton.Manager<ManDamage>.inst.DealDamage(damageable, m_Damage, m_DamageType, m_Weapon, Shooter, hitPoint, __instance.rbody.velocity);
-                    //__instance.Recycle(worldPosStays: false);
                 }
                 else
                 {
@@ -804,6 +791,7 @@ namespace RandomAdditions
                 }
             }
         }
+
 
         [HarmonyPatch(typeof(Projectile))]
         [HarmonyPatch("Fire")]//On Fire
@@ -868,20 +856,51 @@ namespace RandomAdditions
             }
         }
 
+        
         [HarmonyPatch(typeof(Projectile))]
         [HarmonyPatch("SpawnExplosion")]//On Fire
         private class PatchProjectileForSplit
         {
-            private static void Postfix(Projectile __instance)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            private static bool Prefix(Projectile __instance, ref Vector3 explodePos, ref Damageable directHitTarget)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 var Split = __instance.GetComponent<SpiltProjectile>();
                 if ((bool)Split)
                 {
                     Split.OnExplosion();
                 }
+                try // Handle ModuleReinforced
+                {
+                    var ModuleCheck = __instance.GetComponent<OHKOProjectile>();
+                    if (!(bool)directHitTarget || ModuleCheck)
+                        return true;
+                    var modifPresent = directHitTarget.GetComponent<ModuleReinforced>();
+                    if ((bool)modifPresent)
+                    {
+                        if (modifPresent.DenyExplosion)
+                        {   // Prevent explosion from triggering
+                            Transform explodo = (Transform)InterceptProjectile.explode.GetValue(__instance);
+                            if ((bool)explodo)
+                            {
+                                var boom = explodo.GetComponent<Explosion>();
+                                if ((bool)boom)
+                                {
+                                    Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, explodePos).GetComponent<Explosion>();
+                                    if ((bool)boom2)
+                                    {
+                                        boom2.m_EffectRadius = 2;
+                                        boom2.m_EffectRadiusMaxStrength = 1;
+                                    }
+                                }
+                            }
+                            return false;
+                        }
+                    }
+                }
+                catch { }
+                return true;
             }
         }
-
+        
 
         [HarmonyPatch(typeof(SeekingProjectile))]
         [HarmonyPatch("OnPool")]
@@ -1096,6 +1115,7 @@ namespace RandomAdditions
             {
                 if (KickStart.NoShake)
                 {
+                    //Debug.Log("RandomAdditions: Stopping irritation.");
                     shaker.SetValue(__instance, 0);
                     return false;
                 }

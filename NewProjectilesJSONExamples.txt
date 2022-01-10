@@ -17,7 +17,9 @@
     // You know the story of David and Goliath? -
     //   This is david
     // a module that ensures block kill when paired with Projectile
-    "RandomAdditions.OHKOProjectile": {},// Ensure erad.
+   "RandomAdditions.OHKOProjectile": {
+    "InstaKill": true,        ///Should we kill the block we collided with?
+   },// Ensure erad.
      
 -----------------------------------------------------------------------------------------------------
      

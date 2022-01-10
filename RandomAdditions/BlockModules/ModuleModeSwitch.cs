@@ -376,7 +376,17 @@ namespace RandomAdditions
                 case ModeSwitchCondition.TargetSpeedFast:
                     if (GetTargetInfoTank(out target))
                     {
-                        SetMode(target.GetForwardSpeed() * Globals.inst.MilesPerGameUnit >= SetValue);
+                        Vector3 tankVelo;
+                        Vector3 targVelo;
+                        if (tech.rbody)
+                            tankVelo = tech.rbody.velocity;
+                        else
+                            tankVelo = Vector3.zero;
+                        if (target.rbody)
+                            targVelo = target.rbody.velocity;
+                        else
+                            targVelo = Vector3.zero;
+                        SetMode((targVelo - tankVelo).magnitude * Globals.inst.MilesPerGameUnit >= SetValue);
                     }
                     else
                         SetMode(false);
@@ -384,7 +394,17 @@ namespace RandomAdditions
                 case ModeSwitchCondition.TargetSpeedSlow:
                     if (GetTargetInfoTank(out target))
                     {
-                        SetMode(target.GetForwardSpeed() * Globals.inst.MilesPerGameUnit <= SetValue);
+                        Vector3 tankVelo;
+                        Vector3 targVelo;
+                        if (tech.rbody)
+                            tankVelo = tech.rbody.velocity;
+                        else
+                            tankVelo = Vector3.zero;
+                        if (target.rbody)
+                            targVelo = target.rbody.velocity;
+                        else
+                            targVelo = Vector3.zero;
+                        SetMode((targVelo - tankVelo).magnitude * Globals.inst.MilesPerGameUnit <= SetValue);
                     }
                     else
                         SetMode(false);

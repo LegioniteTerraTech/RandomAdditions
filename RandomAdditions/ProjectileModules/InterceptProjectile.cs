@@ -267,19 +267,22 @@ namespace RandomAdditions
             FindAndHome(out _);
         }
 
-        private static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
+        internal static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
         public void ForceExplode()
         {
-            Transform explodo = (Transform)explode.GetValue(proj);
-            var boom = explodo.GetComponent<Explosion>();
-            if ((bool)boom)
+            Transform explodo = (Transform)explode.GetValue(proj); 
+            if ((bool)explodo)
             {
-                Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, transform.position).GetComponent<Explosion>();
-                if (boom2 != null)
+                var boom = explodo.GetComponent<Explosion>();
+                if ((bool)boom)
                 {
-                    boom2.m_EffectRadiusMaxStrength = 1;
-                    boom2.m_EffectRadius = 2;
-                    boom2.DoDamage = false;
+                    Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, transform.position).GetComponent<Explosion>();
+                    if (boom2 != null)
+                    {
+                        boom2.m_EffectRadiusMaxStrength = 1;
+                        boom2.m_EffectRadius = 2;
+                        boom2.DoDamage = false;
+                    }
                 }
             }
         }

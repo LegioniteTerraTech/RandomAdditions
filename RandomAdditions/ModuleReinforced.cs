@@ -12,7 +12,8 @@ namespace RandomAdditions
             "DoDamagableSwitch": false, // Should we switch the DamageableType of this block?
             "TypeToSwitch": 0,          // DamageableType to switch to
 
-            "ModifyAoEDamage": false,    // Enable AoE damage changing? (only handles Explosion, not shotguns)
+            "ModifyAoEDamage": false,   // Enable AoE damage changing? (only handles Explosion, not shotguns)
+            "DenyExplosion": false,     // Stop explosions from spreading on contact?
             "ExplosionMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
 
             "UseMultipliers": true,     // Should the multipliers below be used?
@@ -35,6 +36,7 @@ namespace RandomAdditions
         public bool ModifyAoEDamage = false;
         public float ExplosionMultiplier = 1.0f;
 
+        public bool DenyExplosion = false;
         public bool UseMultipliers = true;
 
             public float Standard = 1.0f;

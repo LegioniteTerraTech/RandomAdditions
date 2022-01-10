@@ -60,6 +60,7 @@
             "TypeToSwitch": 0,          // DamageableType to switch to
 
             "ModifyAoEDamage": false,    // Enable AoE damage changing? (only handles Explosion, not shotguns)
+            "DenyExplosion": false,     // Stop explosions from spreading on contact?
             "ExplosionMultiplier": 1,   // Multiplier for all AoE attacks dealt against this block
 
             "UseMultipliers": true,     // Should the multipliers be used?

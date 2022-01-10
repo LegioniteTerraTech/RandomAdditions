@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using UnityEngine;
-using CustomModules;
 
 [RequireComponent(typeof(ModuleEnergy))]
 public class ModulePointDefense : RandomAdditions.ModulePointDefense { };
