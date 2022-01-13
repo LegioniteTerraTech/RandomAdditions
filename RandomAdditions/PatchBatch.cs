@@ -1053,11 +1053,13 @@ namespace RandomAdditions
                                     info.ApplyDamageMultiplier(multi.Plasma);
                                     return;
                             }
+                            /*
                             Debug.Log("RandomAdditions: !! NEW DAMAGE TYPE DETECTED !!   ALERT CODER!!!");
                             Debug.Log("RandomAdditions: Type " + info.DamageType.ToString());
                             Debug.Log("RandomAdditions: Update ModuleReinforced and also Patch!");
                             //THROW THE GAME!
                             LogHandler.ThrowWarning("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
+                            */
                         }
                     }
                 }
@@ -1182,6 +1184,7 @@ namespace RandomAdditions
                 reportBox.Find("Description").gameObject.SetActive(false);
                 reportBox.Find("Submit").gameObject.SetActive(false);
                 reportBox.Find("Email").gameObject.SetActive(false);
+                //reportBox.Find("Description").gameObject.GetComponent<InputField>().
 
                 //reportBox.Find(" Title").GetComponent<Text>().text = "<b>BUG REPORTER [MODDED!]</b>";
 
@@ -1212,17 +1215,19 @@ namespace RandomAdditions
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  \nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
 
-                    var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Explanation"), UIObj.transform, false);
+                    var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Description"), UIObj.transform, false);
                     Vector3 offset = errorList.localPosition;
-                    offset.y -= 340;
+                    //offset.y -= 340;
                     errorList.localPosition = offset;
-                    var errorText = errorList.gameObject.GetComponent<Text>();
+                    errorList.gameObject.SetActive(true);
+                    //var errorText = errorList.gameObject.GetComponent<Text>();
+                    var errorText = errorList.gameObject.GetComponent<InputField>();
                     //errorText.alignByGeometry = true;
                     //errorText.alignment = TextAnchor.UpperLeft; // causes it to go far out of the box
-                    errorText.fontSize = 16;
+                    //errorText.fontSize = 16;
                     errorText.text = "<b>Error:</b> " + latestError;
-                    errorText.horizontalOverflow = HorizontalWrapMode.Wrap;
-                    errorText.verticalOverflow = VerticalWrapMode.Overflow;
+                    //errorText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                    //errorText.verticalOverflow = VerticalWrapMode.Overflow;
                     //bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<color=#f23d3dff>Please DON'T press</color> <b>SEND</b>!  <color=#f23d3dff>This is a MODDED GAME AND THAT DOESN'T WORK!</color>  \nYou can skip this screen with the button at the upper-left corner and continue in your world, but do remember you are putting your save at risk! \n\nError: ";
                 }
                 catch

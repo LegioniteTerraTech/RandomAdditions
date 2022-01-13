@@ -119,6 +119,7 @@
   <ItemGroup>
     <Compile Include="BlockModules\ModuleModeSwitch.cs" />
     <Compile Include="BlockModules\ModuleRepairAimer.cs" />
+    <Compile Include="BlockModules\ModuleSimpleLegs.cs" />
     <Compile Include="GlobalChanges\DistractedProjectile.cs" />
     <Compile Include="BlockModules\ModulePointDefense.cs" />
     <Compile Include="ModuleLazyAPs.cs" />
