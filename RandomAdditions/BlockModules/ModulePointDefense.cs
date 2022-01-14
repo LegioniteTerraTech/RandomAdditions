@@ -229,7 +229,7 @@ namespace RandomAdditions
                 bool nuterraSteamBlock = false;
                 if (KickStart.isNuterraSteamPresent)
                 {
-                    nuterraSteamBlock = (bool)GetComponent<CustomModules.LegacyModule.ModuleCustomBlock>();
+                    //nuterraSteamBlock = (bool)GetComponent<CustomModules.LegacyModule.ModuleCustomBlock>();
                 }
                 if (isOfficialMod && !nuterraSteamBlock)
                 {   // Official modding has flipped x axis for GAMEOBJECTS (not models like unofficial)
