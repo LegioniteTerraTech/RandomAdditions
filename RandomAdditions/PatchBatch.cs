@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Text;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
@@ -1193,27 +1194,35 @@ namespace RandomAdditions
                 //Debug.Log("RandomAdditions: Cleaned Bug Reporter UI");
 
                 //Setup the UI
-                string outputLogLocation = "(Error on OS fetch request)";
-                switch (SystemInfo.operatingSystemFamily)
+                StringBuilder SB = new StringBuilder();
+                string toSearch = Application.consoleLogPath;
+                bool ignoreThisCase = true;
+
+                int stoppingPos = toSearch.IndexOf("Users") + 6;
+                for (int step = 0; step < toSearch.Length; step++)
                 {
-                    case OperatingSystemFamily.Windows:
-                        outputLogLocation = "%LOCALAPPDATA%\\Payload\\TerraTech\\output_log.txt";
-                        break;
-                    case OperatingSystemFamily.MacOSX:
-                        outputLogLocation = "~/Library/Logs/TerraTech/output_log.txt";
-                        break;
-                    case OperatingSystemFamily.Linux:
-                        outputLogLocation = "Uhh,  please notify on the discord";
-                        break;
-                    case OperatingSystemFamily.Other:
-                        outputLogLocation = "Uhh,  please notify on the discord";
-                        break;
+                    if (stoppingPos <= step)
+                    {
+                        if (stoppingPos == step)
+                        {
+                            SB.Append("userName");
+                        }
+                        //Debug.Log("RandomAdditions: " + toSearch[step] + " | " );
+                        if (toSearch[step] == '/')
+                            ignoreThisCase = false;
+                        if (ignoreThisCase)
+                            continue;
+                    }
+                    SB.Append(toSearch[step]);
                 }
+                string outputLogLocation = SB.ToString(); //"(Error on OS fetch request)";
+                
 
                 try
                 {   //<color=#f23d3dff></color> - tried that but it's too hard to read
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
-                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  \nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial.";
+                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  " +
+                        "\nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial.";
 
                     //var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Description"), UIObj.transform, false);
                     var errorList = reportBox.Find("Description");
