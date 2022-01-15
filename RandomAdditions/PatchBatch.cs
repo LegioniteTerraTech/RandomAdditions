@@ -1213,20 +1213,27 @@ namespace RandomAdditions
                 try
                 {   //<color=#f23d3dff></color> - tried that but it's too hard to read
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
-                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  \nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
+                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  \nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial.";
 
-                    var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Description"), UIObj.transform, false);
-                    Vector3 offset = errorList.localPosition;
+                    //var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Description"), UIObj.transform, false);
+                    var errorList = reportBox.Find("Description");
+                    //Vector3 offset = errorList.localPosition;
                     //offset.y -= 340;
-                    errorList.localPosition = offset;
+                    //errorList.localPosition = offset;
+                    var rect = errorList.GetComponent<RectTransform>();
+                    var pos = rect.transform;
+                    pos.Translate(new Vector3(0, -0.25f, 0));
+                    rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, 325);
                     errorList.gameObject.SetActive(true);
                     //var errorText = errorList.gameObject.GetComponent<Text>();
-                    var errorText = errorList.gameObject.GetComponent<InputField>();
+                    var errorField = errorList.gameObject.GetComponent<InputField>();
+                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----\n  The log file is at: " + outputLogLocation + "\n<b>Error:</b> " + latestError;
+                    var errorText = errorField.textComponent;
                     //errorText.alignByGeometry = true;
-                    //errorText.alignment = TextAnchor.UpperLeft; // causes it to go far out of the box
+                    errorText.alignment = TextAnchor.UpperLeft; // causes it to go far out of the box
+                    errorText.resizeTextMinSize = 16;
                     //errorText.fontSize = 16;
-                    errorText.text = "<b>Error:</b> " + latestError;
-                    //errorText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                    errorText.horizontalOverflow = HorizontalWrapMode.Wrap;
                     //errorText.verticalOverflow = VerticalWrapMode.Overflow;
                     //bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<color=#f23d3dff>Please DON'T press</color> <b>SEND</b>!  <color=#f23d3dff>This is a MODDED GAME AND THAT DOESN'T WORK!</color>  \nYou can skip this screen with the button at the upper-left corner and continue in your world, but do remember you are putting your save at risk! \n\nError: ";
                 }
