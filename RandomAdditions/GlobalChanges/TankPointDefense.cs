@@ -24,9 +24,10 @@ namespace RandomAdditions
         /// </summary>
         private bool enemyInRange = false;
         private bool needsBiasCheck = false;
-        private bool AdvancedIntercept = false;
         private List<Rigidbody> fetchedProj = new List<Rigidbody>();
         private List<Rigidbody> fetchedAll = new List<Rigidbody>();
+        internal float bestTargetDist = 0;
+        internal float bestTargetDistAll = 0;
 
         internal Vector3 BiasDefendCenter = Vector3.zero;
         internal float BiasDefendRange = 0;
@@ -92,6 +93,12 @@ namespace RandomAdditions
                 return rbody.velocity.magnitude;
             return 0;
         }
+
+        /// <summary>
+        /// Returns false if it can't afford the enemy tax
+        /// </summary>
+        /// <param name="energyCost"></param>
+        /// <returns></returns>
         public bool GetTargetsRequest(float energyCost)
         {
             if (tank.beam.IsActive)
@@ -100,13 +107,20 @@ namespace RandomAdditions
             {
                 if (!ProjectileManager.GetListProjectiles(this, BiasDefendRange / (1 + (TechSpeed() / 33)), out List<Rigidbody> rbodyCatch))
                     return false;
-
                 var reg = this.reg.Energy(EnergyRegulator.EnergyType.Electric);
                 lastEnergy = reg.storageTotal - reg.spareCapacity;
-                fetchedAll = rbodyCatch;
-                fetchedProj = rbodyCatch.FindAll(delegate (Rigidbody cand) { return cand.GetComponent<MissileProjectile>(); });
+                fetchedAll.Clear();
+                fetchedAll.AddRange(rbodyCatch);
+                fetchedProj = fetchedAll.FindAll(delegate (Rigidbody cand) { return cand.GetComponent<MissileProjectile>(); });
+
+                Vector3 pos = transform.TransformPoint(BiasDefendCenter);
+                if (fetchedProj.Count > 0)
+                    bestTargetDist = (fetchedProj.First().position - pos).sqrMagnitude;
+                if (fetchedAll.Count > 0)
+                    bestTargetDistAll = (fetchedAll.First().position - pos).sqrMagnitude;
                 //if (fetchedAll.Count > 0)
                 //    Debug.Log("RandomAdditions: TankPointDefense(GetTargetsRequest) - Target " + fetchedAll.First().name + " | " + fetchedAll.First().position + " | " + fetchedAll.First().velocity);
+                fetchedTargets = true;
             }
             if (!TryTaxReserves(energyCost))
                 return false;
@@ -114,11 +128,19 @@ namespace RandomAdditions
         }
         private void HandleDefenses()
         {
+            int index = 0;
+            bool underloaded = false;
             foreach (ModulePointDefense def in dTs)
             {
-                if (!def.TryInterceptProjectile(enemyInRange))
+                if (!def.TryInterceptProjectile(enemyInRange, index, underloaded, out bool hit))
                 {
                     //def.DisabledWeapon = false;
+                }
+                if (hit && def.SmartManageTargets)
+                {
+                    if (index > fetchedProj.Count)
+                        underloaded = true;
+                    index = (index + 1) % fetchedProj.Count;
                 }
             }
             dTs.First().TaxReserves(energyTax);
@@ -138,7 +160,7 @@ namespace RandomAdditions
             needsReset = false;
         }
 
-        private void Update()
+        private void FixedUpdate()
         {
             enemyInRange = (bool)tank.Vision.GetFirstVisibleTechIsEnemy(tank.Team);
             ResyncDefenses();
@@ -179,20 +201,30 @@ namespace RandomAdditions
                 fetchedProj = fetchedAll;
             return fetchedProj != null && fetchedProj.Count() != 0;
         }
-        public bool GetNewTarget(out Rigidbody fetched, bool missileOnly = true)
+        public bool GetFetchedTargetsNoScan(out List<Rigidbody> fetchedProj, bool missileOnly = true)
+        {
+            if (missileOnly)
+                fetchedProj = this.fetchedProj;
+            else
+                fetchedProj = fetchedAll;
+            return fetchedProj != null && fetchedProj.Count() != 0;
+        }
+        public bool GetNewTarget(ModulePointDefense inst, out Rigidbody fetched, bool missileOnly = true)
         {
             fetched = null;
-            if (!GetTargetsRequest(0))
-                return false;
             List<Rigidbody> fetchedProj;
             if (missileOnly)
                 fetchedProj = this.fetchedProj;
             else
                 fetchedProj = fetchedAll;
-            if (fetchedProj != null && fetchedProj.Count() != 0)
+            if (fetchedProj != null)
             {
-                fetched = fetchedProj.First();
-                return true;
+                int index = fetchedProj.IndexOf(inst.Target) + 1;
+                if (index != 0)
+                {
+                    fetched = fetchedProj[index];
+                    return true;
+                }
             }
             return false;
         }

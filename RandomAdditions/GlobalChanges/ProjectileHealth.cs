@@ -21,6 +21,10 @@ namespace RandomAdditions
         {
             return speed > FastProjectileSpeed;
         }
+        public bool WillDestroy(float DamageDealt)
+        {
+            return DamageDealt > Health;
+        }
 
         FieldInfo deals = typeof(WeaponRound).GetField("m_Damage", BindingFlags.NonPublic | BindingFlags.Instance);
         public void GetHealth()
@@ -56,7 +60,13 @@ namespace RandomAdditions
         static FieldInfo death = typeof(Projectile).GetField("m_ExplodeAfterLifetime", BindingFlags.NonPublic | BindingFlags.Instance);
         static FieldInfo death2 = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
         private static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
-        public void TakeDamage(float damage, bool doExplode)
+        /// <summary>
+        /// Returns true when destroyed
+        /// </summary>
+        /// <param name="damage"></param>
+        /// <param name="doExplode"></param>
+        /// <returns></returns>
+        public bool TakeDamage(float damage, bool doExplode)
         {
             if (!(bool)proj)
             {
@@ -64,7 +74,7 @@ namespace RandomAdditions
                 if (!(bool)proj)
                 {
                     Debug.Log("RandomAdditions: error - was called but no such Projectile present");
-                    return;
+                    return false;
                 }
             }
             float health = Health - damage;
@@ -87,6 +97,7 @@ namespace RandomAdditions
                 }
 
                 proj.Recycle(worldPosStays: false);
+                return true;
                 //Debug.Log("RandomAdditions: Projectile destroyed!");
             }
             else
@@ -94,13 +105,14 @@ namespace RandomAdditions
                 Health = health;
                 //Debug.Log("RandomAdditions: Projectile hit - HP: " + Health);
             }
+            return false;
         }
         public void ForceExplode(Transform explodo, bool doDamage)
         {
             var boom = explodo.GetComponent<Explosion>();
             if ((bool)boom)
             {
-                Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, transform.position).GetComponent<Explosion>();
+                Explosion boom2 = explodo.UnpooledSpawn(null, proj.trans.position, Quaternion.identity).GetComponent<Explosion>();
                 if (boom2 != null)
                 {
                     boom2.DoDamage = doDamage;

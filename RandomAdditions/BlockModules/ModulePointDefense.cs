@@ -16,12 +16,15 @@ namespace RandomAdditions
     "RandomAdditions.ModulePointDefense": { // A block module that shoots beams that hit hostile projectiles
         "DefendOnly": false,        // Do not fire on spacebar
         "CanInterceptFast": false,  // Can this also shoot fast projectiles?
+        "SmartManageTargets": false,// Can this smartly manage targets? Better for clusters of same projectiles
+                                // but suffers against diverse projectile salvos
         "ForcePulse": false,        // Force the hitscan pulse effect
         "SpoolOnEnemy": true,       // Spin the barrels when an enemy is in range
         "LockOnDelay": 8,           // Frames this will not track for - Set to 0 to maximize scanning rate
             // WARNING - May negatively impact performance under 8!
         "LockOnStrength": 15,       // Will to keep lock on a projectile that's fast and/or far
             // WARNING - May negatively impact performance under 10!
+        "LockOnTooFastSpeed": 1.00,   //If the projectile is this percent above speed, then we aim direct
         "DefenseCooldown": 1,       // How long until it fires the next intercept
         "DefenseEnergyCost": 0,     // How much it takes to maintain passive defense
         "DefendRange": 50,          // The range of which this can find and track projectiles
@@ -66,6 +69,7 @@ namespace RandomAdditions
         public bool SpoolOnEnemy = true;
         public int LockOnDelay = 8;
         public float LockOnStrength = 15;
+        public float LockOnTooFastSpeed = 1f;    //If the projectile is this percent above speed, then we aim direct
         public float RotateRate = 50;
         public float DefendRange = 50;
         public float DefenseCooldown = 1;
@@ -75,6 +79,7 @@ namespace RandomAdditions
         public TechAudio.SFXType FireSFXType = TechAudio.SFXType.LightMachineGun;
 
         // Pulse Parameters
+        public bool SmartManageTargets = false;
         public float PulseAimCone = 15;             // out of 100
         public float HitChance = 45;                // out of 100
         public float PulseEnergyCost = 0;
@@ -93,13 +98,15 @@ namespace RandomAdditions
 
         // Handled
         public bool DisabledWeapon = false;
-        private bool cacheDisabled = false;
         public bool UsingWeapon = false;
+
+        private bool cacheDisabled = false;
 
         private int timer = 0;
         private float cooldown = 0;
         private int barrelStep = 0;
         private int barrelC = 0;
+        private bool energyUser = false;
         private bool firing = false;
         private bool firingCache = false;
         private bool spooling = false;
@@ -164,15 +171,13 @@ namespace RandomAdditions
             pulseAimAnglef = 1 - (PulseAimCone / 50);
             if (!ForcePulse)
             {
-                if ((bool)GetComponent<FireData>())
+                if ((bool)GetComponent<FireData>()?.m_BulletPrefab?.GetComponent<InterceptProjectile>())
                 {
-                    if ((bool)GetComponent<FireData>().m_BulletPrefab)
-                    {
-                        if ((bool)GetComponent<FireData>().m_BulletPrefab.GetComponent<InterceptProjectile>())
-                        {
-                            return;
-                        }
-                    }
+                    var IProj = GetComponent<FireData>().m_BulletPrefab.GetComponent<InterceptProjectile>();
+                    if (PointDefenseDamage == 1)
+                        PointDefenseDamage = IProj.PointDefDamage;
+                    energyUser = PulseEnergyCost > 0;
+                    return;
                 }
                 LogHandler.ThrowWarning("ModulePointDefense: Turret " + TankBlock.name + "'s FireData.m_BulletPrefab needs InterceptProjectile to work properly!");
             }
@@ -181,6 +186,7 @@ namespace RandomAdditions
                 if (!(bool)OverrideMaterial)
                     OverrideMaterial = new Material(Shader.Find("Sprites/Default"));
             }
+            energyUser = PulseEnergyCost > 0;
             //Debug.Log("RandomAdditions: ModulePointDefense - Registered on block " + TankBlock.name + " ModuleWeaponGun: " + (bool)gunBase);
         }
         public void OnDrain()
@@ -204,8 +210,9 @@ namespace RandomAdditions
             TankPointDefense.HandleRemoval(TankBlock.tank, this);
         }
         FieldInfo recoiled = typeof(CannonBarrel).GetField("recoiling", BindingFlags.NonPublic | BindingFlags.Instance);
-        private void UpdateLockOn()
+        private void UpdateLockOn(out bool hit)
         {
+            hit = false;
             if (cooldown > 0)
                 cooldown -= Time.deltaTime;
             if (LockedTarget == null)
@@ -257,7 +264,7 @@ namespace RandomAdditions
                         if (!gunBase.FiringObstructed())
                         {
                             // Proceed to firing
-                            firing = LockOnFire();
+                            firing = LockOnFire(out hit);
                         }
                     }
                 }
@@ -266,6 +273,7 @@ namespace RandomAdditions
             {
                 DisabledWeapon = false;
                 firing = LockOnFireSimple();
+                hit = true;
                 spooling = true;
             }
 
@@ -279,8 +287,9 @@ namespace RandomAdditions
                 LockOnFireSFXHalt();
             }
         }
-        private bool LockOnFire()
+        private bool LockOnFire(out bool hit)
         {
+            hit = false;
             if (cooldown <= 0)
                 cooldown = DefenseCooldown;
             else
@@ -290,7 +299,12 @@ namespace RandomAdditions
             if (!ForcePulse)
             { // fire like normal
                 if (gunBase.ProcessFiring(true) > 0)
+                {
+                    if (LockedTarget.GetComponent<ProjectileHealth>())
+                        if (LockedTarget.GetComponent<ProjectileHealth>().WillDestroy(PointDefenseDamage))
+                            hit = true;
                     return true;
+                }
                 return false;
             }
             try
@@ -302,14 +316,14 @@ namespace RandomAdditions
                 {
                     for (int step = 0; step < barrelC; step++)
                     {
-                        if (LockOnFireQueueBarrel(aimPoint, step))
+                        if (LockOnFireQueueBarrel(aimPoint, step, out hit))
                             fired = true;
                     }
                 }
                 else
                 {
-                    fired = LockOnFireQueueBarrel(aimPoint, barrelStep);
-                    if (barrelStep == barrelC)
+                    fired = LockOnFireQueueBarrel(aimPoint, barrelStep, out hit);
+                    if (barrelStep == barrelC - 1)
                         barrelStep = 0;
                     else
                         barrelStep++;
@@ -322,7 +336,7 @@ namespace RandomAdditions
                 return false;
             }
         }
-        private bool LockOnFireQueueBarrel(Vector3 aimPoint, int barrelNum)
+        private bool LockOnFireQueueBarrel(Vector3 aimPoint, int barrelNum, out bool hit)
         {
             CannonBarrel barry = gunBase.FindCannonBarrelFromIndex(barrelNum);
             if (Vector3.Dot((aimPoint - barry.projectileSpawnPoint.position).normalized, barry.projectileSpawnPoint.forward) > pulseAimAnglef)
@@ -346,9 +360,10 @@ namespace RandomAdditions
                     }
                 }
 
-                FirePulseBeam(barry.projectileSpawnPoint, aimPoint);
+                hit = FirePulseBeam(barry.projectileSpawnPoint, aimPoint);
                 return true;
             }
+            hit = false;
             return false;
         }
         private bool LockOnFireSimple()
@@ -368,11 +383,14 @@ namespace RandomAdditions
                 {
                     if (tokens <= 0)
                         return fired;
-                    if (Vector3.Dot((rbody.position - fireTrans.position).normalized, fireTrans.forward) < pulseAimAnglef)
-                        continue;
-                    FirePulseBeam(fireTrans, rbody);
-                    fired = true;
-                    tokens--;
+                    if (!rbody.position.Approximately(Vector3.zero))
+                    {
+                        if (Vector3.Dot((rbody.position - fireTrans.position).normalized, fireTrans.forward) < pulseAimAnglef)
+                            continue;
+                        FirePulseBeam(fireTrans, rbody);
+                        fired = true;
+                        tokens--;
+                    }
                 }
             }
             return fired;
@@ -440,13 +458,14 @@ namespace RandomAdditions
             catch { }
         }
 
-        public bool TryInterceptProjectile(bool enemyNear)
+        public bool TryInterceptProjectile(bool enemyNear, int index, bool noTargetsLeft, out bool hit)
         {
+            hit = false;
             cacheDisabled = DisabledWeapon;
             firingCache = firing;
             DisabledWeapon = false;
             firing = false;
-            if (!(bool)block.tank)
+            if (!(bool)block.tank || noTargetsLeft && energyUser)
                 return false;
             if ((bool)gunBase)
             {
@@ -461,11 +480,11 @@ namespace RandomAdditions
                     spooling = false;
                 if (OverrideEnemyAiming)
                 {
-                    if (GetProjectile())
+                    if (GetProjectile(index))
                     {
                         if (!SeperateFromGun)
                             DisabledWeapon = true;
-                        UpdateLockOn();
+                        UpdateLockOn(out hit);
                         return true;
                     }
                     else if (block.tank.control.FireControl)
@@ -483,11 +502,11 @@ namespace RandomAdditions
                         firing = false;
                         DisabledWeapon = false;
                     }
-                    else if (GetProjectile())
+                    else if (GetProjectile(index))
                     {
                         if (!SeperateFromGun)
                             DisabledWeapon = true;
-                        UpdateLockOn();
+                        UpdateLockOn(out hit);
                         return true;
                     }
                     else
@@ -504,11 +523,11 @@ namespace RandomAdditions
                     spooling = false;
                 if (OverrideEnemyAiming)
                 {
-                    if (GetProjectile())
+                    if (GetProjectile(index))
                     {
                         if (!SeperateFromGun)
                             DisabledWeapon = true;
-                        UpdateLockOn();
+                        UpdateLockOn(out hit);
                         return true;
                     }
                     else if (block.tank.control.FireControl)
@@ -526,11 +545,11 @@ namespace RandomAdditions
                         firing = false;
                         DisabledWeapon = false;
                     }
-                    else if (GetProjectile())
+                    else if (GetProjectile(index))
                     {
                         if (!SeperateFromGun)
                             DisabledWeapon = true;
-                        UpdateLockOn();
+                        UpdateLockOn(out hit);
                         return true;
                     }
                     else
@@ -559,8 +578,9 @@ namespace RandomAdditions
         {   // The projectile intercept coding is too expensive on terratech's gun spam levels 
             //  - will have to find a cheaper, less accurate but functional alternative
 
-            if (ForcePulse)
+            if (ForcePulse) //Pulse hits instantly - cheapest option.
                 return LockedTarget.position;
+
             Vector3 tankVelo = Vector3.zero;
             if ((bool)TankBlock.tank.rbody)
                 tankVelo = TankBlock.tank.rbody.velocity;
@@ -573,56 +593,92 @@ namespace RandomAdditions
             if (!gunBase.AimWithTrajectory())
             {
                 Vector3 posVec = targPos - gunBase.GetFireTransform().position;
-                float roughDist = posVec.magnitude / velo;
+                float roughDist = 0;
+                float projSpeedDiff = VeloDiff.magnitude / velo;
+                if (projSpeedDiff > LockOnStrength)
+                {   // It's FAR too fast
+                    if (def.GetNewTarget(this, out Rigidbody fetched, !CanInterceptFast))
+                    {
+                        Debug.Log("TweakTech: GetTargetHeading - Fetched new Target");
+                        if (LockedTarget != fetched)
+                        {
+                            LockedTarget = fetched;
+                            targPos = LockedTarget.position;
+                            VeloDiff = LockedTarget.velocity - tankVelo;
+                            roughDist = posVec.magnitude / velo;
+                        }
+                    }
+                }
+                else if (projSpeedDiff > LockOnTooFastSpeed)
+                {   // It's too fast
+                    // Aim at it DIRECTLY, AND SPRAY & PRAY
+                    return LockedTarget.position;
+                }
+                else
+                {
+                    roughDist = posVec.magnitude / velo;
+                }
                 return targPos + (VeloDiff * roughDist);
             }
             else
             {
                 float grav = -Physics.gravity.y;
-                Vector3 posVec = targPos - gunBase.GetFireTransform().position;
-                float MaxRangeVelo = velo * 0.7071f;
-                float MaxTime = MaxRangeVelo / grav;
-                float MaxDist = MaxTime * MaxRangeVelo;
-
-                float veloVecMag = posVec.magnitude;
-                float distDynamic = veloVecMag / MaxDist;
-                if (distDynamic > 1)
-                    distDynamic = 1;
-                float roughTime = veloVecMag / (velo * (0.7071f + ((1 - distDynamic) * 0.2929f)));
-                // this works I don't even know how
-                Vector3 VeloDiffCorrected = VeloDiff;
-                VeloDiffCorrected.y = 0;
-                // The power of cos at 45 degrees compels thee
-                VeloDiffCorrected = VeloDiffCorrected.magnitude * 0.7071f * VeloDiffCorrected.normalized;
-                VeloDiffCorrected.y = VeloDiff.y;
-                targPos = targPos + (VeloDiffCorrected * roughTime);
-                float roughDist = VeloDiff.magnitude / velo;
-                if (roughDist > LockOnStrength)
-                {   // It's too fast
-                    if (def.GetNewTarget(out Rigidbody fetched, !CanInterceptFast))
+                float projSpeedDiff = VeloDiff.magnitude / velo;
+                if (projSpeedDiff > LockOnStrength)
+                {   // It's FAR too fast
+                    if (def.GetNewTarget(this, out Rigidbody fetched, !CanInterceptFast))
                     {
                         if (LockedTarget != fetched)
                         {
+                            float MaxRangeVelo = velo * 0.7071f;
+                            float MaxTime = MaxRangeVelo / grav;
+                            float MaxDist = MaxTime * MaxRangeVelo;
+
                             LockedTarget = fetched;
                             targPos = LockedTarget.position;
-                            posVec = targPos - gunBase.GetFireTransform().position;
+                            Vector3 posVec = targPos - gunBase.GetFireTransform().position;
                             VeloDiff = LockedTarget.velocity - tankVelo;
 
-                            veloVecMag = posVec.magnitude;
-                            distDynamic = veloVecMag / MaxDist;
+                            float veloVecMag = posVec.magnitude;
+                            float distDynamic = veloVecMag / MaxDist;
                             if (distDynamic > 1)
                                 distDynamic = 1;
-                            roughTime = veloVecMag / (velo * (0.7071f + ((1 - distDynamic) * 0.2929f)));
+                            float roughTime = veloVecMag / (velo * (0.7071f + ((1 - distDynamic) * 0.2929f)));
                             // this works I don't even know how
-                            VeloDiffCorrected = VeloDiff;
+                            Vector3 VeloDiffCorrected = VeloDiff;
                             VeloDiffCorrected.y = 0;
                             // The power of cos at 45 degrees compels thee
                             VeloDiffCorrected = VeloDiffCorrected.magnitude * 0.7071f * VeloDiffCorrected.normalized;
                             VeloDiffCorrected.y = VeloDiff.y;
                             targPos = targPos + (VeloDiffCorrected * roughTime);
-                            roughDist = VeloDiff.magnitude / velo;
+                            float roughDist = VeloDiff.magnitude / velo;
                         }
                     }
+                }
+                else if (projSpeedDiff > LockOnTooFastSpeed)
+                {   // It's too fast
+                    // Aim at it DIRECTLY, AND SPRAY & PRAY
+                    targPos = LockedTarget.position;
+                }
+                else
+                {   // Calc for Target Leading
+                    Vector3 posVec = targPos - gunBase.GetFireTransform().position;
+                    float MaxRangeVelo = velo * 0.7071f;
+                    float MaxTime = MaxRangeVelo / grav;
+                    float MaxDist = MaxTime * MaxRangeVelo;
+
+                    float veloVecMag = posVec.magnitude;
+                    float distDynamic = veloVecMag / MaxDist;
+                    if (distDynamic > 1)
+                        distDynamic = 1;
+                    float roughTime = veloVecMag / (velo * (0.7071f + ((1 - distDynamic) * 0.2929f)));
+                    // this works I don't even know how
+                    Vector3 VeloDiffCorrected = VeloDiff;
+                    VeloDiffCorrected.y = 0;
+                    // The power of cos/sin at 45 degrees compels thee
+                    VeloDiffCorrected = VeloDiffCorrected.magnitude * 0.7071f * VeloDiffCorrected.normalized;
+                    VeloDiffCorrected.y = VeloDiff.y;
+                    targPos = targPos + (VeloDiffCorrected * roughTime);
                 }
 
                 // Aim with rough predictive trajectory
@@ -693,7 +749,7 @@ namespace RandomAdditions
             return targPos;
         }*/
 
-        private bool GetProjectile()
+        private bool GetProjectile(int index)
         {
             bool getProj = false;
 
@@ -709,10 +765,24 @@ namespace RandomAdditions
                 {
                     if (!LockedTarget.IsSleeping())
                     {
-                        if ((LockedTarget.position - block.transform.position).sqrMagnitude > DefendRange * DefendRange)
+                        float targDist = (LockedTarget.position - block.transform.position).sqrMagnitude;
+                        if (targDist > DefendRange * DefendRange)
                         {
                             DisabledWeapon = false;
                             LockedTarget = null;
+                        }
+                        else if (!SmartManageTargets) 
+                        {
+                            if (getProj)
+                            {
+                                if (def.GetFetchedTargets(DefenseEnergyCost, out List<Rigidbody> rbodyCatch, !CanInterceptFast))
+                                {
+                                    if ((CanInterceptFast ? def.bestTargetDistAll : def.bestTargetDist) >= targDist)
+                                        return true;
+                                    else
+                                        LockedTarget = rbodyCatch.First();
+                                }
+                            }
                         }
                         else
                             return true;
@@ -729,7 +799,20 @@ namespace RandomAdditions
             {
                 if (def.GetFetchedTargets(DefenseEnergyCost, out List<Rigidbody> rbodyCatch, !CanInterceptFast))
                 {
-                    LockedTarget = rbodyCatch.First();
+                    //Debug.Log("RandomAdditions: ModulePointDefense - Fetched " + rbodyCatch.Count() + " targets.");
+                    if (!SmartManageTargets)
+                    {
+                        LockedTarget = rbodyCatch.First();
+                    }
+                    else
+                    {
+                        if (rbodyCatch.Count > index)
+                            LockedTarget = rbodyCatch[index];
+                        else
+                        {
+                            LockedTarget = rbodyCatch.First();
+                        }
+                    }
                     /*
                     if ((LockedTarget.position - block.transform.position).sqrMagnitude > DefendRange * DefendRange)
                     {
@@ -752,11 +835,11 @@ namespace RandomAdditions
         {
             return UnityEngine.Random.Range(-2.5f, 2.5f);
         }
-        private void FirePulseBeam(Transform trans, Vector3 endPosGlobal)
+        private bool FirePulseBeam(Transform trans, Vector3 endPosGlobal)
         {
             if (!def.TryTaxReserves(PulseEnergyCost))
             {
-                return;
+                return false;
             }
             GameObject gO;
             //var line = trans.Find("ShotLine");
@@ -795,7 +878,7 @@ namespace RandomAdditions
             lr.SetPositions(new Vector3[2] { pos, shotheading });
             Destroy(gO, Mathf.Max(PulseLifetime, Time.deltaTime));
             if (!hit)
-                return;
+                return false;
             try
             {
                 if (LockedTarget.IsNotNull())
@@ -806,13 +889,14 @@ namespace RandomAdditions
                         targ = LockedTarget.gameObject.AddComponent<ProjectileHealth>();
                         targ.GetHealth();
                     }
-                    targ.TakeDamage(PointDefenseDamage, ExplodeOnHit);
+                    return targ.TakeDamage(PointDefenseDamage, ExplodeOnHit);
                 }
             }
             catch
             {
                 Debug.Log("RandomAdditions: ModulePointDefense - Target found but has no ProjectileHealth!?");
             }
+            return false;
         }
         private void FirePulseBeam(Transform trans, Rigidbody rbody)
         {

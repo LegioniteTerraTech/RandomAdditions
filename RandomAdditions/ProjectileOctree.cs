@@ -7,312 +7,6 @@ using UnityEngine;
 
 namespace RandomAdditions
 {
-    public class ProjectileCubetree
-    {   // Dirty cheap octree that's not an octree but a coordinate
-        internal const int CubeSize = 32;
-        //internal bool useCheap = false;
-        private static List<Projectile> Projectiles = new List<Projectile>();
-        internal List<CubeBranch> CubeBranches = new List<CubeBranch>();
-        private bool updatedThisFrame = false;
-        private bool bloated = false;
-
-        public void PostFramePrep()
-        {
-            updatedThisFrame = false;
-        }
-        public void PurgeAll()
-        {
-            Projectiles.Clear();
-            CubeBranches.Clear();
-        }
-        public void PruneCubeBranches()
-        {
-            bloated = true;
-            for (int count = CubeBranches.Count / 2; 0 < count; count--)
-            {
-                CubeBranch CB = CubeBranches.ElementAt(0);
-                if (CB != null)
-                {
-                    foreach (Projectile proj in CB.Projectiles)
-                        Projectiles.Remove(proj);
-                }
-                CubeBranches.RemoveAt(0);
-            }
-            bloated = false;
-        }
-        public bool Remove(Projectile proj)
-        {
-            UpdatePos();
-            if (proj.IsNull())
-            {
-                Debug.Log("RandomAdditions: ProjectileCubetree - Was told to remove NULL");
-                return false;
-            }
-            if (!Projectiles.Remove(proj))
-            {
-                //Debug.Log("RandomAdditions: ProjectileCubetree - Was told to remove something not in the list?!?");
-                //PurgeAll();
-                return false;
-            }
-            IntVector3 CBp = CubeBranch.GetCBPos(proj.trans.position);
-            int count = CubeBranches.Count;
-            for (int step = 0; step < count; step++)
-            {
-                CubeBranch CBc = CubeBranches.ElementAt(step);
-                if (CBc.WorldPosition == CBp)
-                {
-                    if (CBc.Remove(proj))
-                        CubeBranches.RemoveAt(step);
-                    return true;
-                }
-            }
-            return false;
-        }
-        public void Add(Projectile proj)
-        {
-            if (Projectiles.Contains(proj))
-                return;
-            if (Projectiles.Count > 2000)
-            {
-                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles, pruning");
-
-                // Prune some
-                for (int count = Projectiles.Count / 2; 0 < count; count--)
-                {
-                    Remove(Projectiles.ElementAt(0));
-                }
-                //return;
-            }
-            Projectiles.Add(proj);
-            IntVector3 CBp = CubeBranch.GetCBPos(proj.trans.position);
-            foreach (CubeBranch CBc in CubeBranches)
-            {
-                if (CBc.WorldPosition == CBp)
-                {
-                    CBc.Add(proj);
-                    return;
-                }
-            }
-            if (CubeBranches.Count >= 250)
-            {
-                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max, pruning");
-                PruneCubeBranches();
-                return;
-            }
-            CubeBranch CB = new CubeBranch();
-            CB.WorldPosition = CBp;
-            CB.tree = this;
-            CB.Add(proj);
-            CubeBranches.Add(CB);
-        }
-        public void ManageCubeBranch(Projectile proj, IntVector3 pos)
-        {
-            if (!Projectiles.Contains(proj))
-            {
-                Debug.Log("RandomAdditions: ProjectileCubetree(ManageCubeBranch) - invalid call");
-                return;
-            }
-            foreach (CubeBranch CBc in CubeBranches)
-            {
-                if (CBc.WorldPosition == pos)
-                {
-                    CBc.Add(proj);
-                    return;
-                }
-            }
-            if (CubeBranches.Count >= 250)
-            {
-                Debug.Log("RandomAdditions: ProjectileCubetree(ManageCubeBranch) - exceeded max");
-                return;
-            }
-            CubeBranch CB = new CubeBranch();
-            CB.WorldPosition = pos;
-            CB.tree = this;
-            CB.Add(proj);
-            CubeBranches.Add(CB);
-        }
-        public void UpdatePos()
-        {
-            if (updatedThisFrame)
-                return;
-            int count = Projectiles.Count;
-            for (int step = 0; step < count;)
-            {
-                Projectile proj = Projectiles.ElementAt(step);
-                if (proj.IsNull())
-                {
-                    Projectiles.RemoveAt(step);
-                    count--;
-                    continue;
-                }
-                else if (proj.Shooter.IsNull())
-                {
-                    Projectiles.RemoveAt(step);
-                    count--;
-                    continue;
-                }
-                step++;
-            }
-
-            count = CubeBranches.Count;
-            for (int step = 0; step < count; )
-            {
-                if (!CubeBranches.ElementAt(step).UpdateCubeBranch())
-                {
-                    CubeBranches.RemoveAt(step);
-                    count--;
-                    continue;
-                }
-                step++;
-            }
-            updatedThisFrame = true;
-        }
-        public void UpdateWorldPos(IntVector3 move)
-        {
-        }
-
-        /// <summary>
-        /// Returns RAW UNSORTED information!
-        /// </summary>
-        /// <param name="position">Position to search around</param>
-        /// <param name="range">The range</param>
-        /// <param name="projectiles">The projectiles it can reach</param>
-        /// <returns></returns>
-        public bool NavigateOctree(Vector3 position, float range, out List<Projectile> projectiles)
-        {
-            UpdatePos();
-            projectiles = new List<Projectile>();
-            float CubeHalf = CubeSize / 2;
-            float rangeEdge = range + CubeHalf;
-            Vector3 boundsMin = new Vector3(position.x - rangeEdge, position.y - rangeEdge, position.z - rangeEdge);
-            Vector3 boundsMax = new Vector3(position.x + rangeEdge, position.y + rangeEdge, position.z + rangeEdge);
-            
-            int count = CubeBranches.Count;
-            for (int step = 0; step < count;)
-            {
-                CubeBranch CubeB = CubeBranches.ElementAt(step);
-                try
-                {
-                    if (!NotWithinBox(CubeB.WorldPosition, boundsMin, boundsMax))
-                    {
-                        if (CubeB.GetProjectiles(out List<Projectile> proj))
-                            projectiles.AddRange(proj);
-                        else
-                        {
-                            count--;
-                            continue;
-                        }
-                    }
-                }
-                catch
-                {
-                    Debug.Log("RandomAdditions: GetClosestProjectile - error");
-                }
-                step++;
-            }
-            return projectiles.Count > 0;
-        }
-
-        public bool NotWithinBox(Vector3 pos, Vector3 BoundsMin, Vector3 BoundsMax)
-        {
-            return pos.x > BoundsMax.x || pos.y > BoundsMax.y || pos.z > BoundsMax.z ||
-                pos.x < BoundsMin.x || pos.y < BoundsMin.y || pos.z < BoundsMin.z;
-        }
-
-        internal class CubeBranch
-        {
-            internal IntVector3 WorldPosition;
-            internal ProjectileCubetree tree;
-            internal List<Projectile> Projectiles = new List<Projectile>();
-
-            public static IntVector3 GetCBPos(Vector3 pos)
-            {   // note that central cube is bigger
-                return new IntVector3(Mathf.RoundToInt(pos.x / CubeSize) * CubeSize, Mathf.RoundToInt(pos.y / CubeSize) * CubeSize, Mathf.RoundToInt(pos.z / CubeSize) * CubeSize);
-            }
-            public bool GetProjectiles(out List<Projectile> projO)
-            {
-                projO = new List<Projectile>();
-                int count = Projectiles.Count;
-                for (int step = 0; step < count; )
-                {
-                    Projectile proj = Projectiles.ElementAt(step);
-                    if (!(bool)proj.rbody)
-                    {
-                        Debug.Log("RandomAdditions: CubeBranch(GetProjectiles) - error - RBODY is NULL");
-                        Projectiles.RemoveAt(step);
-                        count--;
-                        continue;
-                    }
-                    if (!(bool)proj.Shooter)
-                    {
-                        //Debug.Log("RandomAdditions:  CubeBranch(GetProjectiles) - Shooter null");
-                        Projectiles.RemoveAt(step);
-                        count--;
-                        continue;
-                    }
-                    projO.Add(proj);
-                    step++;
-                }
-                if (Projectiles.Count == 0)
-                {
-                    //Debug.Log("RandomAdditions:  CubeBranch(GetProjectiles) - EMPTY");
-                    tree.CubeBranches.Remove(this);
-                    return false;
-                }
-                return true;
-            }
-            public void Add(Projectile proj)
-            {
-                if (Projectiles.Count > 2000)
-                {
-                    Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles");
-                    return;
-                }
-                if (!Projectiles.Contains(proj))
-                    Projectiles.Add(proj);
-            }
-            public bool Remove(Projectile proj)
-            {
-                Projectiles.Remove(proj);
-                if (Projectiles.Count == 0)
-                    return true;
-                return false;
-            }
-            internal bool UpdateCubeBranch()
-            {
-                int count = Projectiles.Count;
-                for (int step = 0; step < count; )
-                {
-                    Projectile proj = Projectiles.ElementAt(step);
-                    if (proj.IsNull())
-                    {
-                        Projectiles.RemoveAt(step);
-                        count--;
-                        continue;
-                    }
-                    else if (proj.Shooter.IsNull())
-                    {
-                        Projectiles.RemoveAt(step);
-                        count--;
-                        continue;
-                    }
-                    IntVector3 pos = GetCBPos(proj.trans.position);
-                    if (WorldPosition != pos)
-                    {
-                        tree.ManageCubeBranch(proj, pos);
-                        Projectiles.RemoveAt(step);
-                        count--;
-                        continue;
-                    }
-                    step++;
-                }
-                if (Projectiles.Count == 0)
-                    return false;
-                return true;
-            }
-        }
-    }
-
     public class OctreeProj
     {
         private const int MaxWorldHalf = 512; // Power of 2  [alt 256]
@@ -349,7 +43,7 @@ namespace RandomAdditions
             for (int step = 0; step < count;)
             {
                 Projectile proj = found.ElementAt(step);
-                if (!(bool)proj.rbody)
+                if (!(bool)proj?.rbody)
                 {
                     Debug.Log("RandomAdditions: OctreeProj(NavigateOctree) - error - RBODY is NULL");
                     Remove(proj);
@@ -365,7 +59,7 @@ namespace RandomAdditions
                     count--;
                     continue;
                 }
-                float dist = (proj.trans.position - position).sqrMagnitude;
+                float dist = (proj.rbody.position - position).sqrMagnitude;
                 if (dist <= rangeSqr)
                 {
                     //Rigidbody rbodyC = proj.rbody;
@@ -373,7 +67,7 @@ namespace RandomAdditions
                 }
                 step++;
             }
-            if (Projectiles.Count == 0)
+            if (Projectiles.Count() == 0)
             {
                 //Debug.Log("RandomAdditions: OctreeProj(NavigateOctree) - EMPTY");
                 return false;
@@ -462,7 +156,7 @@ namespace RandomAdditions
                     count--;
                     continue;
                 }
-                if (pair.Key.NotWithinBox(proj.trans.position))
+                if (pair.Key.NotWithinCube(proj.rbody.position))
                 {   // Rennovate to new box
                     pair.Key.RemoveProj(proj);
                     Projectiles.RemoveAt(step);
@@ -649,7 +343,7 @@ namespace RandomAdditions
                     Debug.Log("RandomAdditions: OctreeBranch(NavigateOctant) - Trunk HAS NO BRANCHES OR PROJECTILES!!!");
                     return false;
                 }
-                if (NotWithinBoxInv(posMin, posMax))
+                if (NotWithinCubeInv(posMin, posMax))
                     return false; // outta range
                 float rangeAlt = range + scale;
                 posMin = new Vector3(pos.x - rangeAlt, pos.y - rangeAlt, pos.z - rangeAlt);
@@ -703,7 +397,7 @@ namespace RandomAdditions
                     Debug.Log("RandomAdditions: OctreeBranch(NaviOctant) - Illegal call");
                     return 0;
                 }
-                if (NotWithinBoxInv(posMin, posMax))
+                if (NotWithinCubeInv(posMin, posMax))
                     return 0; // outta range
                 float rangeAlt = range + scale;
                 posMin = new Vector3(pos.x - rangeAlt, pos.y - rangeAlt, pos.z - rangeAlt);
@@ -901,12 +595,12 @@ namespace RandomAdditions
             }
 
             // Utilities
-            public bool NotWithinBox(Vector3 pos)
+            public bool NotWithinCube(Vector3 pos)
             {
                 return pos.x > BoundsMax.x || pos.y > BoundsMax.y || pos.z > BoundsMax.z ||
                     pos.x < BoundsMin.x || pos.y < BoundsMin.y || pos.z < BoundsMin.z;
             }
-            private bool NotWithinBoxInv(Vector3 posMin, Vector3 posMax)
+            private bool NotWithinCubeInv(Vector3 posMin, Vector3 posMax)
             {
                 return posMin.x > WorldPosOffset.x || posMin.y > WorldPosOffset.y || posMin.z > WorldPosOffset.z ||
                     posMax.x < WorldPosOffset.x || posMax.y < WorldPosOffset.y || posMax.z < WorldPosOffset.z;

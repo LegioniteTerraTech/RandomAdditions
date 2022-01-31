@@ -679,7 +679,7 @@ namespace RandomAdditions
                 if (ModuleCheck != null)
                 {
                     ModuleCheck.SetProjectileMass();
-                    Debug.Log("RandomAdditions: Overwrote Mass - This enables physics collisions and will make the projectile more scary.");
+                    //Debug.Log("RandomAdditions: Overwrote Mass - This enables physics collisions and will make the projectile more scary.");
                 }
                 /*
                 var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
@@ -690,6 +690,7 @@ namespace RandomAdditions
             }
         }
 
+        /*
         [HarmonyPatch(typeof(MissileProjectile))]
         [HarmonyPatch("OnSpawn")]//On Creation
         private class PatchProjectileSpawn
@@ -698,7 +699,7 @@ namespace RandomAdditions
             {
                 ProjectileManager.Add(__instance);
             }
-        }
+        }*/
 
         [HarmonyPatch(typeof(Projectile))]
         [HarmonyPatch("OnRecycle")]
@@ -709,6 +710,7 @@ namespace RandomAdditions
                 ProjectileManager.Remove(__instance);
             }
         }
+        /*
         [HarmonyPatch(typeof(Projectile))]
         [HarmonyPatch("Destroy")]
         private class PatchProjectileRemove2
@@ -717,7 +719,7 @@ namespace RandomAdditions
             {
                 ProjectileManager.Remove(__instance);
             }
-        }
+        }*/
 
         [HarmonyPatch(typeof(Projectile))]
         [HarmonyPatch("HandleCollision")]//On direct hit
@@ -831,28 +833,36 @@ namespace RandomAdditions
                 {
                     ModuleCheck2.OnFire();
                 }
-                var ModuleCheck3 = __instance.GetComponent<ProjectileHealth>();
-                var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
-                if (ModuleCheck3 != null)
+                var ModuleCheck5 = __instance.GetComponent<MissileProjectile>();
+                if (!ModuleCheck5)
                 {
-                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
+                    var ModuleCheck3 = __instance.GetComponent<ProjectileHealth>();
+                    var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
+                    if (ModuleCheck3 != null)
                     {
-                        ProjectileManager.Add(__instance);
-                        //ModuleCheck3.GetHealth(true);
+                        if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
+                        {
+                            ProjectileManager.Add(__instance);
+                            //ModuleCheck3.GetHealth(true);
+                        }
+                        else
+                        {
+                            //Debug.Log("RandomAdditions: ASSERT - Abberation in Projectile!  " + __instance.gameObject.name);
+                            UnityEngine.Object.Destroy(ModuleCheck3);
+                        }
                     }
                     else
                     {
-                        //Debug.Log("RandomAdditions: ASSERT - Abberation in Projectile!  " + __instance.gameObject.name);
-                        UnityEngine.Object.Destroy(ModuleCheck3);
+                        if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
+                        {
+                            ProjectileManager.Add(__instance);
+                            //ModuleCheck3.GetHealth(true);
+                        }
                     }
                 }
                 else
                 {
-                    if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
-                    {
-                        ProjectileManager.Add(__instance);
-                        //ModuleCheck3.GetHealth(true);
-                    }
+                    ProjectileManager.Add(__instance);
                 }
             }
         }
@@ -885,7 +895,7 @@ namespace RandomAdditions
                                 var boom = explodo.GetComponent<Explosion>();
                                 if ((bool)boom)
                                 {
-                                    Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, explodePos).GetComponent<Explosion>();
+                                    Explosion boom2 = explodo.UnpooledSpawn(null, __instance.trans.position, Quaternion.identity).GetComponent<Explosion>();
                                     if ((bool)boom2)
                                     {
                                         boom2.m_EffectRadius = 2;

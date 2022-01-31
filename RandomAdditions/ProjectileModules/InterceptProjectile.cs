@@ -207,8 +207,40 @@ namespace RandomAdditions
                 }
             }
 
-            if (update)
-            {
+            if (updateBullet)
+            {   // Get target from TankPointDefense
+                if ((bool)proj?.Shooter)
+                {
+                    var PD = proj.Shooter.GetComponent<TankPointDefense>();
+                    if ((bool)PD)
+                    {
+                        if (PD.GetFetchedTargetsNoScan(out List<Rigidbody> rbodys, !hitFast))
+                        {
+                            if (rbodys.Count > 2)
+                            {
+                                Rigidbody rbodyCatch = rbodys[1];
+                                rbodyT = rbodyCatch;
+                                LockedTarget = rbodyCatch;
+                                //Debug.Log("RandomAdditions: InterceptProjectile - LOCK");
+                                if (IsFlare)
+                                {
+                                    if (UnityEngine.Random.Range(1, 100) <= DistractChance)
+                                    {
+                                        if (DistractsMoreThanOne)
+                                            DistractedProjectile.DistractAll(rbodys, rbody);
+                                        else
+                                            DistractedProjectile.Distract(rbodyCatch, rbody);
+
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (update)
+            {   // Try get target from global projectiles
                 if (ProjectileManager.GetClosestProjectile(this, Range, out Rigidbody rbodyCatch2, out List<Rigidbody> rbodys))
                 {
                     rbodyT = rbodyCatch2;
@@ -226,35 +258,6 @@ namespace RandomAdditions
                         }
                     }
                     return true;
-                }
-            }
-            else if (updateBullet)
-            {
-                if ((bool)proj.Shooter)
-                {
-                    var PD = proj.Shooter.GetComponent<TankPointDefense>();
-                    if ((bool)PD)
-                    {
-                        if (PD.GetFetchedTargets(-1, out List<Rigidbody> rbodys, !hitFast))
-                        {
-                            Rigidbody rbodyCatch = rbodys.First();
-                            rbodyT = rbodyCatch;
-                            LockedTarget = rbodyCatch;
-                            //Debug.Log("RandomAdditions: InterceptProjectile - LOCK");
-                            if (IsFlare)
-                            {
-                                if (UnityEngine.Random.Range(1, 100) <= DistractChance)
-                                {
-                                    if (DistractsMoreThanOne)
-                                        DistractedProjectile.DistractAll(rbodys, rbody);
-                                    else
-                                        DistractedProjectile.Distract(rbodyCatch, rbody);
-
-                                }
-                            }
-                            return true;
-                        }
-                    }
                 }
             }
             rbodyT = null;
@@ -276,7 +279,7 @@ namespace RandomAdditions
                 var boom = explodo.GetComponent<Explosion>();
                 if ((bool)boom)
                 {
-                    Explosion boom2 = explodo.Spawn(Singleton.dynamicContainer, transform.position).GetComponent<Explosion>();
+                    Explosion boom2 = explodo.UnpooledSpawn(null, proj.trans.position, Quaternion.identity).GetComponent<Explosion>();
                     if (boom2 != null)
                     {
                         boom2.m_EffectRadiusMaxStrength = 1;

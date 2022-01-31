@@ -56,7 +56,7 @@ namespace RandomAdditions
                 else
                     SavedTime = LastHour;
                 SetByGUI = false;
-                GUIClock.allowTimeControl = TimeControllerPresent;
+                GUIClock.allowTimeControl = TimeControllerPresent && (!ManNetwork.IsNetworked || ManNetwork.IsHost);
                 GUIClock.GetTime();
             }
 

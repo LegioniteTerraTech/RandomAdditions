@@ -125,6 +125,7 @@
     <Compile Include="ModuleLazyAPs.cs" />
     <Compile Include="BlockModules\ModuleReplace.cs" />
     <Compile Include="GlobalChanges\ProjectileHealth.cs" />
+    <Compile Include="ProjectileCubetree.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <Compile Include="GlobalChanges\TankPointDefense.cs" />
     <None Include="GlobalChanges\CustomDamageType.cs" />

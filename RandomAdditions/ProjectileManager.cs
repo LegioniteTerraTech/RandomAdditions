@@ -127,6 +127,7 @@ namespace RandomAdditions
             }
             return true;
         }
+        private static List<Rigidbody> rbodysCached = new List<Rigidbody>();
         internal static bool GetListProjectiles(TankPointDefense iDefend, float Range, out List<Rigidbody> rbodys)
         {
             //Debug.Log("RandomAdditions: GetListProjectiles - Launched!");
@@ -135,16 +136,14 @@ namespace RandomAdditions
             if (!ProjOct.NavigateOctree(pos, Range, out List<Projectile> Projectiles))
                 return false;
             float bestVal = Range * Range;
-            rbodys = new List<Rigidbody>();
+            rbodysCached.Clear();
             int projC = Projectiles.Count;
             for (int step = 0; step < projC;)
             {
                 Projectile project = Projectiles.ElementAt(step);
                 if (!(bool)project)
                 {
-                    //ProjOct.Remove(project);
-                    Projectiles.RemoveAt(step);
-                    projC--;
+                    step++;
                     continue;
                 }
                 try
@@ -155,22 +154,20 @@ namespace RandomAdditions
                         float dist = (project.trans.position - pos).sqrMagnitude;
                         if (dist < bestVal)
                         {
-                            rbodys.Add(rbodyC);
+                            rbodysCached.Add(rbodyC);
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    Debug.Log("RandomAdditions: GetListProjectiles - error " + e);
+                    Debug.Log("RandomAdditions: (ProjectileMan)GetListProjectiles - error " + e);
                     ProjOct.Remove(project);
-                    Projectiles.RemoveAt(step);
-                    projC--;
                 }
                 step++;
             }
-            if (rbodys.Count == 0)
+            if (rbodysCached.Count == 0)
                 return false;
-            foreach (Rigidbody rbody in rbodys)
+            foreach (Rigidbody rbody in rbodysCached)
             {
                 var pHP = rbody.gameObject.GetComponent<ProjectileHealth>();
                 if (!(bool)pHP)
@@ -180,7 +177,7 @@ namespace RandomAdditions
                 }
             }
 
-            rbodys = rbodys.OrderBy(t => t.position.sqrMagnitude).ToList();
+            rbodys = rbodysCached.OrderBy(t => t.position.sqrMagnitude).ToList();
             return true;
         }
 

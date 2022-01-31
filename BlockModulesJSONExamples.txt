@@ -140,10 +140,14 @@
         "CanInterceptFast": false,  // Can this also shoot fast projectiles?
         "ForcePulse": false,        // Force the hitscan pulse effect
         "SpoolOnEnemy": true,       // Spin the barrels when an enemy is in range
+        "SmartManageTargets": false,// Can this smartly manage targets? Better for clusters of same projectiles
+                                // but suffers against diverse projectile salvos
+
         "LockOnDelay": 8,           // Frames this will not track for - Set to 0 to maximize scanning rate
             // WARNING - May negatively impact performance under 8!
         "LockOnStrength": 15,       // Will to keep lock on a projectile that's fast and/or far
             // WARNING - May negatively impact performance under 10!
+        "LockOnTooFastSpeed": 1.00,   //If the projectile is this percent above speed, then we aim directly
         "DefenseCooldown": 1,       // How long until it fires the next intercept
         "DefenseEnergyCost": 0,     // How much it takes to maintain passive defense
         "DefendRange": 50,          // The range of which this can find and track projectiles
