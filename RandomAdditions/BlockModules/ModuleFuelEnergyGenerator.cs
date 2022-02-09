@@ -209,7 +209,7 @@ namespace RandomAdditions
                             {  // the tanks are full and we are ready to roar
                                 isBoostingPhase = true;
                             }
-                            else if (isBoostingPhase && output < 0.02f)
+                            else if (isBoostingPhase && tonk.Boosters.FuelBurnedOut)
                             {
                                 isBoostingPhase = false;
                             }
