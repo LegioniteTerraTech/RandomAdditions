@@ -53,6 +53,7 @@ namespace RandomAdditions
                 if (TankBlock.tank.PlayerFocused)
                     GUIClock.LaunchGUI(TankBlock);
             }
+            ExtUsageHint.ShowExistingHint(4001);
         }
 
         public void OnDetach()

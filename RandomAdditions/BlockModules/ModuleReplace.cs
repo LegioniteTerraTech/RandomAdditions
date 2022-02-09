@@ -129,9 +129,9 @@ namespace RandomAdditions
                 }
                 offsetRot.SetLookRotation(ReplaceOffsetRotationF, ReplaceOffsetRotationT);
             }
-            catch
+            catch (Exception e)
             {
-                Debug.Log("RandomAdditions: ModuleReplace - TankBlock FAILED at it's job");
+                Debug.Log("RandomAdditions: ModuleReplace - Could not fetch tankblock info " + e);
                 return;
             }
         }

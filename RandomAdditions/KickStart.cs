@@ -25,6 +25,7 @@ namespace RandomAdditions
         public static GameObject logMan;
 
         public static bool DebugPopups = false;
+        public static bool ResetModdedPopups = false;
         public static bool ImmediateLoadLastSave = true; // Load directly into the last saved save on game startup
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
         public static bool NoShake = false; 
@@ -45,6 +46,7 @@ namespace RandomAdditions
         public static OptionToggle noCameraShake;
         public static OptionToggle scaleBlocksInSCU;
         public static OptionToggle realShields;
+        public static OptionToggle moddedPopupReset;
 
         public static OptionRange replaceChance;
         public static OptionToggle rpSea;
@@ -111,7 +113,10 @@ namespace RandomAdditions
             thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
             thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
             thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
+            thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
+            thisModConfig.BindConfig<ExtUsageHint>(null, "HintsSeenSAV");
             config = thisModConfig;
+            ExtUsageHint.SaveToHintsSeen();
 
             var RandomProperties = ModName;
             realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, TrueShields);
@@ -130,6 +135,15 @@ namespace RandomAdditions
             rpLand.onValueSaved.AddListener(() => { MandateLandReplacement = rpLand.SavedValue; config.WriteConfigJsonFile(); });
             rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, MandateSeaReplacement);
             rpSea.onValueSaved.AddListener(() => { MandateSeaReplacement = rpSea.SavedValue; config.WriteConfigJsonFile(); });
+
+            moddedPopupReset = new OptionToggle("Reset all modded popups", RandomProperties, ResetModdedPopups);
+            moddedPopupReset.onValueSaved.AddListener(() => {
+                if (moddedPopupReset.SavedValue) {
+                    ExtUsageHint.HintsSeen.Clear();
+                    ExtUsageHint.HintsSeenToSave();
+                    config.WriteConfigJsonFile();
+                }
+            });
         }
 
         public static bool LookForMod(string name)

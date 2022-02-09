@@ -69,6 +69,7 @@ namespace RandomAdditions
             tonk.AttachEvent.Subscribe(UpdateAttach);
             tonk.DetachEvent.Subscribe(UpdateDetach);
             lastTechHolderCount = tonk.blockman.IterateBlockComponents<ModuleItemHolderBeam>().Count();
+            ExtUsageHint.ShowExistingHint(4006);
         }
         private void OnDetach()
         {

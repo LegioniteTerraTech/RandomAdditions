@@ -112,9 +112,10 @@ namespace RandomAdditions
             var boom = explodo.GetComponent<Explosion>();
             if ((bool)boom)
             {
-                Explosion boom2 = explodo.UnpooledSpawn(null, proj.trans.position, Quaternion.identity).GetComponent<Explosion>();
+                Explosion boom2 = explodo.UnpooledSpawnWithLocalTransform(null, proj.trans.position, Quaternion.identity).GetComponent<Explosion>();
                 if (boom2 != null)
                 {
+                    boom2.gameObject.SetActive(true);
                     boom2.DoDamage = doDamage;
                     //boom2.SetDamageSource(Shooter);
                     //boom2.SetDirectHitTarget(directHitTarget);

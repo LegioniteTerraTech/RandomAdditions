@@ -189,6 +189,7 @@ namespace RandomAdditions
                 ManModeSwitch.inst.UpdateSwitchCheck.Subscribe(OnCheckUpdate);
             else
                 ManModeSwitch.inst.UpdateSwitchCheckFast.Subscribe(OnCheckUpdateFast);
+            ExtUsageHint.ShowExistingHint(4004);
         }
         public void OnDetach()
         {

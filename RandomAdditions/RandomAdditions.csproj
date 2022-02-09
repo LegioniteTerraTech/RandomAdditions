@@ -91,6 +91,10 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.Networking.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.PhysicsModule">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>False</Private>
@@ -120,11 +124,13 @@
     <Compile Include="BlockModules\ModuleModeSwitch.cs" />
     <Compile Include="BlockModules\ModuleRepairAimer.cs" />
     <Compile Include="BlockModules\ModuleSimpleLegs.cs" />
+    <Compile Include="BlockModules\ModuleUsageHint.cs" />
     <Compile Include="GlobalChanges\DistractedProjectile.cs" />
     <Compile Include="BlockModules\ModulePointDefense.cs" />
     <Compile Include="ModuleLazyAPs.cs" />
     <Compile Include="BlockModules\ModuleReplace.cs" />
     <Compile Include="GlobalChanges\ProjectileHealth.cs" />
+    <Compile Include="ModuleMoveGimbal.cs" />
     <Compile Include="ProjectileCubetree.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <Compile Include="GlobalChanges\TankPointDefense.cs" />

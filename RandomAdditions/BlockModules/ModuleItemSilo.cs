@@ -220,6 +220,7 @@ namespace RandomAdditions
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat); 
             UpdateGaugesAndDisplays();
             isSaving = false;
+            ExtUsageHint.ShowExistingHint(4005);
         }
         private void OnDetach()
         {

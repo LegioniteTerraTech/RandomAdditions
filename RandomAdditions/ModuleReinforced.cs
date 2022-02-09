@@ -47,8 +47,17 @@ namespace RandomAdditions
             public float Fire = 1.0f;
             public float Cutting = 1.0f;
             public float Plasma = 1.0f;
-        
 
+        public void OnPool()
+        {
+            if (DenyExplosion)
+                block.AttachEvent.Subscribe(OnAttach);
+        }
+        private void OnAttach()
+        {
+            ExtUsageHint.ShowExistingHint(4008);
+            block.AttachEvent.Unsubscribe(OnAttach);
+        }
 
 
 

@@ -45,7 +45,7 @@ namespace RandomAdditions
                 else
                 {
                     addedThrustPosition = thisTrans.localPosition;
-                    addedThrustDirection = thisTrans.InverseTransformDirection(thisTrans.forward);
+                    addedThrustDirection = Vector3.forward;
                     Debug.Log("RandomAdditions: Projectile " + gameObject.name + " does not have any previous effectors or thrust transforms!  Defaulting to the center of the projectile!  \nAdd a \"_subProp\" to your projectile's JSON!");
                 }
             }

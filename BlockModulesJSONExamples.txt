@@ -95,11 +95,15 @@
 -----------------------------------------------------------------------------------
 
         "RandomAdditions.ModuleFuelEnergyGenerator":{ // Burn fuel, get power
-            "GenerateCondition": "Manual",   // Manual for shift to generate,  Automatic to generate when full
-            "FuelConsumeRate": 10,          // Rate to consume the fuel
-            "FuelToEnergyRate": 1.0,        // Rate to convert fuel to energy
+            "GenerateCondition": "Manual",   // 
+            // Manual for shift to generate,  
+            // Automatic to begin generating when full
+            // Alternating to begin generating on full tank, and stop when empty
+            "FuelConsumeRate": 10,                  // Rate to consume the fuel per second
+            "FuelToEnergyRate": 1.0,                // Rate to convert fuel to energy per second
+            "GenerateSFX": "GeothermalGenerator",   // The generating SFX to use
             // fuel burning * FuelToEnergyRate = generated energy
-        },
+        },  // To add effects while running, make a new Gameobject named "_MFEG_effect" to store those particleSystem and Spinner effects.
 
 -----------------------------------------------------------------------------------
 
@@ -257,6 +261,13 @@
     },
 
 -----------------------------------------------------------------------------------------------------
+
+    "RandomAdditions.ModuleUsageHint": { //Description for first block deployment
+      "HintDescription": "This is a block with a description.  Please set this line.",
+    },
+
+-----------------------------------------------------------------------------------------------------
+
 
 	Need help? Let me know on the official TerraTech Community Discord!
 

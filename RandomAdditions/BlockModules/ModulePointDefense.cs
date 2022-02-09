@@ -202,6 +202,7 @@ namespace RandomAdditions
             barrelStep = 0;
             block.tank.TechAudio.AddModule(this);
             TankPointDefense.HandleAddition(TankBlock.tank, this);
+            ExtUsageHint.ShowExistingHint(4003);
         }
         public void OnDetach()
         {

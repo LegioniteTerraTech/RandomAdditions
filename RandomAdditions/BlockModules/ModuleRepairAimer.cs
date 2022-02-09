@@ -91,6 +91,7 @@ namespace RandomAdditions
         public void OnAttach()
         {
             tank = TankBlock.tank;
+            ExtUsageHint.ShowExistingHint(4001);
         }
 
         public void OnDetach()

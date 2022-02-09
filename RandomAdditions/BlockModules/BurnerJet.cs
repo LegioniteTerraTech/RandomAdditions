@@ -58,21 +58,21 @@ namespace RandomAdditions
             Effector = (Transform)effectoor.GetValue(Jet);
             if (DamagePerSecond < 0)
             {
-                Debug.Log("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
             }
             if (Radius < 0.001f)
             {
-                Debug.Log("RandomAdditions: BurnerJet - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
                 Radius = 0.001f;
             }
             if (RadiusStretchMultiplier < 0.001f)
             {
-                Debug.Log("RandomAdditions: BurnerJet - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
                 RadiusStretchMultiplier = 0.001f;
             }
             if (RadiusFalloff + 0.5f > Radius)
             {
-                Debug.Log("RandomAdditions: BurnerJet - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
                 CalcBoost = (Radius - 0.5f) / Radius;
             }
             else
