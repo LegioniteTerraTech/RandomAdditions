@@ -91,7 +91,7 @@ namespace RandomAdditions
         }
         private void OnDrain()
         {
-            energyDemand = GetCurrentEnergyPercent() < 0.5f || tonk.control.BoostControlJets;
+            energyDemand = GetCurrentEnergyPercent() < 0.9f || tonk.control.BoostControlJets;
             if (queuedGeneration > 0)
             {
                 float finalVal = -queuedGeneration;
