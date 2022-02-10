@@ -8,6 +8,7 @@ using UnityEngine;
 
 
 [RequireComponent(typeof(ModuleEnergy))]
+[RequireComponent(typeof(ModuleAudioProvider))]
 public class ModuleFuelEnergyGenerator : RandomAdditions.ModuleFuelEnergyGenerator { };
 namespace RandomAdditions
 {
@@ -28,7 +29,6 @@ namespace RandomAdditions
             // fuel burning * FuelToEnergyRate = generated energy
         },
         */
-        //Check out SiloGauge too as you will be needing one of those to display what's inside
 
 
 
@@ -87,20 +87,20 @@ namespace RandomAdditions
 
             TankBlock.AttachEvent.Subscribe(OnAttach);
             TankBlock.DetachEvent.Subscribe(OnDetach);
+            Energy.UpdateConsumeEvent.Subscribe(OnGenerate);
             Energy.UpdateConsumeEvent.Subscribe(OnDrain);
+        }
+        private void OnGenerate()
+        {
+            if (queuedGeneration > 1)
+            {
+                Energy.Supply(EnergyRegulator.EnergyType.Electric, queuedGeneration);
+                queuedGeneration = 0;
+            }
         }
         private void OnDrain()
         {
             energyDemand = GetCurrentEnergyPercent() < 0.9f || tonk.control.BoostControlJets;
-            if (queuedGeneration > 0)
-            {
-                float finalVal = -queuedGeneration;
-                if (queuedGeneration > GetSpareEnergy())
-                    finalVal = -GetSpareEnergy();
-                //Debug.Log("Pushing generation " + finalVal);
-                Energy.ConsumeIfEnough(EnergyRegulator.EnergyType.Electric, finalVal); // yes, I know it accepts negative
-                queuedGeneration = 0;
-            }
         }
         private void OnAttach()
         {
