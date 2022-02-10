@@ -7,12 +7,10 @@ using System.Reflection;
 using UnityEngine;
 
 
-[RequireComponent(typeof(ModuleEnergy))]
 [RequireComponent(typeof(ModuleAudioProvider))]
 public class ModuleFuelEnergyGenerator : RandomAdditions.ModuleFuelEnergyGenerator { };
 namespace RandomAdditions
 {
-    [RequireComponent(typeof(ModuleEnergy))]
     [RequireComponent(typeof(ModuleAudioProvider))]
     public class ModuleFuelEnergyGenerator : Module
     {   // Generate Energy from fuel? no way~
@@ -87,20 +85,16 @@ namespace RandomAdditions
 
             TankBlock.AttachEvent.Subscribe(OnAttach);
             TankBlock.DetachEvent.Subscribe(OnDetach);
-            Energy.UpdateConsumeEvent.Subscribe(OnGenerate);
-            Energy.UpdateConsumeEvent.Subscribe(OnDrain);
+            Energy.UpdateSupplyEvent.Subscribe(new Action(OnGenerate));
         }
         private void OnGenerate()
         {
             if (queuedGeneration > 1)
             {
-                Energy.Supply(EnergyRegulator.EnergyType.Electric, queuedGeneration);
+                //Debug.Log("Pushing generation " + queuedGeneration);
+                tonk.EnergyRegulator.Supply(EnergyRegulator.EnergyType.Electric, Energy, queuedGeneration);
                 queuedGeneration = 0;
             }
-        }
-        private void OnDrain()
-        {
-            energyDemand = GetCurrentEnergyPercent() < 0.9f || tonk.control.BoostControlJets;
         }
         private void OnAttach()
         {
@@ -170,7 +164,7 @@ namespace RandomAdditions
 
         public void FixedUpdate()
         {
-            if (updateDelayClock > updateDelay && IsBoostPossible())
+            if (!ManPauseGame.inst.IsPaused && updateDelayClock > updateDelay && IsBoostPossible())
             {
                 //Debug.Log("update");
                 float output;
@@ -205,6 +199,7 @@ namespace RandomAdditions
                             else
                                 isBoostingNow = false;
 
+                            energyDemand = GetCurrentEnergyPercent() < 0.9f || tonk.control.BoostControlJets;
                             if (!isBoostingPhase && energyDemand && output > 0.98f)
                             {  // the tanks are full and we are ready to roar
                                 isBoostingPhase = true;
@@ -269,13 +264,17 @@ namespace RandomAdditions
             }
             return 0;
         }
+        // DO NOT CALL WHILE ADDING OR SUBTRACTING POWER
         public float GetCurrentEnergyPercent()
         {
             var reg = tonk.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
             if (tonk != null || reg.storageTotal > 1)
             {
-                return reg.currentAmount / reg.storageTotal;
+                //Debug.Log("GetCurrentEnergyPercent - " + ((reg.storageTotal - reg.spareCapacity) / reg.storageTotal));
+                return (reg.storageTotal - reg.spareCapacity) / reg.storageTotal;
             }
+            //else
+            //    Debug.Log("GetCurrentEnergyPercent - Not working!");
             return 0;
         }
     }
