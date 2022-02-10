@@ -120,21 +120,21 @@ namespace RandomAdditions
 
             var RandomProperties = ModName;
             realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, TrueShields);
-            realShields.onValueSaved.AddListener(() => { TrueShields = realShields.SavedValue; config.WriteConfigJsonFile(); });
+            realShields.onValueSaved.AddListener(() => { TrueShields = realShields.SavedValue; });
             allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
-            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; config.WriteConfigJsonFile(); });
+            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; });
             altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
-            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; config.WriteConfigJsonFile(); });
+            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; });
             noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, NoShake);
-            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; config.WriteConfigJsonFile(); });
+            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; });
             scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, AutoScaleBlocksInSCU);
-            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; config.WriteConfigJsonFile(); });
+            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
             replaceChance = new OptionRange("Chance for modded block spawns", RandomProperties, GlobalBlockReplaceChance, 0, 100, 10);
-            replaceChance.onValueSaved.AddListener(() => { GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); config.WriteConfigJsonFile(); });
+            replaceChance.onValueSaved.AddListener(() => { GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
             rpLand = new OptionToggle("Force Land Block Replacement", RandomProperties, MandateLandReplacement);
-            rpLand.onValueSaved.AddListener(() => { MandateLandReplacement = rpLand.SavedValue; config.WriteConfigJsonFile(); });
+            rpLand.onValueSaved.AddListener(() => { MandateLandReplacement = rpLand.SavedValue; });
             rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, MandateSeaReplacement);
-            rpSea.onValueSaved.AddListener(() => { MandateSeaReplacement = rpSea.SavedValue; config.WriteConfigJsonFile(); });
+            rpSea.onValueSaved.AddListener(() => { MandateSeaReplacement = rpSea.SavedValue; });
 
             moddedPopupReset = new OptionToggle("Reset all modded popups", RandomProperties, ResetModdedPopups);
             moddedPopupReset.onValueSaved.AddListener(() => {
@@ -144,6 +144,7 @@ namespace RandomAdditions
                     config.WriteConfigJsonFile();
                 }
             });
+            NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
         }
 
         public static bool LookForMod(string name)

@@ -53,6 +53,7 @@ namespace RandomAdditions
         private bool energyDemand = false;
         private int updateDelay = 10;
         private int updateDelayClock = 0;
+        private float burnRateCurrent = 0;   // fuel burning * FuelToEnergyRate = generation
 
         private Tank tonk;
         private TankBlock TankBlock;
@@ -122,7 +123,7 @@ namespace RandomAdditions
             {
                 float generateVal = FuelRatePerSecond * updateDelay * Time.fixedDeltaTime;
                 //Debug.Log("Generating " + generateVal);
-                tonk.Boosters.Burn(FuelConsumeRate * updateDelay * Time.fixedDeltaTime);
+                burnRateCurrent = FuelConsumeRate * Time.fixedDeltaTime;
                 queuedGeneration += generateVal;
                 isBoostingNow = true;
             }
@@ -134,9 +135,9 @@ namespace RandomAdditions
             //Debug.Log("Trying to Generate (full)");
             if ((float)boostRegenGet.GetValue(tonk.Boosters) > FuelRatePerSecond)
             {
-                float burnt = Mathf.Clamp((float)boostRegenGet.GetValue(tonk.Boosters), 0, FuelConsumeRate) * updateDelay * Time.deltaTime;
-                tonk.Boosters.Burn(burnt);
-                queuedGeneration += burnt * FuelToEnergyRate;
+                float burnt = Mathf.Clamp((float)boostRegenGet.GetValue(tonk.Boosters), 0, FuelConsumeRate) * Time.deltaTime;
+                burnRateCurrent = burnt;
+                queuedGeneration += burnt * FuelToEnergyRate * updateDelay;
                 isBoostingNow = true;
                 //Debug.Log("Generating " + burnt * FuelToEnergyRate);
             }
@@ -216,6 +217,10 @@ namespace RandomAdditions
                 updateDelayClock = 0;
             }
             updateDelayClock++;
+            if (isBoostingNow)
+            {
+                tonk.Boosters.Burn(burnRateCurrent);
+            }
         }
 
 
