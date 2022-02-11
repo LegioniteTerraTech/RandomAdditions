@@ -87,6 +87,12 @@ namespace RandomAdditions
             TankBlock.AttachEvent.Subscribe(OnAttach);
             TankBlock.DetachEvent.Subscribe(OnDetach);
             Energy.UpdateSupplyEvent.Subscribe(new Action(OnGenerate));
+            if (generateParticles != null)
+                foreach (ParticleSystem PS in generateParticles)
+                    PS.SetEmissionEnabled(false);
+            if (generateSpinners != null)
+                foreach (Spinner SPN in generateSpinners)
+                    SPN.SetAutoSpin(false);
         }
         private void OnGenerate()
         {
@@ -205,7 +211,7 @@ namespace RandomAdditions
                             {  // the tanks are full and we are ready to roar
                                 isBoostingPhase = true;
                             }
-                            else if (isBoostingPhase && tonk.Boosters.FuelBurnedOut)
+                            else if (isBoostingPhase && (tonk.Boosters.FuelBurnedOut || output < 0.05f))
                             {
                                 isBoostingPhase = false;
                             }

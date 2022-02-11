@@ -52,22 +52,25 @@ namespace RandomAdditions
         public static void ThrowWarning(string Text)
         {
             Debug.Log(Text);
-            if (WarningCount < WarningCountMax)
+            if (KickStart.DebugPopups)
             {
-                if (Warnings.Length > 0)
+                if (WarningCount < WarningCountMax)
                 {
-                    Warnings.Append("\n");
-                    Warnings.Append("<b>--------------------</b>\n");
+                    if (Warnings.Length > 0)
+                    {
+                        Warnings.Append("\n");
+                        Warnings.Append("<b>--------------------</b>\n");
+                    }
+                    Warnings.Append(Text);
+                    if (!WarningQueued && inst.IsNotNull())
+                    {
+                        inst.Invoke("ActuallyThrowWarning", 0);// next Update
+                        WarningQueued = true;
+                    }
                 }
-                Warnings.Append(Text);
-                if (!WarningQueued && inst.IsNotNull())
-                {
-                    inst.Invoke("ActuallyThrowWarning", 0);// next Update
-                    WarningQueued = true;
-                }
+                // Else it's MAXED
+                WarningCount++;
             }
-            // Else it's MAXED
-            WarningCount++;
         }
         public void ActuallyThrowWarning()
         {
