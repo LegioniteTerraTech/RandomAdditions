@@ -30,17 +30,19 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Steam|AnyCPU'">
+    <OutputPath>bin\Steam\</OutputPath>
+    <DefineConstants>TRACE;STEAM</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\0Harmony.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="0Nuterra.NativeOptions">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\0Nuterra.NativeOptions\0Nuterra.NativeOptions.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="AcModHelper.Config">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\ModHelper.Config\AcModHelper.Config.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
@@ -51,9 +53,8 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2484820102\NuterraSteam.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="QModInstaller">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\QModInstaller.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="SafeSaves">
+      <HintPath>..\..\..\..\Desktop\SafeSaves\GitAccess\SafeSaves\SafeSaves.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -63,10 +64,6 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="TweakTech">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\TweakTech\TweakTech.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
@@ -115,23 +112,51 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)'=='Release'OR'$(Configuration)'=='Debug'">
+    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
+    <!--> THE MATTERS BELOW ARE UNOFFICIAL </!-->
+    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
+    <Reference Include="0Nuterra.NativeOptions">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\0Nuterra.NativeOptions\0Nuterra.NativeOptions.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AcModHelper.Config">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\ModHelper.Config\AcModHelper.Config.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="QModInstaller">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\QModInstaller.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TweakTech">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\TweakTech\TweakTech.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="WaterMod">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\Water Mod\WaterMod.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockModules\ExtModule.cs" />
+    <Compile Include="BlockModules\ModuleCustomShop.cs" />
+    <Compile Include="BlockModules\ModuleHangar.cs" />
+    <Compile Include="BlockModules\ModuleLoneMove.cs" />
     <Compile Include="BlockModules\ModuleModeSwitch.cs" />
+    <Compile Include="BlockModules\ModuleOmniCore.cs" />
     <Compile Include="BlockModules\ModuleRepairAimer.cs" />
     <Compile Include="BlockModules\ModuleSimpleLegs.cs" />
+    <Compile Include="BlockModules\ModuleTractorBeam.cs" />
     <Compile Include="BlockModules\ModuleUsageHint.cs" />
     <Compile Include="GlobalChanges\DistractedProjectile.cs" />
     <Compile Include="BlockModules\ModulePointDefense.cs" />
     <Compile Include="ModuleLazyAPs.cs" />
     <Compile Include="BlockModules\ModuleReplace.cs" />
     <Compile Include="GlobalChanges\ProjectileHealth.cs" />
-    <Compile Include="ModuleMoveGimbal.cs" />
-    <Compile Include="ProjectileCubetree.cs" />
+    <Compile Include="LazyRender.cs" />
+    <Compile Include="BlockModules\ModuleMoveGimbal.cs" />
+    <Compile Include="ProjectileCubeArray.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <Compile Include="GlobalChanges\TankPointDefense.cs" />
     <None Include="GlobalChanges\CustomDamageType.cs" />
@@ -147,7 +172,7 @@
     <Compile Include="LogHandler.cs" />
     <Compile Include="BlockModules\BurnerJet.cs" />
     <Compile Include="BlockModules\ModuleClock.cs" />
-    <Compile Include="GlobalChanges\ModuleDeathInsurance.cs" />
+    <Compile Include="GlobalChanges\OHKOInsurance.cs" />
     <Compile Include="BlockModules\ModuleFuelEnergyGenerator.cs" />
     <Compile Include="BlockModules\ModuleItemFixedHolderBeam.cs" />
     <Compile Include="BlockModules\ModuleItemSilo.cs" />
@@ -178,9 +203,38 @@
 set modpath="C:\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\RandomAdditions"
 
 if exist !modpath! (
+if $(ConfigurationName) == Release (
 echo Copying to game
 set e=$(TargetDir)&gt;nul
 xcopy /S /Y /R "!e:~0,-1!" !modpath!
+)
+if $(ConfigurationName) == Debug (
+echo Copying to game
+set e=$(TargetDir)&gt;nul
+xcopy /S /Y /R "!e:~0,-1!" !modpath!
+)
+)
+
+set modpath2="C:\Users\Legionite\Desktop\Advanced AI\Assets\Mods\Random Additions"
+
+
+
+if exist !modpath2! (
+if $(ConfigurationName) == Steam (
+echo Copying to SteamMod
+set e=$(TargetDir)&gt;nul
+xcopy /S /Y /R "!e:~0,-1!" !modpath2!
+)
+)
+
+set modpath3="C:\Program Files (x86)\Steam\steamapps\common\TerraTech\LocalMods\Random Additions"
+
+if exist !modpath3! (
+if $(ConfigurationName) == Steam (
+echo Copying to SteamModLocalDirect
+set e=$(TargetDir)&gt;nul
+xcopy /S /Y /R "!e:~0,-1!" !modpath3!
+)
 )</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -12,11 +12,9 @@ namespace RandomAdditions
 {
     [RequireComponent(typeof(ModuleEnergy))]
     [RequireComponent(typeof(TargetAimer))]
-    public class ModuleRepairAimer : Module
+    public class ModuleRepairAimer : ExtModule
     {
         // The module that moves a beam to an allied block's damaged location
-        private TankBlock TankBlock;
-        private Tank tank;
         private ModuleEnergy Energy;
 
         private Tank aimTarget = null;
@@ -24,6 +22,7 @@ namespace RandomAdditions
         private Transform Targeter;        // the transform that rests at the aim position
         private LineRenderer HealBeam;   
         private TargetAimer TargetAimer;      // the controller that controls the GimbalAimers
+        private List<GimbalAimer> gimbals;
         private Spinner spinner;
         private List<Tank> techsCollect = new List<Tank>();
 
@@ -33,9 +32,9 @@ namespace RandomAdditions
         private float healTargetRad = 0;
         private int timestep = UpdateInterval;
         private float animPulse = 0;
-        private float animSpeedMulti;
+        private float animSpeedMulti = 3;
         private const int UpdateInterval = 60;
-        private const float DistDeviance = 3;
+        private const float DistDeviance = 12;
         private const float distVar = 1.5f;
 
 
@@ -49,18 +48,15 @@ namespace RandomAdditions
         public bool UseCircularEnds = false;// Round off the ends of the line
 
 
-        public void OnPool()
+        protected override void Pool()
         {
-            TankBlock = gameObject.GetComponent<TankBlock>();
-            TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
-            TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
             Energy = GetComponent<ModuleEnergy>();
             if (Energy == null)
             {
                 LogHandler.ThrowWarning("RandomAdditions: ModuleRepairAimer NEEDS a valid ModuleEnergy!\nCause of error - Block " + gameObject.name);
                 return;
             }
-            Energy.UpdateConsumeEvent.Subscribe(UpdateConsume);
+            //Invoke("DelayedSub", 0.001f);
 
             TargetAimer = GetComponent<TargetAimer>();
             if (TargetAimer == null)
@@ -68,6 +64,8 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("RandomAdditions: ModuleRepairAimer NEEDS a valid TargetAimer in hierarchy!\nCause of error - Block " + gameObject.name);
                 return;
             }
+            gimbals = GetComponentsInChildren<GimbalAimer>().ToList();
+
             Targeter = KickStart.HeavyObjectSearch(transform, "_Target");
             if (Targeter == null)
             {
@@ -84,23 +82,38 @@ namespace RandomAdditions
             animSpeedMulti =  1 / Mathf.Max(HealPulseDelay, 0.25f);
             targeterZOffset = Targeter.localPosition.z;
             lastZDist = targeterZOffset;
-            TargetAimer.Init(TankBlock, 60, null);
+            TargetAimer.Init(block, 60, null);
             InitHealBeam();
+            Energy.UpdateConsumeEvent.Subscribe(UpdateRepair);
         }
 
-        public void OnAttach()
+        public override void OnAttach()
         {
-            tank = TankBlock.tank;
-            ExtUsageHint.ShowExistingHint(4001);
+            ExtUsageHint.ShowExistingHint(4003);
         }
 
-        public void OnDetach()
+        public override void OnDetach()
         {
             StopBeam();
-            tank = null;
         }
 
-        public void UpdateConsume()
+
+        private bool CanAimAt(Vector3 posWorld)
+        {
+            bool canDo = false;
+            if (gimbals != null)
+            {
+                canDo = true;
+                for (int step = 0; step < gimbals.Count; step++)
+                {
+                    if (aimTargBlock && canDo)
+                        canDo = gimbals.ElementAt(step).CanAim(posWorld);
+                }
+            }
+            return canDo;
+        }
+
+        public void UpdateRepair()
         {
             if (tank == null)
                 return;
@@ -110,16 +123,24 @@ namespace RandomAdditions
 
             if (aimTarget != null && aimTargBlock != null)
             {
-                StartBeam();
-                TargetAimer.AimAtWorldPos(aimTargBlock.centreOfMassWorld, RotateSpeed);
-                float aimZDist = Targeter.parent.InverseTransformPoint(aimTargBlock.centreOfMassWorld).z;
-                UpdateTargetDist(aimZDist);
-                UpdateHealBeam();
+                if (CanAimAt(aimTargBlock.centreOfMassWorld))
+                {
+                    StartBeam();
+                    TargetAimer.AimAtWorldPos(aimTargBlock.centreOfMassWorld, RotateSpeed);
+                    float aimZDist = Targeter.parent.InverseTransformPoint(aimTargBlock.centreOfMassWorld).z;
+                    UpdateTargetDist(aimZDist);
+                    UpdateHealBeam();
+                }
+                else
+                {
+                    aimTarget = null;
+                    aimTargBlock = null;
+                }
             }
             else
             {
                 StopBeam();
-                Vector3 defaultAim = Targeter.position + (25 * TankBlock.trans.forward);
+                Vector3 defaultAim = Targeter.position + (25 * block.trans.forward);
                 TargetAimer.AimAtWorldPos(defaultAim, RotateSpeed);
                 UpdateTargetDist(targeterZOffset);
             }
@@ -152,15 +173,15 @@ namespace RandomAdditions
                             if (!aimTargBlock.IsAttached || dmg.IsAtFullHealth)
                             {
                                 aimTargBlock = null;
-                                foreach (Damageable damage in aimTarget.blockman.IterateBlockComponents<Damageable>())
+                                foreach (TankBlock TB in aimTarget.blockman.IterateBlocks())
                                 {
+                                    Damageable damage = TB.GetComponent<Damageable>();
                                     if (!damage.IsAtFullHealth)
                                     {
-                                        var block = damage.GetComponent<TankBlock>();
-                                        if ((bool)block)
+                                        if ((bool)TB)
                                         {
                                             timestep = 0;
-                                            aimTargBlock = block;
+                                            aimTargBlock = TB;
                                             break;
                                         }
                                     }
@@ -171,7 +192,6 @@ namespace RandomAdditions
                                     return;
                                 }
                             }
-
                             if (Targeter.InverseTransformPoint(aimTargBlock.centreOfMassWorld).Approximately(Vector3.zero, DistDeviance))
                             {
                                 UpdateHeals();
@@ -180,12 +200,14 @@ namespace RandomAdditions
                     }
                 }
             }
+            else
+                aimTargBlock = null;
         }
         private void RefreshTargets()
         {
             aimTarget = null;
             aimTargBlock = null;
-            foreach (Visible tech in ManVisible.inst.VisiblesTouchingRadius(TankBlock.centreOfMassWorld, MaxLockOnRange, new Bitfield<ObjectTypes>()))
+            foreach (Visible tech in ManVisible.inst.VisiblesTouchingRadius(block.centreOfMassWorld, MaxLockOnRange, new Bitfield<ObjectTypes>()))
             {
                 if ((bool)tech.tank)
                 {
@@ -200,15 +222,15 @@ namespace RandomAdditions
             }
             foreach (Tank tech in techsCollect)
             {
-                foreach (Damageable damage in tech.blockman.IterateBlockComponents<Damageable>())
+                foreach (TankBlock TB in tech.blockman.IterateBlocks())
                 {
+                    Damageable damage = TB.GetComponent<Damageable>();
                     if (!damage.IsAtFullHealth)
                     {
-                        var block = damage.GetComponent<TankBlock>();
-                        if ((bool)block)
+                        if ((bool)TB && CanAimAt(TB.centreOfMassWorld))
                         {
                             aimTarget = tech;
-                            aimTargBlock = block;
+                            aimTargBlock = TB;
                             break;
                         }
                     }
@@ -218,15 +240,23 @@ namespace RandomAdditions
         }
         private void UpdateHeals()
         {
-            if (Energy.ConsumeIfEnough(EnergyRegulator.EnergyType.Electric, HealPulseCost))
+            if (ManNetwork.IsHost || !ManNetwork.IsNetworked)
             {
-                StartBeam();
-                var DMG = aimTargBlock.GetComponent<Damageable>();
-                DMG.Repair(HealHealthRate);
-                aimTargBlock.visible.KeepAwake();
+                if (Energy.ConsumeIfEnough(EnergyRegulator.EnergyType.Electric, HealPulseCost))
+                {
+                    StartBeam();
+                    var DMG = aimTargBlock.GetComponent<Damageable>();
+                    DMG.Repair(HealHealthRate);
+                    aimTargBlock.visible.KeepAwake();
+                }
+                else
+                {
+                    StopBeam();
+                    //Debug.Log("RandomAdditions: ModuleRepairAimer - UPDATING - not enough energy " + Energy.GetCurrentAmount(EnergyRegulator.EnergyType.Electric));
+                }
             }
             else
-                StopBeam();
+                StartBeam();
         }
 
         private void InitHealBeam()
@@ -299,8 +329,8 @@ namespace RandomAdditions
             if (aimZDist > lastZDist + distVar)
             {
                 distChange = lastZDist + ExtendSpeed * Time.deltaTime;
-                if (distChange > MaxExtendRange)
-                    distChange = MaxExtendRange;
+                if (distChange > MaxExtendRange + 111)
+                    distChange = MaxExtendRange + 111;
                 Targeter.localPosition = Targeter.localPosition.SetZ(distChange);
                 lastZDist = distChange;
             }

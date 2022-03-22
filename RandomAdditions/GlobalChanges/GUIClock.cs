@@ -22,12 +22,15 @@ namespace RandomAdditions
         public static int PosX = 0;
         public static int PosY = 0;
 
+        private static GUIClock inst;
 
         public static void Initiate()
         {
+            if (inst)
+                return;
             Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Subscribe(OnPlayerSwap);
 
-            Instantiate(new GameObject()).AddComponent<GUIClock>();
+            inst = Instantiate(new GameObject()).AddComponent<GUIClock>();
             GUIWindow = new GameObject();
             GUIWindow.AddComponent<GUIDisplay>();
             GUIWindow.SetActive(false);
@@ -35,6 +38,18 @@ namespace RandomAdditions
             PosY = 0;
             TimeWindow = new Rect(PosX, PosY, 200, 140);
         }
+        public static void DeInit()
+        {
+            if (!inst)
+                return;
+            Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Unsubscribe(OnPlayerSwap);
+
+            Destroy(inst.gameObject);
+            Destroy(GUIWindow.gameObject);
+            inst = null;
+            GUIWindow = null;
+        }
+
         public static void LaunchGUI(TankBlock tonk)
         {
             TryOpenTimeWindow(tonk.tank);
@@ -54,19 +69,23 @@ namespace RandomAdditions
                 PosY = 0;
                 TimeWindow = new Rect(PosX, PosY, 200, 140);
             }
-            if (tonk.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
+            if (currentTank.IsNotNull())
             {
-                if (!isCurrentlyOpen)
+                if (currentTank.GetComponent<GlobalClock.TimeTank>())
                 {
-                    GlobalClock.SetByGUI = true;//update it!
-                    LaunchClockWindow();
+                    if (currentTank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
+                    {
+                        if (!isCurrentlyOpen)
+                        {
+                            GlobalClock.SetByGUI = true;//update it!
+                            LaunchClockWindow();
+                        }
+                        return;
+                    }
                 }
             }
-            else
-            {
-                if (isCurrentlyOpen)
-                    CloseClockWindow();
-            }
+            if (isCurrentlyOpen)
+                CloseClockWindow();
         }
         public static void GetTime()
         {

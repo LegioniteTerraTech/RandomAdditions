@@ -1,30 +1,30 @@
 ﻿using System;
 using UnityEngine;
+using SafeSaves;
 
 public class ModuleClock : RandomAdditions.ModuleClock { };
 namespace RandomAdditions
 {
-    public class ModuleClock : Module
+    [AutoSaveComponent]
+    public class ModuleClock : ExtModule
     {
         // The module that handles the visualization of time through a clock interface.
-        public TankBlock TankBlock;
-
         public bool DisplayTime = true;     // Rotate a GameObject called "TimeObject" depending on the time
         public bool DigitalTime = false;    // Display on a "HUD" window?
         public bool ControlTime = false;     // Can this be R-clicked to open a menu to control time?
         public Transform TimeObject;        // the dial
 
 
-        public bool IsAttached { get { return TankBlock.IsAttached; } }
+        public bool IsAttached { get { return block.IsAttached; } }
+        [SSaveField]
         public int SavedTime = 0;
+        [SSaveField]
+        public bool LockedTime = false;
 
 
-        public void OnPool()
+        protected override void Pool()
         {
-            TankBlock = gameObject.GetComponent<TankBlock>();
             var thisInst = gameObject.GetComponent<ModuleClock>();
-            TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
-            TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
             if (thisInst.DisplayTime)
             {
                 try
@@ -39,35 +39,35 @@ namespace RandomAdditions
             }
         }
 
-        public void OnAttach()
+        public override void OnAttach()
         {
             GlobalClock.clocks.Add(this);
             if (ControlTime)
             {
-                TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-                TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                block.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             }
-            if (TankBlock.tank.IsNotNull())
+            if (tank.IsNotNull())
             {
                 SetClock();
-                if (TankBlock.tank.PlayerFocused)
-                    GUIClock.LaunchGUI(TankBlock);
+                if (tank.PlayerFocused)
+                    GUIClock.LaunchGUI(block);
             }
             ExtUsageHint.ShowExistingHint(4001);
         }
 
-        public void OnDetach()
+        public override void OnDetach()
         {
             GlobalClock.clocks.Remove(this);
             if (ControlTime)
             {
-                TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-                TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                block.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                block.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             }
         }
 
         [Serializable]
-        private new class SerialData : SerialData<SerialData>
+        private new class SerialData : Module.SerialData<SerialData>
         {
             public int savedTime;
             public bool lockedTime;
@@ -75,33 +75,46 @@ namespace RandomAdditions
 
         private void OnSerialize(bool saving, TankPreset.BlockSpec blockSpec)
         {
-            if (ControlTime)
+            try
             {
-                if (saving)
-                {   //Save to snap
-                    SerialData serialData = new SerialData()
-                    {
-                        savedTime = SavedTime,
-                        lockedTime = GlobalClock.LockTime
-                    };
-                    serialData.Store(blockSpec.saveState);
-                    Debug.Log("ScaleTechs: Saved the hour " + SavedTime.ToString() + " in gameObject " + gameObject.name);
-                }
-                else
-                {   //Load from snap
-                    try
-                    {
-                        SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
-                        if (serialData2 != null)
+                if (ControlTime)
+                {
+                    if (saving)
+                    {   //Save to snap
+                        /*
+                        SerialData serialData = new SerialData()
                         {
-                            SavedTime = serialData2.savedTime;
-                            GlobalClock.LockTime = serialData2.lockedTime;
-                            Debug.Log("ScaleTechs: Loaded the hour " + SavedTime.ToString() + " from gameObject " + gameObject.name);
-                        }
+                            savedTime = SavedTime,
+                            lockedTime = GlobalClock.LockTime
+                        };
+                        serialData.Store(blockSpec.saveState);
+                        */
+                        LockedTime = GlobalClock.LockTime;
+                        if (this.SerializeToSafe())
+                            Debug.Log("ScaleTechs: Saved the hour " + SavedTime.ToString() + " in gameObject " + gameObject.name);
                     }
-                    catch { }
+                    else
+                    {   //Load from snap
+                        try
+                        {
+                            if (!this.DeserializeFromSafe())
+                            {
+                                SerialData serialData2 = Module.SerialData<SerialData>.Retrieve(blockSpec.saveState);
+                                if (serialData2 != null)
+                                {
+                                    SavedTime = serialData2.savedTime;
+                                    GlobalClock.LockTime = serialData2.lockedTime;
+                                    Debug.Log("ScaleTechs: Loaded the hour " + SavedTime.ToString() + " from gameObject " + gameObject.name);
+                                }
+                            }
+                            else
+                                GlobalClock.LockTime = LockedTime;
+                        }
+                        catch { }
+                    }
                 }
             }
+            catch { }
         }
 
         //All ModuleClock(s) will control the time based on global values.
@@ -132,9 +145,9 @@ namespace RandomAdditions
             }
             if (DigitalTime)
             {   // Load a little HUD window with the time
-                if (TankBlock.tank.IsNotNull())
+                if (tank.IsNotNull())
                 {
-                    TankBlock.tank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank = true;
+                    tank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank = true;
                 }
             }
             /*

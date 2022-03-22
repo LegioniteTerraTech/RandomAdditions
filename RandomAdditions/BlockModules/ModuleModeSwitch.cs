@@ -33,8 +33,18 @@ namespace RandomAdditions
 
         public static void Initiate()
         {
+            if (inst)
+                return;
             inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
             Debug.Log("RandomAdditions: Created ManModeSwitch.");
+        }
+        public static void DeInit()
+        {
+            if (!inst)
+                return;
+            Destroy(inst);
+            inst = null;
+            Debug.Log("RandomAdditions: DeInit ManModeSwitch.");
         }
 
         public void Update()
@@ -48,7 +58,7 @@ namespace RandomAdditions
             }
         }
     }
-    public class ModuleModeSwitch : Module
+    public class ModuleModeSwitch : ExtModule
     {
         private FireData FireDataAlt;       // 
         private ModuleWeapon MW;            //
@@ -102,11 +112,9 @@ namespace RandomAdditions
         private static readonly FieldInfo MWGShotsLeft = typeof(ModuleWeaponGun).GetField("m_BurstShotsRemaining", BindingFlags.NonPublic | BindingFlags.Instance);
 
 
-        public void OnPool()
+        protected override void Pool()
         {
             //block.MouseDownEvent.Subscribe(OnClick);
-            block.AttachEvent.Subscribe(OnAttach);
-            block.DetachEvent.Subscribe(OnDetach);
             working = false;
 
             FireData[] batch = GetComponentsInChildren<FireData>();
@@ -123,7 +131,7 @@ namespace RandomAdditions
                     if (GetComponent<FireData>() != batch[step])
                     {
                         FireDataAlt = batch[step];
-                        Debug.Log("RandomAdditions: ModuleModeSwitch - Picked alt FireData in " + FireDataAlt.gameObject.name);
+                        //Debug.Log("RandomAdditions: ModuleModeSwitch - Picked alt FireData in " + FireDataAlt.gameObject.name);
                         break;
                     }
                 }
@@ -181,9 +189,9 @@ namespace RandomAdditions
                 BarrelsMain = BarrelsFetched.ToArray();
                 BarrelsAux = BarrelsFetched.ToArray();
             }
-            Debug.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
+            //Debug.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
-        public void OnAttach()
+        public override void OnAttach()
         {
             if ((int)ModeSwitch > (int)ModeSwitchCondition.PrimarySecondarySalvo)
                 ManModeSwitch.inst.UpdateSwitchCheck.Subscribe(OnCheckUpdate);
@@ -191,7 +199,7 @@ namespace RandomAdditions
                 ManModeSwitch.inst.UpdateSwitchCheckFast.Subscribe(OnCheckUpdateFast);
             ExtUsageHint.ShowExistingHint(4004);
         }
-        public void OnDetach()
+        public override void OnDetach()
         {
             if ((int)ModeSwitch > (int)ModeSwitchCondition.PrimarySecondarySalvo)
                 ManModeSwitch.inst.UpdateSwitchCheck.Unsubscribe(OnCheckUpdate);
@@ -535,7 +543,9 @@ namespace RandomAdditions
             {
                 try
                 {
+#if !STEAM
                     TweakTech.ReAimer.UpdateExisting(block);
+#endif
                 }
                 catch { }
             }

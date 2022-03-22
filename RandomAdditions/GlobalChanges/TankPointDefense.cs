@@ -140,7 +140,8 @@ namespace RandomAdditions
                 {
                     if (index > fetchedProj.Count)
                         underloaded = true;
-                    index = (index + 1) % fetchedProj.Count;
+                    if (fetchedProj.Count > 0)
+                        index = (index + 1) % fetchedProj.Count;
                 }
             }
             dTs.First().TaxReserves(energyTax);

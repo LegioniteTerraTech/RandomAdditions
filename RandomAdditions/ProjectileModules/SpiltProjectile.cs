@@ -4,6 +4,10 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
+/// <summary>
+/// COMPENSATE FOR MISPELL
+/// </summary>
+public class SplitProjectile : RandomAdditions.SpiltProjectile { };
 public class SpiltProjectile : RandomAdditions.SpiltProjectile { };
 namespace RandomAdditions
 {

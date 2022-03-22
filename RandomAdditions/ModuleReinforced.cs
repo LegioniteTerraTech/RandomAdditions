@@ -3,7 +3,7 @@
 public class ModuleReinforced : RandomAdditions.ModuleReinforced { };
 namespace RandomAdditions
 {
-    public class ModuleReinforced : Module
+    public class ModuleReinforced : MonoBehaviour
     {
         /* Throw this within your JSONBLOCK
         "RandomAdditions.ModuleReinforced":{ // Add a special resistance to your block
@@ -50,13 +50,17 @@ namespace RandomAdditions
 
         public void OnPool()
         {
-            if (DenyExplosion)
-                block.AttachEvent.Subscribe(OnAttach);
+            try
+            {
+                if (DenyExplosion)
+                    gameObject.GetComponent<TankBlock>().AttachEvent.Subscribe(OnAttach);
+            }
+            catch { }
         }
         private void OnAttach()
         {
             ExtUsageHint.ShowExistingHint(4008);
-            block.AttachEvent.Unsubscribe(OnAttach);
+            gameObject.GetComponent<TankBlock>().AttachEvent.Unsubscribe(OnAttach);
         }
 
 

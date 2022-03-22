@@ -25,6 +25,10 @@ namespace RandomAdditions
         {
             return DamageDealt > Health;
         }
+        public void Reset()
+        {
+            exploded = false;
+        }
 
         FieldInfo deals = typeof(WeaponRound).GetField("m_Damage", BindingFlags.NonPublic | BindingFlags.Instance);
         public void GetHealth()
@@ -94,6 +98,11 @@ namespace RandomAdditions
                         }
                     }
                     exploded = true;
+                }
+                var split = GetComponent<SpiltProjectile>();
+                if (split)
+                {
+                    split.OnExplosion();
                 }
 
                 proj.Recycle(worldPosStays: false);

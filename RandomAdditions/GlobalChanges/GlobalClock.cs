@@ -18,15 +18,26 @@ namespace RandomAdditions
 
         public class ClockManager : MonoBehaviour
         {
+            private static ClockManager inst;
             //The global timekeeper for all clocks
             //  think of it as the "atomic clock" of the offworld.
             //  Also handles setting the time and then locking it.
             public static void Initiate()
             {
-                new GameObject("GlobalClockGeneral").AddComponent<ClockManager>();
+                if (inst)
+                    return;
+                inst = new GameObject("GlobalClockGeneral").AddComponent<ClockManager>();
                 clocks = new List<ModuleClock>();
                 tanks = new List<TimeTank>();
                 Debug.Log("RandomAdditions: Created GlobalClock.");
+            }
+            public static void DeInit()
+            {
+                if (!inst)
+                    return;
+                Destroy(inst.gameObject);
+                inst = null;
+                Debug.Log("RandomAdditions: DeInit GlobalClock.");
             }
 
             //All ModuleClock(s) will control the time based on global values.

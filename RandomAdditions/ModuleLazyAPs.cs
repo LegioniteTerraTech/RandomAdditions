@@ -16,7 +16,7 @@ namespace RandomAdditions
             "HostBlockID": 0,       // The Block ID of which to copy the AP from if not the host block
         },
      */
-    public class ModuleLazyAPs : Module
+    public class ModuleLazyAPs : ExtModule
     {
         public bool IsHostBlock = false;
         public string HostBlockName = null;
@@ -28,7 +28,7 @@ namespace RandomAdditions
         private Transform CopyTarget;
         private bool AppliedAPs = false;
 
-        private void OnPool()
+        protected override void Pool()
         {
             TryApplyAPs();
             if (Singleton.Manager<ManSpawn>.inst.IsTankBlockLoaded(block.BlockType))

@@ -34,12 +34,12 @@ namespace RandomAdditions
         "FireSFXType": 2,           // Same as ModuleWeapon but for Pulse. Ignored when ShareFireSFX is true
 
         // Pulse Beam effect (hitscan mode)
-        "PulseAimCone": 15         // The max aiming rotation: Input Value [1-100] ~ Degrees(5-360)
+        "PulseAimCone": 15,        // The max aiming rotation: Input Value [1-100] ~ Degrees(5-360)
         "AllAtOnce": true,         // Will this fire all lasers at once
         "HitChance": 45,           // Out of 100
         "PointDefenseDamage": 1,   // How much damage to deal to the target projectile
         "PulseEnergyCost": 0,      // How much it takes to fire a pulse
-        "ExplodeOnHit": 1,         // Make the target projectile explode on death (without dealing damage)
+        "ExplodeOnHit": true,         // Make the target projectile explode on death (without dealing damage)
         "PulseSizeStart": 0.5,     // Size of the beam at the launch point
         "PulseSizeEnd": 0.2,       // Size of the beam at the end point
         "PulseLifetime": 0,        // How long the pulse VISUAL persists - leave at zero for one frame
@@ -57,10 +57,8 @@ namespace RandomAdditions
      */
 
     [RequireComponent(typeof(ModuleEnergy))]
-    public class ModulePointDefense : Module, TechAudio.IModuleAudioProvider
+    public class ModulePointDefense : ExtModule, TechAudio.IModuleAudioProvider
     {
-        TankBlock TankBlock;
-
         // General parameters
         public bool DefendOnly = false;
         public bool CanInterceptFast = false;       // Can this also shoot fast projectiles?
@@ -121,6 +119,7 @@ namespace RandomAdditions
         private TargetAimer aimerMain;
         //private List<CannonBarrel> barrels;
         private Rigidbody LockedTarget;
+
         public TechAudio.SFXType SFXType => FireSFXType;
         public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
         public Rigidbody Target => LockedTarget;
@@ -129,12 +128,8 @@ namespace RandomAdditions
 
         private float energyToTax = 0;
 
-        public void OnPool()
+        protected override void Pool()
         {
-            TankBlock = gameObject.GetComponent<TankBlock>();
-            TankBlock.AttachEvent.Subscribe(OnAttach);
-            TankBlock.DetachEvent.Subscribe(OnDetach);
-
             fireTrans = KickStart.HeavyObjectSearch(transform, "_fireTrans");
             if (fireTrans == null)
                 fireTrans = gameObject.transform;
@@ -166,7 +161,7 @@ namespace RandomAdditions
             if (PulseAimCone > 100 || PulseAimCone < 1)
             {
                 PulseAimCone = 15;
-                LogHandler.ThrowWarning("ModulePointDefense: Turret " + TankBlock.name + " has a PulseAimCone out of range!  Make sure it's a value within or including Input Value [1-100] ~ Degrees(5-360)");
+                LogHandler.ThrowWarning("ModulePointDefense: Turret " + block.name + " has a PulseAimCone out of range!  Make sure it's a value within or including Input Value [1-100] ~ Degrees(5-360)");
             }
             pulseAimAnglef = 1 - (PulseAimCone / 50);
             if (!ForcePulse)
@@ -179,7 +174,7 @@ namespace RandomAdditions
                     energyUser = PulseEnergyCost > 0;
                     return;
                 }
-                LogHandler.ThrowWarning("ModulePointDefense: Turret " + TankBlock.name + "'s FireData.m_BulletPrefab needs InterceptProjectile to work properly!");
+                LogHandler.ThrowWarning("ModulePointDefense: Turret " + block.name + "'s FireData.m_BulletPrefab needs InterceptProjectile to work properly!");
             }
             else
             {
@@ -197,18 +192,18 @@ namespace RandomAdditions
                 energyToTax = 0;
             }
         }
-        public void OnAttach()
+        public override void OnAttach()
         {
             barrelStep = 0;
             block.tank.TechAudio.AddModule(this);
-            TankPointDefense.HandleAddition(TankBlock.tank, this);
-            ExtUsageHint.ShowExistingHint(4003);
+            TankPointDefense.HandleAddition(tank, this);
+            ExtUsageHint.ShowExistingHint(4002);
         }
-        public void OnDetach()
+        public override void OnDetach()
         {
             barrelStep = 0;
             block.tank.TechAudio.RemoveModule(this);
-            TankPointDefense.HandleRemoval(TankBlock.tank, this);
+            TankPointDefense.HandleRemoval(tank, this);
         }
         FieldInfo recoiled = typeof(CannonBarrel).GetField("recoiling", BindingFlags.NonPublic | BindingFlags.Instance);
         private void UpdateLockOn(out bool hit)
@@ -416,7 +411,7 @@ namespace RandomAdditions
                     }
                     else
                     {
-                        audioTickData.module = this;
+                        audioTickData.module = dmg; // only need pos
                         audioTickData.provider = this;
                     }
                     audioTickData.sfxType = FireSFXType;
@@ -444,7 +439,7 @@ namespace RandomAdditions
                     }
                     else
                     {
-                        audioTickData.module = this;
+                        audioTickData.module = dmg; // only need pos
                         audioTickData.provider = this;
                     }
                     audioTickData.sfxType = FireSFXType;
@@ -583,8 +578,8 @@ namespace RandomAdditions
                 return LockedTarget.position;
 
             Vector3 tankVelo = Vector3.zero;
-            if ((bool)TankBlock.tank.rbody)
-                tankVelo = TankBlock.tank.rbody.velocity;
+            if ((bool)tank.rbody)
+                tankVelo = tank.rbody.velocity;
             float velo = gunBase.GetVelocity();
             if (velo < 1)
                 velo = 1;

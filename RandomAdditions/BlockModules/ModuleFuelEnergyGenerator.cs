@@ -12,7 +12,7 @@ public class ModuleFuelEnergyGenerator : RandomAdditions.ModuleFuelEnergyGenerat
 namespace RandomAdditions
 {
     [RequireComponent(typeof(ModuleAudioProvider))]
-    public class ModuleFuelEnergyGenerator : Module
+    public class ModuleFuelEnergyGenerator : ExtModule
     {   // Generate Energy from fuel? no way~
         //   Make sure to warn the user in the desc if it's set to OnBoost
 
@@ -30,7 +30,7 @@ namespace RandomAdditions
 
 
 
-        FieldInfo boostRegenGet = typeof(ModuleBooster).GetField("m_FuelRefill", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static FieldInfo boostRegenGet = typeof(ModuleBooster).GetField("m_FuelRefill", BindingFlags.NonPublic | BindingFlags.Instance);
 
         public enum GenerateMethod
         {
@@ -55,8 +55,6 @@ namespace RandomAdditions
         private int updateDelayClock = 0;
         private float burnRateCurrent = 0;   // fuel burning * FuelToEnergyRate = generation
 
-        private Tank tonk;
-        private TankBlock TankBlock;
         private ModuleEnergy Energy;
         private ModuleAudioProvider Audio;
         private float FuelRatePerSecond
@@ -68,9 +66,8 @@ namespace RandomAdditions
 
 
 
-        public void OnPool()
+        protected override void Pool()
         {
-            TankBlock = GetComponent<TankBlock>();
             Energy = GetComponent<ModuleEnergy>();
             Audio = GetComponent<ModuleAudioProvider>();
             OverrideAudio.AddToSounds(ref Audio, GenerateSFX);
@@ -84,8 +81,6 @@ namespace RandomAdditions
                 generateSpinners.AddRange(trans.GetComponentsInChildren<Spinner>());
             }
 
-            TankBlock.AttachEvent.Subscribe(OnAttach);
-            TankBlock.DetachEvent.Subscribe(OnDetach);
             Energy.UpdateSupplyEvent.Subscribe(new Action(OnGenerate));
             if (generateParticles != null)
                 foreach (ParticleSystem PS in generateParticles)
@@ -99,17 +94,16 @@ namespace RandomAdditions
             if (queuedGeneration > 1)
             {
                 //Debug.Log("Pushing generation " + queuedGeneration);
-                tonk.EnergyRegulator.Supply(EnergyRegulator.EnergyType.Electric, Energy, queuedGeneration);
+                tank.EnergyRegulator.Supply(EnergyRegulator.EnergyType.Electric, Energy, queuedGeneration);
                 queuedGeneration = 0;
             }
         }
-        private void OnAttach()
+        public override void OnAttach()
         {
-            tonk = TankBlock.tank;
             enabled = true;
             ExtUsageHint.ShowExistingHint(4007);
         }
-        private void OnDetach()
+        public override void OnDetach()
         {
             if (generateParticles != null)
                 foreach (ParticleSystem PS in generateParticles)
@@ -118,14 +112,13 @@ namespace RandomAdditions
                 foreach (Spinner SPN in generateSpinners)
                     SPN.SetAutoSpin(false);
             enabled = false;
-            tonk = null;
             isBoostingNow = false;
         }
 
         private void BoostGenerate()
         {
             //Debug.Log("Trying to Generate");
-            if (!tonk.Boosters.FuelBurnedOut)
+            if (!tank.Boosters.FuelBurnedOut)
             {
                 float generateVal = FuelRatePerSecond * updateDelay * Time.fixedDeltaTime;
                 //Debug.Log("Generating " + generateVal);
@@ -139,9 +132,9 @@ namespace RandomAdditions
         private void BoostGenerateFull()
         {
             //Debug.Log("Trying to Generate (full)");
-            if ((float)boostRegenGet.GetValue(tonk.Boosters) > FuelRatePerSecond)
+            if ((float)boostRegenGet.GetValue(tank.Boosters) > FuelRatePerSecond)
             {
-                float burnt = Mathf.Clamp((float)boostRegenGet.GetValue(tonk.Boosters), 0, FuelConsumeRate) * Time.deltaTime;
+                float burnt = Mathf.Clamp((float)boostRegenGet.GetValue(tank.Boosters), 0, FuelConsumeRate) * Time.deltaTime;
                 burnRateCurrent = burnt;
                 queuedGeneration += burnt * FuelToEnergyRate * updateDelay;
                 isBoostingNow = true;
@@ -178,7 +171,7 @@ namespace RandomAdditions
                 switch (GenerateCondition)
                 {
                     case GenerateMethod.Manual:
-                        if (tonk.control.BoostControlJets)
+                        if (tank.control.BoostControlJets)
                         {   // generate
                             BoostGenerate();
                         }
@@ -206,12 +199,12 @@ namespace RandomAdditions
                             else
                                 isBoostingNow = false;
 
-                            energyDemand = GetCurrentEnergyPercent() < 0.9f || tonk.control.BoostControlJets;
+                            energyDemand = GetCurrentEnergyPercent() < 0.9f || tank.control.BoostControlJets;
                             if (!isBoostingPhase && energyDemand && output > 0.98f)
                             {  // the tanks are full and we are ready to roar
                                 isBoostingPhase = true;
                             }
-                            else if (isBoostingPhase && (tonk.Boosters.FuelBurnedOut || output < 0.05f))
+                            else if (isBoostingPhase && (tank.Boosters.FuelBurnedOut || output < 0.05f))
                             {
                                 isBoostingPhase = false;
                             }
@@ -225,7 +218,7 @@ namespace RandomAdditions
             updateDelayClock++;
             if (isBoostingNow)
             {
-                tonk.Boosters.Burn(burnRateCurrent);
+                tank.Boosters.Burn(burnRateCurrent);
             }
         }
 
@@ -234,7 +227,7 @@ namespace RandomAdditions
         {
             try
             {
-                _ = tonk.Boosters.FuelLevel;
+                _ = tank.Boosters.FuelLevel;
                 return true;
             }
             catch { return false; }
@@ -244,33 +237,33 @@ namespace RandomAdditions
             output = 0;
             try
             {
-                output = tonk.Boosters.FuelLevel;
+                output = tank.Boosters.FuelLevel;
                 return true;
             }
             catch { return false; }
         }
         public float GetCurrentEnergy()
         {
-            if (tonk != null)
+            if (tank != null)
             {
-                var reg = tonk.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
                 return reg.storageTotal - reg.spareCapacity;
             }
             return 0;
         }
         public float GetMaximumEnergy()
         {
-            if (tonk != null)
+            if (tank != null)
             {
-                return tonk.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric).storageTotal;
+                return tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric).storageTotal;
             }
             return 0;
         }
         public float GetSpareEnergy()
         {
-            if (tonk != null)
+            if (tank != null)
             {
-                var reg = tonk.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
                 return reg.storageTotal - reg.currentAmount;
             }
             return 0;
@@ -278,8 +271,8 @@ namespace RandomAdditions
         // DO NOT CALL WHILE ADDING OR SUBTRACTING POWER
         public float GetCurrentEnergyPercent()
         {
-            var reg = tonk.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
-            if (tonk != null || reg.storageTotal > 1)
+            var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            if (tank != null || reg.storageTotal > 1)
             {
                 //Debug.Log("GetCurrentEnergyPercent - " + ((reg.storageTotal - reg.spareCapacity) / reg.storageTotal));
                 return (reg.storageTotal - reg.spareCapacity) / reg.storageTotal;

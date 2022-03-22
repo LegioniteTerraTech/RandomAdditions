@@ -8,10 +8,12 @@ namespace RandomAdditions
         //   This is david
         // a module that ensures block kill and explosion damage when paired with Projectile
         /*
-           "RandomAdditions.OHKOProjectile": {
+          "RandomAdditions.OHKOProjectile": {
             "InstaKill": true,        //Should we kill the block we collided with?
-           },// Ensure erad.
+            "GuaranteedKillOnLowHP": true,//Kill the block we collided with if it's HP hits zero?
+          },// Ensure erad.
          */
         public bool InstaKill = true;
+        public bool GuaranteedKillOnLowHP = true;
     }
 }

@@ -152,8 +152,8 @@ namespace RandomAdditions
                             targ = LockedTarget.gameObject.AddComponent<ProjectileHealth>();
                             targ.GetHealth();
                         }
-                        LockedTarget.GetComponent<ProjectileHealth>().TakeDamage(PointDefDamage, InterceptedExplode);
-                        ForceExplode();
+                        targ.TakeDamage(PointDefDamage, InterceptedExplode);
+                        ForceExplode(); //Blows up THE INTERCEPTOR projectile
                         proj.Recycle(worldPosStays: false);
                     }
                     catch
@@ -179,20 +179,20 @@ namespace RandomAdditions
         {
             bool update = false;
             bool updateBullet = false;
-            if (timer <= 3)
-            {
-                if (IsFlare && ConstantDistract)
-                {
-                    if (UnityEngine.Random.Range(1, 100) <= DistractChance)
-                        DistractedProjectile.Distract(LockedTarget, rbody);
-                }
-                update = IsFlare || !enabled;
-                updateBullet = true;
-                timer = 7;
-            }
-            timer--;
             if ((bool)LockedTarget)
             {
+                if (timer <= 3)
+                {
+                    if (IsFlare && ConstantDistract)
+                    {
+                        if (UnityEngine.Random.Range(1, 100) <= DistractChance)
+                            DistractedProjectile.Distract(LockedTarget, rbody);
+                    }
+                    update = IsFlare || !enabled;
+                    updateBullet = true;
+                    timer = 7;
+                }
+                timer--;
                 if (!LockedTarget.IsSleeping())
                 {
                     if ((LockedTarget.position - rbody.position).sqrMagnitude > Range * Range)

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace RandomAdditions
 {
-    public class ProjectileCubetree
+    public class ProjectileCubeArray
     {   // Dirty cheap octree that's not an octree but a coordinate
         internal const int CubeSize = 32;
         //internal bool useCheap = false;
@@ -345,7 +345,7 @@ namespace RandomAdditions
         internal class CubeBranch
         {
             internal IntVector3 CBPosition;
-            internal ProjectileCubetree tree;
+            internal ProjectileCubeArray tree;
             internal List<Projectile> Projectiles = new List<Projectile>();
 
             public Vector3 GetCBPosition()

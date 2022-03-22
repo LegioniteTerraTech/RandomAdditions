@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using SafeSaves;
+
 
 public class ModuleItemSilo : RandomAdditions.ModuleItemSilo { };
 namespace RandomAdditions
 {
+    [AutoSaveComponent]
     public class ModuleItemSilo : Module
     {
         // A module that acts as a storage for a single type of resource, but lag-free and without colliders
@@ -67,17 +70,20 @@ namespace RandomAdditions
         //public bool EjectOnOverspeed = false;
         //public float EmergencyEjectSpeed = 75;
         private float GetChunkCountPercent = 0;
-        internal ChunkTypes GetChunkType { get; private set; }
+        [SSaveField]
+        public ChunkTypes GetChunkType = ChunkTypes.Wood;
         internal Color GetSavedChunkColor
         {
             get { return SavedChunkColor; }
         }
 
         //Collection (Blocks)
-        internal BlockTypes GetBlockType { get; private set; }
+        [SSaveField]
+        public BlockTypes GetBlockType = BlockTypes.GSOAIController_111;
 
 
         //Processing
+        [SSaveField]
         public int SavedCount = 0;
         public bool WasSearched = false;
 
@@ -89,7 +95,7 @@ namespace RandomAdditions
         private Transform output;
         private SiloGauge[] gauges = Array.Empty<SiloGauge>();
         private SiloDisplay[] disps = Array.Empty<SiloDisplay>();
-        private Color SavedChunkColor;
+        private Color SavedChunkColor = Color.magenta;
         //private bool queuedBlink = false;
         private List<Visible> AbsorbAnimating = new List<Visible>();
         private List<Vector3> AbsorbAnimatingPos = new List<Vector3>();
@@ -379,10 +385,11 @@ namespace RandomAdditions
                     if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
                     else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
                     {
-                        Singleton.Manager<NetInventory>.inst.HostAddItem(GetBlockType, 1);
+                        if (block.tank?.netTech?.NetPlayer?.Inventory)
+                            block.tank?.netTech?.NetPlayer?.Inventory.HostAddItem(GetBlockType, 1);
                     }
                     else
-                        Singleton.Manager<SingleplayerInventory>.inst.HostAddItem(GetBlockType, 1);
+                        Singleton.Manager<ManPlayer>.inst.AddBlockToInventory(GetBlockType);
                 }
                 else
                 {
@@ -446,46 +453,54 @@ namespace RandomAdditions
                         bool isMP = Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer();
                         if (isMP)
                         {
-                            if (Singleton.Manager<NetInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
+                            if (block.tank?.netTech?.NetPlayer?.Inventory)
                             {
-                                availQuant = Singleton.Manager<NetInventory>.inst.GetQuantity(GetBlockType);
-                                if (availQuant > 0)
+                                NetInventory NI = block.tank.netTech.NetPlayer.Inventory;
+                                if (NI.IsAvailableToLocalPlayer(GetBlockType))
                                 {
-                                    availQuant--;
-                                    Singleton.Manager<NetInventory>.inst.SetBlockCount(GetBlockType, availQuant);
-
-                                    QueueReleaseAnim(stack);
-                                    SavedCount = availQuant;
-                                    if (availQuant <= 0)
+                                    availQuant = NI.GetQuantity(GetBlockType);
+                                    if (availQuant > 0)
                                     {
-                                        Empty = true;
-                                        GetBlockType = BlockTypes.GSOAIController_111;
-                                        if (availQuant < 0)
-                                            Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
-                                        break;
+                                        availQuant--;
+                                        NI.SetBlockCount(GetBlockType, availQuant);
+
+                                        QueueReleaseAnim(stack);
+                                        SavedCount = availQuant;
+                                        if (availQuant <= 0)
+                                        {
+                                            Empty = true;
+                                            GetBlockType = BlockTypes.GSOAIController_111;
+                                            if (availQuant < 0)
+                                                Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
                         else
                         {
-                            if (Singleton.Manager<SingleplayerInventory>.inst.IsAvailableToLocalPlayer(GetBlockType))
+                            if (Singleton.Manager<ManPlayer>.inst.PlayerInventory != null)
                             {
-                                availQuant = Singleton.Manager<SingleplayerInventory>.inst.GetQuantity(GetBlockType);
-                                if (availQuant > 0)
+                                SingleplayerInventory SI = (SingleplayerInventory)Singleton.Manager<ManPlayer>.inst.PlayerInventory;
+                                if (SI.IsAvailableToLocalPlayer(GetBlockType))
                                 {
-                                    availQuant--;
-                                    Singleton.Manager<SingleplayerInventory>.inst.SetBlockCount(GetBlockType, availQuant);
-
-                                    QueueReleaseAnim(stack);
-                                    SavedCount = availQuant;
-                                    if (availQuant <= 0)
+                                    availQuant = SI.GetQuantity(GetBlockType);
+                                    if (availQuant > 0)
                                     {
-                                        Empty = true;
-                                        GetBlockType = BlockTypes.GSOAIController_111;
-                                        if (availQuant < 0)
-                                            Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
-                                        break;
+                                        availQuant--;
+                                        SI.SetBlockCount(GetBlockType, availQuant);
+
+                                        QueueReleaseAnim(stack);
+                                        SavedCount = availQuant;
+                                        if (availQuant <= 0)
+                                        {
+                                            Empty = true;
+                                            GetBlockType = BlockTypes.GSOAIController_111;
+                                            if (availQuant < 0)
+                                                Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -876,54 +891,66 @@ namespace RandomAdditions
         }
         private void OnSerialize(bool saving, TankPreset.BlockSpec blockSpec)
         {
-            if (saving)
-            {   // On general saving
-                //var tile = Singleton.Manager<ManWorld>.inst.TileManager.LookupTile(transform.position);
-                //tile.
-                //Debug.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
-                if (Singleton.Manager<ManPointer>.inst.targetVisible)
-                {
-                    if (!Singleton.Manager<ManPointer>.inst.targetVisible.block == TankBlock)
+            try
+            {
+                if (saving)
+                {   // On general saving
+                    //var tile = Singleton.Manager<ManWorld>.inst.TileManager.LookupTile(transform.position);
+                    //tile.
+                    //Debug.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
+                    if (Singleton.Manager<ManPointer>.inst.targetVisible)
                     {
-                        isSaving = true;// only disable ejecting when the world is removed
+                        if (!Singleton.Manager<ManPointer>.inst.targetVisible.block == TankBlock)
+                        {
+                            isSaving = true;// only disable ejecting when the world is removed
+                        }
+                        // The block saves every time it is grabbed, but for what purpose if it's being removed?!
                     }
-                    // The block saves every time it is grabbed, but for what purpose if it's being removed?!
+                    else
+                        isSaving = true;// only disable ejecting when the world is removed
+                    if (!Singleton.Manager<ManScreenshot>.inst.TakingSnapshot)
+                    {   // Only save on world save
+                        /*
+                        SerialData serialData = new SerialData()
+                        {
+                            savedChunk = GetChunkType,
+                            savedBlock = GetBlockType,
+                            savedCount = SavedCount,
+                            savedColorR = SavedChunkColor.r,
+                            savedColorG = SavedChunkColor.g,
+                            savedColorB = SavedChunkColor.b
+                        };
+                        serialData.Store(blockSpec.saveState);
+                        */
+                        this.SerializeToSafe();
+                        this.SerializeToSafeObject(SavedChunkColor);
+                    }
                 }
                 else
-                    isSaving = true;// only disable ejecting when the world is removed
-                if (!Singleton.Manager<ManScreenshot>.inst.TakingSnapshot)
-                {   // Only save on world save
-                    SerialData serialData = new SerialData()
+                {   //Load from snap
+                    try
                     {
-                        savedChunk = GetChunkType,
-                        savedBlock = GetBlockType,
-                        savedCount = SavedCount,
-                        savedColorR = SavedChunkColor.r,
-                        savedColorG = SavedChunkColor.g,
-                        savedColorB = SavedChunkColor.b
-                    };
-                    serialData.Store(blockSpec.saveState);
-                }
-            }
-            else
-            {   //Load from snap
-                try
-                {
-                    isSaving = false;
-                    SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
-                    if (serialData2 != null)
-                    {
-                        GetBlockType = serialData2.savedBlock;
+                        isSaving = false;
+                        this.DeserializeFromSafeObject(ref SavedChunkColor);
+                        if (!this.DeserializeFromSafe())
+                        {
+                            SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
+                            if (serialData2 != null)
+                            {
+                                GetBlockType = serialData2.savedBlock;
 
-                        GetChunkType = serialData2.savedChunk;
-                        SavedCount = serialData2.savedCount;
-                        SavedChunkColor.r = serialData2.savedColorR;
-                        SavedChunkColor.g = serialData2.savedColorG;
-                        SavedChunkColor.b = serialData2.savedColorB;
+                                GetChunkType = serialData2.savedChunk;
+                                SavedCount = serialData2.savedCount;
+                                SavedChunkColor.r = serialData2.savedColorR;
+                                SavedChunkColor.g = serialData2.savedColorG;
+                                SavedChunkColor.b = serialData2.savedColorB;
+                            }
+                        }
                     }
+                    catch { }
                 }
-                catch { }
             }
+            catch { }
         }
     }
 }

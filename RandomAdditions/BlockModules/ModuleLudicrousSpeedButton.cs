@@ -39,9 +39,13 @@ namespace RandomAdditions
         }
 
         // Startup
+        private static bool hooked = false;
         public static void Initiate()
         {
+            if (hooked)
+                return;
             Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
+            hooked = true;
         }
 
 

@@ -7,7 +7,7 @@ using UnityEngine;
 public class ModuleItemFixedHolderBeam : RandomAdditions.ModuleItemFixedHolderBeam { };
 namespace RandomAdditions
 {
-    public class ModuleItemFixedHolderBeam : Module
+    public class ModuleItemFixedHolderBeam : ExtModule
     {
         /*
            "RandomAdditions.ModuleItemFixedHolderBeam": {},// Lock and load.
@@ -15,8 +15,6 @@ namespace RandomAdditions
 
         public bool FixateToTech = true;
         public bool AllowOtherTankCollision = true;
-
-        private TankBlock TankBlock;
 
         private List<Vector3> HandoffAnimPos = new List<Vector3>();
         private List<Visible> HandoffAnim = new List<Visible>();
@@ -26,11 +24,8 @@ namespace RandomAdditions
         private ModuleItemHolder theHolder;
 
 
-        public void OnPool()
+        protected override void Pool()
         {
-            TankBlock = gameObject.GetComponent<TankBlock>();
-            TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
-            TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
             try
             {
                 theHolder = gameObject.GetComponent<ModuleItemHolder>();
@@ -44,13 +39,13 @@ namespace RandomAdditions
             }
             catch { }
         }
-        public void OnAttach()
+        public override void OnAttach()
         {
-            TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
+            tank.Holders.HBEvent.Subscribe(OnHeartbeat);
         }
-        public void OnDetach()
+        public override void OnDetach()
         {
-            TankBlock.tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
+            tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
         }
 
         public void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
@@ -126,7 +121,7 @@ namespace RandomAdditions
             {
                 HandoffAnim.Add(vis);
                 HandoffAnimPos.Add(transform.InverseTransformPoint(inputPos));
-                vis.gameObject.GetComponent<ItemIgnoreCollision>().ForceIgnoreTank(TankBlock.tank);
+                vis.gameObject.GetComponent<ItemIgnoreCollision>().ForceIgnoreTank(tank);
                 //Debug.Log("RandomAdditions: GetLocalizedPosition - Added " + vis.name);
                 countCheck = HandoffAnim.Count;
             }
@@ -140,7 +135,7 @@ namespace RandomAdditions
                 Vector3 posInStack = transform.InverseTransformPoint(stak.BasePosWorldOffsetLocal(offset));
                 if (vis.UsePrevHeldPos && ManNetwork.IsHost)
                 {
-                    float beat = 1f - (TankBlock.tank.Holders.NextHeartBeatTime - Time.time) / TankBlock.tank.Holders.CurrentHeartbeatInterval;
+                    float beat = 1f - (tank.Holders.NextHeartBeatTime - Time.time) / tank.Holders.CurrentHeartbeatInterval;
                     //Debug.Log("RandomAdditions: GetLocalizedPosition.VaildateHeld - " + beat);
                     final = Vector3.Lerp(final, posInStack, Maths.SinEaseInOut(beat));
                     if (beat == Mathf.Infinity)
@@ -164,7 +159,7 @@ namespace RandomAdditions
 
         public void FixedUpdate()
         {
-            if (FixateToTech && TankBlock.IsAttached)
+            if (FixateToTech && block.IsAttached)
             {
                 int fireTimes = theHolder.NumStacks;
                 for (int step = 0; step < fireTimes; step++)

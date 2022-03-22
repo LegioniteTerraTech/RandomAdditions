@@ -13,7 +13,7 @@ namespace RandomAdditions
         internal static ProjectileManager inst;
         //private static Dictionary<int, List<Projectile>> TeamProj = new Dictionary<int, List<Projectile>>();
         //private static List<Projectile> Projectiles = new List<Projectile>();
-        private static ProjectileCubetree ProjOct = new ProjectileCubetree();
+        private static ProjectileCubeArray ProjOct = new ProjectileCubeArray();
         //private static OctreeProj ProjOct = new OctreeProj();
 
         private byte timer = 0;

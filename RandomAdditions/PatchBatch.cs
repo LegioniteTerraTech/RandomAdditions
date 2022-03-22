@@ -12,9 +12,136 @@ namespace RandomAdditions
     {
     }
 
+
+#if STEAM
+    public class KickStartRandomAdditions : ModBase
+    {
+        internal static KickStartRandomAdditions oInst;
+
+        bool isInit = false;
+        bool firstInit = false;
+        public override bool HasEarlyInit()
+        {
+            return true;
+        }
+
+        // IDK what I should init here...
+        public override void EarlyInit()
+        {
+            if (oInst == null)
+            {
+                KickStart.OfficialEarlyInit();
+                oInst = this;
+            }
+        }
+        public override void Init()
+        {
+            if (isInit)
+                return;
+            if (oInst == null)
+                oInst = this;
+
+            KickStart.MainOfficialInit();
+            isInit = true;
+        }
+        public override void DeInit()
+        {
+            if (!isInit)
+                return;
+            KickStart.DeInitALL();
+            isInit = false;
+        }
+    }
+#endif
+
     internal static class Patches
     {
         // Major Patches
+        /* 
+        /// <summary>
+        /// Sorry if this overrides ALL checks for EXACT illegal corps, but trying to 
+        /// patch the correct classes precisely was impossible because they were 
+        /// internal classes for absolutely no reason.  
+        /// Not bothering on wasting more time on that.
+        /// </summary>
+        [HarmonyPatch(typeof(BlockFilterTable))]
+        [HarmonyPatch("CheckBlockAllowed")]//On Creation
+        private static class BlockFilterTableExt
+        {
+            private static readonly Type BFCW = Assembly.Load(new AssemblyName("Assembly-CSharp.dll")).GetType("BlockFilterComponentWhiteList", true);
+            private static readonly FieldInfo BFCWl = typeof(BlockFilterTable).GetField("m_ComponentsWhiteList", BindingFlags.Instance | BindingFlags.NonPublic);
+            private static readonly FieldInfo FI = BFCW.GetField("m_AllowedModuleTypes", BindingFlags.Instance | BindingFlags.NonPublic);
+            private static readonly List<FactionSubTypes> illegals = new List<FactionSubTypes>{
+                FactionSubTypes.EXP,
+                (FactionSubTypes)8,
+                (FactionSubTypes)9,
+                (FactionSubTypes)10,
+                (FactionSubTypes)11,
+                (FactionSubTypes)12,
+                (FactionSubTypes)13,
+                (FactionSubTypes)14,
+                (FactionSubTypes)15,
+            };
+
+            private static readonly List<Type> AllowedTypes = new List<Type> {
+                typeof(ModuleLazyAPs),
+                typeof(ModuleMoveGimbal),
+                typeof(ModuleModeSwitch),
+                typeof(ModuleClock),
+                typeof(ModuleFuelEnergyGenerator),
+                typeof(ModuleItemFixedHolderBeam),
+                typeof(ModulePointDefense),
+                typeof(ModuleRepairAimer),
+                typeof(ModuleReplace),
+                typeof(ModuleUsageHint),
+                typeof(ModuleAudioProvider),
+            };
+
+            private static List<Type> valid = new List<Type>();
+            private static bool Prefix(BlockFilterTable __instance, 
+                ref BlockTypes blockType, ref bool __result)
+            {
+                if (!__result)
+                {
+                    if (Singleton.Manager<ManMods>.inst.IsModdedBlock(blockType, false))
+                    {
+                        //Debug.Log("RandomAdditions: Checking block " + blockType + ".");
+                        TankBlock TB = ManSpawn.inst.GetBlockPrefab(blockType);
+                        if (TB)
+                        {
+                            FactionSubTypes FST = ManSpawn.DetermineFactionFromBlockTypeSlow(blockType);
+                            if (!illegals.Contains(FST))
+                            {
+                                valid.Clear();
+                                valid.AddRange(__instance.ListAllowedModuleTypes());
+                                valid.AddRange(AllowedTypes);
+                                foreach (Module mod in TB.GetComponents<Module>())
+                                {
+                                    if (!valid.Contains(mod.GetType()))
+                                    {
+                                        Debug.Log("RandomAdditions: Could not permit block " + blockType + " into MP - Unregistered module: " + mod);
+                                        __result = false;
+                                        return false;
+                                    }
+                                }
+                                //Debug.Log("RandomAdditions: Permitted block " + blockType + " into MP");
+                                __result = true;
+                                return false;
+                            }
+                            //Debug.Log("RandomAdditions: Could not permit block " + blockType + " into MP - Illegal faction type of " + FST);
+                            __result = false;
+                            return false;
+                        }
+                        Debug.Log("RandomAdditions: Could not permit block " + blockType + " into MP - Fail on Init.");
+                        __result = false;
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        */
+
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnPool")]//On Creation
         private static class PatchTankToHelpClocks
@@ -33,7 +160,7 @@ namespace RandomAdditions
         {
             private static void Postfix(TankBlock __instance)
             {
-                //Debug.Log("RandomAdditions: Patched TankBlock OnPool(ModuleDeathInsurance & TankBlockScaler)");
+                //Debug.Log("RandomAdditions: Patched TankBlock OnPool(ModuleOHKOInsurance & TankBlockScaler)");
                 var block = __instance.gameObject;
                 if (!(bool)block.GetComponent<TankBlockScaler>())
                 {   //This allows for an override to be concocted if the block maker wants to specify a custom size
@@ -86,6 +213,12 @@ namespace RandomAdditions
                             if (KickStart.AutoScaleBlocksInSCU || !stack.myHolder.gameObject.GetComponent<ModuleHeart>())
                             {
                                 var ModuleScale = __instance.gameObject.GetComponent<TankBlockScaler>();
+                                if (!ModuleScale)
+                                {   //This allows for an override to be concocted if the block maker wants to specify a custom size
+                                    ModuleScale = __instance.gameObject.AddComponent<TankBlockScaler>();
+                                    var bound = __instance.block.BlockCellBounds.extents;
+                                    ModuleScale.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
+                                }
                                 ModuleScale.Downscale = true;
                                 ModuleScale.enabled = true;
                                 //Debug.Log("RandomAdditions: Queued Rescale Down");
@@ -114,6 +247,12 @@ namespace RandomAdditions
                         else
                         {
                             var ModuleScale = __instance.gameObject.GetComponent<TankBlockScaler>();
+                            if (!ModuleScale)
+                            {   //This allows for an override to be concocted if the block maker wants to specify a custom size
+                                ModuleScale = __instance.gameObject.AddComponent<TankBlockScaler>();
+                                var bound = __instance.block.BlockCellBounds.extents;
+                                ModuleScale.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
+                            }
                             ModuleScale.Downscale = false;
                             ModuleScale.enabled = true;
                             //Debug.Log("RandomAdditions: Queued Rescale Up");
@@ -142,14 +281,33 @@ namespace RandomAdditions
                         if (ModuleCheck != null)
                         {
                             if (ModuleCheck.FixateToTech)
-                                __instance.gameObject.GetComponent<ItemIgnoreCollision>().UpdateCollision(true);
+                            {
+                                var IIC = __instance.gameObject.GetComponent<ItemIgnoreCollision>();
+                                if (!IIC)
+                                {
+                                    IIC = __instance.gameObject.AddComponent<ItemIgnoreCollision>();
+                                }
+                                IIC.UpdateCollision(true);
+                            }
                             if (ModuleCheck.AllowOtherTankCollision)
-                                __instance.gameObject.GetComponent<ItemIgnoreCollision>().AllowOtherTankCollisions = true;
+                            {
+                                var IIC = __instance.gameObject.GetComponent<ItemIgnoreCollision>();
+                                if (!IIC)
+                                {
+                                    IIC = __instance.gameObject.AddComponent<ItemIgnoreCollision>();
+                                }
+                                IIC.AllowOtherTankCollisions = true;
+                            }
                         }
                     }
                     else
                     {
-                        __instance.gameObject.GetComponent<ItemIgnoreCollision>().UpdateCollision(false);
+                        var IIC = __instance.gameObject.GetComponent<ItemIgnoreCollision>();
+                        if (!IIC)
+                        {
+                            IIC = __instance.gameObject.AddComponent<ItemIgnoreCollision>();
+                        }
+                        IIC.UpdateCollision(false);
                     }
                 }
             }
@@ -708,6 +866,9 @@ namespace RandomAdditions
             private static void Prefix(Projectile __instance)
             {
                 ProjectileManager.Remove(__instance);
+                var health = __instance.GetComponent<ProjectileHealth>();
+                if (health)
+                    health.Reset();
             }
         }
         /*
@@ -741,28 +902,25 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
                 if ((bool)damageable && ModuleCheck != null && (ManNetwork.IsHost || !ManNetwork.IsNetworked))
                 {
-                    var validation = damageable.GetComponent<TankBlock>();
-                    if (!validation)
-                    {
-                        //Debug.Log("RandomAdditions: did not hit possible block");
+                    if (!ModuleCheck.InstaKill && !ModuleCheck.GuaranteedKillOnLowHP)
                         return;
-                    }
-                    if (!ModuleCheck.InstaKill)
-                        return;
-
-                    if (__instance.Shooter.IsFriendly(validation.tank.Team) || validation.tank.IsNeutral())
-                        return;// Stop friendly-fire
-
-                    //Debug.Log("RandomAdditions: queued block death");
-                    try
+                    if (__instance.CanDamageBlock(damageable))
                     {
-                        ModuleDeathInsurance.TryQueueUnstoppableDeath(validation);
-                        Debug.Log("RandomAdditions: omae wa - mou shindeiru");
-                        return;
-                    }
-                    catch
-                    {
-                        Debug.Log("RandomAdditions: Error on applying ModuleDeathInsurance!");
+                        //Debug.Log("RandomAdditions: queued block death");
+                        try
+                        {
+                            var validation = damageable.GetComponent<TankBlock>();
+                            if (ModuleCheck.InstaKill || (damageable.Health <= 0 && ModuleCheck.GuaranteedKillOnLowHP))
+                            {
+                                OHKOInsurance.TryQueueUnstoppableDeath(validation);
+                                //Debug.Log("RandomAdditions: omae wa - mou shindeiru");
+                                return;
+                            }
+                        }
+                        catch
+                        {
+                            Debug.Log("RandomAdditions: Error on applying OHKOInsurance!");
+                        }
                     }
                 }
                 else
@@ -1158,18 +1316,32 @@ namespace RandomAdditions
         //-----------------------------------------------------------------------------------------------
         // The NEW crash handler with useful mod-crash-related information
 
+        [HarmonyPriority(9000)]
         [HarmonyPatch(typeof(UIScreenBugReport))]
         [HarmonyPatch("Show")]//On error screen text field
-        private class DisableCrashTextMenu
+        private class AllowBypass
         {
-            private static void Postfix(UIScreenBugReport __instance)
+            private static FieldInfo cat = typeof(UIScreenBugReport).GetField("m_ErrorCatcher", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static void Prefix(UIScreenBugReport __instance)
             {
                 //Custom error menu
-                Debug.Log("RandomAdditions: DISABLED");
-                return; //end it before it can display the text field
+                cat.SetValue(__instance, false);
+            }
+        }
+        [HarmonyPriority(9002)]
+        [HarmonyPatch(typeof(UIScreenBugReport))]
+        [HarmonyPatch("PostIt")]//On error screen text field
+        private class DisableCrashTextMenu
+        {
+            private static bool Prefix(UIScreenBugReport __instance)
+            {
+                //Custom error menu
+                Debug.Log("RandomAdditions: DISABLED POSTIT");
+                return false; //end it before it can display the text field
             }
         }
 
+        [HarmonyPriority(9001)]
         [HarmonyPatch(typeof(UIScreenBugReport))]
         [HarmonyPatch("Set")]//On error screen
         private class OverhaulCrashPatch

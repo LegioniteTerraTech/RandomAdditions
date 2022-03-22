@@ -31,11 +31,11 @@ namespace RandomAdditions
     },
      * 
      */
-    public class ModuleReplace : Module
+    public class ModuleReplace : MonoBehaviour
     {
         private const float weightTolerence = 5;
 
-        //internal TankBlock blockO;
+        internal TankBlock block;
         public bool Uniform = false;
         public int ReplaceGrade = 0;
         public short WeightedChance = 100;
@@ -113,7 +113,8 @@ namespace RandomAdditions
             //Debug.Log("RandomAdditions: ModuleReplace - Pooling for " + name);
             try
             {
-                type = GetComponent<TankBlock>().BlockType;
+                block = GetComponent<TankBlock>();
+                type = block.BlockType;
                 if (type == BlockTypes.GSOAIController_111)
                     Debug.Log("RandomAdditions: ModuleReplace - " + block.name + " FAILIURE IN SETTING TYPE");
                 //Debug.Log("RandomAdditions: ModuleReplace - " + type.ToString());
@@ -287,6 +288,11 @@ namespace RandomAdditions
                 }
             }
         }
+        public static void RemoveAllBlocks()
+        {
+            Supported.Clear();
+            Replacables.Clear();
+        }
         public static void TryReplaceBlocks(Tank tank)
         {
             if (!ManNetwork.IsHost && ManNetwork.IsNetworked)
@@ -326,7 +332,9 @@ namespace RandomAdditions
                 }
                 ModuleReplace replace = WeightedRAND(replaced, ref ignore, AboveTheSea(tank.transform.position));
                 if (!(bool)replace)
+                {
                     continue;
+                }
                 if (!(bool)replace.GetComponent<TankBlock>())
                 {
                     Debug.Log("RandomAdditions: ReplaceManager - replace.blockO FAILED at it's job");
@@ -335,7 +343,7 @@ namespace RandomAdditions
                 try { replace.type.ToString(); }
                 catch
                 {
-                    Debug.Log("RandomAdditions: ReplaceManager - TankBlock FAILED at it's job");
+                    Debug.Log("RandomAdditions: ReplaceManager - Visible type was not set!");
                     continue;
                 }
                 if (replace.Uniform)

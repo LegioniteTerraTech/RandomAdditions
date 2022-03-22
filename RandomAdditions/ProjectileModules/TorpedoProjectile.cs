@@ -58,6 +58,7 @@ namespace RandomAdditions
         {
             killThrust = true;
         }
+#if !STEAM
         private void FixedUpdate()
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
@@ -77,5 +78,6 @@ namespace RandomAdditions
                 }
             }
         }
+#endif
     }
 }

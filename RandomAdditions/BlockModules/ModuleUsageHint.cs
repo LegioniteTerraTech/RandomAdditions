@@ -9,24 +9,16 @@ public class ModuleUsageHint : RandomAdditions.ModuleUsageHint { }
 
 namespace RandomAdditions
 {
-    public class ModuleUsageHint : Module
+    public class ModuleUsageHint : ExtModule
     {
-        private TankBlock tankBlock;
         private const int ModdedHintsRange = 5001;
 
-        private int BlockID { get { return (int)tankBlock.BlockType; } }
+        private int BlockID { get { return (int)block.BlockType; } }
         public string HintDescription = "HintDescription IS UNSET";
 
 
-        public void OnPool()
+        protected override void Pool()
         {
-            tankBlock = gameObject.GetComponent<TankBlock>();
-            if (!tankBlock)
-            {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleUsageHint must be in the lowest GameObject layer!!!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
-                return;
-            }
-            tankBlock.AttachEvent.Subscribe(new Action(OnAttach));
             if (HintDescription != null && ModdedHintsRange < BlockID)
             {
                 ExtUsageHint.EditHint(gameObject.name, "ⁿ_", BlockID, HintDescription);
@@ -34,7 +26,7 @@ namespace RandomAdditions
             else
                 LogHandler.ThrowWarning("RandomAdditions: ModuleUsageHint's HintDescription is NULL or block ID is below 5001!!!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
         }
-        public void OnAttach()
+        public override void OnAttach()
         {
             try
             {
@@ -69,6 +61,9 @@ namespace RandomAdditions
             EditHintInternal("ModuleLudicrousSpeedButton", "ⁿMLSB", 4006, speeedDesc);
             EditHintInternal("ModuleFuelEnergyGenerator", "ⁿMFEG", 4007, fuelGenDesc);
             EditHintInternal("ModuleReinforced", "ⁿMR", 4008, eraDesc);
+            EditHintInternal("ModuleHangar", "ⁿMH", 4009, hangarDesc);
+            EditHintInternal("ModuleTractorBeam", "ⁿMTB", 4010, tracBeamDesc);
+            EditHintInternal("ModuleOmniCore", "ⁿMOC", 4011, omniCoreDesc);
             isInit = true;
         }
         internal static void EditHint(string subjectName, string prefix, int blockID, string HintDescription)
@@ -186,7 +181,9 @@ namespace RandomAdditions
                     Singleton.Manager<ManHUD>.inst.ShowHudElement(ManHUD.HUDElementType.Hint, showContext);
                     HintsSeen.Add((int)hintID);
                     HintsSeenToSave();
+#if !STEAM          // NEED TO REVIEW ALL OF THESE LATER
                     KickStart.config.WriteConfigJsonFile();
+#endif
                     Singleton.Manager<ManSFX>.inst.PlayUISFX(ManSFX.UISfxType.Hint);
                 }
             }
@@ -235,7 +232,7 @@ namespace RandomAdditions
 
         // Default-set ones for this mod
         private static readonly string 
-        eraDesc = "This block will greatly reduce the damage caused by explosive bullets on direct contact.",
+        eraDesc = "This block will greatly reduce the damage caused by explosive rounds on direct contact.",
         clockDesc = "This block keeps track of the world time.  Never be late again prospector!",
         interceptDesc = "This block can intercept some types of incoming projectiles.",
         repairDesc = "This block consumes power and can repair blocks slowly from very long distances.",
@@ -243,6 +240,9 @@ namespace RandomAdditions
         siloDesc = "This base block can store stacks of chunks or blocks inside.",
         speeedDesc = "This base block can overclock all your base components by clicking on it.",
         fuelGenDesc = "This block burns fuel from your Fuel Tanks in exchange for some Battery Power.",
+        omniCoreDesc = "This block can apply thrust in all directions to the center of your Tech.  It limits movement so be careful!",
+        tracBeamDesc = "This block can carry other Techs through the power of tractor beams.",
+        hangarDesc = "This block can store and deploy Techs! H + right-click on an allied Tech to store or drive close and right-click from another.",
         legsDesc = "This block is a leg block.  While it's slow, it has considerable grip and could even climb walls!";
     }
 }

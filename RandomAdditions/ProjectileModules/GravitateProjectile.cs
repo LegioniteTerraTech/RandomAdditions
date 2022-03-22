@@ -113,6 +113,14 @@ namespace RandomAdditions
             if (!hasFiredOnce)
                 OnPool();
 
+#if STEAM
+            if (WorldHeightBiasEnabled)
+            {
+                heightModifier = Mathf.Clamp((floatHeight - transform.position.y) / movementDampening, -1, 1);
+            }
+            else
+                heightModifier = 1;
+#else
             if (AffectedByWater && KickStart.isWaterModPresent)
             {
                 if (WaterMod.QPatch.WaterHeight > gameObject.transform.position.y)
@@ -132,7 +140,8 @@ namespace RandomAdditions
             }
             else
                 heightModifier = 1;
-            
+#endif
+
             Vector3 directionalForce = WorldGravitateDirection.normalized * WorldGravitateStrength;
             directionalForce.y *= heightModifier;
             fetchedRBody.AddForceAtPosition(directionalForce, thisTrans.TransformPoint(GravitateCenter), ForceMode.Impulse);
