@@ -268,6 +268,75 @@
 
 -----------------------------------------------------------------------------------------------------
 
+    "RandomAdditions.ModuleHangar": {
+      "MaxDockingRadius": 3.0,      // The maximum distance from GameObject "_Entry" before the hangar begins trying to dock
+      "MaxTechCapacity": 1,         // The maximum Techs this hangar can store
+      "MaxTechExtents": 6,          // The max length/width/height a Tech can have before being stored in the hangar
+      "MaxTechBlocksPerSpot": 12,   // The max blocks a stored Tech is allowed to have in storage
+      "DockDeploySpeed": 50.0,      // The velocity of which to launch the Techs deployed from this hangar
+      "AllowHammerspace": false,    // Hangars in hangars.  Matroska dolls
+      // ENERGY
+      "MinimumEnergyPercent": 0.5,  // If our energy is below this percent then we don't use energy
+      "ChargeStoredTechsRate": 2250,// The rate this will drain from the host Tech to charge the stored Techs
+      "RepairStoredTechsRate": 450, // The rate this will heal the blocks of the Techs stored
+      "EnergyToRepairRatio": 0.25,  // repair/energy.  The lower this is the less energy it will consume per heal.
+    },
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleTractorBeam": {
+      "MaxRange": 200,          // The max distance in meters this can reach
+      "MaxMoveForce": 12500,    // The max forces applied when moving a Tech
+      "LaunchForce": 800,       // The force applied when "throwing" a tech
+      "ZeroPointEnergy": true,  // Ignore Tech weight (try carry anything loose)
+      // TargetAimer setup:
+      "ReactSpeed": 125,        // The aiming rate
+      "ExtendSpeed": 800,       // The tractor beam extend speed
+    },
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleLoneMove": {}, // PENDING
+    "PausedPosition": {}, // PENDING
+
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleOmniCore": {//Applies thrust directly to Tech Center of Mass
+      // Thrust in relation to CAB and TECH CENTER OF MASS
+      "TranslationalThrust": 500,   
+      "TranslationalDamper": 500,
+      "TranslationalAccel": 1250,
+      // Torque in relation to CAB and TECH CENTER OF MASS
+      "RotationalThrust": 500,
+      "RotationalDamper": 500,
+      "RotationalAccel": 1750,
+      "RotationalLimit": 2.0, // Max angular velocity
+    },
+
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleMoveGimbal": {   // Rotate your parts in style. Controls MoveGimbal(s)
+      "DriveControlStrength": 1.0,  // Follow player drive controls percent (0 <-> 1.0)
+      "IdlePointing": "CabFacing",  // Aim this way while controls are not active
+      // BlockFacing - Return to starting position
+      // CabFacing - Turn to face the cab's forwards facing
+      // GravityFacing - Face downwards towards gravity
+      "ForwardsAndBackwards": true, // Can this part drive backwards as effectively as forwards?
+      "UseBoostAndProps": false,    // Should this update the aiming of all BoosterJets and FanJets in hierarchy?
+      "RotateRate": 90,            // How fast we should turn every second
+    },
+
+      "MoveGimbal": { // Put this in the GameObject you want to rotate
+        "Axis": "X",
+        // X - Rotate on Y-axis (Left or Right)
+        // Y - Rotate on X-axis (Up and Down)
+        // Free - Use BOTH axi!
+      },
+
+-----------------------------------------------------------------------------------------------------
+
+    "RandomAdditions.ModuleCustomShop": {}, // Set to block's corp
+
+-----------------------------------------------------------------------------------------------------
+
 
 	Need help? Let me know on the official TerraTech Community Discord!
 

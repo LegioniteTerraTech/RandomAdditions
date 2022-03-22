@@ -41,7 +41,7 @@ namespace RandomAdditions
         public float MinimumEnergyPercent = 0.5f;// If our energy is below this percent then we don't use energy
         public int ChargeStoredTechsRate = 0;   // The rate this will drain from the host Tech to charge the stored Techs
         public int RepairStoredTechsRate = 0;   // The rate this will heal the blocks of the Techs stored
-        public float EnergyToRepairRatio = 0.5f;// repair/energy.  The lower this is the less energy it will consume per update
+        public float EnergyToRepairRatio = 0.5f;// repair/energy.  The lower this is the less energy it will consume per heal
 
 
         private Tank TankWantsToDock;

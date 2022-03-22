@@ -2,6 +2,9 @@
 
 namespace RandomAdditions
 {
+    /// <summary>
+    /// Not to be used on fresh, new blocks.
+    /// </summary>
     internal class OHKOInsurance : MonoBehaviour
     {
         private TankBlock TB;
@@ -54,6 +57,11 @@ namespace RandomAdditions
 
         private void ForceOverrideEverythingAndDie()
         {
+            if (TB.IsAttached)
+            {
+                Reset(); // it was destroyed & respawned before this could happen
+                return;
+            }
             // insta-death
             //Debug.Log("RandomAdditions: Block has gone poof");
             TankBlock cache = TB;

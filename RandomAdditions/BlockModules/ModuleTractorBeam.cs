@@ -10,7 +10,7 @@ public class ModuleTractorBeam : RandomAdditions.ModuleTractorBeam { };
 namespace RandomAdditions
 {
     /// <summary>
-    /// NEED TO FINISH NETCODE
+    /// NEED TO CHECK NETCODE
     /// </summary>
     public class ModuleTractorBeam : ExtModule
     {

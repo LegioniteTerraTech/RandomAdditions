@@ -18,7 +18,7 @@ namespace RandomAdditions
       "RotationalThrust": 500,
       "RotationalDamper": 500,
       "RotationalAccel": 1750,
-      "RotationalLimit": 2, // Max angular velocity
+      "RotationalLimit": 2.0, // Max angular velocity
     },
     */
 

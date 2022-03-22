@@ -19,6 +19,7 @@
     // a module that ensures block kill when paired with Projectile
    "RandomAdditions.OHKOProjectile": {
     "InstaKill": true,        ///Should we kill the block we collided with?
+    "GuaranteedKillOnLowHP": true,//Kill the block we collided with if it's HP hits zero?
    },// Ensure erad.
      
 -----------------------------------------------------------------------------------------------------

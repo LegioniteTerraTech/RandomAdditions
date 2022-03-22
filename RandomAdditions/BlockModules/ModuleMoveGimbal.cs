@@ -24,7 +24,7 @@ namespace RandomAdditions
       // GravityFacing - Face downwards towards gravity
       "ForwardsAndBackwards": true, // Can this part drive backwards as effectively as forwards?
       "UseBoostAndProps": false,    // Should this update the aiming of all BoosterJets and FanJets in hierarchy?
-      "RotateRate": 125,            // How fast we should turn every second
+      "RotateRate": 90,            // How fast we should turn every second
     },
     */
 
