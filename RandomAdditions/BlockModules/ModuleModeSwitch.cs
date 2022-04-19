@@ -544,7 +544,7 @@ namespace RandomAdditions
                 try
                 {
 #if !STEAM
-                    TweakTech.ReAimer.UpdateExisting(block);
+                    UpdateTT(block);
 #endif
                 }
                 catch { }
@@ -553,6 +553,10 @@ namespace RandomAdditions
 
 
         // Utilities
+        private void UpdateTT(TankBlock block)
+        {
+            TweakTech.ReAimer.CreateOrUpdateForBlock(block);
+        }
         private object shiftHold1 = null;   //
         private void Exchange<T>(ref T obj1, ref T obj2)
         {

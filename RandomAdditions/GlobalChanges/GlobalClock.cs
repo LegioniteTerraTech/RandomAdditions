@@ -93,10 +93,10 @@ namespace RandomAdditions
             }
             public void SetTime()
             {
-                Debug.Log("RandomAdditions: Time Change external queued!");
+                Debug.Info("RandomAdditions: Time Change external queued!");
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                     Singleton.Manager<ManTimeOfDay>.inst.SetTimeOfDay(SavedTime, 0, 0, false);
-                Debug.Log("RandomAdditions: Time Changed to " + Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay);
+                Debug.Info("RandomAdditions: Time Changed to " + Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay);
             }
 
             public bool UpdateClocks()
@@ -126,7 +126,7 @@ namespace RandomAdditions
             {
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                 {
-                    Debug.Log("RandomAdditions: Time Changed!");
+                    Debug.Info("RandomAdditions: Time Changed!");
                     GetTimeSetClocks();
                 }
                 else if (SetByGUI)

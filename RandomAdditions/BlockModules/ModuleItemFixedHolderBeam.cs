@@ -100,7 +100,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: GetLocalizedPosition.VaildateHeld - Could not remove error");
+                    Debug.LogError("RandomAdditions: GetLocalizedPosition.VaildateHeld - Could not remove Held error");
                 }
             }
         }

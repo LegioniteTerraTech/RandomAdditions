@@ -12,136 +12,9 @@ namespace RandomAdditions
     {
     }
 
-
-#if STEAM
-    public class KickStartRandomAdditions : ModBase
-    {
-        internal static KickStartRandomAdditions oInst;
-
-        bool isInit = false;
-        bool firstInit = false;
-        public override bool HasEarlyInit()
-        {
-            return true;
-        }
-
-        // IDK what I should init here...
-        public override void EarlyInit()
-        {
-            if (oInst == null)
-            {
-                KickStart.OfficialEarlyInit();
-                oInst = this;
-            }
-        }
-        public override void Init()
-        {
-            if (isInit)
-                return;
-            if (oInst == null)
-                oInst = this;
-
-            KickStart.MainOfficialInit();
-            isInit = true;
-        }
-        public override void DeInit()
-        {
-            if (!isInit)
-                return;
-            KickStart.DeInitALL();
-            isInit = false;
-        }
-    }
-#endif
-
     internal static class Patches
     {
         // Major Patches
-        /* 
-        /// <summary>
-        /// Sorry if this overrides ALL checks for EXACT illegal corps, but trying to 
-        /// patch the correct classes precisely was impossible because they were 
-        /// internal classes for absolutely no reason.  
-        /// Not bothering on wasting more time on that.
-        /// </summary>
-        [HarmonyPatch(typeof(BlockFilterTable))]
-        [HarmonyPatch("CheckBlockAllowed")]//On Creation
-        private static class BlockFilterTableExt
-        {
-            private static readonly Type BFCW = Assembly.Load(new AssemblyName("Assembly-CSharp.dll")).GetType("BlockFilterComponentWhiteList", true);
-            private static readonly FieldInfo BFCWl = typeof(BlockFilterTable).GetField("m_ComponentsWhiteList", BindingFlags.Instance | BindingFlags.NonPublic);
-            private static readonly FieldInfo FI = BFCW.GetField("m_AllowedModuleTypes", BindingFlags.Instance | BindingFlags.NonPublic);
-            private static readonly List<FactionSubTypes> illegals = new List<FactionSubTypes>{
-                FactionSubTypes.EXP,
-                (FactionSubTypes)8,
-                (FactionSubTypes)9,
-                (FactionSubTypes)10,
-                (FactionSubTypes)11,
-                (FactionSubTypes)12,
-                (FactionSubTypes)13,
-                (FactionSubTypes)14,
-                (FactionSubTypes)15,
-            };
-
-            private static readonly List<Type> AllowedTypes = new List<Type> {
-                typeof(ModuleLazyAPs),
-                typeof(ModuleMoveGimbal),
-                typeof(ModuleModeSwitch),
-                typeof(ModuleClock),
-                typeof(ModuleFuelEnergyGenerator),
-                typeof(ModuleItemFixedHolderBeam),
-                typeof(ModulePointDefense),
-                typeof(ModuleRepairAimer),
-                typeof(ModuleReplace),
-                typeof(ModuleUsageHint),
-                typeof(ModuleAudioProvider),
-            };
-
-            private static List<Type> valid = new List<Type>();
-            private static bool Prefix(BlockFilterTable __instance, 
-                ref BlockTypes blockType, ref bool __result)
-            {
-                if (!__result)
-                {
-                    if (Singleton.Manager<ManMods>.inst.IsModdedBlock(blockType, false))
-                    {
-                        //Debug.Log("RandomAdditions: Checking block " + blockType + ".");
-                        TankBlock TB = ManSpawn.inst.GetBlockPrefab(blockType);
-                        if (TB)
-                        {
-                            FactionSubTypes FST = ManSpawn.DetermineFactionFromBlockTypeSlow(blockType);
-                            if (!illegals.Contains(FST))
-                            {
-                                valid.Clear();
-                                valid.AddRange(__instance.ListAllowedModuleTypes());
-                                valid.AddRange(AllowedTypes);
-                                foreach (Module mod in TB.GetComponents<Module>())
-                                {
-                                    if (!valid.Contains(mod.GetType()))
-                                    {
-                                        Debug.Log("RandomAdditions: Could not permit block " + blockType + " into MP - Unregistered module: " + mod);
-                                        __result = false;
-                                        return false;
-                                    }
-                                }
-                                //Debug.Log("RandomAdditions: Permitted block " + blockType + " into MP");
-                                __result = true;
-                                return false;
-                            }
-                            //Debug.Log("RandomAdditions: Could not permit block " + blockType + " into MP - Illegal faction type of " + FST);
-                            __result = false;
-                            return false;
-                        }
-                        Debug.Log("RandomAdditions: Could not permit block " + blockType + " into MP - Fail on Init.");
-                        __result = false;
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        */
-
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnPool")]//On Creation
         private static class PatchTankToHelpClocks
@@ -154,6 +27,21 @@ namespace RandomAdditions
             }
         }
 
+        [HarmonyPatch(typeof(TankControl))]
+        [HarmonyPatch("GetWeaponTargetLocation")]//On Creation
+        private static class PatchTankToHelpEvasion
+        {
+            private static void Postfix(TankControl __instance, ref Vector3 __result, ref Vector3 origin)
+            {
+                if (origin == __result)
+                    return;
+                TankDistraction TD = __instance.GetComponent<TankDistraction>();
+                if (TD)
+                {
+                    __result = TD.GetPosDistract(__result);
+                }
+            }
+        }
         [HarmonyPatch(typeof(TankBlock))]
         [HarmonyPatch("PrePool")]//On Creation
         private static class PatchAllBlocksForOHKOProjectile
@@ -175,6 +63,15 @@ namespace RandomAdditions
                 var rp = block.GetComponent<ModuleReplace>();
                 if ((bool)rp)
                     rp.Init(__instance);
+            }
+        }
+        [HarmonyPatch(typeof(TankBlock))]
+        [HarmonyPatch("OnSpawn")]//On Creation
+        private static class PatchAllBlocksForPainting
+        {
+            private static void Postfix(TankBlock __instance)
+            {
+                OptimizeOutline.FlagNonRendTrans(__instance.transform);
             }
         }
 
@@ -887,39 +784,53 @@ namespace RandomAdditions
         private class PatchProjectileCollision
         {
             static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
-            private static void Prefix(Projectile __instance, ref Damageable damageable, ref Collider otherCollider)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            private static void Prefix(Projectile __instance, ref Damageable damageable, ref Vector3 hitPoint, ref Collider otherCollider, ref bool ForceDestroy)//
             {
                 //Debug.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile & OHKOProjectile)");
-                var ModuleCheckS = __instance.gameObject.GetComponent<KeepSeekingProjectile>();
+                var ModuleCheckR = __instance.GetComponent<TrailProjectile>();
+                if (ModuleCheckR != null)
+                {
+                    ModuleCheckR.HandleCollision();
+                    if (ForceDestroy)
+                    {
+                        __instance.trans.position = hitPoint;
+                        ForceDestroy = false;
+                    }
+                }
+                var ModuleCheckS = __instance.GetComponent<KeepSeekingProjectile>();
                 if (ModuleCheckS != null)
                 {
-                    var validation = __instance.gameObject.GetComponent<SeekingProjectile>();
+                    var validation = __instance.GetComponent<SeekingProjectile>();
                     if (validation)
                     {
                         ModuleCheckS.wasThisSeeking = validation.enabled; //Keep going!
                     }
                 }
-                var ModuleCheck = __instance.gameObject.GetComponent<OHKOProjectile>();
-                if ((bool)damageable && ModuleCheck != null && (ManNetwork.IsHost || !ManNetwork.IsNetworked))
+                var ModuleCheck = __instance.GetComponent<OHKOProjectile>();
+                if (ModuleCheck != null && (ManNetwork.IsHost || !ManNetwork.IsNetworked))
                 {
-                    if (!ModuleCheck.InstaKill && !ModuleCheck.GuaranteedKillOnLowHP)
-                        return;
-                    if (__instance.CanDamageBlock(damageable))
+                    Damageable dmg = otherCollider.GetComponentInParent<Damageable>();
+                    if ((bool)dmg)
                     {
-                        //Debug.Log("RandomAdditions: queued block death");
-                        try
+                        if (!ModuleCheck.InstaKill && !ModuleCheck.GuaranteedKillOnLowHP)
+                            return;
+                        if (__instance.CanDamageBlock(dmg))
                         {
-                            var validation = damageable.GetComponent<TankBlock>();
-                            if (ModuleCheck.InstaKill || (damageable.Health <= 0 && ModuleCheck.GuaranteedKillOnLowHP))
+                            //Debug.Log("RandomAdditions: queued block death");
+                            try
                             {
-                                OHKOInsurance.TryQueueUnstoppableDeath(validation);
-                                //Debug.Log("RandomAdditions: omae wa - mou shindeiru");
-                                return;
+                                if (ModuleCheck.InstaKill || (dmg.Health <= 0 && ModuleCheck.GuaranteedKillOnLowHP))
+                                {
+                                    var validation = dmg.GetComponent<TankBlock>();
+                                    OHKOInsurance.TryQueueUnstoppableDeath(validation);
+                                    //Debug.Log("RandomAdditions: omae wa - mou shindeiru");
+                                    return;
+                                }
                             }
-                        }
-                        catch
-                        {
-                            Debug.Log("RandomAdditions: Error on applying OHKOInsurance!");
+                            catch (Exception e)
+                            {
+                                Debug.Log("RandomAdditions: Error on applying OHKOInsurance! " + e);
+                            }
                         }
                     }
                 }
@@ -961,10 +872,23 @@ namespace RandomAdditions
             private static void Postfix(Projectile __instance, ref FireData fireData, ref Tank shooter)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //Debug.Log("RandomAdditions: Patched Projectile Fire(WeightedProjectile)");
+
+                var ModuleCheck0 = __instance.gameObject.GetComponent<RaycastProjectile>();
+                if (ModuleCheck0 != null)
+                {
+                    ModuleCheck0.Fire(shooter);
+                    return;
+                }
+
                 var Split = __instance.GetComponent<SpiltProjectile>();
                 if ((bool)Split)
                 {
                     Split.Reset(__instance);
+                }
+                var ModuleCheck3 = __instance.gameObject.GetComponent<TrailProjectile>();
+                if (ModuleCheck3 != null)
+                {
+                    ModuleCheck3.Fire();
                 }
 
                 var ModuleCheckI = __instance.GetComponent<InterceptProjectile>();
@@ -994,7 +918,7 @@ namespace RandomAdditions
                 var ModuleCheck5 = __instance.GetComponent<MissileProjectile>();
                 if (!ModuleCheck5)
                 {
-                    var ModuleCheck3 = __instance.GetComponent<ProjectileHealth>();
+                    var ModuleCheck6 = __instance.GetComponent<ProjectileHealth>();
                     var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
                     if (ModuleCheck3 != null)
                     {
@@ -1006,7 +930,7 @@ namespace RandomAdditions
                         else
                         {
                             //Debug.Log("RandomAdditions: ASSERT - Abberation in Projectile!  " + __instance.gameObject.name);
-                            UnityEngine.Object.Destroy(ModuleCheck3);
+                            UnityEngine.Object.Destroy(ModuleCheck6);
                         }
                     }
                     else
@@ -1097,6 +1021,26 @@ namespace RandomAdditions
                 if (ModuleCheck != null)
                 {
                     __result = null;
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        //Allow lock-on to be fooled correctly
+        [HarmonyPatch(typeof(SeekingProjectile))]
+        [HarmonyPatch("GetTargetAimPosition")]
+        private class PatchLockOnAimToMiss
+        {
+            private static readonly MethodBase targ = typeof(SeekingProjectile).GetMethod("GetCurrentTarget", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            private static bool Prefix(SeekingProjectile __instance, ref Vector3 __result)
+            {
+                Visible vis = (Visible)targ.Invoke(__instance, new object[] { });
+                TankDistraction ModuleCheck = vis.GetComponent<TankDistraction>();
+                if (ModuleCheck != null)
+                {
+                    __result = ModuleCheck.GetPosDistract(__result);
                     return false;
                 }
                 return true;
@@ -1323,9 +1267,17 @@ namespace RandomAdditions
         {
             private static FieldInfo cat = typeof(UIScreenBugReport).GetField("m_ErrorCatcher", BindingFlags.NonPublic | BindingFlags.Instance);
             private static void Prefix(UIScreenBugReport __instance)
-            {
-                //Custom error menu
-                cat.SetValue(__instance, false);
+            {   //Custom error menu
+#if STEAM
+                Debug.Log("RandomAdditions: Letting the player continue with a crashed STEAM client. " +
+                    "Note that this will still force a quit screen under certain conditions.");
+#else
+                Debug.Log("RandomAdditions: Letting the player continue with a crashed Unofficial client. " +
+                "Note that this will NOT force a quit screen under certain conditions, but " +
+                "you know the rules, and so do I.");
+#endif
+                if (!ManNetwork.IsNetworked)
+                    cat.SetValue(__instance, false);
             }
         }
         [HarmonyPriority(9002)]
@@ -1372,8 +1324,11 @@ namespace RandomAdditions
 
                 //reportBox.Find(" Title").GetComponent<Text>().text = "<b>BUG REPORTER [MODDED!]</b>";
 
-
+#if STEAM
+                UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) Ignore & Continue";
+#else
                 UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) CONTINUE ANYWAYS";
+#endif
                 //Debug.Log("RandomAdditions: Cleaned Bug Reporter UI");
 
                 //Setup the UI
@@ -1404,8 +1359,13 @@ namespace RandomAdditions
                 try
                 {   //<color=#f23d3dff></color> - tried that but it's too hard to read
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
+#if STEAM
+                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a modded game which the developers cannot manage!</b>  " +
+                        "\nTake note of all your official mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-official.";
+#else
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  " +
                         "\nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial.";
+#endif
 
                     //var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Description"), UIObj.transform, false);
                     var errorList = reportBox.Find("Description");

@@ -102,6 +102,7 @@ namespace RandomAdditions
 
         private int timer = 0;
         private float cooldown = 0;
+        private int barrelsFired = 0;
         private int barrelStep = 0;
         private int barrelC = 0;
         private bool energyUser = false;
@@ -124,8 +125,6 @@ namespace RandomAdditions
         public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
         public Rigidbody Target => LockedTarget;
 
-        private bool isOfficialMod = false;
-
         private float energyToTax = 0;
 
         protected override void Pool()
@@ -133,9 +132,6 @@ namespace RandomAdditions
             fireTrans = KickStart.HeavyObjectSearch(transform, "_fireTrans");
             if (fireTrans == null)
                 fireTrans = gameObject.transform;
-
-            if (Singleton.Manager<ManMods>.inst.IsModdedBlock(block.BlockType))
-                isOfficialMod = true;
 
             aimerMain = GetComponent<TargetAimer>();
             aimers = GetComponentsInChildren<GimbalAimer>().ToList();
@@ -211,6 +207,7 @@ namespace RandomAdditions
             hit = false;
             if (cooldown > 0)
                 cooldown -= Time.deltaTime;
+            barrelsFired = 0;
             if (LockedTarget == null)
             {
                 DisabledWeapon = false;
@@ -229,19 +226,11 @@ namespace RandomAdditions
             if (aimers != null && !SeperateFromGun)
             {
                 Vector3 posAim = GetTargetHeading();
-                bool nuterraSteamBlock = false;
-                if (KickStart.isNuterraSteamPresent)
-                {
-                    //nuterraSteamBlock = (bool)GetComponent<CustomModules.LegacyModule.ModuleCustomBlock>();
-                }
-                if (isOfficialMod && !nuterraSteamBlock)
-                {   // Official modding has flipped x axis for GAMEOBJECTS (not models like unofficial)
-                    Vector3 localVec = transform.InverseTransformPoint(posAim);
-                    localVec.x = -localVec.x;
-                    posAim = transform.TransformPoint(localVec);
-                }
                 if (aimerMain != null)
+                {   // Try correct scale errors
+                    posAim.Scale(transform.lossyScale);
                     aimerMain.AimAtWorldPos(posAim, RotateRate);
+                }
                 else
                 {
                     foreach (GimbalAimer aim in aimers)
@@ -294,7 +283,8 @@ namespace RandomAdditions
                 return false;
             if (!ForcePulse)
             { // fire like normal
-                if (gunBase.ProcessFiring(true) > 0)
+                barrelsFired = gunBase.ProcessFiring(true);
+                if (barrelsFired > 0)
                 {
                     if (LockedTarget.GetComponent<ProjectileHealth>())
                         if (LockedTarget.GetComponent<ProjectileHealth>().WillDestroy(PointDefenseDamage))
@@ -357,6 +347,7 @@ namespace RandomAdditions
                 }
 
                 hit = FirePulseBeam(barry.projectileSpawnPoint, aimPoint);
+                barrelsFired++;
                 return true;
             }
             hit = false;
@@ -384,6 +375,7 @@ namespace RandomAdditions
                         if (Vector3.Dot((rbody.position - fireTrans.position).normalized, fireTrans.forward) < pulseAimAnglef)
                             continue;
                         FirePulseBeam(fireTrans, rbody);
+                        barrelsFired++;
                         fired = true;
                         tokens--;
                     }
@@ -415,7 +407,7 @@ namespace RandomAdditions
                         audioTickData.provider = this;
                     }
                     audioTickData.sfxType = FireSFXType;
-                    audioTickData.numTriggered = firing ? 1 : 0;
+                    audioTickData.numTriggered = barrelsFired;
                     audioTickData.triggerCooldown = DefenseCooldown;
                     audioTickData.isNoteOn = spooling;
                     audioTickData.adsrTime01 = firing ? 1 : 0;
@@ -595,7 +587,6 @@ namespace RandomAdditions
                 {   // It's FAR too fast
                     if (def.GetNewTarget(this, out Rigidbody fetched, !CanInterceptFast))
                     {
-                        Debug.Log("TweakTech: GetTargetHeading - Fetched new Target");
                         if (LockedTarget != fetched)
                         {
                             LockedTarget = fetched;
@@ -647,7 +638,7 @@ namespace RandomAdditions
                             VeloDiffCorrected = VeloDiffCorrected.magnitude * 0.7071f * VeloDiffCorrected.normalized;
                             VeloDiffCorrected.y = VeloDiff.y;
                             targPos = targPos + (VeloDiffCorrected * roughTime);
-                            float roughDist = VeloDiff.magnitude / velo;
+                            //float roughDist = VeloDiff.magnitude / velo;
                         }
                     }
                 }

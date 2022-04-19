@@ -313,22 +313,25 @@
 
 -----------------------------------------------------------------------------------------------------
 
-    "ModuleMoveGimbal": {   // Rotate your parts in style. Controls MoveGimbal(s)
+    "ModuleMoveGimbal": {// Rotate your parts in style.  Controls MoveGimbal(s)
       "DriveControlStrength": 1.0,  // Follow player drive controls percent (0 <-> 1.0)
       "IdlePointing": "CabFacing",  // Aim this way while controls are not active
       // BlockFacing - Return to starting position
       // CabFacing - Turn to face the cab's forwards facing
       // GravityFacing - Face downwards towards gravity
+      // NorthFacing - Face towards World north
       "ForwardsAndBackwards": true, // Can this part drive backwards as effectively as forwards?
+      "RotateZAxis": false,         // If there is a "Free" or "Z" MoveGimbal, this will rotate it upright based on IdlePointing
       "UseBoostAndProps": false,    // Should this update the aiming of all BoosterJets and FanJets in hierarchy?
-      "RotateRate": 90,            // How fast we should turn every second
+      "RotateRate": 90,             // How fast we should turn every second
     },
 
       "MoveGimbal": { // Put this in the GameObject you want to rotate
         "Axis": "X",
+        // Free - Use BOTH axi!
         // X - Rotate on Y-axis (Left or Right)
         // Y - Rotate on X-axis (Up and Down)
-        // Free - Use BOTH axi!
+        // Z - Rotate on Z-axis (Clockwise and Counter-Clockwise)
       },
 
 -----------------------------------------------------------------------------------------------------

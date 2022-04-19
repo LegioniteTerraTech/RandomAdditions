@@ -6,18 +6,20 @@ using HarmonyLib;
 using UnityEngine;
 #if !STEAM
 using ModHelper.Config;
-using Nuterra.NativeOptions;
+#else
+using ModHelper;
 #endif
+using Nuterra.NativeOptions;
 
 
 namespace RandomAdditions
 {
     // A mod that does exactly as it says on the tin
-    //   A bunch of random additions that make make little to no sense, but they be.
+    //   A bunch of random additions that make little to no sense, but they be.
     //
     public class KickStart
     {
-        const string ModName = "RandomAdditions";
+        internal const string ModName = "RandomAdditions";
 
         public static bool isWaterModPresent = false;
         public static bool isTweakTechPresent = false;
@@ -35,32 +37,29 @@ namespace RandomAdditions
         public static bool TrueShields = true;
         public static bool InterceptedExplode = true;   // Projectiles intercepted will explode
         //public static bool CheapInterception = false;   // Force the Point-Defense Systems to grab the first target it "finds"
-        public static float ProjectileHealthMultiplier = 1;
+        public static float ProjectileHealthMultiplier = 10;
         public static int GlobalBlockReplaceChance = 50;
         public static bool MandateSeaReplacement = true;
         public static bool MandateLandReplacement = false;
 
-#if !STEAM
-        internal static ModConfig config;
 
-        // NativeOptions Parameters
-        public static OptionToggle allowPopups;
-        public static OptionToggle altDateFormat;
-        public static OptionToggle noCameraShake;
-        public static OptionToggle scaleBlocksInSCU;
-        public static OptionToggle realShields;
-        public static OptionToggle moddedPopupReset;
+        public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
-        public static OptionRange replaceChance;
-        public static OptionToggle rpSea;
-        public static OptionToggle rpLand;
-#endif
+        public static void ReleaseControl(int ID)
+        {
+            if (GUIUtility.hotControl == ID)
+            {
+                GUI.FocusControl(null);
+                GUI.UnfocusWindow();
+                GUIUtility.hotControl = 0;
+            }
+        }
 
         public static float WaterHeight
         {
             get
             {
-                float outValue = -25;
+                float outValue = -75;
 #if !STEAM
                 try { outValue = WaterMod.QPatch.WaterHeight; } catch { }
 #endif
@@ -89,15 +88,6 @@ namespace RandomAdditions
                 Debug.Log("RandomAdditions: Error on patch");
                 Debug.Log(e);
             }
-            try
-            {
-                SafeSaves.ManSafeSaves.RegisterSaveSystem();
-            }
-            catch (Exception e)
-            {
-                Debug.Log("RandomAdditions: Error on RegisterSaveSystem");
-                Debug.Log(e);
-            }
             if (!logMan)
             {
                 logMan = new GameObject("logMan");
@@ -121,141 +111,27 @@ namespace RandomAdditions
                 Debug.Log("TACtical_AI: Found NuterraSteam!  Making sure blocks work!");
                 isNuterraSteamPresent = true;
             }
-
-
-            /*
-            ModConfig thisModConfig = new ModConfig();
-            thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
-            thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
-            thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
-            thisModConfig.BindConfig<KickStart>(null, "NoShake");
-            thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
-            thisModConfig.BindConfig<KickStart>(null, "TrueShields");
-            thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
-            thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
-            thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
-            thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
-            thisModConfig.BindConfig<ExtUsageHint>(null, "HintsSeenSAV");
-            config = thisModConfig;
-            ExtUsageHint.SaveToHintsSeen();
-
-            var RandomProperties = ModName;
-            realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, TrueShields);
-            realShields.onValueSaved.AddListener(() => { TrueShields = realShields.SavedValue; });
-            allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
-            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; });
-            altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
-            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; });
-            noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, NoShake);
-            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; });
-            scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, AutoScaleBlocksInSCU);
-            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
-            replaceChance = new OptionRange("Chance for modded block spawns", RandomProperties, GlobalBlockReplaceChance, 0, 100, 10);
-            replaceChance.onValueSaved.AddListener(() => { GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
-            rpLand = new OptionToggle("Force Land Block Replacement", RandomProperties, MandateLandReplacement);
-            rpLand.onValueSaved.AddListener(() => { MandateLandReplacement = rpLand.SavedValue; });
-            rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, MandateSeaReplacement);
-            rpSea.onValueSaved.AddListener(() => { MandateSeaReplacement = rpSea.SavedValue; });
-
-            moddedPopupReset = new OptionToggle("Reset all modded popups", RandomProperties, ResetModdedPopups);
-            moddedPopupReset.onValueSaved.AddListener(() => {
-                if (moddedPopupReset.SavedValue)
-                {
-                    ExtUsageHint.HintsSeen.Clear();
-                    ExtUsageHint.HintsSeenToSave();
-                    config.WriteConfigJsonFile();
-                }
-            });
-            NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
-            */
-        }
-
-        /*
-        private static PatchProcessor PCP;
-        private static Type BFCW;
-        private static MethodBase MB;
-        private static MethodInfo MI;
-        private static FieldInfo FI;
-        private static HarmonyMethod HM;
-
-        private static Type[] AllowedTypes = new Type[] {
-                typeof(ModuleLazyAPs),
-                typeof(ModuleReinforced),
-                typeof(ModuleLazyAPs),
-                typeof(ModuleLazyAPs),
-                typeof(ModuleLazyAPs),
-                typeof(ModuleLazyAPs),
-            };
-        private static void MakeEdgePatcher()
-        {
-            int patchStep = 0;
             try
             {
-                AssemblyName AN = new AssemblyName("Assembly-CSharp.dll");
-                if (AN == null)
-                    Debug.Log("RandomAdditions: Error on patching BlockFilterComponentWhiteList - Assembly-CSharp is null?!?");
-                BFCW = Assembly.Load(AN).GetType("BlockFilterComponentWhiteList", true);
-                patchStep++;
-                MB = BFCW.GetMethod("RebuildAllowedModuleTypes", BindingFlags.Instance | BindingFlags.NonPublic);
-                patchStep++;
-                FI = BFCW.GetField("m_AllowedModuleTypes", BindingFlags.Instance | BindingFlags.NonPublic);
-                patchStep++;
-                PCP = harmonyInstance.CreateProcessor(MB);
-                patchStep++;
-                MI = BFCW.GetRuntimeMethod("RebuildAllowedModuleTypes", new Type[] { });
-                if (MI == null)
-                    Debug.Log("RandomAdditions: Error on patching BlockFilterComponentWhiteList - RebuildAllowedModuleTypes is null?!?");
-                patchStep++;
-                HM = new HarmonyMethod();
-                HM.method = MI;
-                HM.declaringType = typeof(KickStart);
-                HM.methodName = "PatchNewTypes";
-                HM.methodType = MethodType.Normal;
-                HM.reversePatchType = HarmonyReversePatchType.Original;
-                patchStep++;
-                PCP.AddPostfix(HM);
+                KickStartOptions.TryInitOptionAndConfig();
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on patching BlockFilterComponentWhiteList at level " + patchStep);
+                Debug.Log("RandomAdditions: Error on Option & Config setup");
                 Debug.Log(e);
             }
-        }
-        private static void EdgePatcher(bool patchApply)
-        {
-            return;
             try
             {
-                if (PCP == null)
-                    MakeEdgePatcher();
-                if (patchApply)
-                {
-                    if (PCP != null)
-                        PCP.Patch();
-                }
-                else
-                {
-                    if (PCP != null)
-                        PCP.Unpatch(HarmonyPatchType.Postfix, harmonyInstance.Id);
-                }
+                SafeSaves.ManSafeSaves.RegisterSaveSystem(Assembly.GetExecutingAssembly());
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: EdgePatcher - Failed in patching BlockFilterComponentWhiteList | was adding: " + patchApply);
+                Debug.Log("RandomAdditions: Error on RegisterSaveSystem");
                 Debug.Log(e);
             }
         }
 
-        public static void PatchNewTypes(object __instance)
-        {
-            HashSet<Type> HS = (HashSet<Type>)FI.GetValue(__instance);
-            foreach (Type type in AllowedTypes)
-            {
-                HS.Add(type);
-            }
-            FI.SetValue(__instance, HS);
-        }
-        */
+
         public static void MainOfficialInit()
         {
             //Where the fun begins
@@ -289,7 +165,7 @@ namespace RandomAdditions
             {
                 try
                 {
-                    harmonyInstance.UnpatchAll();
+                    harmonyInstance.UnpatchAll("legionite.randomadditions");
                     //EdgePatcher(false);
                     Debug.Log("RandomAdditions: UnPatched");
                     patched = false;
@@ -325,7 +201,7 @@ namespace RandomAdditions
             }
             try
             {
-                SafeSaves.ManSafeSaves.RegisterSaveSystem();
+                SafeSaves.ManSafeSaves.RegisterSaveSystem(Assembly.GetExecutingAssembly());
             }
             catch (Exception e)
             {
@@ -357,51 +233,16 @@ namespace RandomAdditions
                 isNuterraSteamPresent = true;
             }
 
-
-            ModConfig thisModConfig = new ModConfig();
-            thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
-            thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
-            thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
-            thisModConfig.BindConfig<KickStart>(null, "NoShake");
-            thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
-            thisModConfig.BindConfig<KickStart>(null, "TrueShields");
-            thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
-            thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
-            thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
-            thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
-            thisModConfig.BindConfig<ExtUsageHint>(null, "HintsSeenSAV");
-            config = thisModConfig;
-            ExtUsageHint.SaveToHintsSeen();
-
-            var RandomProperties = ModName;
-            realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, TrueShields);
-            realShields.onValueSaved.AddListener(() => { TrueShields = realShields.SavedValue; });
-            allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, DebugPopups);
-            allowPopups.onValueSaved.AddListener(() => { DebugPopups = allowPopups.SavedValue; });
-            altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, UseAltDateFormat);
-            altDateFormat.onValueSaved.AddListener(() => { UseAltDateFormat = altDateFormat.SavedValue; });
-            noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, NoShake);
-            noCameraShake.onValueSaved.AddListener(() => { NoShake = noCameraShake.SavedValue; });
-            scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, AutoScaleBlocksInSCU);
-            scaleBlocksInSCU.onValueSaved.AddListener(() => { AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
-            replaceChance = new OptionRange("Chance for modded block spawns", RandomProperties, GlobalBlockReplaceChance, 0, 100, 10);
-            replaceChance.onValueSaved.AddListener(() => { GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
-            rpLand = new OptionToggle("Force Land Block Replacement", RandomProperties, MandateLandReplacement);
-            rpLand.onValueSaved.AddListener(() => { MandateLandReplacement = rpLand.SavedValue; });
-            rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, MandateSeaReplacement);
-            rpSea.onValueSaved.AddListener(() => { MandateSeaReplacement = rpSea.SavedValue; });
-
-            moddedPopupReset = new OptionToggle("Reset all modded popups", RandomProperties, ResetModdedPopups);
-            moddedPopupReset.onValueSaved.AddListener(() =>
+            
+            try
             {
-                if (moddedPopupReset.SavedValue)
-                {
-                    ExtUsageHint.HintsSeen.Clear();
-                    ExtUsageHint.HintsSeenToSave();
-                    config.WriteConfigJsonFile();
-                }
-            });
-            NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
+                KickStartOptions.TryInitOptionAndConfig();
+            }
+            catch (Exception e)
+            {
+                Debug.Log("RandomAdditions: Error on Option & Config setup");
+                Debug.Log(e);
+            }
         }
 #endif
 
@@ -422,8 +263,112 @@ namespace RandomAdditions
         }
 
     }
+
+    public class KickStartOptions
+    {
+        internal static ModConfig config;
+
+        // NativeOptions Parameters
+        public static OptionToggle allowPopups;
+        public static OptionToggle altDateFormat;
+        public static OptionToggle noCameraShake;
+        public static OptionToggle scaleBlocksInSCU;
+        public static OptionToggle realShields;
+        public static OptionToggle moddedPopupReset;
+
+        public static OptionRange replaceChance;
+        public static OptionToggle rpSea;
+        public static OptionToggle rpLand;
+
+        private static bool launched = false;
+
+        public static void TryInitOptionAndConfig()
+        {
+            if (launched)
+                return;
+            launched = true;
+            //Initiate the madness
+            try
+            {
+                ModConfig thisModConfig = new ModConfig();
+                thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
+                thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
+                thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
+                thisModConfig.BindConfig<KickStart>(null, "NoShake");
+                thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
+                thisModConfig.BindConfig<KickStart>(null, "TrueShields");
+                thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
+                thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
+                thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
+                thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
+                thisModConfig.BindConfig<ExtUsageHint>(null, "HintsSeenSAV");
+                config = thisModConfig;
+                ExtUsageHint.SaveToHintsSeen();
+
+                var RandomProperties = KickStart.ModName;
+                realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
+                realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
+                allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, KickStart.DebugPopups);
+                allowPopups.onValueSaved.AddListener(() => { KickStart.DebugPopups = allowPopups.SavedValue; });
+                altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
+                altDateFormat.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = altDateFormat.SavedValue; });
+                noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, KickStart.NoShake);
+                noCameraShake.onValueSaved.AddListener(() => { KickStart.NoShake = noCameraShake.SavedValue; });
+                scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);
+                scaleBlocksInSCU.onValueSaved.AddListener(() => { KickStart.AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
+                replaceChance = new OptionRange("Chance for modded block spawns", RandomProperties, KickStart.GlobalBlockReplaceChance, 0, 100, 10);
+                replaceChance.onValueSaved.AddListener(() => { KickStart.GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
+                rpLand = new OptionToggle("Force Land Block Replacement", RandomProperties, KickStart.MandateLandReplacement);
+                rpLand.onValueSaved.AddListener(() => { KickStart.MandateLandReplacement = rpLand.SavedValue; });
+                rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, KickStart.MandateSeaReplacement);
+                rpSea.onValueSaved.AddListener(() => { KickStart.MandateSeaReplacement = rpSea.SavedValue; });
+
+                moddedPopupReset = new OptionToggle("Reset all modded popups", RandomProperties, KickStart.ResetModdedPopups);
+                moddedPopupReset.onValueSaved.AddListener(() => {
+                    if (moddedPopupReset.SavedValue)
+                    {
+                        ExtUsageHint.HintsSeen.Clear();
+                        ExtUsageHint.HintsSeenToSave();
+                        config.WriteConfigJsonFile();
+                    }
+                });
+                NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
+            }
+            catch (Exception e)
+            {
+                Debug.Log("RandomAdditions: Error on Option & Config setup");
+                Debug.Log(e);
+            }
+
+        }
+    }
+
+
     internal static class ExtraExtensions
     {
+        public static List<T> GetExtModules<T>(this BlockManager BM) where T : ExtModule
+        {
+            List<T> got = new List<T>();
+            foreach (var item in BM.IterateBlocks())
+            {
+                T get = item.GetComponent<T>();
+                if (get)
+                    got.Add(get);
+            }
+            return got;
+        }
+        public static List<T> GetChildModules<T>(this BlockManager BM) where T : ChildModule
+        {
+            List<T> got = new List<T>();
+            foreach (var item in BM.IterateBlocks())
+            {
+                T[] get = item.GetComponentsInChildren<T>();
+                if (get != null)
+                    got.AddRange(get);
+            }
+            return got;
+        }
+
         public static bool CanDamageBlock(this Projectile inst, Damageable damageable)
         {
             var validation = damageable.GetComponent<TankBlock>();
@@ -434,18 +379,40 @@ namespace RandomAdditions
             }
             if (damageable.Invulnerable)
                 return false;// No damage Invinci
-            if (validation.tank)
+            Tank tank = validation.transform.root.GetComponent<Tank>();
+            if (tank)
             {
+                //Debug.Log("RandomAdditions: tank");
                 if (inst.Shooter)
                 {
-                    if (!inst.Shooter.IsEnemy(validation.tank.Team))
+                    if (!Tank.IsEnemy(inst.Shooter.Team, tank.Team))
+                    {
+                        //Debug.Log("RandomAdditions: not enemy");
                         return false;// Stop friendly-fire
-                    if (inst.Shooter == validation.tank)
-                        return false;// Stop self-fire
+                    }
+                    else if (inst.Shooter == tank)
+                    {
+                        //Debug.Log("RandomAdditions: self");
+                        return false;// Stop self-fire 
+                    }
+                    else
+                    {
+                        //Debug.Log("RandomAdditions: enemy " + inst.Shooter.Team + " | " + tank.Team);
+                    }
                 }
-                if (validation.tank.IsNeutral())
+                else if (tank.IsNeutral())
+                {
+                    //Debug.Log("RandomAdditions: neutral");
                     return false;// No damage Invinci
+                }
+                else
+                {
+                    //Debug.Log("RandomAdditions: no shooter");
+                    return false;
+                }
             }
+            else
+                Debug.Log("RandomAdditions: no tank!");
             return true;
         }
     }

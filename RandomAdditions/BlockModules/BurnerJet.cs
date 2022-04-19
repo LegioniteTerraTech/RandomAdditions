@@ -37,7 +37,7 @@ namespace RandomAdditions
         public float Backforce = 30;
 
         // If this lags too much, let me know and I can cheapen the calculations.
-        private const int DamageDelayCount = 10;
+        private const int DamageDelayCount = 20;
 
         private BoosterJet Jet;
         private Transform Effector;
@@ -77,15 +77,16 @@ namespace RandomAdditions
             }
             else
                 CalcBoost = RadiusFalloff / Radius;
-            Debug.Log("RandomAdditions: Set up a BurnerJet");
+            Debug.Info("RandomAdditions: Set up a BurnerJet");
         }
         private void TryDealDamage()
         {
-            Burning = true;
             Vector3 worldPosBurnCenter = (Effector.forward * (Radius * RadiusStretchMultiplier * CurrentStrength)) + Effector.position;
             //Effector.forward
             //Debug.Log("RandomAdditions: BURRRRRRRRRRRRRRRNING");
+            float radSq = Radius * Radius;
             InArea.Clear();
+            Tank attacking = transform.root.GetComponent<Tank>();
             foreach (Visible viss in Singleton.Manager<ManVisible>.inst.VisiblesTouchingRadius(worldPosBurnCenter, Radius * RadiusStretchMultiplier, new Bitfield<ObjectTypes>()))
             {
                 if ((bool)viss.block)
@@ -93,24 +94,43 @@ namespace RandomAdditions
                     Vector3 blockCenterModif = Effector.InverseTransformVector(worldPosBurnCenter - viss.block.centreOfMassWorld);
                     blockCenterModif.z /= RadiusStretchMultiplier; // stretch it into a true spheroid
 
-                    if (blockCenterModif.sqrMagnitude < Radius * Radius * CurrentStrength)
+                    if (blockCenterModif.sqrMagnitude < radSq * CurrentStrength)
                     {
                         try
                         {
                             if (viss.block.tank.IsNotNull())
                             {
                                 Tank tonk = viss.block.tank;
-                                if ((tonk.IsFriendly() && !FriendlyFire) || tonk.IsNeutral() || (Singleton.Manager<ManPlayer>.inst.PlayerIndestructible && tonk.IsPlayer))
+                                if ((tonk.IsFriendly() && !FriendlyFire) || tonk.IsNeutral() 
+                                    || (Singleton.Manager<ManPlayer>.inst.PlayerIndestructible 
+                                    && tonk.IsPlayer))
                                     continue;// do not damage those
                             }
-                            float DistanceThreshold = blockCenterModif.sqrMagnitude / Radius * Radius * CurrentStrength;
+                            float DistanceThreshold = blockCenterModif.sqrMagnitude / radSq * CurrentStrength;
                             float MultiplyCalc = (DistanceThreshold * (1 - CalcBoost)) + CalcBoost;
                             if (UseDamage)
-                                Singleton.Manager<ManDamage>.inst.DealDamage(viss.block.GetComponent<Damageable>(), DamagePerSecond * MultiplyCalc * DamageDelayCount * Time.deltaTime, DamageType, this, transform.root.GetComponent<Tank>());
+                            {
+                                var dmg = viss.block.GetComponent<Damageable>();
+                                if (dmg)
+                                {
+                                    if (!ManNetwork.IsNetworked || ManNetwork.IsHost)
+                                    {
+                                        Singleton.Manager<ManDamage>.inst.DealDamage(dmg, DamagePerSecond 
+                                            * MultiplyCalc * DamageDelayCount * Time.deltaTime, DamageType,
+                                            this, attacking);
+                                    }
+                                }
+                            }
                             if (UseRecoil)
                             {
-                                if ((bool)viss.block.tank)
-                                    viss.block.tank.ApplyForceOverTime(Effector.forward * (Backforce * CurrentStrength * (viss.block.tank.blockman.blockTableSize / 2)), viss.block.centreOfMassWorld, DamageDelayCount * Time.deltaTime);
+                                if (!ManNetwork.IsNetworked || ManNetwork.IsHost)
+                                {
+                                    var tank = viss.block.tank;
+                                    if (tank)
+                                        tank.ApplyForceOverTime(Effector.forward * (Backforce 
+                                            * CurrentStrength * (viss.block.tank.blockman.blockTableSize / 2)), 
+                                            viss.block.centreOfMassWorld, DamageDelayCount * Time.deltaTime);
+                                }
                             }
                             InArea.Add(viss.block);
                         }
@@ -119,13 +139,19 @@ namespace RandomAdditions
                 }
                 else if ((bool)viss.resdisp)
                 {
-                    Vector3 resCenterModif = Effector.InverseTransformVector(worldPosBurnCenter - (viss.centrePosition + (Vector3.up * 2)));
+                    Vector3 resCenterModif = Effector.InverseTransformVector(worldPosBurnCenter - 
+                        (viss.centrePosition + (Vector3.up * 2)));
                     resCenterModif.z /= RadiusStretchMultiplier; // stretch it into a true spheroid
-                    if (resCenterModif.sqrMagnitude < Radius * Radius * CurrentStrength)
+                    if (resCenterModif.sqrMagnitude < radSq * CurrentStrength)
                     {
                         try
                         {
-                            Singleton.Manager<ManDamage>.inst.DealDamage(viss.resdisp.GetComponent<Damageable>(), DamagePerSecond * DamageDelayCount * Time.deltaTime, DamageType, this, transform.root.GetComponent<Tank>());
+                            var dmg = viss.block.GetComponent<Damageable>();
+                            if (dmg)
+                            {
+                                Singleton.Manager<ManDamage>.inst.DealDamage(dmg, DamagePerSecond 
+                                    * DamageDelayCount * Time.deltaTime, DamageType, this,  attacking);
+                            }
                         }
                         catch { }
                     }
@@ -138,7 +164,8 @@ namespace RandomAdditions
             {
                 damg.damage.MultiplayerFakeDamagePulse();
                 if (UseRecoil && !damg.tank && damg.rbody.IsNotNull())
-                    damg.rbody.AddForceAtPosition(Effector.forward * (Backforce * CurrentStrength), damg.CentreOfMass, ForceMode.Impulse);
+                    damg.rbody.AddForceAtPosition(Effector.forward * (Backforce * CurrentStrength), 
+                        damg.CentreOfMass, ForceMode.Impulse);
             }
         }
 
@@ -149,6 +176,7 @@ namespace RandomAdditions
             {
                 if (TimeStep <= 0)
                 {
+                    Burning = true;
                     TryDealDamage();
                     TimeStep = DamageDelayCount;
                 }

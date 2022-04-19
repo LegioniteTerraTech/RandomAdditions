@@ -9,6 +9,9 @@ namespace RandomAdditions
 {
     internal class TankPointDefense : MonoBehaviour
     {
+        public static bool HasPointDefenseActive => hasPointDefenseActive;
+
+        private static bool hasPointDefenseActive = false;
         private static List<TankPointDefense> pDTs = new List<TankPointDefense>();
         private static bool needsReset = false;
 
@@ -50,6 +53,8 @@ namespace RandomAdditions
                 def.tank = tank;
                 def.reg = tank.EnergyRegulator;
                 pDTs.Add(def);
+                hasPointDefenseActive = true;
+                ProjectileManager.ToggleActive(true);
             }
 
             if (!def.dTs.Contains(dTurret))
@@ -82,6 +87,11 @@ namespace RandomAdditions
             if (def.dTs.Count() == 0)
             {
                 pDTs.Remove(def);
+                if (pDTs.Count == 0)
+                {
+                    hasPointDefenseActive = false;
+                    ProjectileManager.ToggleActive(false);
+                }
                 Destroy(def);
             }
         }
@@ -161,7 +171,7 @@ namespace RandomAdditions
             needsReset = false;
         }
 
-        private void FixedUpdate()
+        private void Update()
         {
             enemyInRange = (bool)tank.Vision.GetFirstVisibleTechIsEnemy(tank.Team);
             ResyncDefenses();
@@ -188,7 +198,7 @@ namespace RandomAdditions
                 if (maxRangeC > BiasDefendRange)
                     BiasDefendRange = maxRangeC;
             }
-            Debug.Log("RandomAdditions: TankPointDefense - BiasDefendCenter of " + tank.name + " changed to " + BiasDefendCenter);
+            Debug.Info("RandomAdditions: TankPointDefense - BiasDefendCenter of " + tank.name + " changed to " + BiasDefendCenter);
             needsBiasCheck = false;
         }
         public bool GetFetchedTargets(float energyCost, out List<Rigidbody> fetchedProj, bool missileOnly = true)

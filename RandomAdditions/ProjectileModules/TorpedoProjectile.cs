@@ -32,7 +32,7 @@ namespace RandomAdditions
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
             {
-                Debug.Log("RandomAdditions: Launched TorpedoProjectile on " + gameObject.name);
+                Debug.Info("RandomAdditions: Launched TorpedoProjectile on " + gameObject.name);
                 thisTrans = gameObject.transform;
                 fetchedRBody = gameObject.GetComponent<Rigidbody>();
                 var isTransformPresent = gameObject.transform.Find("_subProp");
@@ -58,12 +58,11 @@ namespace RandomAdditions
         {
             killThrust = true;
         }
-#if !STEAM
         private void FixedUpdate()
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
             {
-                if (WaterMod.QPatch.WaterHeight > gameObject.transform.position.y)
+                if (KickStart.WaterHeight > gameObject.transform.position.y)
                 {
                     isSubmerged = true;
                     if (ThrustUntilProjectileDeath || !killThrust)
@@ -78,6 +77,5 @@ namespace RandomAdditions
                 }
             }
         }
-#endif
     }
 }

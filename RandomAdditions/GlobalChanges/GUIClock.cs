@@ -119,13 +119,14 @@ namespace RandomAdditions
             catch { }
         }
 
+        private const int GUIClockID = 8002;
         internal class GUIDisplay : MonoBehaviour
         {
             private void OnGUI()
             {
-                if (isCurrentlyOpen)
+                if (KickStart.IsIngame && isCurrentlyOpen)
                 {
-                    TimeWindow = GUI.Window(8002, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>");
+                    TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>");
                 }
             }
         }
@@ -188,6 +189,7 @@ namespace RandomAdditions
         public static void CloseClockWindow()
         {
             isCurrentlyOpen = false;
+            KickStart.ReleaseControl(GUIClockID);
             GUIWindow.SetActive(false);
         }
     }

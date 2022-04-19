@@ -15,8 +15,8 @@ namespace RandomAdditions
         private ModuleOmniCore MOC;
         private ModuleBooster MB;
         private ModuleMoveGimbal MMG;
-        private List<HoverJet> HJ = new List<HoverJet>();
-        private List<PausedPosition> pause = new List<PausedPosition>();
+        private HoverJet[] HJ;
+        private PausedPosition[] pause;
 
         private bool ready = false;
         private bool StopAiming = true;
@@ -32,19 +32,17 @@ namespace RandomAdditions
             MOC = GetComponent<ModuleOmniCore>();
             MB = GetComponent<ModuleBooster>();
             MMG = GetComponent<ModuleMoveGimbal>();
-            HJ = GetComponentsInChildren<HoverJet>().ToList();
-            foreach (PausedPosition POs in GetComponentsInChildren<PausedPosition>())
-            {
-                pause.Add(POs);
-            }
+            HJ = GetComponentsInChildren<HoverJet>();
+            pause = GetComponentsInChildren<PausedPosition>();
             Invoke("DelayedApply", 0.001f);
         }
         private void DelayedApply()
         {
-            foreach (PausedPosition POs in pause)
-            {
-                POs.Apply(transform);
-            }
+            if (pause != null)
+                foreach (PausedPosition POs in pause)
+                {
+                    POs.Apply(transform);
+                }
         }
 
         public override void OnAttach()
@@ -63,20 +61,22 @@ namespace RandomAdditions
             if (SnapBackWhenIdle)
                 tank.control.driveControlEvent.Unsubscribe(DriveCommand);
             DelayedBlockChange();
-            foreach (PausedPosition POs in pause)
-            {
-                POs.Apply(transform);
-            }
+            if (pause != null)
+                foreach (PausedPosition POs in pause)
+                {
+                    POs.Apply(transform);
+                }
         }
         private void DriveCommand(TankControl.ControlState controlState)
         {
             isMoving = controlState.AnyMovementControl;
             if (isMoving && block.NumConnectedAPs < 1)
             {
-                foreach (PausedPosition POs in pause)
-                {
-                    POs.UnApply();
-                }
+                if (pause != null)
+                    foreach (PausedPosition POs in pause)
+                    {
+                        POs.UnApply();
+                    }
             }
         }
 
@@ -147,33 +147,37 @@ namespace RandomAdditions
             else */
             if (!isMoving)
             {
-                foreach (PausedPosition POs in pause)
-                {
-                    POs.Tranzition(transform, SnapBackRate);
-                }
+                if (pause != null)
+                    foreach (PausedPosition POs in pause)
+                    {
+                        POs.Tranzition(transform, SnapBackRate);
+                    }
             }
             if (!StopAiming)
             {
                 if (Input.GetKeyDown(KeyCode.Backslash))
                 {
-                    foreach (PausedPosition POs in pause)
-                    {
-                        POs.GetParameters(transform);
-                    }
+                    if (pause != null)
+                        foreach (PausedPosition POs in pause)
+                        {
+                            POs.GetParameters(transform);
+                        }
                 }
                 if (Input.GetKeyDown(KeyCode.Period))
                 {
-                    foreach (PausedPosition POs in pause)
-                    {
-                        POs.UnApply();
-                    }
+                    if (pause != null)
+                        foreach (PausedPosition POs in pause)
+                        {
+                            POs.UnApply();
+                        }
                 }
                 if (Input.GetKeyDown(KeyCode.Slash))
                 {
-                    foreach (PausedPosition POs in pause)
-                    {
-                        POs.Apply(transform);
-                    }
+                    if (pause != null)
+                        foreach (PausedPosition POs in pause)
+                        {
+                            POs.Apply(transform);
+                        }
                 }
             }
         }
@@ -193,14 +197,16 @@ namespace RandomAdditions
                     MB.enabled = false;
                 if (MMG)
                     MMG.enabled = false;
-                foreach (HoverJet HJc in HJ)
-                {
-                    HJc.SetEnabled(false);
-                }
-                foreach (PausedPosition POs in pause)
-                {
-                    POs.Apply(transform);
-                }
+                if (HJ != null)
+                    foreach (HoverJet HJc in HJ)
+                    {
+                        HJc.SetEnabled(false);
+                    }
+                if (pause != null)
+                    foreach (PausedPosition POs in pause)
+                    {
+                        POs.Apply(transform);
+                    }
                 StopAiming = true;
             }
             else //if (!activeState && yes)
@@ -216,14 +222,16 @@ namespace RandomAdditions
                     MB.enabled = true;
                 if (MMG)
                     MMG.enabled = true;
-                foreach (HoverJet HJc in HJ)
-                {
-                    HJc.SetEnabled(true);
-                }
-                foreach (PausedPosition POs in pause)
-                {
-                    POs.UnApply();
-                }
+                if (HJ != null)
+                    foreach (HoverJet HJc in HJ)
+                    {
+                        HJc.SetEnabled(true);
+                    }
+                if (HJ != null)
+                    foreach (PausedPosition POs in pause)
+                    {
+                        POs.UnApply();
+                    }
                 StopAiming = false;
             }
         }

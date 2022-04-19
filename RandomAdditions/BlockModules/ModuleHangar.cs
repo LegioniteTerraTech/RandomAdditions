@@ -78,7 +78,7 @@ namespace RandomAdditions
             }
             catch
             {
-                Debug.LogError("RandomAdditions: ModuleHangar - TankBlock is null");
+                Debug.LogError("RandomAdditions: ModuleHangar - TankBlock IS NULL");
             }
             try
             {
@@ -394,7 +394,7 @@ namespace RandomAdditions
 
             if (garrisonedTech.Value == null)
             {
-                Debug.Log("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash.");
+                Debug.LogError("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash.");
                 GarrisonTechs.Remove(garrisonedTech);
                 return;
             }
@@ -405,8 +405,8 @@ namespace RandomAdditions
                 {
                     if (Vis.ID != tank.visible.ID)
                     {
-                        Debug.Log("Hangar on " + tank.name + " ID: " + tank.visible.ID);
-                        Debug.Log("Hangar blocked by " + Vis.name + " ID: " + Vis.ID);
+                        Debug.Info("Hangar on " + tank.name + " ID: " + tank.visible.ID);
+                        Debug.Info("Hangar blocked by " + Vis.name + " ID: " + Vis.ID);
                         return;
                     }
                 }
@@ -435,7 +435,7 @@ namespace RandomAdditions
                 if (!newTech)
                 {
                     if (killTechs)
-                        Debug.Log("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
+                        Debug.LogError("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
                     else
                         Debug.Log("RandomAdditions: ModuleHangar - Could not deploy Tech at this time.");
                     return;
@@ -768,11 +768,11 @@ namespace RandomAdditions
                 {
                     TankWantsToDock = tech;
                     nextTime = 0;// Make it update ASAP
-                    Debug.Log("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
+                    Debug.Info("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
                     return true;
                 }
                 else
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangar has a ModuleTractorBeam and Tech is outside the ModuleTractorBeam's MaxRange");
+                    Debug.Info("RandomAdditions: ModuleHangar - Hangar has a ModuleTractorBeam and Tech is outside the ModuleTractorBeam's MaxRange");
             }
             else
             {
@@ -780,11 +780,11 @@ namespace RandomAdditions
                 {
                     TankWantsToDock = tech;
                     nextTime = 0;// Make it update ASAP
-                    Debug.Log("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
+                    Debug.Info("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
                     return true;
                 }
                 else
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangar has NO ModuleTractorBeam and Tech is outside the MaxDockingRadius");
+                    Debug.Info("RandomAdditions: ModuleHangar - Hangar has NO ModuleTractorBeam and Tech is outside the MaxDockingRadius");
             }
             return false;
         }
@@ -883,7 +883,7 @@ namespace RandomAdditions
                         tank.AI.SetBehaviorType(AITreeType.AITypes.Escort);
                     }
                     if (tank.AI.TryGetCurrentAIType(out AITreeType.AITypes type))
-                        Debug.Log("RandomAdditions: ModuleHangar(DeployedTech) - AI type is " + type.ToString());
+                        Debug.Info("RandomAdditions: ModuleHangar(DeployedTech) - AI type is " + type.ToString());
                 }
                 else
                 {
@@ -935,10 +935,10 @@ namespace RandomAdditions
                         isSaving = false;
                         if (!this.DeserializeFromSafeObject(ref GarrisonTechs))
                         {
-                            Debug.Log("RandomAdditions: Hangar of tech " + block.tank.name + " is empty.");
+                            Debug.Info("RandomAdditions: Hangar of tech " + block.tank.name + " is empty.");
                         }
                         else
-                            Debug.Log("RandomAdditions: Hangar of tech contains " + GarrisonTechs.Count + " Techs.");
+                            Debug.Info("RandomAdditions: Hangar of tech contains " + GarrisonTechs.Count + " Techs.");
                         this.DeserializeFromSafeObject(ref LinkedTechs);
                     }
                     catch { }

@@ -91,7 +91,7 @@ namespace RandomAdditions
                         */
                         LockedTime = GlobalClock.LockTime;
                         if (this.SerializeToSafe())
-                            Debug.Log("ScaleTechs: Saved the hour " + SavedTime.ToString() + " in gameObject " + gameObject.name);
+                            Debug.Info("ScaleTechs: Saved the hour " + SavedTime.ToString() + " in gameObject " + gameObject.name);
                     }
                     else
                     {   //Load from snap
@@ -104,7 +104,7 @@ namespace RandomAdditions
                                 {
                                     SavedTime = serialData2.savedTime;
                                     GlobalClock.LockTime = serialData2.lockedTime;
-                                    Debug.Log("ScaleTechs: Loaded the hour " + SavedTime.ToString() + " from gameObject " + gameObject.name);
+                                    Debug.Info("ScaleTechs: Loaded the hour " + SavedTime.ToString() + " from gameObject " + gameObject.name);
                                 }
                             }
                             else
@@ -135,12 +135,12 @@ namespace RandomAdditions
                     Vector3 inTo = thisInst.TimeObject.localEulerAngles;
                     inTo.z = timeAngle;
                     thisInst.TimeObject.localEulerAngles = inTo;
-                    Debug.Log("RandomAdditions: Set clock hand to " + inTo.z);
+                    Debug.Info("RandomAdditions: Set clock hand to " + inTo.z);
                 }
                 catch
                 {
                     Debug.Log("RandomAdditions: COULD NOT FIND OR SET \"TimeObject\" IN CLOCK!");
-                    Debug.Log("RandomAdditions: Trouble magnet " + gameObject.GetComponent<TankBlock>().name + " of id " + gameObject.name);
+                    Debug.LogError("RandomAdditions: Trouble magnet " + gameObject.GetComponent<TankBlock>().name + " of id " + gameObject.name);
                 }
             }
             if (DigitalTime)

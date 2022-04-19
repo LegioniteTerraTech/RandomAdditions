@@ -20,7 +20,7 @@ namespace RandomAdditions
         private Tank aimTarget = null;
         private TankBlock aimTargBlock;
         private Transform Targeter;        // the transform that rests at the aim position
-        private LineRenderer HealBeam;   
+        private LineRenderer HealBeam;
         private TargetAimer TargetAimer;      // the controller that controls the GimbalAimers
         private List<GimbalAimer> gimbals;
         private Spinner spinner;
@@ -160,7 +160,7 @@ namespace RandomAdditions
                 if (healStep >= HealPulseDelay)
                 {
                     healStep = 0;
-                    if ((aimTarget.boundsCentreWorldNoCheck - tank.boundsCentreWorldNoCheck).sqrMagnitude > MaxLockOnRange * MaxLockOnRange)
+                    if ((aimTarget.boundsCentreWorldNoCheck - block.centreOfMassWorld).sqrMagnitude > MaxLockOnRange * MaxLockOnRange)
                     {
                         aimTarget = null;
                         aimTargBlock = null;

@@ -171,7 +171,7 @@ namespace RandomAdditions
                 StackSet = possibleAPs;
             }
             itemHold.OverrideStackCapacity(stackOverride);  //  MUST be at least 2
-            Debug.Log("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
+            Debug.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
             if (gauges.Length == 0)
             {
                 Debug.Log("RandomAdditions: ModuleItemSilo - Detected no gauges on silo!\n  Cause of error - Block " + TankBlock.name);
@@ -292,7 +292,7 @@ namespace RandomAdditions
                 }
                 else if (SavedCount > MaxCapacity)
                 {
-                    Debug.Log("RandomAdditions: SILO IS OVERLOADED BEYOND LIMIT!!!");
+                    Debug.LogError("RandomAdditions: SILO IS OVERLOADED BEYOND LIMIT!!!");
                     //Probably a block change in update - eject extras!
                     EmergencyEjectRelieve();
                 }
@@ -357,7 +357,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                    Debug.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
                     toManage.SetHolder(null, true);//DROP IT NOW!!!
                     if (toManage.InBeam == true)
                     {
@@ -393,7 +393,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    Debug.Log("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                    Debug.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
                     toManage.InBeam = false;//DROP IT NOW!!!
                     if (toManage.InBeam == true)
                     {
@@ -409,7 +409,7 @@ namespace RandomAdditions
             {
                 if (GetChunkType == ChunkTypes.Null)
                 {
-                    Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
+                    Debug.LogError("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
                     SavedCount = 0;
                     break;
                 }
@@ -423,7 +423,7 @@ namespace RandomAdditions
                     SaveTextureOfChunk();
                     if (SavedCount < 0)
                     {
-                        Debug.Log("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
+                        Debug.LogError("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
                         SavedCount = 0;// well... we can't compensate for negatives can we...
                     }
                     break;
@@ -439,7 +439,7 @@ namespace RandomAdditions
                 {
                     if (GetBlockType == BlockTypes.GSOAIController_111)
                     {
-                        Debug.Log("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
+                        Debug.LogError("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
                         break;
                     }
                     QueueReleaseAnim(stack);
@@ -498,7 +498,7 @@ namespace RandomAdditions
                                             Empty = true;
                                             GetBlockType = BlockTypes.GSOAIController_111;
                                             if (availQuant < 0)
-                                                Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                                Debug.LogError("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
                                             break;
                                         }
                                     }

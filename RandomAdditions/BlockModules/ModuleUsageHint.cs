@@ -19,7 +19,7 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
-            if (HintDescription != null && ModdedHintsRange < BlockID)
+            if (HintDescription != null && ModdedHintsRange <= BlockID)
             {
                 ExtUsageHint.EditHint(gameObject.name, "ⁿ_", BlockID, HintDescription);
             }
@@ -64,6 +64,7 @@ namespace RandomAdditions
             EditHintInternal("ModuleHangar", "ⁿMH", 4009, hangarDesc);
             EditHintInternal("ModuleTractorBeam", "ⁿMTB", 4010, tracBeamDesc);
             EditHintInternal("ModuleOmniCore", "ⁿMOC", 4011, omniCoreDesc);
+            EditHintInternal("ModuleJumpDrive", "ⁿMTD", 4012, jumpDesc);
             isInit = true;
         }
         internal static void EditHint(string subjectName, string prefix, int blockID, string HintDescription)
@@ -182,7 +183,7 @@ namespace RandomAdditions
                     HintsSeen.Add((int)hintID);
                     HintsSeenToSave();
 #if !STEAM          // NEED TO REVIEW ALL OF THESE LATER
-                    KickStart.config.WriteConfigJsonFile();
+                    KickStartOptions.config.WriteConfigJsonFile();
 #endif
                     Singleton.Manager<ManSFX>.inst.PlayUISFX(ManSFX.UISfxType.Hint);
                 }
@@ -243,6 +244,7 @@ namespace RandomAdditions
         omniCoreDesc = "This block can apply thrust in all directions to the center of your Tech.  It limits movement so be careful!",
         tracBeamDesc = "This block can carry other Techs through the power of tractor beams.",
         hangarDesc = "This block can store and deploy Techs! H + right-click on an allied Tech to store or drive close and right-click from another.",
-        legsDesc = "This block is a leg block.  While it's slow, it has considerable grip and could even climb walls!";
+        legsDesc = "This block is a leg block.  While it's slow, it has considerable grip and could even climb walls!",
+        jumpDesc = "This block will let you jump to any tech you have in the world!";
     }
 }

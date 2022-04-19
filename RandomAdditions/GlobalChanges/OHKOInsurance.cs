@@ -21,8 +21,15 @@ namespace RandomAdditions
 #endif
             if ((bool)block)
             {
-                if (block.BlockType == BlockTypes.EXP_RD_Target_971)
-                    return; // CANNOT KILL TARGET
+                try
+                {
+                    if (block.BlockType == BlockTypes.EXP_RD_Target_971)
+                        return; // CANNOT KILL TARGET
+                }
+                catch
+                {
+                    Debug.Log("RandomAdditions: TerraTech FAILED to label blocktype!  This is unresolvable.");
+                }
 
                 Tank thisTank = block.transform.root.GetComponent<Tank>();
                 if (thisTank.IsNotNull())
@@ -35,46 +42,58 @@ namespace RandomAdditions
                 OHKOInsurance thisInst = block.GetComponent<OHKOInsurance>();
                 if (!(bool)thisInst)
                 {
+                    if (thisTank)
+                    {
+                        thisTank.blockman.Detach(block, false, false, true);//detach from Tech
+                    }
+                    DestroyBlock(block);
+                    // Game was being too unreliable for this
+                    /*
                     thisInst = block.gameObject.AddComponent<OHKOInsurance>();
                     thisInst.TB = block;
                     //if (thisTank != null)
                     //    Debug.Log("RandomAdditions: Block " + block.gameObject.name + " on " + thisTank.name + " has been marked for unstoppable death.");
-                    thisInst.DeathTimer = thisInst.TB.damage.SelfDestructTimeRemaining() * 50 + 50;
+                    thisInst.DeathTimer = 1;
                     thisInst.TB.damage.AbortSelfDestruct();               //let it suffer a bit longer
-                    thisInst.TB.Separate();                               //detach from Tech
+                    if (thisInst.TB.tank)
+                    {
+                        thisInst.TB.tank.blockman.Detach(thisInst.TB, false, false, true);//detach from Tech
+                    }
                     thisInst.TB.AttachEvent.Subscribe(thisInst.Reset);
                     thisInst.TB.LockBlockAttach();
+                    thisInst.TB.visible.SetInteractionTimeout(1);
+                    */
                 }
             }
         }
 
         private void Reset()
         {
+            TB.visible.SetInteractionTimeout(0);
             TB.UnlockBlockAttach();
             TB.AttachEvent.Unsubscribe(Reset);
             Destroy(this);
         }
 
         private void ForceOverrideEverythingAndDie()
-        {
-            if (TB.IsAttached)
-            {
-                Reset(); // it was destroyed & respawned before this could happen
-                return;
-            }
-            // insta-death
+        {   // insta-death
+            //Debug.Log("RandomAdditions: Block has gone poof"); 
+            DestroyBlock(TB);
+            Reset();
+        }
+        private static void DestroyBlock(TankBlock TB)
+        {   // insta-death
             //Debug.Log("RandomAdditions: Block has gone poof");
             TankBlock cache = TB;
             cache.damage.Explode(true);
             ManLooseBlocks.inst.RequestDespawnBlock(cache, DespawnReason.Host);
-            Reset();
         }
 
-        private void FixedUpdate()
+        private void Update()
         {
             //Debug.Log("RandomAdditions: DeathClock " + DeathTimer + "!");
-            TB.PreExplodePulse = true;
-            DeathTimer--;
+            TB.damage.MultiplayerFakeDamagePulse();
+            DeathTimer -= Time.deltaTime;
             if (DeathTimer <= 0)
                 ForceOverrideEverythingAndDie();
         }

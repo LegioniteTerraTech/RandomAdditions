@@ -19,6 +19,19 @@ namespace RandomAdditions
         private byte timer = 0;
         private byte delay = 12;
 
+        public static void ToggleActive(bool active)
+        {
+            if (inst)
+            {
+                if (inst.enabled != active)
+                {
+                    if (!active)
+                        ProjOct.PurgeAll();
+                    inst.enabled = active;
+                }
+            }
+        }
+
         public static void Initiate()
         {
             inst = new GameObject("ProjectileManager").AddComponent<ProjectileManager>();
@@ -49,21 +62,8 @@ namespace RandomAdditions
         {
             if (rbody.IsNotNull())
             {
-                ProjOct.Add(rbody);
-                //Projectiles.Add(rbody);
-                //Debug.Log("RandomAdditions: ProjectileManager - Added " + rbody.name);
-                /*
-                try
-                {
-                    if (rbody.Shooter.IsEnemy())
-                        EnemyProjectiles.Add(rbody);
-                    else
-                        AlliedProjectiles.Add(rbody);
-                }
-                catch
-                {
-                    Debug.Log("RandomAdditions: ProjectileManager - Tried to handle projectile with null shooter");
-                }*/
+                if (TankPointDefense.HasPointDefenseActive)
+                    ProjOct.Add(rbody);
             }
         }
         public static void Remove(Projectile rbody)
@@ -95,7 +95,7 @@ namespace RandomAdditions
                 {
                     Rigidbody rbodyC = project.rbody;
                     //Debug.Log("RandomAdditions: GetClosestProjectile - 3");
-                    if (project.Shooter.IsEnemy(iProject.team))//&& !rbodyC.velocity.Approximately(Vector3.zero))
+                    if (project.Shooter.IsEnemy(iProject.team))
                     {
                         float dist = (project.trans.position - pos).sqrMagnitude;
                         if (dist < rangeMain)
@@ -143,6 +143,7 @@ namespace RandomAdditions
                 Projectile project = Projectiles.ElementAt(step);
                 if (!(bool)project)
                 {
+                    //Debug.Log("RandomAdditions: null projectile in output");
                     step++;
                     continue;
                 }
