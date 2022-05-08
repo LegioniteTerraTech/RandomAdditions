@@ -171,10 +171,10 @@ namespace RandomAdditions
                 StackSet = possibleAPs;
             }
             itemHold.OverrideStackCapacity(stackOverride);  //  MUST be at least 2
-            Debug.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
+            DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
             if (gauges.Length == 0)
             {
-                Debug.Log("RandomAdditions: ModuleItemSilo - Detected no gauges on silo!\n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - Detected no gauges on silo!\n  Cause of error - Block " + TankBlock.name);
             }
             else
             {
@@ -185,7 +185,7 @@ namespace RandomAdditions
             }
             if (disps.Length == 0)
             {
-                Debug.Log("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Cause of error - Block " + TankBlock.name);
             }
             else
             {
@@ -196,17 +196,17 @@ namespace RandomAdditions
             }
             if (siloSpawn.IsNull())
             {
-                Debug.Log("RandomAdditions: ModuleItemSilo - SILO SPAWN NOT SET!!!  defaulting to center of silo! \n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - SILO SPAWN NOT SET!!!  defaulting to center of silo! \n  Cause of error - Block " + TankBlock.name);
                 siloSpawn = transform;
             }
             if (input.IsNull())
             {
-                Debug.Log("RandomAdditions: ModuleItemSilo - INPUT NOT SET!!!  defaulting to the spot _siloSpawn is set to! \n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - INPUT NOT SET!!!  defaulting to the spot _siloSpawn is set to! \n  Cause of error - Block " + TankBlock.name);
                 input = siloSpawn;
             }
             if (output.IsNull())
             {
-                Debug.Log("RandomAdditions: OUTPUT SPAWN NOT SET!!!  defaulting to the spot _siloSpawn is set to!\n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: OUTPUT SPAWN NOT SET!!!  defaulting to the spot _siloSpawn is set to!\n  Cause of error - Block " + TankBlock.name);
                 output = siloSpawn;
             }
             if (itemStore.IsNull())
@@ -292,7 +292,7 @@ namespace RandomAdditions
                 }
                 else if (SavedCount > MaxCapacity)
                 {
-                    Debug.LogError("RandomAdditions: SILO IS OVERLOADED BEYOND LIMIT!!!");
+                    DebugRandAddi.LogError("RandomAdditions: SILO IS OVERLOADED BEYOND LIMIT!!!");
                     //Probably a block change in update - eject extras!
                     EmergencyEjectRelieve();
                 }
@@ -357,7 +357,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    Debug.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                    DebugRandAddi.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
                     toManage.SetHolder(null, true);//DROP IT NOW!!!
                     if (toManage.InBeam == true)
                     {
@@ -393,7 +393,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    Debug.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                    DebugRandAddi.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
                     toManage.InBeam = false;//DROP IT NOW!!!
                     if (toManage.InBeam == true)
                     {
@@ -409,7 +409,7 @@ namespace RandomAdditions
             {
                 if (GetChunkType == ChunkTypes.Null)
                 {
-                    Debug.LogError("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
+                    DebugRandAddi.LogError("RandomAdditions: SILO HAS A NULL SAVEDCHUNK TYPE!!!");
                     SavedCount = 0;
                     break;
                 }
@@ -423,7 +423,7 @@ namespace RandomAdditions
                     SaveTextureOfChunk();
                     if (SavedCount < 0)
                     {
-                        Debug.LogError("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
+                        DebugRandAddi.LogError("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
                         SavedCount = 0;// well... we can't compensate for negatives can we...
                     }
                     break;
@@ -439,7 +439,7 @@ namespace RandomAdditions
                 {
                     if (GetBlockType == BlockTypes.GSOAIController_111)
                     {
-                        Debug.LogError("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
+                        DebugRandAddi.LogError("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
                         break;
                     }
                     QueueReleaseAnim(stack);
@@ -471,7 +471,7 @@ namespace RandomAdditions
                                             Empty = true;
                                             GetBlockType = BlockTypes.GSOAIController_111;
                                             if (availQuant < 0)
-                                                Debug.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                                DebugRandAddi.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
                                             break;
                                         }
                                     }
@@ -498,7 +498,7 @@ namespace RandomAdditions
                                             Empty = true;
                                             GetBlockType = BlockTypes.GSOAIController_111;
                                             if (availQuant < 0)
-                                                Debug.LogError("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
+                                                DebugRandAddi.LogError("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
                                             break;
                                         }
                                     }
@@ -839,7 +839,7 @@ namespace RandomAdditions
             {
                 if (DestroyContentsOnDestruction && TankBlock.damage.AboutToDie)
                 {
-                    Debug.Log("RandomAdditions: Silo " + gameObject.name + " is unstable on death and has destroyed all their stored contents!");
+                    DebugRandAddi.Log("RandomAdditions: Silo " + gameObject.name + " is unstable on death and has destroyed all their stored contents!");
                     SavedCount = 0;
                     GetChunkType = ChunkTypes.Null;
                     UpdateGaugesAndDisplays();

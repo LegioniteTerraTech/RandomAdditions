@@ -48,9 +48,9 @@ namespace RandomAdditions
             try 
             { 
                 gameObject.GetComponent<Rigidbody>().mass = Mathf.Max(ProjectileMass, 0.00123f);
-                Debug.Info("RandomAdditions: Set projectile mass to " + gameObject.GetComponent<Rigidbody>().mass);
+                DebugRandAddi.Info("RandomAdditions: Set projectile mass to " + gameObject.GetComponent<Rigidbody>().mass);
             }
-            catch { Debug.Log("RandomAdditions: Could not set host projectile mass!"); }
+            catch { DebugRandAddi.Log("RandomAdditions: Could not set host projectile mass!"); }
         }
         public void ForceProjectileGrav()
         {

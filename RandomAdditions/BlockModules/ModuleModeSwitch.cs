@@ -36,7 +36,7 @@ namespace RandomAdditions
             if (inst)
                 return;
             inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
-            Debug.Log("RandomAdditions: Created ManModeSwitch.");
+            DebugRandAddi.Log("RandomAdditions: Created ManModeSwitch.");
         }
         public static void DeInit()
         {
@@ -44,7 +44,7 @@ namespace RandomAdditions
                 return;
             Destroy(inst);
             inst = null;
-            Debug.Log("RandomAdditions: DeInit ManModeSwitch.");
+            DebugRandAddi.Log("RandomAdditions: DeInit ManModeSwitch.");
         }
 
         public void Update()
@@ -556,7 +556,7 @@ namespace RandomAdditions
 #if !STEAM
         private void UpdateTT(TankBlock block)
         {
-            TweakTech.ReAimer.CreateOrUpdateForBlock(block);
+            //TweakTech.ReAimer.CreateOrUpdateForBlock(block);
         }
 #endif
         private object shiftHold1 = null;   //

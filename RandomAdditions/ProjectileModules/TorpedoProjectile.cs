@@ -32,7 +32,7 @@ namespace RandomAdditions
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
             {
-                Debug.Info("RandomAdditions: Launched TorpedoProjectile on " + gameObject.name);
+                DebugRandAddi.Info("RandomAdditions: Launched TorpedoProjectile on " + gameObject.name);
                 thisTrans = gameObject.transform;
                 fetchedRBody = gameObject.GetComponent<Rigidbody>();
                 var isTransformPresent = gameObject.transform.Find("_subProp");
@@ -46,7 +46,7 @@ namespace RandomAdditions
                 {
                     addedThrustPosition = Vector3.zero;
                     addedThrustDirection = Vector3.forward;
-                    Debug.Log("RandomAdditions: Projectile " + gameObject.name + " does not have any previous effectors or thrust transforms!  Defaulting to the center of the projectile!  \nAdd a \"_subProp\" to your projectile's JSON!");
+                    DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " does not have any previous effectors or thrust transforms!  Defaulting to the center of the projectile!  \nAdd a \"_subProp\" to your projectile's JSON!");
                 }
             }
         }

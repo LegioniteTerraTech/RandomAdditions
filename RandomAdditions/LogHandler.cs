@@ -67,7 +67,7 @@ namespace RandomAdditions
         /// <param name="Text">What we assert.</param>
         public static void ThrowWarning(string Text)
         {
-            Debug.Log(Text);
+            DebugRandAddi.Log(Text);
             if (KickStart.DebugPopups)
             {
                 if (WarningCount < WarningCountMax)
@@ -117,7 +117,7 @@ namespace RandomAdditions
 #if STEAM
             if (threwForceEnd)
                 return;
-            Debug.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
+            DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
                 "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
                 " Forcing crash screen!");
 
@@ -165,7 +165,7 @@ namespace RandomAdditions
             FiredBigDisplay = true;
             if (customLog)
             {
-                Debug.Log("\n" + logOverride);
+                DebugRandAddi.Log("\n" + logOverride);
                 return logOverride;
             }
             else 

@@ -33,9 +33,11 @@ namespace RandomAdditions
             MB = GetComponent<ModuleBooster>();
             MMG = GetComponent<ModuleMoveGimbal>();
             HJ = GetComponentsInChildren<HoverJet>();
-            pause = GetComponentsInChildren<PausedPosition>();
+            pause = gameObject.GetComponentsLowestFirst<PausedPosition>();
             Invoke("DelayedApply", 0.001f);
         }
+
+
         private void DelayedApply()
         {
             if (pause != null)
@@ -314,7 +316,7 @@ namespace RandomAdditions
                 AimRotUp = Vector3.up;
             Vector3 forward = baseTrans.InverseTransformDirection(transform.forward);
             Vector3 up = baseTrans.InverseTransformDirection(transform.up);
-            Debug.Log("RandomAdditions: Resting Pos of " + name + " is " + Json(forward) + ", " + Json(up));
+            DebugRandAddi.Log("RandomAdditions: Resting Pos of " + name + " is " + Json(forward) + ", " + Json(up));
         }
         private string Json(Vector3 vec)
         {

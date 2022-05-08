@@ -41,25 +41,12 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="0Harmony">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\0Harmony.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="ConfigHelper">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2758915184\ConfigHelper.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="NuterraSteam">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2484820102\NuterraSteam.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="SafeSaves">
-      <HintPath>..\..\..\..\Desktop\SafeSaves\GitAccess\SafeSaves\SafeSaves.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="LocalCorpAudioExt">
+      <HintPath>..\..\..\..\Desktop\Advanced AI\Assets\Mods\Random Additions\LocalCorpAudioExt.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -130,10 +117,43 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)'=='Steam'">
+    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
+    <!--> THE MATTERS BELOW ARE OFFICIAL </!-->
+    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2571814511\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SafeSaves">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2765342436\SafeSaves.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="0Nuterra.NativeOptions">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2685130411\0Nuterra.NativeOptions.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="ConfigHelper">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2758915184\ConfigHelper.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="NuterraSteam">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2484820102\NuterraSteam.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
   <ItemGroup Condition="'$(Configuration)'=='Release'OR'$(Configuration)'=='Debug'">
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
     <!--> THE MATTERS BELOW ARE UNOFFICIAL </!-->
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SafeSaves">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\SafeSaves\SafeSaves.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="AcModHelper.Config">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\ModHelper.Config\AcModHelper.Config.dll</HintPath>
       <Private>False</Private>
@@ -146,16 +166,15 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\0Nuterra.NativeOptions\0Nuterra.NativeOptions.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="TweakTech">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\TweakTech\TweakTech.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="WaterMod">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\Water Mod\WaterMod.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)'=='Steam'">
+    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
+    <!--> THE MATTERS BELOW ARE OFFICIAL </!-->
+    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
     <Reference Include="0Nuterra.NativeOptions">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2685130411\0Nuterra.NativeOptions.dll</HintPath>
       <Private>False</Private>
@@ -175,7 +194,7 @@
     <Compile Include="BlockModules\ModuleSimpleLegs.cs" />
     <Compile Include="BlockModules\ModuleTractorBeam.cs" />
     <Compile Include="BlockModules\ModuleUsageHint.cs" />
-    <Compile Include="Debug.cs" />
+    <Compile Include="DebugRandAddi.cs" />
     <Compile Include="GlobalChanges\DistractedProjectile.cs" />
     <Compile Include="BlockModules\ModulePointDefense.cs" />
     <Compile Include="GlobalChanges\ExtGimbalControl.cs" />

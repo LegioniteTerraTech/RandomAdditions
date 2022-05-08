@@ -78,7 +78,7 @@ namespace RandomAdditions
             }
             catch
             {
-                Debug.LogError("RandomAdditions: ModuleHangar - TankBlock IS NULL");
+                DebugRandAddi.LogError("RandomAdditions: ModuleHangar - TankBlock IS NULL");
             }
             try
             {
@@ -295,7 +295,7 @@ namespace RandomAdditions
                     }
                     catch (Exception e)
                     {
-                        Debug.LogError("RandomAdditions: ModuleHangar encountered a serious error when animating deploy for a Tech " + e);
+                        DebugRandAddi.LogError("RandomAdditions: ModuleHangar encountered a serious error when animating deploy for a Tech " + e);
                     }
                     try
                     {
@@ -394,7 +394,7 @@ namespace RandomAdditions
 
             if (garrisonedTech.Value == null)
             {
-                Debug.LogError("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash.");
+                DebugRandAddi.LogError("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash.");
                 GarrisonTechs.Remove(garrisonedTech);
                 return;
             }
@@ -405,8 +405,8 @@ namespace RandomAdditions
                 {
                     if (Vis.ID != tank.visible.ID)
                     {
-                        Debug.Info("Hangar on " + tank.name + " ID: " + tank.visible.ID);
-                        Debug.Info("Hangar blocked by " + Vis.name + " ID: " + Vis.ID);
+                        DebugRandAddi.Info("Hangar on " + tank.name + " ID: " + tank.visible.ID);
+                        DebugRandAddi.Info("Hangar blocked by " + Vis.name + " ID: " + Vis.ID);
                         return;
                     }
                 }
@@ -435,9 +435,9 @@ namespace RandomAdditions
                 if (!newTech)
                 {
                     if (killTechs)
-                        Debug.LogError("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
+                        DebugRandAddi.LogError("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
                     else
-                        Debug.Log("RandomAdditions: ModuleHangar - Could not deploy Tech at this time.");
+                        DebugRandAddi.Log("RandomAdditions: ModuleHangar - Could not deploy Tech at this time.");
                     return;
                 }
                 try
@@ -478,7 +478,7 @@ namespace RandomAdditions
             catch (Exception e)
             {
                 LinkedTechs.Clear();
-                Debug.Log("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash." + e);
+                DebugRandAddi.Log("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash." + e);
             }
             GarrisonTechs.Remove(garrisonedTech);
         }
@@ -594,7 +594,7 @@ namespace RandomAdditions
                     }
                 }
             }
-            catch { Debug.Log("Error level " + error); }
+            catch { DebugRandAddi.Log("Error level " + error); }
         }
 
 
@@ -603,37 +603,37 @@ namespace RandomAdditions
             if (!tech)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - TECH IS NULL - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - TECH IS NULL - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (!tech.rbody)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Tech is static or anchored - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Tech is static or anchored - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (TankWantsToDock != null && !ChangeTarget)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangar is busy docking another tech already and ChangeTarget is false - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Hangar is busy docking another tech already and ChangeTarget is false - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (isDeploying && HasStoredTechs)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangar is deploying stored Techs. Cannot Dock and Deploy at the same time - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Hangar is deploying stored Techs. Cannot Dock and Deploy at the same time - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (tech.Team != tank.Team)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangars can only store Techs of the same team - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Hangars can only store Techs of the same team - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (tech == tank)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Tech tried to store itself in it's own hangar - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Tech tried to store itself in it's own hangar - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             Vector3 techExt = tech.blockBounds.extents;
@@ -643,19 +643,19 @@ namespace RandomAdditions
             if (!HasRoom)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangar is at or over maximum capacity - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Hangar is at or over maximum capacity - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (!canFit)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Hangar of size " + MaxTechExtents + " cannot fit tech of size " + techExt + " - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Hangar of size " + MaxTechExtents + " cannot fit tech of size " + techExt + " - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (!enoughSpaceInSlot)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleHangar - Tech has more blocks than a slot allows: Hangar block limit " + MaxTechBlocksPerSpot + " VS Tech block count " + tech.blockman.blockCount + " - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Tech has more blocks than a slot allows: Hangar block limit " + MaxTechBlocksPerSpot + " VS Tech block count " + tech.blockman.blockCount + " - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
 
@@ -667,13 +667,13 @@ namespace RandomAdditions
                     if (MH.IsDocking)
                     {
                         if (debugLog)
-                            Debug.Log("RandomAdditions: ModuleHangar - Grabbed tech has active ModuleHangar(s) docking other tech(s) - \n" + StackTraceUtility.ExtractStackTrace());
+                            DebugRandAddi.Log("RandomAdditions: ModuleHangar - Grabbed tech has active ModuleHangar(s) docking other tech(s) - \n" + StackTraceUtility.ExtractStackTrace());
                         return false;
                     }
                     if (MH.HasStoredTechs && !AllowHammerspace)
                     {
                         if (debugLog)
-                            Debug.Log("RandomAdditions: ModuleHangar - Grabbed tech already has Techs within and this ModuleHangar does not have AllowHammerspace set to true - \n" + StackTraceUtility.ExtractStackTrace());
+                            DebugRandAddi.Log("RandomAdditions: ModuleHangar - Grabbed tech already has Techs within and this ModuleHangar does not have AllowHammerspace set to true - \n" + StackTraceUtility.ExtractStackTrace());
                         return false;
                     }
                     // Techs with docked Techs are normally not allowed to dock inside another tech
@@ -768,11 +768,11 @@ namespace RandomAdditions
                 {
                     TankWantsToDock = tech;
                     nextTime = 0;// Make it update ASAP
-                    Debug.Info("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
+                    DebugRandAddi.Info("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
                     return true;
                 }
                 else
-                    Debug.Info("RandomAdditions: ModuleHangar - Hangar has a ModuleTractorBeam and Tech is outside the ModuleTractorBeam's MaxRange");
+                    DebugRandAddi.Info("RandomAdditions: ModuleHangar - Hangar has a ModuleTractorBeam and Tech is outside the ModuleTractorBeam's MaxRange");
             }
             else
             {
@@ -780,11 +780,11 @@ namespace RandomAdditions
                 {
                     TankWantsToDock = tech;
                     nextTime = 0;// Make it update ASAP
-                    Debug.Info("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
+                    DebugRandAddi.Info("RandomAdditions: ModuleHangar - Docking " + tech.name + "...");
                     return true;
                 }
                 else
-                    Debug.Info("RandomAdditions: ModuleHangar - Hangar has NO ModuleTractorBeam and Tech is outside the MaxDockingRadius");
+                    DebugRandAddi.Info("RandomAdditions: ModuleHangar - Hangar has NO ModuleTractorBeam and Tech is outside the MaxDockingRadius");
             }
             return false;
         }
@@ -883,7 +883,7 @@ namespace RandomAdditions
                         tank.AI.SetBehaviorType(AITreeType.AITypes.Escort);
                     }
                     if (tank.AI.TryGetCurrentAIType(out AITreeType.AITypes type))
-                        Debug.Info("RandomAdditions: ModuleHangar(DeployedTech) - AI type is " + type.ToString());
+                        DebugRandAddi.Info("RandomAdditions: ModuleHangar(DeployedTech) - AI type is " + type.ToString());
                 }
                 else
                 {
@@ -935,10 +935,10 @@ namespace RandomAdditions
                         isSaving = false;
                         if (!this.DeserializeFromSafeObject(ref GarrisonTechs))
                         {
-                            Debug.Info("RandomAdditions: Hangar of tech " + block.tank.name + " is empty.");
+                            DebugRandAddi.Info("RandomAdditions: Hangar of tech " + block.tank.name + " is empty.");
                         }
                         else
-                            Debug.Info("RandomAdditions: Hangar of tech contains " + GarrisonTechs.Count + " Techs.");
+                            DebugRandAddi.Info("RandomAdditions: Hangar of tech contains " + GarrisonTechs.Count + " Techs.");
                         this.DeserializeFromSafeObject(ref LinkedTechs);
                     }
                     catch { }

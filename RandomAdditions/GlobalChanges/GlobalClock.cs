@@ -29,7 +29,7 @@ namespace RandomAdditions
                 inst = new GameObject("GlobalClockGeneral").AddComponent<ClockManager>();
                 clocks = new List<ModuleClock>();
                 tanks = new List<TimeTank>();
-                Debug.Log("RandomAdditions: Created GlobalClock.");
+                DebugRandAddi.Log("RandomAdditions: Created GlobalClock.");
             }
             public static void DeInit()
             {
@@ -37,7 +37,7 @@ namespace RandomAdditions
                     return;
                 Destroy(inst.gameObject);
                 inst = null;
-                Debug.Log("RandomAdditions: DeInit GlobalClock.");
+                DebugRandAddi.Log("RandomAdditions: DeInit GlobalClock.");
             }
 
             //All ModuleClock(s) will control the time based on global values.
@@ -93,10 +93,10 @@ namespace RandomAdditions
             }
             public void SetTime()
             {
-                Debug.Info("RandomAdditions: Time Change external queued!");
+                DebugRandAddi.Info("RandomAdditions: Time Change external queued!");
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                     Singleton.Manager<ManTimeOfDay>.inst.SetTimeOfDay(SavedTime, 0, 0, false);
-                Debug.Info("RandomAdditions: Time Changed to " + Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay);
+                DebugRandAddi.Info("RandomAdditions: Time Changed to " + Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay);
             }
 
             public bool UpdateClocks()
@@ -126,12 +126,12 @@ namespace RandomAdditions
             {
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                 {
-                    Debug.Info("RandomAdditions: Time Changed!");
+                    DebugRandAddi.Info("RandomAdditions: Time Changed!");
                     GetTimeSetClocks();
                 }
                 else if (SetByGUI)
                 {
-                    Debug.Log("RandomAdditions: Time Changed by Player!");
+                    DebugRandAddi.Log("RandomAdditions: Time Changed by Player!");
                     GetTimeSetClocks();
                 }
             }

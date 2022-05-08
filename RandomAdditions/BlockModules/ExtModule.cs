@@ -39,7 +39,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.LogError("RandomAdditions: ExtModule - TankBlock is null");
+                    DebugRandAddi.LogError("RandomAdditions: ExtModule - TankBlock is null");
                     enabled = false;
                     return;
                 }
@@ -97,7 +97,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.LogError("RandomAdditions: ChildModule - TankBlock is null");
+                    DebugRandAddi.LogError("RandomAdditions: ChildModule - TankBlock is null");
                     enabled = false;
                     return;
                 }

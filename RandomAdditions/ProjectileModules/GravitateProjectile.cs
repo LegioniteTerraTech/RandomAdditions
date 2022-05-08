@@ -78,7 +78,7 @@ namespace RandomAdditions
             if (MovementDampening < 0.001)
             {
                 movementDampening = 1;
-                Debug.Log("RandomAdditions: Projectile " + gameObject.name + " has a MovementDampening value too close to or below zero!  Change it to a higher value!");
+                DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " has a MovementDampening value too close to or below zero!  Change it to a higher value!");
             }
             else
                 movementDampening = MovementDampening;

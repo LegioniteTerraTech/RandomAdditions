@@ -41,7 +41,7 @@ namespace RandomAdditions
 				{
 					try
 					{
-						Debug.Log("RandomAdditions: OptimizeOutline acting on " + trans.name);
+						DebugRandAddi.Log("RandomAdditions: OptimizeOutline acting on " + trans.name);
 						FlagNonRendTrans(trans);
 					}
 					catch { }
@@ -72,7 +72,7 @@ namespace RandomAdditions
 						MF.sharedMesh = tempMesh;
 					}
 					if (MF.sharedMesh == null)
-						Debug.Log("RandomAdditions: OptimizeOutline Failed on " + trans.name);
+						DebugRandAddi.Log("RandomAdditions: OptimizeOutline Failed on " + trans.name);
 				}
 				/*
 				else

@@ -38,7 +38,7 @@ namespace RandomAdditions
                 return;
             if (tank.IsNull())
             {
-                Debug.Log("RandomAdditions: TankDistraction(HandleAddition) - TANK IS NULL");
+                DebugRandAddi.Log("RandomAdditions: TankDistraction(HandleAddition) - TANK IS NULL");
                 return;
             }
             var dis = tank.GetComponent<TankDistraction>();
@@ -55,25 +55,25 @@ namespace RandomAdditions
                 dis.dirty = true;
             }
             else
-                Debug.Log("RandomAdditions: TankDistraction - ModuleMirage of " + mirage.name + " was already added to " + tank.name + " but an add request was given?!?");
+                DebugRandAddi.Log("RandomAdditions: TankDistraction - ModuleMirage of " + mirage.name + " was already added to " + tank.name + " but an add request was given?!?");
             mirage.distraction = dis;
         }
         public static void HandleRemoval(Tank tank, ModuleMirage mirage)
         {
             if (tank.IsNull())
             {
-                Debug.Log("RandomAdditions: TankDistraction(HandleRemoval) - TANK IS NULL");
+                DebugRandAddi.Log("RandomAdditions: TankDistraction(HandleRemoval) - TANK IS NULL");
                 return;
             }
 
             var dis = tank.GetComponent<TankDistraction>();
             if (!(bool)dis)
             {
-                Debug.Log("RandomAdditions: TankDistraction - Got request to remove for tech " + tank.name + " but there's no TankDistraction assigned?!?");
+                DebugRandAddi.Log("RandomAdditions: TankDistraction - Got request to remove for tech " + tank.name + " but there's no TankDistraction assigned?!?");
                 return;
             }
             if (!dis.ModuleMirages.Remove(mirage))
-                Debug.Log("RandomAdditions: TankDistraction - ModuleMirage of " + mirage.name + " requested removal from " + tank.name + " but no such ModuleMirage is assigned.");
+                DebugRandAddi.Log("RandomAdditions: TankDistraction - ModuleMirage of " + mirage.name + " requested removal from " + tank.name + " but no such ModuleMirage is assigned.");
             else
             {
                 dis.dirty = true;
@@ -314,7 +314,7 @@ namespace RandomAdditions
         {
             if (tank.IsNull())
             {
-                Debug.Log("RandomAdditions: TankDistraction(HandleRemoval) - TANK IS NULL");
+                DebugRandAddi.Log("RandomAdditions: TankDistraction(HandleRemoval) - TANK IS NULL");
                 return null;
             }
             Vector3 offset = GetOffset(Mirages.Count);
@@ -349,8 +349,7 @@ namespace RandomAdditions
                 newTrans.localPosition = child.localPosition - centerOffset;
                 newTrans.localRotation = child.localRotation;
                 newTrans.localScale = child.localScale;
-                MakeCopyMeshRend(child.GetComponent<MeshRenderer>(), newChild);
-                MakeCopyMeshFilter(child.GetComponent<MeshFilter>(), newChild);
+                MakeCopyMeshAll(child, newChild);
                 MakeCopyMiragePart(child.gameObject, newChild);
                 RecursiveCopySimple(child, newChild);
                 MakeCopyMiragePartPost(child.gameObject, newChild);
@@ -370,29 +369,28 @@ namespace RandomAdditions
                 newTrans.localPosition = child.localPosition;
                 newTrans.localRotation = child.localRotation;
                 newTrans.localScale = child.localScale;
-                MakeCopyMeshRend(child.GetComponent<MeshRenderer>(), newChild);
-                MakeCopyMeshFilter(child.GetComponent<MeshFilter>(), newChild);
+                MakeCopyMeshAll(child, newChild);
                 MakeCopyMiragePart(child.gameObject, newChild);
                 RecursiveCopySimple(child, newChild);
                 MakeCopyMiragePartPost(child.gameObject, newChild);
             }
         }
 
-        private void MakeCopyMeshRend(MeshRenderer MR, GameObject toAddTo)
+        private bool MakeCopyMeshAll(Transform child, GameObject toAddTo)
         {
+            MeshFilter MF = child.GetComponent<MeshFilter>();
+            if (MF == null || !MF.sharedMesh)
+                return false;
+            MeshRenderer MR = child.GetComponent<MeshRenderer>();
             if (MR == null)
-                return;
-            MeshRenderer added = toAddTo.AddComponent<MeshRenderer>();
-            added.sharedMaterial = MR.sharedMaterial;
-            added.rendererPriority = MR.rendererPriority;
-            added.sortingOrder = MR.sortingOrder;
-        }
-        private void MakeCopyMeshFilter(MeshFilter MF, GameObject toAddTo)
-        {
-            if (MF == null)
-                return;
+                return false;
             MeshFilter added = toAddTo.AddComponent<MeshFilter>();
             added.sharedMesh = MF.sharedMesh;
+            MeshRenderer added2 = toAddTo.AddComponent<MeshRenderer>();
+            added2.sharedMaterial = MR.sharedMaterial;
+            added2.rendererPriority = MR.rendererPriority;
+            added2.sortingOrder = MR.sortingOrder;
+            return true;
         }
 
         private void MakeCopyMiragePart(GameObject OG, GameObject toAddTo)
@@ -595,7 +593,7 @@ namespace RandomAdditions
                         Transform[] unfiltered = gameObject.GetComponentsInChildren<Transform>();
                         if (unfiltered == null)
                         {
-                            Debug.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO CHILDREN!!!");
+                            DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO CHILDREN!!!");
                             return;
                         }
                         List<Transform> transChecked = new List<Transform>();
@@ -610,7 +608,7 @@ namespace RandomAdditions
                         }
                         if (transChecked.Count == 0)
                         {
-                            Debug.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
+                            DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
                             return;
                         }
                         allTrans = transChecked.ToArray();
@@ -777,7 +775,7 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateThis has errored: " + e);
+                    DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateThis has errored: " + e);
                 }
             }
 
@@ -801,7 +799,7 @@ namespace RandomAdditions
                         }
                         if (transChecked.Count == 0)
                         {
-                            Debug.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
+                            DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
                             return;
                         }
                         allTrans = transChecked.ToArray();
@@ -817,7 +815,7 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateDistortion has errored: " + e);
+                    DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateDistortion has errored: " + e);
                 }
             }
             public void UpdateAllMimics()
@@ -839,7 +837,7 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateAllMimics has errored: " + e);
+                    DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateAllMimics has errored: " + e);
                 }
             }
             public void UpdateAllAimers()
@@ -864,7 +862,7 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateAllAimers has errored: " + e);
+                    DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateAllAimers has errored: " + e);
                 }
             }
             public void UpdateAllEffects(float rawSped)
@@ -881,7 +879,7 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateAllEffects has errored: " + e);
+                    DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank.UpdateAllEffects has errored: " + e);
                 }
             }
 

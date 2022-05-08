@@ -41,7 +41,7 @@ namespace RandomAdditions
             var shader = Shader.Find("Standard");
             if (shader.IsNull())
             {
-                Debug.Log("RandomAdditions: Could not find Shader Standard!  Trying to find the next possible shader!");
+                DebugRandAddi.Log("RandomAdditions: Could not find Shader Standard!  Trying to find the next possible shader!");
                 IEnumerable<Shader> shaders = Resources.FindObjectsOfTypeAll<Shader>();
                 shaders = shaders.Where(s => s.name == "Standard"); ////Standard
                 shader = shaders.ElementAt(1);

@@ -14,6 +14,19 @@ namespace RandomAdditions
 
     internal static class Patches
     {
+
+#if !STEAM
+        [HarmonyPatch(typeof(Mode))]
+        [HarmonyPatch("EnterPreMode")]//On very late update
+        private static class Startup
+        {
+            private static void Prefix()
+            {
+                KickStart.DelayedInitAll();
+            }
+        }
+#endif
+
         // Major Patches
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnPool")]//On Creation
@@ -138,7 +151,7 @@ namespace RandomAdditions
                                         }
                                     }
                                 }
-                                Debug.Log("RandomAdditions: made " + __instance.name + " ignore " + firedCount + " colliders.");
+                                DebugRandAddi.Log("RandomAdditions: made " + __instance.name + " ignore " + firedCount + " colliders.");
                             }
                         }
                         else
@@ -434,7 +447,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: CONSUME - Nothing more to eject.");
+                    DebugRandAddi.Log("RandomAdditions: CONSUME - Nothing more to eject.");
                 }
             }
         }
@@ -711,7 +724,7 @@ namespace RandomAdditions
                     Collider fetchedCollider = (Collider)collodo.GetValue(__instance);
                     fetchedCollider.isTrigger = true;// Make it not collide
                     ModuleCheck.project = __instance;
-                    Debug.Log("RandomAdditions: Overwrote Collision");
+                    DebugRandAddi.Log("RandomAdditions: Overwrote Collision");
                 }
                 var pHP = __instance.gameObject.GetComponent<ProjectileHealth>();
                 if (!(bool)pHP)
@@ -829,7 +842,7 @@ namespace RandomAdditions
                             }
                             catch (Exception e)
                             {
-                                Debug.Log("RandomAdditions: Error on applying OHKOInsurance! " + e);
+                                DebugRandAddi.Log("RandomAdditions: Error on applying OHKOInsurance! " + e);
                             }
                         }
                     }
@@ -858,7 +871,7 @@ namespace RandomAdditions
                     }
                     else
                     {
-                        Debug.Log("RandomAdditions: Projectile " + __instance.name + " Does not have a SeekingProjectile to go with KeepSeekingProjectile!");
+                        DebugRandAddi.Log("RandomAdditions: Projectile " + __instance.name + " Does not have a SeekingProjectile to go with KeepSeekingProjectile!");
                     }
                 }
             }
@@ -906,7 +919,7 @@ namespace RandomAdditions
                     if (shooter != null && ModuleCheck.CustomGravity && ModuleCheck.CustomGravityFractionSpeed)
                     {
                         Vector3 final = ((__instance.rbody.velocity - shooter.rbody.velocity) * ModuleCheck.GravityAndSpeedScale) + shooter.rbody.velocity;
-                        Debug.Log("RandomAdditions: Scaled WeightedProjectile Speed from " + __instance.rbody.velocity + " to " + final);
+                        DebugRandAddi.Log("RandomAdditions: Scaled WeightedProjectile Speed from " + __instance.rbody.velocity + " to " + final);
                         __instance.rbody.velocity = final;
                     }
                 }
@@ -915,14 +928,20 @@ namespace RandomAdditions
                 {
                     ModuleCheck2.OnFire();
                 }
+
+                float projSped = fireData.m_MuzzleVelocity;
+                if (ProjectileHealth.IsCheaty(projSped))
+                    ProjectileManager.HandleCheaty(__instance);
+
+                var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
                 var ModuleCheck5 = __instance.GetComponent<MissileProjectile>();
-                if (!ModuleCheck5)
+                if (!ModuleCheck5 && !ModuleCheck4)
                 {
                     var ModuleCheck6 = __instance.GetComponent<ProjectileHealth>();
-                    var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
-                    if (ModuleCheck3 != null)
+                    if (ModuleCheck6 != null)
                     {
-                        if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
+
+                        if (ProjectileHealth.IsFast(projSped))
                         {
                             ProjectileManager.Add(__instance);
                             //ModuleCheck3.GetHealth(true);
@@ -935,7 +954,8 @@ namespace RandomAdditions
                     }
                     else
                     {
-                        if (ProjectileHealth.IsFast(fireData.m_MuzzleVelocity) && !(bool)ModuleCheck4)
+
+                        if (ProjectileHealth.IsFast(projSped))
                         {
                             ProjectileManager.Add(__instance);
                             //ModuleCheck3.GetHealth(true);
@@ -1127,19 +1147,20 @@ namespace RandomAdditions
                 //Debug.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
                 try
                 {
-                    var modifPresent = __instance.gameObject.GetComponent<ModuleReinforced>();
-                    if (modifPresent != null)
+                    if (__instance == null)
+                        return;
+                    var multi = __instance.GetComponent<ModuleReinforced>();
+                    if (multi != null)
                     {
                         if ((bool)info.Source)
                         {
-                            if (modifPresent.ModifyAoEDamage && info.Source.GetComponent<Explosion>())
+                            if (multi.ModifyAoEDamage && info.Source.GetComponent<Explosion>())
                             {
-                                info.ApplyDamageMultiplier(modifPresent.ExplosionMultiplier);
+                                info.ApplyDamageMultiplier(multi.ExplosionMultiplier);
                             }
                         }
-                        if (modifPresent.UseMultipliers)
+                        if (multi.UseMultipliers)
                         {
-                            var multi = __instance.gameObject.GetComponent<ModuleReinforced>();
                             switch (info.DamageType)
                             {
                                 case ManDamage.DamageType.Standard:
@@ -1167,13 +1188,6 @@ namespace RandomAdditions
                                     info.ApplyDamageMultiplier(multi.Plasma);
                                     return;
                             }
-                            /*
-                            Debug.Log("RandomAdditions: !! NEW DAMAGE TYPE DETECTED !!   ALERT CODER!!!");
-                            Debug.Log("RandomAdditions: Type " + info.DamageType.ToString());
-                            Debug.Log("RandomAdditions: Update ModuleReinforced and also Patch!");
-                            //THROW THE GAME!
-                            LogHandler.ThrowWarning("!!NEW DAMAGE TYPE DETECTED!!   ALERT CODER!!!\nType " + info.DamageType.ToString() + "\nUpdate ModuleReinforced and also PatchBatch!");
-                            */
                         }
                     }
                 }
@@ -1210,10 +1224,17 @@ namespace RandomAdditions
         {
             private static void Postfix(BubbleShield __instance)
             {
-                if (KickStart.TrueShields && __instance.Damageable.DamageableType == ManDamage.DamageableType.Standard)
+                try
                 {
-                    __instance.Damageable.DamageableType = ManDamage.DamageableType.Shield;
-                    //Debug.Log("RandomAdditions: PatchShieldsToActuallyBeShieldTyping - Changed " + __instance.transform.root.name + " to actually be shield typing");
+                    if (KickStart.TrueShields && __instance.Damageable.DamageableType == ManDamage.DamageableType.Standard)
+                    {
+                        __instance.Damageable.DamageableType = ManDamage.DamageableType.Shield;
+                        //Debug.Log("RandomAdditions: PatchShieldsToActuallyBeShieldTyping - Changed " + __instance.transform.root.name + " to actually be shield typing");
+                    }
+                }
+                catch (Exception e)
+                { 
+                    DebugRandAddi.Log("RandomAdditions: PatchShieldsToActuallyBeShieldTyping - Error on " + __instance.transform.root.name + e); 
                 }
             }
         }
@@ -1249,7 +1270,7 @@ namespace RandomAdditions
             {
                 overr.SetValue(__instance, 250f);    // max "safe" range - 2.5x vanilla
                 underr.SetValue(__instance, -25f);   // cool fights underground - You can do this in Build Beam so it makes sense
-                Debug.Log("RandomAdditions: EXTENDED Free cam range");
+                DebugRandAddi.Log("RandomAdditions: EXTENDED Free cam range");
             }
         }
 
@@ -1269,7 +1290,7 @@ namespace RandomAdditions
             private static void Prefix(UIScreenBugReport __instance)
             {   //Custom error menu
 #if STEAM
-                Debug.Log("RandomAdditions: Letting the player continue with a crashed STEAM client. " +
+                DebugRandAddi.Log("RandomAdditions: Letting the player continue with a crashed STEAM client. " +
                     "Note that this will still force a quit screen under certain conditions.");
 #else
                 Debug.Log("RandomAdditions: Letting the player continue with a crashed Unofficial client. " +
@@ -1288,7 +1309,7 @@ namespace RandomAdditions
             private static bool Prefix(UIScreenBugReport __instance)
             {
                 //Custom error menu
-                Debug.Log("RandomAdditions: DISABLED POSTIT");
+                DebugRandAddi.Log("RandomAdditions: DISABLED POSTIT");
                 return false; //end it before it can display the text field
             }
         }
@@ -1391,7 +1412,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: FAILIURE ON FETCHING LOG!");
+                    DebugRandAddi.Log("RandomAdditions: FAILIURE ON FETCHING LOG!");
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b> \nTake note of all your unofficial mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
                     var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Explanation"), UIObj.transform, false);
                     Vector3 offset = errorList.localPosition;

@@ -77,7 +77,7 @@ namespace RandomAdditions
             }
             else
                 CalcBoost = RadiusFalloff / Radius;
-            Debug.Info("RandomAdditions: Set up a BurnerJet");
+            DebugRandAddi.Info("RandomAdditions: Set up a BurnerJet");
         }
         private void TryDealDamage()
         {

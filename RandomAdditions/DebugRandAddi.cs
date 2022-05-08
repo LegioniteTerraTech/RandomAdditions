@@ -6,13 +6,13 @@ using UnityEngine;
 
 namespace RandomAdditions
 {
-    internal static class Debug
+    internal static class DebugRandAddi
     {
         private const string modName = "RandomAdditions";
 
         internal static bool LogAll = false;
         internal static bool ShouldLog = true;
-        private static bool LogDev = false;
+        private static bool LogDev = true;
 
         internal static void Info(string message)
         {

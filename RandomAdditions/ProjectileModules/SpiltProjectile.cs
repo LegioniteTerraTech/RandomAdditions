@@ -79,7 +79,7 @@ namespace RandomAdditions
             }
             else
             {
-                Debug.Log("RandomAdditions: SpiltProjectile - No reference FireData available for " + gameObject.name + "!!!");
+                DebugRandAddi.Log("RandomAdditions: SpiltProjectile - No reference FireData available for " + gameObject.name + "!!!");
             }
         }
 
@@ -118,7 +118,7 @@ namespace RandomAdditions
                 }
             }
             else
-                Debug.Log("RandomAdditions: Could not fire SpiltProjectile on " + gameObject.name + ". The SplitPayload is invalid!");
+                DebugRandAddi.Log("RandomAdditions: Could not fire SpiltProjectile on " + gameObject.name + ". The SplitPayload is invalid!");
         }
 
         public void Update()

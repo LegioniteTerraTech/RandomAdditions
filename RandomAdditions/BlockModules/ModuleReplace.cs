@@ -51,7 +51,7 @@ namespace RandomAdditions
 
         internal void Init(TankBlock blockC)
         {
-            Debug.Log("RandomAdditions: ModuleReplace - Init for " + blockC.name);
+            DebugRandAddi.Log("RandomAdditions: ModuleReplace - Init for " + blockC.name);
             TankBlock block;
             ModuleReplace typeM;
             try
@@ -62,8 +62,8 @@ namespace RandomAdditions
                     return;
                 typeM.type = block.BlockType;
                 if (typeM.type == BlockTypes.GSOAIController_111)
-                    Debug.Log("RandomAdditions: ModuleReplace - " + block.name + " FAILIURE IN SETTING TYPE");
-                Debug.Log("RandomAdditions: ModuleReplace - " + block.BlockType.ToString());
+                    DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + " FAILIURE IN SETTING TYPE");
+                DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.BlockType.ToString());
             }
             catch
             {
@@ -75,16 +75,16 @@ namespace RandomAdditions
 
             if (ReplaceOffsetRotationF.ApproxZero())
             {
-                Debug.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationF not set");
+                DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationF not set");
                 ReplaceOffsetRotationF = Vector3.forward;
             }
             if (ReplaceOffsetRotationT.ApproxZero())
             {
-                Debug.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationT not set");
+                DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationT not set");
                 ReplaceOffsetRotationT = Vector3.up;
             }
             offsetRot.SetLookRotation(ReplaceOffsetRotationF, ReplaceOffsetRotationT);
-            Debug.Log("RandomAdditions: ModuleReplace - " + block.name + " offsetRot now " + (offsetRot * Vector3.forward));
+            DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + " offsetRot now " + (offsetRot * Vector3.forward));
 
             if (WeightedChance > 2500)
             {
@@ -102,11 +102,11 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("ModuleReplace: Block " + block.name + " has duplicate Blocktypes in CanReplace!");
                 CanReplace = check;
             }
-            Debug.Log("ModuleReplace: " + offsetRot.ToString() + " | " + (offsetRot * Vector3.forward).ToString());
+            DebugRandAddi.Log("ModuleReplace: " + offsetRot.ToString() + " | " + (offsetRot * Vector3.forward).ToString());
             if (CheckIfValid())
                 ReplaceManager.AddBlock(typeM);
             else
-                Debug.Log("RandomAdditions: ModuleReplace - Could not add " + block.name + " - failed critical checks.");
+                DebugRandAddi.Log("RandomAdditions: ModuleReplace - Could not add " + block.name + " - failed critical checks.");
         }
         private void OnPool()
         {
@@ -116,23 +116,23 @@ namespace RandomAdditions
                 block = GetComponent<TankBlock>();
                 type = block.BlockType;
                 if (type == BlockTypes.GSOAIController_111)
-                    Debug.Log("RandomAdditions: ModuleReplace - " + block.name + " FAILIURE IN SETTING TYPE");
+                    DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + " FAILIURE IN SETTING TYPE");
                 //Debug.Log("RandomAdditions: ModuleReplace - " + type.ToString());
                 if (ReplaceOffsetRotationF.ApproxZero())
                 {
-                    Debug.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationF not set");
+                    DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationF not set");
                     ReplaceOffsetRotationF = Vector3.forward;
                 }
                 if (ReplaceOffsetRotationT.ApproxZero())
                 {
-                    Debug.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationT not set");
+                    DebugRandAddi.Log("RandomAdditions: ModuleReplace - " + block.name + ": ReplaceOffsetRotationT not set");
                     ReplaceOffsetRotationT = Vector3.up;
                 }
                 offsetRot.SetLookRotation(ReplaceOffsetRotationF, ReplaceOffsetRotationT);
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: ModuleReplace - Could not fetch tankblock info " + e);
+                DebugRandAddi.Log("RandomAdditions: ModuleReplace - Could not fetch tankblock info " + e);
                 return;
             }
         }
@@ -242,7 +242,7 @@ namespace RandomAdditions
             if (!Replacables.Contains(rp))
             {
                 Replacables.Add(rp);
-                Debug.Log("RandomAdditions: ReplaceManager - Registered " + rp.name);
+                DebugRandAddi.Log("RandomAdditions: ReplaceManager - Registered " + rp.name);
                 foreach (BlockTypes add in rp.CanReplace)
                 {
                     if (Supported.TryGetValue(add, out List<ModuleReplace> listRp))
@@ -301,7 +301,7 @@ namespace RandomAdditions
             List<TankBlock> blocks = tank.blockman.IterateBlocks().ToList();
             List<ModuleReplace> ignore = new List<ModuleReplace>();
             int bCount = blocks.Count();
-            Debug.Log("RandomAdditions: ReplaceManager - Launched for Tech " + tank.name + ", total blocks " + bCount);
+            DebugRandAddi.Log("RandomAdditions: ReplaceManager - Launched for Tech " + tank.name + ", total blocks " + bCount);
 
             for (int step = 0; step < bCount; step++)
             {
@@ -309,7 +309,7 @@ namespace RandomAdditions
                 TankBlock block = blocks.ElementAt(step);
                 if (!(bool)block)
                 {
-                    Debug.Log("RandomAdditions: ReplaceManager - BLOCK IS NULL");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceManager - BLOCK IS NULL");
                     continue;
                 }
                 if (!Supported.TryGetValue(block.BlockType, out List<ModuleReplace> replaced))
@@ -317,7 +317,7 @@ namespace RandomAdditions
                 attempts++;
                 if (replaced.Count == 0)
                 {
-                    Debug.Log("RandomAdditions: ReplaceManager - BlockType " + block.name + " has an entry but nothing in it!?  How?");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceManager - BlockType " + block.name + " has an entry but nothing in it!?  How?");
                     continue;
                 }
                 try
@@ -327,7 +327,7 @@ namespace RandomAdditions
                 }
                 catch //(Exception e)
                 {
-                    Debug.Log("RandomAdditions: ReplaceManager - XP fired but instance was not valid");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceManager - XP fired but instance was not valid");
                     //Debug.Log("RandomAdditions: ReplaceManager - Unhandleable error " + e);
                 }
                 ModuleReplace replace = WeightedRAND(replaced, ref ignore, AboveTheSea(tank.transform.position));
@@ -337,13 +337,13 @@ namespace RandomAdditions
                 }
                 if (!(bool)replace.GetComponent<TankBlock>())
                 {
-                    Debug.Log("RandomAdditions: ReplaceManager - replace.blockO FAILED at it's job");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceManager - replace.blockO FAILED at it's job");
                     continue;
                 }
                 try { replace.type.ToString(); }
                 catch
                 {
-                    Debug.Log("RandomAdditions: ReplaceManager - Visible type was not set!");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceManager - Visible type was not set!");
                     continue;
                 }
                 if (replace.Uniform)
@@ -387,11 +387,11 @@ namespace RandomAdditions
                     }
                     catch
                     {
-                        Debug.Log("RandomAdditions: ReplaceManager - NULL ReplaceBlock");
+                        DebugRandAddi.Log("RandomAdditions: ReplaceManager - NULL ReplaceBlock");
                     }
                 }
             }
-            Debug.Log("RandomAdditions: ReplaceManager - Attempted on a total of " + attempts + " blocks.");
+            DebugRandAddi.Log("RandomAdditions: ReplaceManager - Attempted on a total of " + attempts + " blocks.");
         }
 
         public static bool ReplaceBlock(Tank tank, TankBlock blockToReplace, ModuleReplace prefabToReplaceWith, bool RecolorSame)
@@ -407,13 +407,13 @@ namespace RandomAdditions
                 //Debug.Log("RandomAdditions: ReplaceBlock - Spawning Done");
                 if (blockAdd.IsNull())
                 {
-                    Debug.Log("RandomAdditions: ReplaceBlock - Could not spawn new block properly!!!");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceBlock - Could not spawn new block properly!!!");
                     return false;
                 }
                 var newFab = blockAdd.GetComponent<ModuleReplace>();
                 if (!(bool)newFab)
                 {
-                    Debug.Log("RandomAdditions: ReplaceBlock - Could not find ModuleReplace");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceBlock - Could not find ModuleReplace");
                     return false;
                 }
                 pos = blockToReplace.cachedLocalPosition + newFab.ReplaceOffsetPosition;
@@ -441,7 +441,7 @@ namespace RandomAdditions
                     }
                     if (!worked)
                     {
-                        Debug.Log("RandomAdditions: ReplaceBlock - Matching failed - OrthoRotation is incompetent");
+                        DebugRandAddi.Log("RandomAdditions: ReplaceBlock - Matching failed - OrthoRotation is incompetent");
                     }
                 }
                 //Debug.Log("RandomAdditions: ReplaceBlock - Rotation " + newFab.offsetRot + " | " + qRotM + " | " + qRot2 + " | " + rot.ToString());
@@ -452,7 +452,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: ReplaceBlock - Could not remove block properly!!!" + e);
+                DebugRandAddi.Log("RandomAdditions: ReplaceBlock - Could not remove block properly!!!" + e);
                 return false;
             }
             if (RecolorSame)
@@ -466,11 +466,11 @@ namespace RandomAdditions
                     //Debug.Log("RandomAdditions: ReplaceBlock - Replacing block " + blockToReplace.name + " = Success!");
                 }
                 else
-                    Debug.Log("RandomAdditions: ReplaceBlock - Adding block " + prefabToReplaceWith.name + " failed - could not attach block!");
+                    DebugRandAddi.Log("RandomAdditions: ReplaceBlock - Adding block " + prefabToReplaceWith.name + " failed - could not attach block!");
             }
             else
             {
-                Debug.Log("RandomAdditions: ReplaceBlock - Adding block " + prefabToReplaceWith.name + " failed - could not fetch block!");
+                DebugRandAddi.Log("RandomAdditions: ReplaceBlock - Adding block " + prefabToReplaceWith.name + " failed - could not fetch block!");
             }
             return removedBlock;
         }
@@ -517,7 +517,7 @@ namespace RandomAdditions
                     return rep;
                 }
             }
-            Debug.Log("RandomAdditions: ReplaceManager - WeightedRAND failed");
+            DebugRandAddi.Log("RandomAdditions: ReplaceManager - WeightedRAND failed");
             return replaced.GetRandomEntry();
         }
         

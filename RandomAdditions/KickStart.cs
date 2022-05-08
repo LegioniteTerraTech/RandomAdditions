@@ -77,16 +77,16 @@ namespace RandomAdditions
 
             //Initiate the madness
             try
-            {
+            { // init changes
                 harmonyInstance.PatchAll();
                 //EdgePatcher(true);
-                Debug.Log("RandomAdditions: Patched");
+                DebugRandAddi.Log("RandomAdditions: Patched");
                 patched = true;
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on patch");
-                Debug.Log(e);
+                DebugRandAddi.Log("RandomAdditions: Error on patch");
+                DebugRandAddi.Log(e);
             }
             if (!logMan)
             {
@@ -95,20 +95,22 @@ namespace RandomAdditions
                 logMan.GetComponent<LogHandler>().Initiate();
             }
             GlobalClock.ClockManager.Initiate();
+            ProjectileManager.Initiate();
+
 
             if (LookForMod("WaterMod"))
             {
-                Debug.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
+                DebugRandAddi.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
                 isWaterModPresent = true;
             }
             if (LookForMod("TweakTech"))
             {
-                Debug.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
+                DebugRandAddi.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
                 isTweakTechPresent = true;
             }
             if (LookForMod("NuterraSteam"))
             {
-                Debug.Log("TACtical_AI: Found NuterraSteam!  Making sure blocks work!");
+                DebugRandAddi.Log("TACtical_AI: Found NuterraSteam!  Making sure blocks work!");
                 isNuterraSteamPresent = true;
             }
             try
@@ -117,8 +119,8 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on Option & Config setup");
-                Debug.Log(e);
+                DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup");
+                DebugRandAddi.Log(e);
             }
             try
             {
@@ -126,8 +128,8 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on RegisterSaveSystem");
-                Debug.Log(e);
+                DebugRandAddi.Log("RandomAdditions: Error on RegisterSaveSystem");
+                DebugRandAddi.Log(e);
             }
         }
 
@@ -145,19 +147,30 @@ namespace RandomAdditions
                     harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
                     patchStep++;
                     //EdgePatcher(true);
-                    Debug.Log("RandomAdditions: Patched");
+                    DebugRandAddi.Log("RandomAdditions: Patched");
                     patched = true;
                 }
                 catch (Exception e)
                 {
-                    Debug.Log("RandomAdditions: Error on patch " + patchStep);
-                    Debug.Log(e);
+                    DebugRandAddi.Log("RandomAdditions: Error on patch " + patchStep);
+                    DebugRandAddi.Log(e);
                 }
             }
             GUIClock.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
             LazyRender.Initiate();
+
+            try
+            { // init changes
+                LocalCorpAudioExt.ManExtendAudio.Subscribe();
+                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - Sub");
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
+                DebugRandAddi.Log(e);
+            }
         }
         public static void DeInitALL()
         {
@@ -167,14 +180,24 @@ namespace RandomAdditions
                 {
                     harmonyInstance.UnpatchAll("legionite.randomadditions");
                     //EdgePatcher(false);
-                    Debug.Log("RandomAdditions: UnPatched");
+                    DebugRandAddi.Log("RandomAdditions: UnPatched");
                     patched = false;
                 }
                 catch (Exception e)
                 {
-                    Debug.Log("RandomAdditions: Error on UnPatch");
-                    Debug.Log(e);
+                    DebugRandAddi.Log("RandomAdditions: Error on UnPatch");
+                    DebugRandAddi.Log(e);
                 }
+            }
+            try
+            { // init changes
+                LocalCorpAudioExt.ManExtendAudio.UnSub();
+                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - UnSub");
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
+                DebugRandAddi.Log(e);
             }
             GlobalClock.ClockManager.DeInit();
             GUIClock.DeInit();
@@ -244,6 +267,13 @@ namespace RandomAdditions
                 Debug.Log(e);
             }
         }
+
+        /// <summary>
+        /// Fires after blockInjector
+        /// </summary>
+        public static void DelayedInitAll()
+        {
+        }
 #endif
 
         public static bool LookForMod(string name)
@@ -296,7 +326,9 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
                 thisModConfig.BindConfig<KickStart>(null, "NoShake");
                 thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
+#if !STEAM
                 thisModConfig.BindConfig<KickStart>(null, "TrueShields");
+#endif
                 thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
                 thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
                 thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
@@ -306,8 +338,10 @@ namespace RandomAdditions
                 ExtUsageHint.SaveToHintsSeen();
 
                 var RandomProperties = KickStart.ModName;
+#if !STEAM
                 realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
                 realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
+#endif
                 allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, KickStart.DebugPopups);
                 allowPopups.onValueSaved.AddListener(() => { KickStart.DebugPopups = allowPopups.SavedValue; });
                 altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
@@ -336,8 +370,8 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on Option & Config setup");
-                Debug.Log(e);
+                DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup");
+                DebugRandAddi.Log(e);
             }
 
         }
@@ -346,6 +380,36 @@ namespace RandomAdditions
 
     internal static class ExtraExtensions
     {
+
+        public static T[] GetComponentsLowestFirst<T>(this GameObject GO) where T : MonoBehaviour
+        {
+            List<KeyValuePair<int, T>> depthTracker = new List<KeyValuePair<int, T>>();
+
+            for (int step = 0; step < GO.transform.childCount; step++)
+            {
+                Transform transCase = GO.transform.GetChild(step);
+                var fetch = transCase.GetComponent<T>();
+                if (fetch)
+                    depthTracker.Add(new KeyValuePair<int, T>(0, fetch));
+                GetComponentsLowestFirstRecurse<T>(transCase, 1, ref depthTracker);
+            }
+            List<T> insure = depthTracker.OrderBy(x => x.Key).ToList().ConvertAll(x => x.Value);
+            if (insure.Count > 0)
+                return insure.ToArray();
+            return null;
+        }
+        private static void GetComponentsLowestFirstRecurse<T>(this Transform trans, int depth, ref List<KeyValuePair<int, T>> depthTracker) where T : MonoBehaviour
+        {
+            for (int step = 0; step < trans.childCount; step++)
+            {
+                Transform transCase = trans.GetChild(step);
+                var fetch = transCase.GetComponent<T>();
+                if (fetch)
+                    depthTracker.Add(new KeyValuePair<int, T>(depth, fetch));
+                GetComponentsLowestFirstRecurse<T>(transCase, depth + 1, ref depthTracker);
+            }
+        }
+
         public static List<T> GetExtModules<T>(this BlockManager BM) where T : ExtModule
         {
             List<T> got = new List<T>();
@@ -412,7 +476,7 @@ namespace RandomAdditions
                 }
             }
             else
-                Debug.Log("RandomAdditions: no tank!");
+                DebugRandAddi.Log("RandomAdditions: no tank!");
             return true;
         }
     }

@@ -28,7 +28,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: TerraTech FAILED to label blocktype!  This is unresolvable.");
+                    DebugRandAddi.Log("RandomAdditions: TerraTech FAILED to label blocktype!  This is unresolvable.");
                 }
 
                 Tank thisTank = block.transform.root.GetComponent<Tank>();

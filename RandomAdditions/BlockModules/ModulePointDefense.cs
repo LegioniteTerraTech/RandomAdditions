@@ -127,6 +127,8 @@ namespace RandomAdditions
 
         private float energyToTax = 0;
 
+        internal bool AimingDefense => aimers != null && !SeperateFromGun;
+
         protected override void Pool()
         {
             fireTrans = KickStart.HeavyObjectSearch(transform, "_fireTrans");
@@ -205,8 +207,6 @@ namespace RandomAdditions
         private void UpdateLockOn(out bool hit)
         {
             hit = false;
-            if (cooldown > 0)
-                cooldown -= Time.deltaTime;
             barrelsFired = 0;
             if (LockedTarget == null)
             {
@@ -223,7 +223,7 @@ namespace RandomAdditions
                 }
                 return;
             }
-            if (aimers != null && !SeperateFromGun)
+            if (AimingDefense)
             {
                 Vector3 posAim = GetTargetHeading();
                 if (aimerMain != null)
@@ -272,6 +272,57 @@ namespace RandomAdditions
                 LockOnFireSFXHalt();
             }
         }
+        private void UpdateLockOnImmedeate(out bool killed)
+        {
+            killed = false;
+            
+            if (cooldown > 0)
+            {
+                //Debug.Log("RandomAdditions: " + def.name + " - Recharging");
+                barrelsFired = 0;
+                return;
+            }
+            if (LockedTarget == null)
+            {
+                DisabledWeapon = false;
+                spooling = false;
+
+                if (cacheDisabled == DisabledWeapon)
+                {
+                    UsingWeapon = DisabledWeapon;
+                }
+                else
+                {
+                    LockOnFireSFXHalt();
+                }
+                return;
+            }
+            DisabledWeapon = false;
+            //Debug.Log("RandomAdditions: " + def.name + " - AIMING AT PROJECTILE");
+            if (Vector3.Dot((LockedTarget.position - fireTrans.position).normalized, fireTrans.forward) >= pulseAimAnglef)
+            {
+                //Debug.Log("RandomAdditions: " + def.name + " - FIRING AT PROJECTILE");
+                if (FirePulseBeam(fireTrans, LockedTarget))
+                {
+                    //Debug.Log("RandomAdditions: " + def.name + " - PROJECTILE DESTROYED");
+                    killed = true;
+                }
+                cooldown = DefenseCooldown;
+                barrelsFired++;
+            }
+            spooling = true;
+
+            if (cacheDisabled == DisabledWeapon)
+            {
+                LockOnFireSFX();
+                UsingWeapon = DisabledWeapon;
+            }
+            else
+            {
+                LockOnFireSFXHalt();
+            }
+        }
+
         private bool LockOnFire(out bool hit)
         {
             hit = false;
@@ -318,7 +369,7 @@ namespace RandomAdditions
             }
             catch
             {
-                Debug.Log("RandomAdditions: ModulePointDefense - LockOnFire target is valid but position is illegally null");
+                DebugRandAddi.Log("RandomAdditions: ModulePointDefense - LockOnFire target is valid but position is illegally null");
                 return false;
             }
         }
@@ -446,6 +497,13 @@ namespace RandomAdditions
             catch { }
         }
 
+
+        public void Update()
+        {
+            if (block.tank && cooldown > 0)
+                cooldown -= Time.deltaTime;
+        }
+
         public bool TryInterceptProjectile(bool enemyNear, int index, bool noTargetsLeft, out bool hit)
         {
             hit = false;
@@ -544,6 +602,74 @@ namespace RandomAdditions
                         firing = false;
                 }
             }
+            if (DefendOnly)
+                DisabledWeapon = true;
+
+            if (cacheDisabled == DisabledWeapon)
+            {
+                if (firingCache != firing)
+                {
+                    LockOnFireSFXHalt();
+                }
+                UsingWeapon = DisabledWeapon;
+            }
+            else
+            {
+                LockOnFireSFXHalt();
+            }
+            return false;
+        }
+
+        public bool TryInterceptImmedeate(out bool killed)
+        {
+            killed = false;
+            cacheDisabled = DisabledWeapon;
+            firingCache = firing;
+            DisabledWeapon = false;
+            firing = false;
+            if (!(bool)block.tank)
+                return false;
+            if (SpoolOnEnemy)
+            {
+                spooling = true;
+            }
+            else
+                spooling = false;
+            if (OverrideEnemyAiming)
+            {
+                if (LockedTarget)
+                {
+                    if (!SeperateFromGun)
+                        DisabledWeapon = true;
+                    UpdateLockOnImmedeate(out killed);
+                    return true;
+                }
+                else if (block.tank.control.FireControl)
+                {
+                    firing = false;
+                    DisabledWeapon = false;
+                }
+                else
+                    firing = false;
+            }
+            else
+            {
+                if (block.tank.control.FireControl)
+                {
+                    firing = false;
+                    DisabledWeapon = false;
+                }
+                else if (LockedTarget)
+                {
+                    if (!SeperateFromGun)
+                        DisabledWeapon = true;
+                    UpdateLockOnImmedeate(out killed);
+                    return true;
+                }
+                else
+                    firing = false;
+            }
+
             if (DefendOnly)
                 DisabledWeapon = true;
 
@@ -777,7 +903,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: ModulePointDefense - LockedTarget was found, but POSITION IS NULL!!!");
+                    DebugRandAddi.Log("RandomAdditions: ModulePointDefense - LockedTarget was found, but POSITION IS NULL!!!");
                     return false;
                 }
             }
@@ -812,6 +938,13 @@ namespace RandomAdditions
             }
             return false;
         }
+
+        internal void RemoteSetTarget(Projectile toSetTo)
+        {
+            LockedTarget = toSetTo.rbody;
+            timer = LockOnDelay;
+        }
+
         internal void ResetTiming()
         {
             timer = LockOnDelay;
@@ -881,15 +1014,15 @@ namespace RandomAdditions
             }
             catch
             {
-                Debug.Log("RandomAdditions: ModulePointDefense - Target found but has no ProjectileHealth!?");
+                DebugRandAddi.Log("RandomAdditions: ModulePointDefense - Target found but has no ProjectileHealth!?");
             }
             return false;
         }
-        private void FirePulseBeam(Transform trans, Rigidbody rbody)
+        private bool FirePulseBeam(Transform trans, Rigidbody rbody)
         {
             if (!def.TryTaxReserves(PulseEnergyCost))
             {
-                return;
+                return false;
             }
             Vector3 endPosGlobal = rbody.position;
             GameObject gO;
@@ -929,7 +1062,7 @@ namespace RandomAdditions
             lr.SetPositions(new Vector3[2] { pos, shotheading });
             Destroy(gO, Mathf.Max(PulseLifetime, Time.deltaTime));
             if (!hit)
-                return;
+                return false;
             try
             {
                 if (rbody.IsNotNull())
@@ -940,13 +1073,14 @@ namespace RandomAdditions
                         targ = rbody.gameObject.AddComponent<ProjectileHealth>();
                         targ.GetHealth();
                     }
-                    targ.TakeDamage(PointDefenseDamage, ExplodeOnHit);
+                    return targ.TakeDamage(PointDefenseDamage, ExplodeOnHit);
                 }
             }
             catch
             {
-                Debug.Log("RandomAdditions: ModulePointDefense - Target found but has no ProjectileHealth!?");
+                DebugRandAddi.Log("RandomAdditions: ModulePointDefense - Target found but has no ProjectileHealth!?");
             }
+            return false;
         }
         public void TaxReserves(float tax)
         {

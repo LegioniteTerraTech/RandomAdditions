@@ -91,7 +91,7 @@ namespace RandomAdditions
                         */
                         LockedTime = GlobalClock.LockTime;
                         if (this.SerializeToSafe())
-                            Debug.Info("ScaleTechs: Saved the hour " + SavedTime.ToString() + " in gameObject " + gameObject.name);
+                            DebugRandAddi.Info("ScaleTechs: Saved the hour " + SavedTime.ToString() + " in gameObject " + gameObject.name);
                     }
                     else
                     {   //Load from snap
@@ -104,7 +104,7 @@ namespace RandomAdditions
                                 {
                                     SavedTime = serialData2.savedTime;
                                     GlobalClock.LockTime = serialData2.lockedTime;
-                                    Debug.Info("ScaleTechs: Loaded the hour " + SavedTime.ToString() + " from gameObject " + gameObject.name);
+                                    DebugRandAddi.Info("ScaleTechs: Loaded the hour " + SavedTime.ToString() + " from gameObject " + gameObject.name);
                                 }
                             }
                             else
@@ -135,12 +135,12 @@ namespace RandomAdditions
                     Vector3 inTo = thisInst.TimeObject.localEulerAngles;
                     inTo.z = timeAngle;
                     thisInst.TimeObject.localEulerAngles = inTo;
-                    Debug.Info("RandomAdditions: Set clock hand to " + inTo.z);
+                    DebugRandAddi.Info("RandomAdditions: Set clock hand to " + inTo.z);
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: COULD NOT FIND OR SET \"TimeObject\" IN CLOCK!");
-                    Debug.LogError("RandomAdditions: Trouble magnet " + gameObject.GetComponent<TankBlock>().name + " of id " + gameObject.name);
+                    DebugRandAddi.Log("RandomAdditions: COULD NOT FIND OR SET \"TimeObject\" IN CLOCK!");
+                    DebugRandAddi.LogError("RandomAdditions: Trouble magnet " + gameObject.GetComponent<TankBlock>().name + " of id " + gameObject.name);
                 }
             }
             if (DigitalTime)

@@ -100,37 +100,37 @@ namespace RandomAdditions
             if (!tech)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleTractorBeam - TECH IS NULL - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - TECH IS NULL - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (tech == tank)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleTractorBeam - Tech tried to grab itself - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - Tech tried to grab itself - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (!tech.visible.isActive)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleTractorBeam - Target tech is not active - Are we trying to grab at the edge of the scene? - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - Target tech is not active - Are we trying to grab at the edge of the scene? - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (!tech.rbody)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleTractorBeam - Can't grab static/anchored Techs. - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - Can't grab static/anchored Techs. - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (tech.Team == ManSpawn.NeutralTeam)
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleTractorBeam - Target tech is neutral - We are not allowed to grab neutrals how dare you - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - Target tech is neutral - We are not allowed to grab neutrals how dare you - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
             else if (!IsInRange(tech))
             {
                 if (debugLog)
-                    Debug.Log("RandomAdditions: ModuleTractorBeam - Target tech is out of Range radius " + MaxRange + " - \n" + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - Target tech is out of Range radius " + MaxRange + " - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;   // Tech is Out of Range
             }
             if (!ZeroPointEnergy) // We have to care about weight
@@ -139,7 +139,7 @@ namespace RandomAdditions
                 if (techWeightMin > MaxMoveForce)
                 {
                     if (debugLog)
-                        Debug.Log("RandomAdditions: ModuleTractorBeam - Target tech exceeds max carrying capacity: Capacity " + MaxMoveForce + " vs Tech weight " + techWeightMin + " - \n" + StackTraceUtility.ExtractStackTrace());
+                        DebugRandAddi.Log("RandomAdditions: ModuleTractorBeam - Target tech exceeds max carrying capacity: Capacity " + MaxMoveForce + " vs Tech weight " + techWeightMin + " - \n" + StackTraceUtility.ExtractStackTrace());
                     return false;   // TOO HEAVY 
                 }
             }

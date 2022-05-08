@@ -12,7 +12,7 @@ namespace RandomAdditions
         public static bool HasPointDefenseActive => hasPointDefenseActive;
 
         private static bool hasPointDefenseActive = false;
-        private static List<TankPointDefense> pDTs = new List<TankPointDefense>();
+        internal static List<TankPointDefense> pDTs = new List<TankPointDefense>();
         private static bool needsReset = false;
 
         internal Tank tank;
@@ -34,6 +34,7 @@ namespace RandomAdditions
 
         internal Vector3 BiasDefendCenter = Vector3.zero;
         internal float BiasDefendRange = 0;
+        internal float DefenseRadius => BiasDefendRange / (1 + (TechSpeed() / 33));
 
         private EnergyRegulator reg;
         private float lastEnergy = 0;
@@ -43,7 +44,7 @@ namespace RandomAdditions
         {
             if (tank.IsNull())
             {
-                Debug.Log("RandomAdditions: TankPointDefense(HandleAddition) - TANK IS NULL");
+                DebugRandAddi.Log("RandomAdditions: TankPointDefense(HandleAddition) - TANK IS NULL");
                 return;
             }
             var def = tank.GetComponent<TankPointDefense>();
@@ -60,7 +61,7 @@ namespace RandomAdditions
             if (!def.dTs.Contains(dTurret))
                 def.dTs.Add(dTurret);
             else
-                Debug.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + dTurret.name + " was already added to " + tank.name + " but an add request was given?!?");
+                DebugRandAddi.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + dTurret.name + " was already added to " + tank.name + " but an add request was given?!?");
             dTurret.def = def;
             def.needsBiasCheck = true;
             needsReset = true;
@@ -69,18 +70,18 @@ namespace RandomAdditions
         {
             if (tank.IsNull())
             {
-                Debug.Log("RandomAdditions: TankPointDefense(HandleRemoval) - TANK IS NULL");
+                DebugRandAddi.Log("RandomAdditions: TankPointDefense(HandleRemoval) - TANK IS NULL");
                 return;
             }
 
             var def = tank.GetComponent<TankPointDefense>();
             if (!(bool)def)
             {
-                Debug.Log("RandomAdditions: TankPointDefense - Got request to remove for tech " + tank.name + " but there's no TankPointDefense assigned?!?");
+                DebugRandAddi.Log("RandomAdditions: TankPointDefense - Got request to remove for tech " + tank.name + " but there's no TankPointDefense assigned?!?");
                 return;
             }
             if (!def.dTs.Remove(dTurret))
-                Debug.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + dTurret.name + " requested removal from " + tank.name + " but no such ModulePointDefense is assigned.");
+                DebugRandAddi.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + dTurret.name + " requested removal from " + tank.name + " but no such ModulePointDefense is assigned.");
             dTurret.def = null;
             def.needsBiasCheck = true;
 
@@ -115,7 +116,7 @@ namespace RandomAdditions
                 return false;
             if (!fetchedTargets)
             {
-                if (!ProjectileManager.GetListProjectiles(this, BiasDefendRange / (1 + (TechSpeed() / 33)), out List<Rigidbody> rbodyCatch))
+                if (!ProjectileManager.GetListProjectiles(this, DefenseRadius, out List<Rigidbody> rbodyCatch))
                     return false;
                 var reg = this.reg.Energy(EnergyRegulator.EnergyType.Electric);
                 lastEnergy = reg.storageTotal - reg.spareCapacity;
@@ -171,6 +172,38 @@ namespace RandomAdditions
             needsReset = false;
         }
 
+        /// <summary>
+        /// If the projectile speed overwhelms the game's maximum calculation rate, we try intercept 
+        ///   it before it gets the chance to clip.
+        /// </summary>
+        /// <param name="proj"></param>
+        internal bool EmergencyTryFireAtProjectile(Projectile proj, Vector3 projExpectedPosScene)
+        {
+            var reg = this.reg.Energy(EnergyRegulator.EnergyType.Electric);
+            lastEnergy = reg.storageTotal - reg.spareCapacity;
+
+            float distSqr = (projExpectedPosScene - tank.boundsCentreWorld).sqrMagnitude;
+            // multiply range by 1.4 because they are glitchy
+            float defRad = DefenseRadius * 1.4f;
+            if (distSqr <= defRad * defRad)
+            {
+                fetchedAll.Add(proj.rbody);
+                foreach (ModulePointDefense def in dTs)
+                {
+                    if (!def.AimingDefense)
+                    {
+                        //Debug.Log("RandomAdditions: " + def.name + " - trying to destroy cheaty projectile");
+                        def.RemoteSetTarget(proj);
+                        def.TryInterceptImmedeate(out bool killed);
+                        if (killed)
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+
         private void Update()
         {
             enemyInRange = (bool)tank.Vision.GetFirstVisibleTechIsEnemy(tank.Team);
@@ -198,7 +231,7 @@ namespace RandomAdditions
                 if (maxRangeC > BiasDefendRange)
                     BiasDefendRange = maxRangeC;
             }
-            Debug.Info("RandomAdditions: TankPointDefense - BiasDefendCenter of " + tank.name + " changed to " + BiasDefendCenter);
+            DebugRandAddi.Info("RandomAdditions: TankPointDefense - BiasDefendCenter of " + tank.name + " changed to " + BiasDefendCenter);
             needsBiasCheck = false;
         }
         public bool GetFetchedTargets(float energyCost, out List<Rigidbody> fetchedProj, bool missileOnly = true)

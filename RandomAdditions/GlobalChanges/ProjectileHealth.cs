@@ -16,10 +16,18 @@ namespace RandomAdditions
         private Projectile proj;
 
         const float FastProjectileSpeed = 135;
+        const float CheatingProjectileSpeed = 400;
+        // Any projectiles that go above 400 bypass the game's physics engine limit and don't
+        //  give the Point Defense System any chances to shoot them down.  We punish this by
+        //  allowing the Point Defense System to shoot it before it leaves the barrel.
 
         public static bool IsFast(float speed)
         {
             return speed > FastProjectileSpeed;
+        }
+        public static bool IsCheaty(float speed)
+        {
+            return speed > CheatingProjectileSpeed;
         }
         public bool WillDestroy(float DamageDealt)
         {
@@ -57,7 +65,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: ProjectileHealth - Error!  Could not find needed data!!! " + e);
+                DebugRandAddi.Log("RandomAdditions: ProjectileHealth - Error!  Could not find needed data!!! " + e);
             }// It has no WeaponRound!
         }
 
@@ -77,7 +85,7 @@ namespace RandomAdditions
                 GetHealth();
                 if (!(bool)proj)
                 {
-                    Debug.Log("RandomAdditions: error - was called but no such Projectile present");
+                    DebugRandAddi.Log("RandomAdditions: error - was called but no such Projectile present");
                     return false;
                 }
             }

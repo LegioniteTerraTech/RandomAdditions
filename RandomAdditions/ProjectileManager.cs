@@ -16,6 +16,8 @@ namespace RandomAdditions
         private static ProjectileCubeArray ProjOct = new ProjectileCubeArray();
         //private static OctreeProj ProjOct = new OctreeProj();
 
+        internal static List<Projectile> cheaters = new List<Projectile>();
+
         private byte timer = 0;
         private byte delay = 12;
 
@@ -35,7 +37,11 @@ namespace RandomAdditions
         public static void Initiate()
         {
             inst = new GameObject("ProjectileManager").AddComponent<ProjectileManager>();
-            Debug.Log("RandomAdditions: Created ProjectileManager.");
+            DebugRandAddi.Log("RandomAdditions: Created ProjectileManager.");
+            inst.Invoke("LateInit", 0.1f);
+        }
+        public void LateInit()
+        {
             Singleton.Manager<ManWorldTreadmill>.inst.OnAfterWorldOriginMoved.Subscribe(OnWorldMovePost);
             ManGameMode.inst.ModeSwitchEvent.Subscribe(OnModeSwitch);
         }
@@ -52,11 +58,73 @@ namespace RandomAdditions
                 timer = 0;
             }
         }
+
+        /// <summary>
+        /// Projectile watchman
+        /// </summary>
+        private void FixedUpdate()
+        {
+            //Debug.Log("RandomAdditions:  There are " + cheaters.Count + " - glitchyProj");
+            foreach (var item in cheaters)
+            {
+                if (WarnAllLaserDefenses(item) || !item.gameObject.activeSelf)
+                    cheatersDest.Add(item);
+            }
+            foreach (var item in cheatersDest)
+            {
+                cheaters.Remove(item);
+            }
+            cheatersDest.Clear();
+        }
+        internal static List<Projectile> cheatersDest = new List<Projectile>();
+
         public static void OnWorldMovePost(IntVector3 moved)
         {
-            Debug.Log("RandomAdditions: ProjectileManager - Moved " + moved);
+            DebugRandAddi.Log("RandomAdditions: ProjectileManager - Moved " + moved);
             ProjOct.UpdateWorldPos(moved);
         }
+
+        // for projectiles above 400
+        public static void HandleCheaty(Projectile rbody)
+        {
+            //Debug.Log("RandomAdditions: CHEATY PROJECTILE DETECTED " + rbody.name + " IS BEING FLAGGED TO DEFENSES");
+            if (rbody.IsNotNull())
+            {
+                if (TankPointDefense.HasPointDefenseActive)
+                {
+                    if (!WarnAllLaserDefenses(rbody))
+                    {
+                        cheaters.Add(rbody);
+                    }
+                }
+            }
+        }
+        public static bool WarnAllLaserDefenses(Projectile proj)
+        {
+            Vector3 projExpectedPos = (proj.rbody.velocity * Time.fixedDeltaTime) + proj.trans.position;
+            foreach (var item in TankPointDefense.pDTs)
+            {
+                try
+                {
+                    if (proj.Shooter)
+                    {
+                        if (proj.Shooter.IsEnemy(item.tank.Team))
+                            if (item.EmergencyTryFireAtProjectile(proj, projExpectedPos))
+                                return true;
+                    }
+                    else
+                    {
+                        //Debug.Log("RandomAdditions: - PROJECTILE HAS NO SHOOTER, NO QUARTER");
+                        if (item.EmergencyTryFireAtProjectile(proj, projExpectedPos))
+                            return true;
+                    }
+                }
+                catch { }
+            }
+            return false;
+        }
+
+
 
         public static void Add(Projectile rbody)
         {
@@ -112,7 +180,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: GetClosestProjectile - error");
+                    DebugRandAddi.Log("RandomAdditions: GetClosestProjectile - error");
                     //ProjOct.Remove(project);
                 }
             }
@@ -161,7 +229,7 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    Debug.Log("RandomAdditions: (ProjectileMan)GetListProjectiles - error " + e);
+                    DebugRandAddi.Log("RandomAdditions: (ProjectileMan)GetListProjectiles - error " + e);
                     ProjOct.Remove(project);
                 }
                 step++;

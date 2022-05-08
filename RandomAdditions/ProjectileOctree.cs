@@ -45,7 +45,7 @@ namespace RandomAdditions
                 Projectile proj = found.ElementAt(step);
                 if (!(bool)proj?.rbody)
                 {
-                    Debug.Log("RandomAdditions: OctreeProj(NavigateOctree) - error - RBODY is NULL");
+                    DebugRandAddi.Log("RandomAdditions: OctreeProj(NavigateOctree) - error - RBODY is NULL");
                     Remove(proj);
                     found.RemoveAt(step);
                     count--;
@@ -340,7 +340,7 @@ namespace RandomAdditions
                 }
                 if (!hasBranches)
                 {
-                    Debug.Log("RandomAdditions: OctreeBranch(NavigateOctant) - Trunk HAS NO BRANCHES OR PROJECTILES!!!");
+                    DebugRandAddi.Log("RandomAdditions: OctreeBranch(NavigateOctant) - Trunk HAS NO BRANCHES OR PROJECTILES!!!");
                     return false;
                 }
                 if (NotWithinCubeInv(posMin, posMax))
@@ -394,7 +394,7 @@ namespace RandomAdditions
                 }
                 if (!hasBranches)
                 {
-                    Debug.Log("RandomAdditions: OctreeBranch(NaviOctant) - Illegal call");
+                    DebugRandAddi.Log("RandomAdditions: OctreeBranch(NaviOctant) - Illegal call");
                     return 0;
                 }
                 if (NotWithinCubeInv(posMin, posMax))
@@ -437,7 +437,7 @@ namespace RandomAdditions
                     CheckRemove();
                 else
                 {
-                    Debug.Log("RandomAdditions: OctreeBranch(RemoveProj) - Remove request failed " + StackTraceUtility.ExtractStackTrace());
+                    DebugRandAddi.Log("RandomAdditions: OctreeBranch(RemoveProj) - Remove request failed " + StackTraceUtility.ExtractStackTrace());
                 }
                 return true;
             }
@@ -536,7 +536,7 @@ namespace RandomAdditions
                     }
                     catch (Exception e)
                     {
-                        Debug.Log("RandomAdditions: OctreeProj(ExtendBranches)! - error " + e);
+                        DebugRandAddi.Log("RandomAdditions: OctreeProj(ExtendBranches)! - error " + e);
                     }
                     return this;
                 }
@@ -586,7 +586,7 @@ namespace RandomAdditions
             {
                 if (branches[index] != null)
                 {
-                    Debug.Log("RandomAdditions: OctreeBranch(ExtendBranch) - Called when branch already exists");
+                    DebugRandAddi.Log("RandomAdditions: OctreeBranch(ExtendBranch) - Called when branch already exists");
                 }
                 branches[index] = new OctreeBranch(main, this, scale / 2, index);
                 OctreeBranch bran = branches[index].AddProjectile(toAdd);

@@ -78,7 +78,7 @@ namespace RandomAdditions
             KeyValuePair<Projectile, CubeBranch> pair = Projectiles[index];
             Projectiles.RemoveAt(index);
             if (!CubeBranches.Remove(pair.Value))
-                Debug.Log("RandomAdditions: ProjectileCubetree(Remove) - Projectile was removed from list but not from cube branches " + StackTraceUtility.ExtractStackTrace());
+                DebugRandAddi.Log("RandomAdditions: ProjectileCubetree(Remove) - Projectile was removed from list but not from cube branches " + StackTraceUtility.ExtractStackTrace());
             else
             {
                 //Debug.Log("RandomAdditions: ProjectileCubetree(Remove) - Projectile was removed successfully ID: " + proj.ShortlivedUID + ", " + StackTraceUtility.ExtractStackTrace());
@@ -91,7 +91,7 @@ namespace RandomAdditions
             //UpdatePos();
             if (proj.Key.IsNull())
             {
-                Debug.Log("RandomAdditions: ProjectileCubetree(PAIR) - Was told to remove NULL");
+                DebugRandAddi.Log("RandomAdditions: ProjectileCubetree(PAIR) - Was told to remove NULL");
                 return false;
             }
             int index = Projectiles.IndexOf(proj);
@@ -103,7 +103,7 @@ namespace RandomAdditions
             }
             Projectiles.RemoveAt(index);
             if (!CubeBranches.Remove(proj.Value))
-                Debug.Log("RandomAdditions: ProjectileCubetree(PAIR) - Projectile was removed from list but not from cube branches " + StackTraceUtility.ExtractStackTrace());
+                DebugRandAddi.Log("RandomAdditions: ProjectileCubetree(PAIR) - Projectile was removed from list but not from cube branches " + StackTraceUtility.ExtractStackTrace());
             else
                 return true;
             return false;
@@ -114,7 +114,7 @@ namespace RandomAdditions
                 return;
             if (Projectiles.Count > MaxProjectiles)
             {
-                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles, pruning");
+                DebugRandAddi.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles, pruning");
 
                 // Prune some
                 for (int count = Projectiles.Count / 2; 0 < count; count--)
@@ -157,7 +157,7 @@ namespace RandomAdditions
         {
             if (CubeBranches.Count > MaxCubeBranches)
             {
-                Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max, pruning half");
+                DebugRandAddi.Log("RandomAdditions: ProjectileCubetree - exceeded max, pruning half");
                 PruneHALFCubeBranches();
                 return null;
             }
@@ -273,7 +273,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("RandomAdditions: NavigateOctree - error");
+                    DebugRandAddi.Log("RandomAdditions: NavigateOctree - error");
                 }
                 step++;
             }
@@ -369,7 +369,7 @@ namespace RandomAdditions
                     Projectile proj = Projectiles.ElementAt(step);
                     if (!(bool)proj?.rbody)
                     {
-                        Debug.Log("RandomAdditions: CubeBranch(GetProjectiles) - error - RBODY is NULL");
+                        DebugRandAddi.Log("RandomAdditions: CubeBranch(GetProjectiles) - error - RBODY is NULL");
                         Projectiles.RemoveAt(step);
                         count--;
                         continue;
@@ -396,7 +396,7 @@ namespace RandomAdditions
             {
                 if (Projectiles.Count > MaxProjectiles)
                 {
-                    Debug.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles, pruning");
+                    DebugRandAddi.Log("RandomAdditions: ProjectileCubetree - exceeded max projectiles, pruning");
 
                     // Prune some
                     for (int count = Projectiles.Count / 2; 0 < count; count--)
@@ -416,7 +416,7 @@ namespace RandomAdditions
                         return true;
                 }
                 else
-                    Debug.Log("RandomAdditions: UpdatePos - Projectile could not be found in CubeTree!  ID: " + proj.ShortlivedUID);
+                    DebugRandAddi.Log("RandomAdditions: UpdatePos - Projectile could not be found in CubeTree!  ID: " + proj.ShortlivedUID);
                 return false;
             }
             /// <summary>
@@ -430,12 +430,12 @@ namespace RandomAdditions
                 newCB = null;
                 if (!proj?.rbody)
                 {
-                    Debug.Log("RandomAdditions: UpdateCubeBranch - Removed Projectile?  This should have been checked beforehand.");
+                    DebugRandAddi.Log("RandomAdditions: UpdateCubeBranch - Removed Projectile?  This should have been checked beforehand.");
                     Projectiles.Remove(proj);
                 }
                 else if (proj.Shooter.IsNull())
                 {
-                    Debug.Log("RandomAdditions: UpdateCubeBranch(NULL SHOOTER) - Removed Projectile?  This should have been checked beforehand.");
+                    DebugRandAddi.Log("RandomAdditions: UpdateCubeBranch(NULL SHOOTER) - Removed Projectile?  This should have been checked beforehand.");
                     Projectiles.Remove(proj);
                 }
                 else

@@ -34,7 +34,7 @@ namespace RandomAdditions
                 meshFR.RecalculateNormals();
                 meshFR.RecalculateBounds();
                 gameObject.GetComponent<MeshFilter>().mesh = meshFR;
-                Debug.Log("RandomAdditions: Added new plane Mesh");
+                DebugRandAddi.Log("RandomAdditions: Added new plane Mesh");
             }
             var meshV = gameObject.GetComponent<MeshRenderer>();
             if (!meshV)

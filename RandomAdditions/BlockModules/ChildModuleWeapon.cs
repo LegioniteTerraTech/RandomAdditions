@@ -291,7 +291,7 @@ namespace RandomAdditions
             }
             catch
             {
-                Debug.LogError("RandomAdditions: ChildModuleWeapon - HandleFire ERROR");
+                DebugRandAddi.LogError("RandomAdditions: ChildModuleWeapon - HandleFire ERROR");
             }
         }
 

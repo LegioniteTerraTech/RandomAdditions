@@ -16,14 +16,14 @@ namespace RandomAdditions
         bool firstInit = false;
         public override bool HasEarlyInit()
         {
-            Debug.Log("RandomAdditions: CALLED");
+            DebugRandAddi.Log("RandomAdditions: CALLED");
             return true;
         }
 
         // IDK what I should init here...
         public override void EarlyInit()
         {
-            Debug.Log("RandomAdditions: CALLED EARLYINIT");
+            DebugRandAddi.Log("RandomAdditions: CALLED EARLYINIT");
             if (oInst == null)
             {
                 KickStart.OfficialEarlyInit();
@@ -32,7 +32,7 @@ namespace RandomAdditions
         }
         public override void Init()
         {
-            Debug.Log("RandomAdditions: CALLED INIT");
+            DebugRandAddi.Log("RandomAdditions: CALLED INIT");
             if (isInit)
                 return;
             if (oInst == null)

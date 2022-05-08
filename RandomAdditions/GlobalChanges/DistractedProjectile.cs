@@ -51,7 +51,7 @@ namespace RandomAdditions
             var seeking = gameObject.GetComponent<SeekingProjectile>();
             if (!(bool)seeking)
             {
-                Debug.Log("RandomAdditions: DistractedProjectile - GrabValues was triggered on an invalid projectile. What? " + gameObject.name);
+                DebugRandAddi.Log("RandomAdditions: DistractedProjectile - GrabValues was triggered on an invalid projectile. What? " + gameObject.name);
                 return;
             }
             RotRate = (float)rotRate.GetValue(seeking);

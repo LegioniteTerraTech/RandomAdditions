@@ -122,7 +122,7 @@ namespace RandomAdditions
                 TOC.RebuildFloats();
             }
             else
-                Debug.LogError("RandomAdditions: TankOmniCore - TANK IS NULL ON ATTACH CALL");
+                DebugRandAddi.LogError("RandomAdditions: TankOmniCore - TANK IS NULL ON ATTACH CALL");
         }
         public static void Unregister(ModuleOmniCore MOC)
         {
@@ -146,10 +146,10 @@ namespace RandomAdditions
                     }
                 }
                 else
-                    Debug.LogError("RandomAdditions: TankOmniCore - Tank does not have a TankOmniCore attached, yet we have detached a ModuleOmniCore?!?");
+                    DebugRandAddi.LogError("RandomAdditions: TankOmniCore - Tank does not have a TankOmniCore attached, yet we have detached a ModuleOmniCore?!?");
             }
             else
-                Debug.LogError("RandomAdditions: TankOmniCore - TANK IS NULL ON DETACH CALL");
+                DebugRandAddi.LogError("RandomAdditions: TankOmniCore - TANK IS NULL ON DETACH CALL");
         }
 
         private void RebuildFloats()

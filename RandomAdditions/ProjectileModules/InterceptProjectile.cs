@@ -158,7 +158,7 @@ namespace RandomAdditions
                     }
                     catch
                     {
-                        Debug.Log("RandomAdditions: InterceptProjectile - Target found but has no ProjectileHealth!?");
+                        DebugRandAddi.Log("RandomAdditions: InterceptProjectile - Target found but has no ProjectileHealth!?");
                     }
                 }
                 if (sqrDist < Range / 4)

@@ -80,7 +80,7 @@ namespace RandomAdditions.AI
                         SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
                         if (serialData2 != null)
                         {
-                            Debug.Log("TACtical AI: CLEANING UP OLD CODE!!!");
+                            DebugRandAddi.Log("TACtical AI: CLEANING UP OLD CODE!!!");
                         }
                     }
                     catch { }
