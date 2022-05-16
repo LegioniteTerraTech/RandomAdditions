@@ -1133,14 +1133,14 @@ namespace RandomAdditions
         }
 
 
-       //-----------------------------------------------------------------------------------------------
-       //-----------------------------------------------------------------------------------------------
-       // Both used for Custom Blocks and Projectiles
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        // Both used for Custom Blocks and Projectiles
 
-       // Allow blocks to have one special resistance
-       [HarmonyPatch(typeof(Damageable))]
+        // Allow blocks to have one special resistance
+        [HarmonyPatch(typeof(Damageable))]
         [HarmonyPatch("Damage")]//On damage handling
-        private class PatchDamageable
+        private class PatchDamageableRA
         {
             private static void Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
             {
