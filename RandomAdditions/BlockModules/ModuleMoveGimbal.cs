@@ -65,7 +65,7 @@ namespace RandomAdditions
                 DriveControlStrength = 1;
                 LogHandler.ThrowWarning("ModuleMoveGimbal DriveControlStrength cannot be greater than 1!  Problem block: " + block.name);
             }
-            else if (DriveControlStrength < 1)
+            else if (DriveControlStrength < 0)
             {
                 DriveControlStrength = 0;
                 LogHandler.ThrowWarning("ModuleMoveGimbal DriveControlStrength cannot be less than 0!  Problem block: " + block.name);
@@ -74,14 +74,17 @@ namespace RandomAdditions
             gimbals = GetComponentsInChildren<MoveGimbal>();
             if (gimbals == null)
                 LogHandler.ThrowWarning("ModuleMoveGimbal NEEDS a MoveGimbal in hierarchy!  Problem block: " + block.name);
-            foreach (MoveGimbal MG in gimbals)
+            else
             {
-                MG.Setup(this);
-            }
-            if (UseBoostAndProps)
-            {
-                fans = GetComponentsInChildren<FanJet>();
-                boosts = GetComponentsInChildren<BoosterJet>();
+                foreach (MoveGimbal MG in gimbals)
+                {
+                    MG.Setup(this);
+                }
+                if (UseBoostAndProps)
+                {
+                    fans = GetComponentsInChildren<FanJet>();
+                    boosts = GetComponentsInChildren<BoosterJet>();
+                }
             }
         }
 

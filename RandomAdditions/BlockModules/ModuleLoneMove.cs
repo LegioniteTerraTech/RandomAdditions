@@ -9,6 +9,13 @@ public class PausedPosition : RandomAdditions.PausedPosition { }
 
 namespace RandomAdditions
 {
+    /*
+    "ModuleLoneMove": {
+      "DisableWhenNotAlone": false,
+      "SnapBackWhenIdle": true,
+      "SnapBackRate": 420,
+    },
+     */
     public class ModuleLoneMove : ExtModule
     {
         private ModuleWheels MW;
@@ -22,6 +29,7 @@ namespace RandomAdditions
         private bool StopAiming = true;
         private bool isMoving = true;
 
+        public bool DisableWhenNotAlone = true;
         public bool SnapBackWhenIdle = true;
         public float SnapBackRate = 35;
 
@@ -155,6 +163,7 @@ namespace RandomAdditions
                         POs.Tranzition(transform, SnapBackRate);
                     }
             }
+            /*
             if (!StopAiming)
             {
                 if (Input.GetKeyDown(KeyCode.Backslash))
@@ -181,60 +190,63 @@ namespace RandomAdditions
                             POs.Apply(transform);
                         }
                 }
-            }
+            }*/
         }
 
         public void SetActiveState(bool yes)
         {
-            if (!yes)
+            if (DisableWhenNotAlone)
             {
-                if (MW)
+                if (!yes)
                 {
-                    MW.SetEnabled(false, false);
-                    MW.SetAnimated(false);
+                    if (MW)
+                    {
+                        MW.SetEnabled(false, false);
+                        MW.SetAnimated(false);
+                    }
+                    if (MOC)
+                        MOC.SetWorking(false);
+                    if (MB)
+                        MB.enabled = false;
+                    if (MMG)
+                        MMG.enabled = false;
+                    if (HJ != null)
+                        foreach (HoverJet HJc in HJ)
+                        {
+                            HJc.SetEnabled(false);
+                        }
+                    if (pause != null)
+                        foreach (PausedPosition POs in pause)
+                        {
+                            POs.Apply(transform);
+                        }
+                    StopAiming = true;
                 }
-                if (MOC)
-                    MOC.SetWorking(false);
-                if (MB)
-                    MB.enabled = false;
-                if (MMG)
-                    MMG.enabled = false;
-                if (HJ != null)
-                    foreach (HoverJet HJc in HJ)
-                    {
-                        HJc.SetEnabled(false);
-                    }
-                if (pause != null)
-                    foreach (PausedPosition POs in pause)
-                    {
-                        POs.Apply(transform);
-                    }
-                StopAiming = true;
-            }
-            else //if (!activeState && yes)
-            {
-                if (MW)
+                else //if (!activeState && yes)
                 {
-                    MW.SetEnabled(true, false);
-                    MW.SetAnimated(true);
+                    if (MW)
+                    {
+                        MW.SetEnabled(true, false);
+                        MW.SetAnimated(true);
+                    }
+                    if (MOC)
+                        MOC.SetWorking(true);
+                    if (MB)
+                        MB.enabled = true;
+                    if (MMG)
+                        MMG.enabled = true;
+                    if (HJ != null)
+                        foreach (HoverJet HJc in HJ)
+                        {
+                            HJc.SetEnabled(true);
+                        }
+                    if (HJ != null)
+                        foreach (PausedPosition POs in pause)
+                        {
+                            POs.UnApply();
+                        }
+                    StopAiming = false;
                 }
-                if (MOC)
-                    MOC.SetWorking(true);
-                if (MB)
-                    MB.enabled = true;
-                if (MMG)
-                    MMG.enabled = true;
-                if (HJ != null)
-                    foreach (HoverJet HJc in HJ)
-                    {
-                        HJc.SetEnabled(true);
-                    }
-                if (HJ != null)
-                    foreach (PausedPosition POs in pause)
-                    {
-                        POs.UnApply();
-                    }
-                StopAiming = false;
             }
         }
     }

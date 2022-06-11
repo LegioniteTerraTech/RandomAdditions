@@ -16,8 +16,8 @@ namespace RandomAdditions
         public bool FixateToTech = true;
         public bool AllowOtherTankCollision = true;
 
-        private List<Vector3> HandoffAnimPos = new List<Vector3>();
-        private List<Visible> HandoffAnim = new List<Visible>();
+        private List<Vector3> HeldVisPos = new List<Vector3>();
+        private List<Visible> HeldVis = new List<Visible>();
         private float fetchedHeight = 1;
         private float fetchedHeightIncrementScale = 1;
 
@@ -29,6 +29,9 @@ namespace RandomAdditions
             try
             {
                 theHolder = gameObject.GetComponent<ModuleItemHolder>();
+                theHolder.TakeItemEvent.Subscribe(OnHeldAdd);
+                theHolder.ReleaseItemEvent.Subscribe(OnHeldRemove);
+
                 var grabbedModuleBeam = gameObject.GetComponent<ModuleItemHolderBeam>();
 
                 FieldInfo heightGrab = typeof(ModuleItemHolderBeam).GetField("m_BeamBaseHeight", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -46,31 +49,75 @@ namespace RandomAdditions
         public override void OnDetach()
         {
             tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
+
+            int countCheck = HeldVis.Count;
+            for ( ; 0 < countCheck; )
+            {
+                try
+                {
+                    Visible visStored = HeldVis.ElementAt(0);
+                    if (!visStored.IsNull() && visStored.isActive)
+                    {
+                        visStored.pickup.InitRigidbody();
+                    }
+                    HeldVis.RemoveAt(0);
+                    HeldVisPos.RemoveAt(0);
+                    countCheck--;
+                }
+                catch
+                {
+                    DebugRandAddi.LogError("RandomAdditions: ModuleItemFixedHolderBeam.OnDetach - Could not remove Held error");
+                }
+            }
         }
 
         public void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
         {
+            /*
             if (HartStep == TechHolders.Heartbeat.PrePass)
             {
             }
             if (HartStep == TechHolders.Heartbeat.PostPass)
             {
                 VaildateHeld();
+            }*/
+        }
+
+        public void OnHeldAdd(Visible vis, ModuleItemHolder.Stack transferstack)
+        {
+            if (!HeldVis.Contains(vis)) //Add to animation handler!
+            {
+                HeldVis.Add(vis);
+                HeldVisPos.Add(transform.InverseTransformPoint(vis.centrePosition));
+                vis.gameObject.GetComponent<ItemIgnoreCollision>().ForceIgnoreTank(tank);
+                //Debug.Log("RandomAdditions: OnHeldAdd - Added " + vis.name);
             }
         }
+        public void OnHeldRemove(Visible vis, ModuleItemHolder.Stack unused, ModuleItemHolder.Stack transferstack)
+        {
+            if (vis)
+            {
+                int index = HeldVis.IndexOf(vis);
+                if (transferstack == null || !transferstack.myHolder.GetComponent<ModuleItemFixedHolderBeam>())
+                    vis.pickup.InitRigidbody();
+                HeldVisPos.RemoveAt(index);
+                HeldVis.RemoveAt(index);
+            }
+        }
+
         public void VaildateHeld()
         {
-            int countCheck = HandoffAnim.Count;
+            int countCheck = HeldVis.Count;
             for (int step = 0; step < countCheck; step++)
             {
                 try
                 {
-                    Visible visStored = HandoffAnim.ElementAt(step);
+                    Visible visStored = HeldVis.ElementAt(step);
                     if (visStored.IsNull())
                     {
                         //Stop managing invaild chunks
-                        HandoffAnim.RemoveAt(step);
-                        HandoffAnimPos.RemoveAt(step);
+                        HeldVis.RemoveAt(step);
+                        HeldVisPos.RemoveAt(step);
                         step--;
                         countCheck--;
                         //Debug.Log("RandomAdditions: GetLocalizedPosition - Removed visible at " + step);
@@ -91,8 +138,9 @@ namespace RandomAdditions
                     if (!InStack)
                     {
                         //Stop managing invaild chunks
-                        HandoffAnim.RemoveAt(step);
-                        HandoffAnimPos.RemoveAt(step);
+                        HeldVis.RemoveAt(step);
+                        HeldVisPos.RemoveAt(step);
+                        visStored.pickup.InitRigidbody();
                         step--;
                         countCheck--;
                         //Debug.Log("RandomAdditions: GetLocalizedPosition - Removed visible at " + step);
@@ -113,24 +161,18 @@ namespace RandomAdditions
         /// <param name="stak"></param>
         /// <param name="stepLev"></param>
         /// <returns></returns>
-        public Vector3 GetLocalizedPosition(Vector3 inputPos, Visible vis, ModuleItemHolder.Stack stak, int stepLev)
+        private void HoldVisible(int heldVisIndex)
         {
-            Vector3 final = inputPos;
-            int countCheck = HandoffAnim.Count;
-            if (!HandoffAnim.Contains(vis)) //Add to animation handler!
-            {
-                HandoffAnim.Add(vis);
-                HandoffAnimPos.Add(transform.InverseTransformPoint(inputPos));
-                vis.gameObject.GetComponent<ItemIgnoreCollision>().ForceIgnoreTank(tank);
-                //Debug.Log("RandomAdditions: GetLocalizedPosition - Added " + vis.name);
-                countCheck = HandoffAnim.Count;
-            }
+            int countCheck = HeldVis.Count;
 
             if (countCheck > 0)
             {
                 // ANIMATE THE CHUNK
-                int index = HandoffAnim.IndexOf(vis);
-                final = HandoffAnimPos.ElementAt(index);
+                Visible vis = HeldVis.ElementAt(heldVisIndex);
+                ModuleItemHolder.Stack stak = vis.holderStack;
+                int stepLev = stak.items.IndexOf(vis);
+                Vector3 final = HeldVisPos.ElementAt(heldVisIndex);
+
                 Vector3 offset = theHolder.UpDir * ((float)(stepLev * 2 + 1) * (0.5f * fetchedHeightIncrementScale) + fetchedHeight);
                 Vector3 posInStack = transform.InverseTransformPoint(stak.BasePosWorldOffsetLocal(offset));
                 if (vis.UsePrevHeldPos && ManNetwork.IsHost)
@@ -151,16 +193,41 @@ namespace RandomAdditions
                 {
                     final = Vector3.Lerp(final, posInStack, 0.1f);
                 }
-                HandoffAnimPos[index] = final;
+                HeldVisPos[heldVisIndex] = final;
+
+                Vector3 posSet = transform.TransformPoint(final);
+
+                vis.trans.SetPositionIfChanged(posSet);
             }
 
-            return transform.TransformPoint(final);
         }
 
+        public void Update()
+        {
+            if (FixateToTech && block.IsAttached)
+            {
+                int fireTimes = HeldVis.Count;
+                for (int step = 0; step < fireTimes; step++)
+                {
+                    Visible vis = HeldVis.ElementAt(step);
+                    Vector3 posSet = transform.TransformPoint(HeldVisPos[step]);
+                    Quaternion rotSet = Quaternion.AngleAxis(Time.deltaTime * 72f, theHolder.UpDir) * vis.trans.rotation;
+
+                    vis.trans.position = posSet;
+                    vis.trans.rotation = rotSet;
+                }
+            }
+        }
         public void FixedUpdate()
         {
             if (FixateToTech && block.IsAttached)
             {
+                int fireTimes = HeldVis.Count;
+                for (int step = 0; step < fireTimes; step++)
+                {
+                    HoldVisible(step);
+                }
+                /*
                 int fireTimes = theHolder.NumStacks;
                 for (int step = 0; step < fireTimes; step++)
                 {
@@ -175,7 +242,7 @@ namespace RandomAdditions
 
                         vis.trans.SetPositionAndRotationIfChanged(posSet, rotSet);
                     }
-                }
+                }*/
             }
         }
     }

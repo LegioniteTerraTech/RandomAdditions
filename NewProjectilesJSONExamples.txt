@@ -43,6 +43,7 @@
     },
     // Make sure to add a new GameObject with the name "_subProp" and position it to where 
     //   the thrust should be if it isn't using a missile reference.
+    //  Also the ParticleSystem you use in "_subProp" will be played when the TorpedoProjectile is thrusting.
         
 -----------------------------------------------------------------------------------------------------
     
@@ -112,18 +113,32 @@
     //    the split projectiles are launched.
     //    - ! This can be messed up by m_BulletSpin !
         "RandomAdditions.SpiltProjectile":{ 
-            "SpawnAmount": 4,               // How many of these SplitPayloads to spawn - Max 100
-            "UseSeeking": false,            // Enable Seeking for the SplitPayload
+          "SpawnAmount": 4,               // How many of these SplitPayloads to spawn - Max 100
+          "UseSeeking": false,            // Enable Seeking for the SplitPayload
 
-            "DeployOnExplode": true,        // Deploy on explosion
-            "DeployOnEveryExplode": false,  // Deploy each time this explodes
+          "DeployOnExplode": true,        // Deploy on explosion
+          "DeployOnEveryExplode": false,  // Deploy each time this explodes
 
-            "DeployInFlight": false,        // Deply over time while airborne
-            "ShotCooldown": 1.0,            // Rate per second to deploy SplitPayloads
+          "DeployInFlight": false,        // Deply over time while airborne
+          "ShotCooldown": 1.0,            // Rate per second to deploy SplitPayloads
         },// ^ Reference an existing FireData (and be sure to edit it) below this
 
 -----------------------------------------------------------------------------------------------------
 
+    "RandomAdditions.TrailProjectile": {}, // Keep trails until the projectile reaches the end of it's DeathDelay against shield collisions.
+
+-----------------------------------------------------------------------------------------------------
+
+    "RaycastProjectile": {  // Raycasts a one-hit ray to hit blocks in a line.
+      // Use LanceProjectile for volume-based damage handling.
+      "PierceDepth": 0,     // How many blocks to damage in the ray. Set to -1 to hit all.
+      "MaxRange": 100,      // How often it makes new "points"
+      "FadeTime": 1,      // How long it takes to fade
+      "AlphaStart": 1,    // The starting alpha to apply to the ray
+      "AlphaEnd": 1,      // The ending alpha to apply to the ray
+    },
+
+-----------------------------------------------------------------------------------------------------
 
 	Need help? Let me know on the official TerraTech Community Discord!
 

@@ -36,7 +36,7 @@ namespace RandomAdditions
         {
             if (allowQuickSnap && !cooldown && mEvent == ManPointer.Event.LMB && Singleton.Manager<ManPointer>.inst.targetVisible)
             {
-                if ((bool)Singleton.Manager<ManPointer>.inst.targetVisible.block && Input.GetKey(KeyCode.B))
+                if ((bool)Singleton.Manager<ManPointer>.inst.targetVisible.block && Input.GetKey(KeyCode.KeypadPlus))
                 {
                     target = Singleton.Manager<ManPointer>.inst.targetVisible.block;
                     ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
@@ -110,20 +110,22 @@ namespace RandomAdditions
             TankBlock block = target;
             if (!Directory.Exists(expDirect))
                 Directory.CreateDirectory(expDirect);
-            string png = expDirect + "\\" + block.gameObject.name + "_preview.png";
+            string png = expDirect + "\\" + StringLookup.GetItemName(new ItemTypeInfo(ObjectTypes.Block, (int)block.BlockType)) + "_preview.png";
             Bounds bounds = block.BlockCellBounds;
-            float maxDimension = UnityEngine.Random.Range(1f, 3f) * Mathf.RoundToInt(Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z, 0.5f) + 0.5f);
+            //float maxDimension = UnityEngine.Random.Range(1f, 3f) * Mathf.RoundToInt(Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z, 0.5f) + 0.5f);
 
             Vector3 blockOGPos = block.transform.position;
             Quaternion blockOGRot = block.transform.rotation;
+            Vector3 lookAngle = Camera.main.transform.position - (block.trans.position + (block.trans.rotation * bounds.center));
+            lookAngle *= 0.6f;
             block.transform.position = new Vector3(0, 0, 2500);
-            block.transform.rotation = Quaternion.LookRotation(Vector3.forward);
+            //block.transform.rotation = Quaternion.LookRotation(Vector3.forward);
 
             Vector3 OGPos = Camera.main.transform.position;
-            Vector3 lookAngle = new Vector3(Mathf.Clamp(UnityEngine.Random.Range(-10000, 10000), -1, 1), UnityEngine.Random.Range(-1.5f, 1.5f), 1f).normalized * Vector3.one.magnitude;
-            Camera.main.transform.position = (bounds.center +
-                lookAngle * maxDimension * 0.6f) + block.trans.position;
-            Camera.main.transform.LookAt(bounds.center + block.trans.position, Vector3.up);
+            Camera.main.transform.position = lookAngle + block.trans.position;
+            //Vector3 lookAngle = new Vector3(Mathf.Clamp(UnityEngine.Random.Range(-10000, 10000), -1, 1), UnityEngine.Random.Range(-1.5f, 1.5f), 1f).normalized * Vector3.one.magnitude;
+            //Camera.main.transform.position = (bounds.center + lookAngle * maxDimension * 0.6f) + block.trans.position;
+            Camera.main.transform.LookAt((block.trans.rotation * bounds.center) + block.trans.position, Vector3.up);
             float cache1 = Camera.main.farClipPlane;
             float cache2 = Camera.main.nearClipPlane;
 
@@ -132,7 +134,7 @@ namespace RandomAdditions
             
 
             // Give the camera a render texture of fixed size
-            RenderTexture rendTex = RenderTexture.GetTemporary(512, 512, 24, RenderTextureFormat.ARGB32);
+            RenderTexture rendTex = RenderTexture.GetTemporary(1024, 1024, 24, RenderTextureFormat.ARGB32);
             RenderTexture.active = rendTex;
             RenderTexture old = Camera.main.targetTexture;
 
@@ -141,8 +143,8 @@ namespace RandomAdditions
             Camera.main.Render();
 
             // Copy it into our target texture
-            Texture2D preview = new Texture2D(512, 512);
-            preview.ReadPixels(new Rect(0, 0, 512, 512), 0, 0);
+            Texture2D preview = new Texture2D(1024, 1024);
+            preview.ReadPixels(new Rect(0, 0, 1024, 1024), 0, 0);
 
             // Write the target texture to disk
             FileUtils.SaveTexture(preview, png);

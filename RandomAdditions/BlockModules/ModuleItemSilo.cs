@@ -87,6 +87,7 @@ namespace RandomAdditions
         public int SavedCount = 0;
         public bool WasSearched = false;
 
+
         private TankBlock TankBlock;
         private ModuleItemStore itemStore;
         private ModuleItemHolder itemHold;
@@ -123,6 +124,8 @@ namespace RandomAdditions
             TankBlock = gameObject.GetComponent<TankBlock>();
             TankBlock.AttachEvent.Subscribe(OnAttach);
             TankBlock.DetachEvent.Subscribe(OnDetach);
+            TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+            TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
 
             gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>();
             disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>();
@@ -221,18 +224,21 @@ namespace RandomAdditions
         }
         private void OnAttach()
         {
-            TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat); 
-            UpdateGaugesAndDisplays();
+            SavedCount = 0;
+            GetBlockType = BlockTypes.GSOAIController_111;
+            GetChunkType = ChunkTypes.Null;
+
+            TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
+
+            ResetGaugesAndDisplays();
             isSaving = false;
             ExtUsageHint.ShowExistingHint(4005);
         }
         private void OnDetach()
         {
             //Debug.Log("RandomAdditions: isSaving " + isSaving);
-            if (!isSaving)
-            {   // cant eject when the world is saving
+            if (!isSaving || ManTechSwapper.inst.CheckOperatingOnTech(block.tank))
+            {   // Only eject when the world is NOT saving
                 if (SavedCount > 0)
                 {
                     TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemCannonDelivered);
@@ -241,13 +247,12 @@ namespace RandomAdditions
                         TankBlock.tank.TechAudio.PlayOneshot(sound);
                     }
                     catch { }
-                    // SILO COMPROMISED!  EJECT ALL!
-                    EmergencyEjectAllContents();
-                    UpdateGaugesAndDisplays();
                 }
+                // SILO COMPROMISED!  EJECT ALL!
+                EmergencyEjectAllContents();
+                GetChunkCountPercent = (float)SavedCount / (float)MaxCapacity;
+                ResetGaugesAndDisplays();
             }
-            TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
         }
         private void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
@@ -272,6 +277,19 @@ namespace RandomAdditions
             SavedCount = 0;
             SavedChunkColor = Color.black;
             isSaving = false;
+        }
+        private void OnRecycle()
+        {   // reset for new blocks/new spawns
+            /*
+            DebugRandAddi.Assert(true, "ON RECYCLE " + name);
+            EmergencyEjectAllContents();
+            GetChunkCountPercent = (float)SavedCount / (float)MaxCapacity;
+            ResetGaugesAndDisplays();
+            GetChunkType = ChunkTypes.Null;
+            GetBlockType = BlockTypes.GSOAIController_111;
+            SavedCount = 0;
+            SavedChunkColor = Color.black;
+            isSaving = false;*/
         }
 
 
@@ -526,6 +544,7 @@ namespace RandomAdditions
             toManage.SetGrabTimeout(2);//disable grabbing of it
             toManage.SetItemCollectionTimeout(2);//disable more
             toManage.SetInteractionTimeout(2);// disable ALL
+            toManage.ColliderSwapper.EnableCollision(false);
             if ((bool)toManage.pickup)
             {
                 toManage.pickup.ClearRigidBody(true);
@@ -559,6 +578,7 @@ namespace RandomAdditions
                 }
                 stack.Take(toManage);
                 ReleaseAnimating.Add(toManage);
+                toManage.ColliderSwapper.EnableCollision(false);
             }
             else
             {
@@ -578,11 +598,23 @@ namespace RandomAdditions
                 ReleaseTargetNode.Add(stack);
                 ReleaseAnimating.Add(toManage);
                 ReleaseAnimatingPos.Add(transform.InverseTransformPoint(toManage.centrePosition));
+                toManage.ColliderSwapper.EnableCollision(false);
             }
         }
 
 
         // Utilities
+        public void ResetGaugesAndDisplays()
+        {
+            foreach (SiloDisplay sDisp in disps)
+            {
+                sDisp.UpdateDisplay();
+            }
+            foreach (SiloGauge sGauge in gauges)
+            {
+                sGauge.SnapGauge();
+            }
+        }
         public void UpdateGaugesAndDisplays()
         {
             foreach (SiloDisplay sDisp in disps)
@@ -735,7 +767,8 @@ namespace RandomAdditions
                 {
                     AbsorbAnimating.RemoveAt(step);
                     AbsorbAnimatingPos.RemoveAt(step);
-                    toManage.trans.Recycle();
+                    toManage.ColliderSwapper.EnableCollision(true);
+                    toManage.RemoveFromGame();
                     step--;
                     fireTimes--;
                 }
@@ -769,6 +802,7 @@ namespace RandomAdditions
                     else
                     {
                         ReleaseAnimating.RemoveAt(step);
+                        toManage.ColliderSwapper.EnableCollision(true);
                         step--;
                         fireTimes2--;
                     }
@@ -793,6 +827,11 @@ namespace RandomAdditions
                             ReleaseTargetNode.RemoveAt(step);
                             ReleaseAnimating.RemoveAt(step);
                             ReleaseAnimatingPos.RemoveAt(step);
+                            if (StoresBlocksInsteadOfChunks)
+                                toManage.block.InitRigidbody();
+                            else
+                                toManage.pickup.InitRigidbody();
+                            toManage.ColliderSwapper.EnableCollision(true);
                             toManage.SetGrabTimeout(0);
                             toManage.SetItemCollectionTimeout(0);
                             toManage.SetInteractionTimeout(0);
@@ -817,14 +856,27 @@ namespace RandomAdditions
         public void EmergencyEjectAllContents()
         {
             foreach (Visible toManage in AbsorbAnimating)
-            {
-                //was already added!
+            {   //was already added!
+                if (!toManage.isActive)
+                    continue;
                 toManage.trans.localScale = Vector3.one;
-                toManage.Recycle();
+                toManage.ColliderSwapper.EnableCollision(true);
+                if (StoresBlocksInsteadOfChunks)
+                    toManage.block.InitRigidbody();
+                else
+                    toManage.pickup.InitRigidbody();
+                toManage.RemoveFromGame();
             }
             foreach (Visible toManage in ReleaseAnimating)
             {
+                if (!toManage.isActive)
+                    continue;
                 toManage.trans.localScale = Vector3.one;
+                if (StoresBlocksInsteadOfChunks)
+                    toManage.block.InitRigidbody();
+                else
+                    toManage.pickup.InitRigidbody();
+                toManage.ColliderSwapper.EnableCollision(true);
                 toManage.SetGrabTimeout(0);
                 toManage.SetItemCollectionTimeout(0);
                 toManage.SetInteractionTimeout(0);
@@ -842,7 +894,6 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Silo " + gameObject.name + " is unstable on death and has destroyed all their stored contents!");
                     SavedCount = 0;
                     GetChunkType = ChunkTypes.Null;
-                    UpdateGaugesAndDisplays();
                     return;
                 }
                 while (SavedCount > 0)
@@ -853,11 +904,9 @@ namespace RandomAdditions
                     itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
                 }
             }
-            else
-                SavedCount = 0;
+            SavedCount = 0;
             GetBlockType = BlockTypes.GSOAIController_111;
             GetChunkType = ChunkTypes.Null;
-            UpdateGaugesAndDisplays();
         }
         public void EmergencyEjectRelieve()
         {
@@ -894,7 +943,8 @@ namespace RandomAdditions
             try
             {
                 if (saving)
-                {   // On general saving
+                {   // On Save (non-snap)
+                    //DebugRandAddi.Assert(true, "SAVING " + TankBlock.name);
                     //var tile = Singleton.Manager<ManWorld>.inst.TileManager.LookupTile(transform.position);
                     //tile.
                     //Debug.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
@@ -923,15 +973,17 @@ namespace RandomAdditions
                         serialData.Store(blockSpec.saveState);
                         */
                         this.SerializeToSafe();
-                        this.SerializeToSafeObject(SavedChunkColor);
                     }
                 }
                 else
-                {   //Load from snap
+                {   //Load from Save
+                    //DebugRandAddi.Assert(true, "LOADING " + TankBlock.name);
                     try
                     {
+                        //ManUndo.inst.UndoInProgress
+                        if (!block.tank.FirstUpdateAfterSpawn)
+                            return; // we ignore undo / swap
                         isSaving = false;
-                        this.DeserializeFromSafeObject(ref SavedChunkColor);
                         if (!this.DeserializeFromSafe())
                         {
                             SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
@@ -946,8 +998,25 @@ namespace RandomAdditions
                                 SavedChunkColor.b = serialData2.savedColorB;
                             }
                         }
+                        SaveTextureOfChunk();
+                        ResetGaugesAndDisplays();
                     }
                     catch { }
+                }
+            }
+            catch { }
+        }
+        private void OnSerializeText(bool saving, TankPreset.BlockSpec blockSpec)
+        {
+            try
+            {
+                if (saving)
+                {   // On Snapshot saving
+                    DebugRandAddi.Assert(true, "SAVING(text) " + TankBlock.name);
+                }
+                else
+                {   //Load from Snapshot
+                    DebugRandAddi.Assert(true, "LOADING(text) " + TankBlock.name);
                 }
             }
             catch { }

@@ -48,6 +48,7 @@ namespace RandomAdditions
                 meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(new ItemTypeInfo(ObjectTypes.Chunk, (int)ChunkTypes.Null)).texture);
         }
 
+
         public void UpdateDisplay()
         {
             if (siloMain.StoresBlocksInsteadOfChunks)

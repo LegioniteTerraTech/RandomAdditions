@@ -61,7 +61,7 @@ namespace RandomAdditions
             {
                 float outValue = -75;
 #if !STEAM
-                try { outValue = WaterMod.QPatch.WaterHeight; } catch { }
+                try { outValue = GetWaterHeight(); } catch { }
 #endif
                 return outValue;
             }
@@ -268,11 +268,17 @@ namespace RandomAdditions
             }
         }
 
+        public static float GetWaterHeight()
+        {
+            return WaterMod.QPatch.WaterHeight;
+        }
+
         /// <summary>
         /// Fires after blockInjector
         /// </summary>
         public static void DelayedInitAll()
         {
+            GetAvailSFX();
         }
 #endif
 
@@ -290,6 +296,21 @@ namespace RandomAdditions
         public static Transform HeavyObjectSearch(Transform trans, string name)
         {
             return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand) { return cand.name == name; });
+        }
+
+        public static void GetAvailSFX()
+        {
+            Debug.Log("----- GETTING ALL SFX -----");
+            FieldInfo FI = typeof(FMODEventInstance).GetField("m_ParamDatabase", BindingFlags.NonPublic | BindingFlags.Static);
+            Dictionary<string, Dictionary<string, int>> w = (Dictionary<string, Dictionary<string, int>>)FI.GetValue(null);
+            foreach (var item in w)
+            {
+                Debug.Log(item.Key);
+                foreach (var item2 in item.Value)
+                {
+                    Debug.Log(item2.Key + " | " + item2.Value);
+                }
+            }
         }
 
     }

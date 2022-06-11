@@ -53,6 +53,9 @@ namespace RandomAdditions
         // ModuleWeaponGun attachment
         "SeperateFromGun": false,        // Handle this seperately - Will also set ForcePulse to true
         "OverrideEnemyAiming": false,    // Will this prioritize projectiles over the enemy? - Also allow firing when spacebar is pressed
+
+        // ChildModuleWeapon
+        "UseChildModuleWeapon": false,   // Use the FIRST ChildModuleWeapon in hierachy instead
     },
      */
 
@@ -94,9 +97,13 @@ namespace RandomAdditions
         public bool SeperateFromGun = false;    // Use it seperate
         public bool OverrideEnemyAiming = false;    // Will this prioritize projectiles over the enemy?
 
+        // ChildModuleWeapon attachment
+        public bool UseChildModuleWeapon = false;   // If SeperateFromGun is not true and ChildModuleWeapon 
+        //  is present somewhere, we can use that instead of ModuleWeaponGun.
+
         // Handled
-        public bool DisabledWeapon = false;
-        public bool UsingWeapon = false;
+        public bool ThisControllingWeaponGun = false;
+        public bool FireControlUsingWeaponGun = false;
 
         private bool cacheDisabled = false;
 
@@ -114,10 +121,11 @@ namespace RandomAdditions
         internal TankPointDefense def;
         private Transform fireTrans;
         private ModuleWeapon gunSFX;
-        private ModuleWeaponGun gunBase;
+        private IModuleWeapon gunBase;
         private ModuleEnergy energy;
         private List<GimbalAimer> aimers;
         private TargetAimer aimerMain;
+        private ExtGimbalAimer aimerChild;
         //private List<CannonBarrel> barrels;
         private Rigidbody LockedTarget;
 
@@ -127,7 +135,7 @@ namespace RandomAdditions
 
         private float energyToTax = 0;
 
-        internal bool AimingDefense => aimers != null && !SeperateFromGun;
+        internal bool AimingDefense => (UseChildModuleWeapon && gunBase != null) || (aimers != null && !SeperateFromGun);
 
         protected override void Pool()
         {
@@ -135,15 +143,25 @@ namespace RandomAdditions
             if (fireTrans == null)
                 fireTrans = gameObject.transform;
 
-            aimerMain = GetComponent<TargetAimer>();
-            aimers = GetComponentsInChildren<GimbalAimer>().ToList();
             gunSFX = GetComponent<ModuleWeapon>();
-            gunBase = GetComponent<ModuleWeaponGun>();
+            if (UseChildModuleWeapon)
+                gunBase = GetComponentInChildren<ChildModuleWeapon>();
+            else
+            {
+                gunBase = GetComponent<ModuleWeaponGun>();
+                aimerMain = GetComponent<TargetAimer>();
+                aimers = GetComponentsInChildren<GimbalAimer>().ToList();
+            }
             energy = GetComponent<ModuleEnergy>();
             if ((bool)energy)
                 energy.UpdateConsumeEvent.Subscribe(OnDrain);
-            if ((bool)gunBase)
-                barrelC = gunBase.GetNumCannonBarrels();
+            if (gunBase != null)
+            {
+                if (gunBase is ModuleWeaponGun MWG)
+                    barrelC = MWG.GetNumCannonBarrels();
+                else if (gunBase is ChildModuleWeapon CMW)
+                    barrelC = CMW.BarrelsMain.Count;
+            }
             else
                 SeperateFromGun = true;
             if (SeperateFromGun)
@@ -210,12 +228,12 @@ namespace RandomAdditions
             barrelsFired = 0;
             if (LockedTarget == null)
             {
-                DisabledWeapon = false;
+                ThisControllingWeaponGun = false;
                 spooling = false;
 
-                if (cacheDisabled == DisabledWeapon)
+                if (cacheDisabled == ThisControllingWeaponGun)
                 {
-                    UsingWeapon = DisabledWeapon;
+                    FireControlUsingWeaponGun = ThisControllingWeaponGun;
                 }
                 else
                 {
@@ -233,13 +251,22 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    foreach (GimbalAimer aim in aimers)
+                    if (UseChildModuleWeapon && gunBase is ChildModuleWeapon CMW)
                     {
-                        aim.Aim(posAim, RotateRate);
+                        barrelC = CMW.BarrelsMain.Count;
+                        posAim.Scale(transform.lossyScale);
+                        CMW.OverrideAndAimAt(posAim, !ForcePulse);
+                    }
+                    else
+                    {
+                        foreach (GimbalAimer aim in aimers)
+                        {
+                            aim.Aim(posAim, RotateRate);
+                        }
                     }
                 }
 
-                if ((bool)gunBase)
+                if (gunBase != null)
                 {
                     if (!SpoolOnEnemy)
                         gunBase.Deploy(true);
@@ -256,16 +283,15 @@ namespace RandomAdditions
             }
             else // Just use a centralized transform
             {
-                DisabledWeapon = false;
+                ThisControllingWeaponGun = false;
                 firing = LockOnFireSimple();
                 hit = true;
                 spooling = true;
             }
-
-            if (cacheDisabled == DisabledWeapon)
+            if (cacheDisabled == ThisControllingWeaponGun)
             {
                 LockOnFireSFX();
-                UsingWeapon = DisabledWeapon;
+                FireControlUsingWeaponGun = ThisControllingWeaponGun;
             }
             else
             {
@@ -284,12 +310,12 @@ namespace RandomAdditions
             }
             if (LockedTarget == null)
             {
-                DisabledWeapon = false;
+                ThisControllingWeaponGun = false;
                 spooling = false;
 
-                if (cacheDisabled == DisabledWeapon)
+                if (cacheDisabled == ThisControllingWeaponGun)
                 {
-                    UsingWeapon = DisabledWeapon;
+                    FireControlUsingWeaponGun = ThisControllingWeaponGun;
                 }
                 else
                 {
@@ -297,7 +323,7 @@ namespace RandomAdditions
                 }
                 return;
             }
-            DisabledWeapon = false;
+            ThisControllingWeaponGun = false;
             //Debug.Log("RandomAdditions: " + def.name + " - AIMING AT PROJECTILE");
             if (Vector3.Dot((LockedTarget.position - fireTrans.position).normalized, fireTrans.forward) >= pulseAimAnglef)
             {
@@ -312,10 +338,10 @@ namespace RandomAdditions
             }
             spooling = true;
 
-            if (cacheDisabled == DisabledWeapon)
+            if (cacheDisabled == ThisControllingWeaponGun)
             {
                 LockOnFireSFX();
-                UsingWeapon = DisabledWeapon;
+                FireControlUsingWeaponGun = ThisControllingWeaponGun;
             }
             else
             {
@@ -375,31 +401,63 @@ namespace RandomAdditions
         }
         private bool LockOnFireQueueBarrel(Vector3 aimPoint, int barrelNum, out bool hit)
         {
-            CannonBarrel barry = gunBase.FindCannonBarrelFromIndex(barrelNum);
-            if (Vector3.Dot((aimPoint - barry.projectileSpawnPoint.position).normalized, barry.projectileSpawnPoint.forward) > pulseAimAnglef)
+            if (gunBase is ModuleWeaponGun MWG)
             {
-                if ((bool)barry.muzzleFlash)
-                    barry.muzzleFlash.Fire();
-                if ((bool)barry.recoiler)
+                CannonBarrel barry = MWG.FindCannonBarrelFromIndex(barrelNum);
+                if (Vector3.Dot((aimPoint - barry.projectileSpawnPoint.position).normalized, barry.projectileSpawnPoint.forward) > pulseAimAnglef)
                 {
-                    var anim = barry.recoiler.GetComponentsInChildren<Animation>(true).FirstOrDefault();
-                    if ((bool)anim)
+                    if ((bool)barry.muzzleFlash)
+                        barry.muzzleFlash.Fire();
+                    if ((bool)barry.recoiler)
                     {
-                        recoiled.SetValue(barry, true);
-                        if (anim.isPlaying)
+                        var anim = barry.recoiler.GetComponentsInChildren<Animation>(true).FirstOrDefault();
+                        if ((bool)anim)
                         {
-                            anim.Rewind();
-                        }
-                        else
-                        {
-                            anim.Play();
+                            recoiled.SetValue(barry, true);
+                            if (anim.isPlaying)
+                            {
+                                anim.Rewind();
+                            }
+                            else
+                            {
+                                anim.Play();
+                            }
                         }
                     }
-                }
 
-                hit = FirePulseBeam(barry.projectileSpawnPoint, aimPoint);
-                barrelsFired++;
-                return true;
+                    hit = FirePulseBeam(barry.projectileSpawnPoint, aimPoint);
+                    barrelsFired++;
+                    return true;
+                }
+            }
+            else if (gunBase is ChildModuleWeapon CMW)
+            {
+                RACannonBarrel barry = CMW.BarrelsMain[barrelNum];
+                if (Vector3.Dot((aimPoint - barry.bulletTrans.position).normalized, barry.bulletTrans.forward) > pulseAimAnglef)
+                {
+                    if ((bool)barry.flash)
+                        barry.flash.Fire();
+                    if ((bool)barry.recoilTrans)
+                    {
+                        var anim = barry.recoilTrans.GetComponentsInChildren<Animation>(true).FirstOrDefault();
+                        if ((bool)anim)
+                        {
+                            recoiled.SetValue(barry, true);
+                            if (anim.isPlaying)
+                            {
+                                anim.Rewind();
+                            }
+                            else
+                            {
+                                anim.Play();
+                            }
+                        }
+                    }
+
+                    hit = FirePulseBeam(barry.bulletTrans, aimPoint);
+                    barrelsFired++;
+                    return true;
+                }
             }
             hit = false;
             return false;
@@ -439,7 +497,7 @@ namespace RandomAdditions
             try
             {
 
-                if ((!DisabledWeapon && ShareFireSFX)) //|| (firingCache != firing))
+                if ((!ThisControllingWeaponGun && ShareFireSFX)) //|| (firingCache != firing))
                 {
                     LockOnFireSFXHalt();
                     return;
@@ -507,17 +565,21 @@ namespace RandomAdditions
         public bool TryInterceptProjectile(bool enemyNear, int index, bool noTargetsLeft, out bool hit)
         {
             hit = false;
-            cacheDisabled = DisabledWeapon;
+
             firingCache = firing;
-            DisabledWeapon = false;
             firing = false;
+
+            cacheDisabled = ThisControllingWeaponGun;
+            ThisControllingWeaponGun = false;
+
             if (!(bool)block.tank || noTargetsLeft && energyUser)
                 return false;
-            if ((bool)gunBase)
+            if (gunBase != null)
             {
                 if (SpoolOnEnemy && enemyNear)
                 {
-                    DisabledWeapon = true;
+                    if (!UseChildModuleWeapon)
+                        ThisControllingWeaponGun = true;
                     gunBase.Deploy(true);
                     spooling = true;
                     gunBase.PrepareFiring(true);
@@ -528,15 +590,15 @@ namespace RandomAdditions
                 {
                     if (GetProjectile(index))
                     {
-                        if (!SeperateFromGun)
-                            DisabledWeapon = true;
+                        if (!SeperateFromGun && !UseChildModuleWeapon)
+                            ThisControllingWeaponGun = true;
                         UpdateLockOn(out hit);
                         return true;
                     }
                     else if (block.tank.control.FireControl)
                     {
                         firing = false;
-                        DisabledWeapon = false;
+                        ThisControllingWeaponGun = false;
                     }
                     else
                         firing = false;
@@ -546,12 +608,12 @@ namespace RandomAdditions
                     if (block.tank.control.FireControl)
                     {
                         firing = false;
-                        DisabledWeapon = false;
+                        ThisControllingWeaponGun = false;
                     }
                     else if (GetProjectile(index))
                     {
-                        if (!SeperateFromGun)
-                            DisabledWeapon = true;
+                        if (!SeperateFromGun && !UseChildModuleWeapon)
+                            ThisControllingWeaponGun = true;
                         UpdateLockOn(out hit);
                         return true;
                     }
@@ -572,14 +634,14 @@ namespace RandomAdditions
                     if (GetProjectile(index))
                     {
                         if (!SeperateFromGun)
-                            DisabledWeapon = true;
+                            ThisControllingWeaponGun = true;
                         UpdateLockOn(out hit);
                         return true;
                     }
                     else if (block.tank.control.FireControl)
                     {
                         firing = false;
-                        DisabledWeapon = false;
+                        ThisControllingWeaponGun = false;
                     }
                     else
                         firing = false;
@@ -589,12 +651,12 @@ namespace RandomAdditions
                     if (block.tank.control.FireControl)
                     {
                         firing = false;
-                        DisabledWeapon = false;
+                        ThisControllingWeaponGun = false;
                     }
                     else if (GetProjectile(index))
                     {
                         if (!SeperateFromGun)
-                            DisabledWeapon = true;
+                            ThisControllingWeaponGun = true;
                         UpdateLockOn(out hit);
                         return true;
                     }
@@ -603,15 +665,15 @@ namespace RandomAdditions
                 }
             }
             if (DefendOnly)
-                DisabledWeapon = true;
+                ThisControllingWeaponGun = true;
 
-            if (cacheDisabled == DisabledWeapon)
+            if (cacheDisabled == ThisControllingWeaponGun)
             {
                 if (firingCache != firing)
                 {
                     LockOnFireSFXHalt();
                 }
-                UsingWeapon = DisabledWeapon;
+                FireControlUsingWeaponGun = ThisControllingWeaponGun;
             }
             else
             {
@@ -623,9 +685,9 @@ namespace RandomAdditions
         public bool TryInterceptImmedeate(out bool killed)
         {
             killed = false;
-            cacheDisabled = DisabledWeapon;
+            cacheDisabled = ThisControllingWeaponGun;
             firingCache = firing;
-            DisabledWeapon = false;
+            ThisControllingWeaponGun = false;
             firing = false;
             if (!(bool)block.tank)
                 return false;
@@ -640,14 +702,14 @@ namespace RandomAdditions
                 if (LockedTarget)
                 {
                     if (!SeperateFromGun)
-                        DisabledWeapon = true;
+                        ThisControllingWeaponGun = true;
                     UpdateLockOnImmedeate(out killed);
                     return true;
                 }
                 else if (block.tank.control.FireControl)
                 {
                     firing = false;
-                    DisabledWeapon = false;
+                    ThisControllingWeaponGun = false;
                 }
                 else
                     firing = false;
@@ -657,12 +719,12 @@ namespace RandomAdditions
                 if (block.tank.control.FireControl)
                 {
                     firing = false;
-                    DisabledWeapon = false;
+                    ThisControllingWeaponGun = false;
                 }
                 else if (LockedTarget)
                 {
                     if (!SeperateFromGun)
-                        DisabledWeapon = true;
+                        ThisControllingWeaponGun = true;
                     UpdateLockOnImmedeate(out killed);
                     return true;
                 }
@@ -671,15 +733,15 @@ namespace RandomAdditions
             }
 
             if (DefendOnly)
-                DisabledWeapon = true;
+                ThisControllingWeaponGun = true;
 
-            if (cacheDisabled == DisabledWeapon)
+            if (cacheDisabled == ThisControllingWeaponGun)
             {
                 if (firingCache != firing)
                 {
                     LockOnFireSFXHalt();
                 }
-                UsingWeapon = DisabledWeapon;
+                FireControlUsingWeaponGun = ThisControllingWeaponGun;
             }
             else
             {
@@ -881,7 +943,7 @@ namespace RandomAdditions
                         float targDist = (LockedTarget.position - block.transform.position).sqrMagnitude;
                         if (targDist > DefendRange * DefendRange)
                         {
-                            DisabledWeapon = false;
+                            ThisControllingWeaponGun = false;
                             LockedTarget = null;
                         }
                         else if (!SmartManageTargets) 

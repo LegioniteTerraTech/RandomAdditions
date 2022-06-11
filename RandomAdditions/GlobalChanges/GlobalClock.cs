@@ -134,6 +134,7 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Time Changed by Player!");
                     GetTimeSetClocks();
                 }
+                ExtUsageHint.UpdateHintTimers();
             }
         }
 

@@ -153,7 +153,7 @@ namespace RandomAdditions
                             targ.GetHealth();
                         }
                         targ.TakeDamage(PointDefDamage, InterceptedExplode);
-                        ForceExplode(); //Blows up THE INTERCEPTOR projectile
+                        ForceExplode(); //Blows up THE InterceptProjectile
                         proj.Recycle(worldPosStays: false);
                     }
                     catch
@@ -287,6 +287,11 @@ namespace RandomAdditions
                         boom2.m_EffectRadius = 2;
                         boom2.DoDamage = false;
                     }
+                }
+                else
+                {
+                    Transform transCase = explodo.UnpooledSpawnWithLocalTransform(null, proj.trans.position, Quaternion.identity);
+                    transCase.gameObject.SetActive(true);
                 }
             }
         }

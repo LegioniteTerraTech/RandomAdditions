@@ -30,8 +30,9 @@ namespace RandomAdditions
 
     /// <summary>
     /// Add separate turrets to your turret. Does not support deployment animations.
+    /// Should not be found by the block weapon iterator since it hides in the children.
     /// </summary>
-    public class ChildModuleWeapon :  ChildModule, IExtGimbalControl, TechAudio.IModuleAudioProvider
+    public class ChildModuleWeapon :  ChildModule, IModuleWeapon, IExtGimbalControl, TechAudio.IModuleAudioProvider
     {
         internal FireData FireDataAlt;       // 
         internal ModuleWeapon MW;            //
@@ -61,13 +62,16 @@ namespace RandomAdditions
         public bool m_DisableMainAudioLoop = false;
         public float m_AudioLoopDelay = 0;
 
-        public bool doSpool= false;
+        private float ReserveControl = 0;
+        private bool ReserveControlShoot = false;
+        public bool  doSpool= false;
         private float cooldown = 0;
         private int barrelStep = 0;
         private int burstCount = 0;
         private int barrelsFired = 0;
         private int barrelC = 0;
         private Visible targ;
+        private Vector3 targPos;
         private Func<Vector3, Vector3> aimFunc;
 
         public bool Linear()
@@ -158,14 +162,81 @@ namespace RandomAdditions
             enabled = false;
         }
 
-        private void Update()
+
+        public void OverrideAndAimAt(Vector3 scenePos, bool fire)
         {
+            ReserveControl = 1f;
+            targPos = scenePos;
+            ReserveControlShoot = fire;
+        }
+        public bool Deploy(bool Do)
+        {
+            return true; // no deployment animation!
+            //throw new NotImplementedException("ChildModuleWeapon - Deploy should not be called. This is handled automatically in Update().");
+        }
+        public bool PrepareFiring(bool Do)
+        {
+            if (Do)
+            {
+                SpoolBarrels(true);
+            }
+            else
+            {
+                SpoolBarrels(false);
+            }
+            for (int step = 0; step < barrelC; step++)
+            {
+                if (!BarrelsMain[step].Spooled())
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        public bool AimWithTrajectory()
+        {
+            return Gravioli();
+        }
+        public float GetFireRateFraction()
+        {
+            return 1 / (float)barrelC;
+            //throw new NotImplementedException("ChildModuleWeapon - GetFireRateFraction should not be called.");
+        }
+        public Transform GetFireTransform()
+        {
+            return MainGun.trans;
+        }
+        public float GetRange()
+        {
+            return int.MaxValue;
+        }
+        public float GetVelocity()
+        {
+            return Velo();
+        }
+        public bool IsAimingAtFloor(float unused)
+        {
+            return false;
+        }
+        public bool FiringObstructed()
+        {
+            for (int step = 0; step < barrelC; step++)
+            {
+                if (!BarrelsMain[step].CanShoot())
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public int ProcessFiring(bool Do)
+        {
+            /*
             AimHandle();
             if (cooldown > 0)
                 cooldown -= Time.deltaTime;
             barrelsFired = 0;
-            doSpool = tank.control.FireControl || (m_Automatic && targ && !tank.beam.IsActive);
-            if (doSpool)
+            if (Do)
             {
                 SpoolBarrels(true);
                 if (m_Automatic)
@@ -182,6 +253,85 @@ namespace RandomAdditions
             else
             {
                 SpoolBarrels(false);
+            }
+            LockOnFireSFX();*/
+            return barrelsFired;
+        }
+        public bool ReadyToFire()
+        {
+            if (doSpool)
+            {
+                for (int step = 0; step < barrelC; step++)
+                {
+                    if (!BarrelsMain[step].Spooled())
+                    {
+                        return false;
+                    }
+                }
+                if (m_Automatic)
+                {
+                    if (AllGimbalsCloseAim())
+                        return true;
+                }
+                else
+                {
+                    if (!m_OnlyFireOnFacing || AllGimbalsCloseAim())
+                        return true;
+                }
+                return false;
+            }
+            else
+                return true;
+        }
+
+
+
+        private void Update()
+        {
+            AimHandle();
+            if (cooldown > 0)
+                cooldown -= Time.deltaTime;
+            barrelsFired = 0;
+            if (ReserveControl > 0)
+            {
+                doSpool = true;
+                ReserveControl -= Time.deltaTime;
+                SpoolBarrels(true);
+                if (ReserveControlShoot)
+                {
+                    if (m_Automatic)
+                    {
+                        if (AllGimbalsCloseAim())
+                            HandleFire();
+                    }
+                    else
+                    {
+                        if (!m_OnlyFireOnFacing || AllGimbalsCloseAim())
+                            HandleFire();
+                    }
+                }
+            }
+            else
+            {
+                doSpool = tank.control.FireControl || (m_Automatic && targ && !tank.beam.IsActive);
+                if (doSpool)
+                {
+                    SpoolBarrels(true);
+                    if (m_Automatic)
+                    {
+                        if (AllGimbalsCloseAim())
+                            HandleFire();
+                    }
+                    else
+                    {
+                        if (!m_OnlyFireOnFacing || AllGimbalsCloseAim())
+                            HandleFire();
+                    }
+                }
+                else
+                {
+                    SpoolBarrels(false);
+                }
             }
             LockOnFireSFX();
         }
@@ -222,11 +372,12 @@ namespace RandomAdditions
         private bool settled = false;
         private void AimHandle()
         {
-            targ = tank.Vision.GetFirstVisibleTechIsEnemy(tank.Team);
-            if (targ)
+            bool CanAim = ReserveControl > 0;
+            Vector3 aimPosFinal;
+            if (ReserveControl > 0)
             {
                 settled = false;
-                Vector3 aimPosFinal = aimFunc.Invoke(targ.GetAimPoint(block.trans.position));
+                aimPosFinal = aimFunc.Invoke(targPos);
                 foreach (ExtGimbalAimer gimbal in gimbals)
                 {
                     gimbal.AimAt(aimPosFinal);
@@ -234,13 +385,26 @@ namespace RandomAdditions
             }
             else
             {
-                if (settled)
-                    return;
-                settled = true;
-                foreach (ExtGimbalAimer gimbal in gimbals)
+                targ = tank.Vision.GetFirstVisibleTechIsEnemy(tank.Team);
+                CanAim = targ;
+                if (targ)
                 {
-                    if (!gimbal.AimBack())
-                        settled = false;
+                    aimPosFinal = aimFunc.Invoke(targ.GetAimPoint(block.trans.position));
+                    foreach (ExtGimbalAimer gimbal in gimbals)
+                    {
+                        gimbal.AimAt(aimPosFinal);
+                    }
+                }
+                else
+                {
+                    if (settled)
+                        return;
+                    settled = true;
+                    foreach (ExtGimbalAimer gimbal in gimbals)
+                    {
+                        if (!gimbal.AimBack())
+                            settled = false;
+                    }
                 }
             }
         }
@@ -415,14 +579,13 @@ namespace RandomAdditions
     /// </summary>
     public class RACannonBarrel : MonoBehaviour
     {
-        private TankBlock parentBlock;
         public Transform trans { get; private set; }
 
         private ParticleSystem[] PS;
-        private MuzzleFlash flash;
+        internal MuzzleFlash flash;
 
         internal Transform bulletTrans;
-        private Transform recoilTrans;
+        internal Transform recoilTrans;
 
         private Spinner rotBarrel;
 
@@ -460,7 +623,7 @@ namespace RandomAdditions
             {
                 WeaponRound weaponRound = altFireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, bulletTrans.position, trans.rotation);
                 weaponRound.SetVariationParameters(bulletTrans_forward, spin);
-                weaponRound.Fire(Vector3.zero, altFireData, mainWeap, parentBlock.tank, seeking, true);
+                weaponRound.Fire(Vector3.zero, altFireData, mainWeap, childWeap.block.tank, seeking, true);
                 TechWeapon.RegisterWeaponRound(weaponRound, projectileUID);
             }
             return ProcessFire();
@@ -499,16 +662,16 @@ namespace RandomAdditions
             {
                 return notBlocked;
             }
-            if (parentBlock.tank == null)
+            if (childWeap.block.tank == null)
             {
                 return true;
             }
             bool flag = true;
-            float num = Mathf.Max(parentBlock.tank.blockBounds.size.magnitude, 1f);
+            float num = Mathf.Max(childWeap.block.tank.blockBounds.size.magnitude, 1f);
             Vector3 position = bulletTrans.position;
             if (Physics.Raycast(position, bulletTrans.forward, out RaycastHit raycastHit, num, 
                 Globals.inst.layerTank.mask, QueryTriggerInteraction.Ignore) && 
-                raycastHit.rigidbody == parentBlock.tank.rbody)
+                raycastHit.rigidbody == childWeap.block.tank.rbody)
             {
                 flag = false;
             }
@@ -519,7 +682,7 @@ namespace RandomAdditions
 
         public bool Fire(bool seeking)
         {
-            NetTech netTech = parentBlock.tank.netTech;
+            NetTech netTech = childWeap.block.tank.netTech;
             if (Singleton.Manager<ManNetwork>.inst.IsMultiplayer() && netTech.IsNotNull())
             {
                 // MULTIPLAYER NOT SUPPORTED
@@ -529,7 +692,7 @@ namespace RandomAdditions
             {
                 recoiling = false;
             }
-            if (recoiling || !parentBlock.tank)
+            if (recoiling || !childWeap.block.tank)
             {
                 return false;
             }
@@ -538,10 +701,10 @@ namespace RandomAdditions
                 Vector3 position = bulletTrans.position;
                 Vector3 forward = bulletTrans.forward;
                 WeaponRound weaponRound = altFireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, position, trans.rotation);
-                weaponRound.Fire(forward, altFireData, mainWeap, parentBlock.tank, seeking, false);
+                weaponRound.Fire(forward, altFireData, mainWeap, childWeap.block.tank, seeking, false);
                 TechWeapon.RegisterWeaponRound(weaponRound, int.MinValue);
                 Vector3 force = -forward * altFireData.m_KickbackStrength;
-                parentBlock.tank.rbody.AddForceAtPosition(force, position, ForceMode.Impulse);
+                childWeap.block.tank.rbody.AddForceAtPosition(force, position, ForceMode.Impulse);
             }
             return ProcessFire();
         }
@@ -615,7 +778,6 @@ namespace RandomAdditions
             if (GetComponent<CannonBarrel>())
                 LogHandler.ThrowWarning("RACannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
 
-            parentBlock = gameObject.GetComponentInParents<TankBlock>(false);
             trans = transform;
             bulletTrans = KickStart.HeavyObjectSearch(trans, "_bulletSpawn");
             if (!bulletTrans)

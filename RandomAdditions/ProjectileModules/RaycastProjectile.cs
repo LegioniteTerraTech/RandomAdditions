@@ -26,6 +26,7 @@ namespace RandomAdditions
     {
         private Rigidbody rbody;
         private Projectile project;
+        private Vector3 launchVelo = Vector3.zero;
 
         public int PierceDepth = 0;
         public float MaxRange = 100f;
@@ -35,8 +36,8 @@ namespace RandomAdditions
 
         private float fadeCurrent = 1f;
         private LineRenderer line;
-        private static int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerShieldBulletsFilter.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerTankIgnoreTerrain.mask;
-        private static RaycastHit[] targHit = new RaycastHit[16];
+        private static int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerShieldBulletsFilter.mask | Globals.inst.layerScenery.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerTankIgnoreTerrain.mask;
+        private static RaycastHit[] targHit = new RaycastHit[32];
 
 
         public void Fire(Tank shooter)
@@ -50,11 +51,16 @@ namespace RandomAdditions
                     col.enabled = false;
                 fadeCurrent = 1;
 
-                transform.rotation = Quaternion.LookRotation(rbody.velocity.normalized);
                 if (shooter.rbody)
-                    rbody.velocity = shooter.rbody.velocity;
+                {
+                    transform.rotation = Quaternion.LookRotation((rbody.velocity - shooter.rbody.velocity).normalized);
+                    launchVelo = shooter.rbody.velocity;
+                }
                 else
-                    rbody.velocity = Vector3.zero;
+                    launchVelo = Vector3.zero;
+                rbody.velocity = launchVelo;
+
+
                 float distEnd = MaxRange;
                 int hitNum = Physics.RaycastNonAlloc(new Ray(transform.position, transform.forward), targHit, MaxRange, layerMask, QueryTriggerInteraction.Collide);
                 
@@ -163,6 +169,10 @@ namespace RandomAdditions
                     line.endColor = colE;
                 }
             }
+        }
+        private void FixedUpdate()
+        {
+            rbody.velocity = launchVelo;
         }
 
         private void Update()

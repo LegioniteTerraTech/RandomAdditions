@@ -34,7 +34,7 @@ namespace RandomAdditions
         private Texture graphics;
         private Texture recoloredGraphics = Texture2D.blackTexture;
         private bool displayDamperInstant = false;
-        private float ScaleToAimFor = 1;
+        private float ScaleToAimFor = 0;
 
         public void OnPool()
         {
@@ -70,6 +70,16 @@ namespace RandomAdditions
             UpdateTextures();
         }
 
+        public void SnapGauge()
+        {
+            UpdateTextures();
+            displayChunk = siloMain.GetChunkType;
+            ScaleToAimFor = (MaxHeightMultiplier - MinHeightMultiplier) * siloMain.GetCountPercent + MinHeightMultiplier;
+            Vector3 toSet = transform.localScale;
+            toSet.y = ScaleToAimFor;
+            transform.localScale = toSet;
+            updatingDisplay = false;
+        }
         public void UpdateGauge()
         {
             if (siloMain.GetChunkType != displayChunk)

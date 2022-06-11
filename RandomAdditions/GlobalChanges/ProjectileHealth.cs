@@ -36,6 +36,7 @@ namespace RandomAdditions
         public void Reset()
         {
             exploded = false;
+            Health = MaxHealth;
         }
 
         FieldInfo deals = typeof(WeaponRound).GetField("m_Damage", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -53,10 +54,10 @@ namespace RandomAdditions
                     if (dmgMax < 0.1f)
                         dmgMax = 0.1f;
                     float health = solidHealth * (solidHealth / dmgMax) * KickStart.ProjectileHealthMultiplier;
-                    if (health > 10)
+                    if (health > 100)
                         MaxHealth = health;
                     else
-                        MaxHealth = 10;
+                        MaxHealth = 100;
                 }
                 exploded = false;
                 Health = MaxHealth;

@@ -151,7 +151,7 @@ namespace RandomAdditions
                                         }
                                     }
                                 }
-                                DebugRandAddi.Log("RandomAdditions: made " + __instance.name + " ignore " + firedCount + " colliders.");
+                                DebugRandAddi.Info("RandomAdditions: made " + __instance.name + " ignore " + firedCount + " colliders.");
                             }
                         }
                         else
@@ -167,14 +167,11 @@ namespace RandomAdditions
                             ModuleScale.enabled = true;
                             //Debug.Log("RandomAdditions: Queued Rescale Up");
 
-                            foreach (Collider collVis in __instance.gameObject.GetComponentsInChildren<Collider>())
-                            {
-                                //Reset them collodos
-                                if (collVis.enabled)
-                                {   //BUT NO TOUCH THE DISABLED ONES
-                                    collVis.enabled = false;
-                                    collVis.enabled = true;
-                                }
+                            //Reset them collodos
+                            if (__instance.ColliderSwapper.CollisionEnabled)
+                            {   //BUT NO TOUCH THE DISABLED ONES
+                                __instance.ColliderSwapper.EnableCollision(false);
+                                __instance.ColliderSwapper.EnableCollision(true);
                             }
                             //Debug.Log("RandomAdditions: reset " + __instance.name + "'s active colliders");
 
@@ -353,7 +350,7 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<ModulePointDefense>();
                 if (ModuleCheck != null)
                 {
-                    if (ModuleCheck.UsingWeapon)
+                    if (ModuleCheck.FireControlUsingWeaponGun)
                     {
                         __result = 0;
                         return false;
@@ -1385,7 +1382,7 @@ namespace RandomAdditions
                         "\nTake note of all your official mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-official.";
 #else
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  " +
-                        "\nTake note of all your unofficial mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-unofficial.";
+                        "\n<b>Make sure your name isn't in the Report below first,</b> then take note of all your mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial.";
 #endif
 
                     //var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Description"), UIObj.transform, false);

@@ -184,6 +184,7 @@
     <Compile Include="BlockModules\ExtModule.cs" />
     <Compile Include="BlockModules\ModuleCustomShop.cs" />
     <Compile Include="BlockModules\ModuleHangar.cs" />
+    <Compile Include="BlockModules\ModuleHardpoint.cs" />
     <Compile Include="BlockModules\ModuleJumpDrive.cs" />
     <Compile Include="BlockModules\ModuleLoneMove.cs" />
     <Compile Include="BlockModules\ChildModuleWeapon.cs" />
@@ -193,6 +194,7 @@
     <Compile Include="BlockModules\ModuleRepairAimer.cs" />
     <Compile Include="BlockModules\ModuleSimpleLegs.cs" />
     <Compile Include="BlockModules\ModuleTractorBeam.cs" />
+    <Compile Include="BlockModules\ModuleTrajectory.cs" />
     <Compile Include="BlockModules\ModuleUsageHint.cs" />
     <Compile Include="DebugRandAddi.cs" />
     <Compile Include="GlobalChanges\DistractedProjectile.cs" />

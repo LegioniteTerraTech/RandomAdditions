@@ -27,6 +27,7 @@ namespace RandomAdditions
         private Vector3 addedThrustDirection;
         private Rigidbody fetchedRBody;
         private Transform thisTrans;
+        private ParticleSystem ps;
 
         public void OnPool()
         {
@@ -40,6 +41,9 @@ namespace RandomAdditions
                 {
                     addedThrustPosition = isTransformPresent.transform.localPosition;
                     addedThrustDirection = thisTrans.InverseTransformDirection(isTransformPresent.transform.forward);
+                    ps = isTransformPresent.GetComponent<ParticleSystem>();
+                    if (ps)
+                        ps.Clear(false);
                     //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " Thrust is " + addedThrustDirection + " | and position is " + addedThrustPosition);
                 }
                 else
@@ -69,11 +73,17 @@ namespace RandomAdditions
                     {
                         //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
                         fetchedRBody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
+                        if (ps && !ps.isPlaying)
+                            ps.Play(false);
                     }
+                    else if (ps && ps.isPlaying)
+                        ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
                 }
                 else
                 {
                     isSubmerged = false;
+                    if (ps && ps.isPlaying)
+                        ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
                 }
             }
         }

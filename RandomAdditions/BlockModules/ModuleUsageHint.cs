@@ -180,6 +180,7 @@ namespace RandomAdditions
                         hintDef = hintDef
                     };
                     Singleton.Manager<ManHUD>.inst.ShowHudElement(ManHUD.HUDElementType.Hint, showContext);
+                    toHide.Add(new KeyValuePair<float, UIHints.ShowContext>(Time.time + hintDisplayTime, showContext));
                     HintsSeen.Add((int)hintID);
                     HintsSeenToSave();
 #if !STEAM          // NEED TO REVIEW ALL OF THESE LATER
@@ -187,6 +188,28 @@ namespace RandomAdditions
 #endif
                     Singleton.Manager<ManSFX>.inst.PlayUISFX(ManSFX.UISfxType.Hint);
                 }
+            }
+        }
+
+        private static readonly float hintDisplayTime = 8;
+        public static readonly List<KeyValuePair<float, UIHints.ShowContext>> toHide = new List<KeyValuePair<float, UIHints.ShowContext>>();
+        public static void UpdateHintTimers()
+        {   // Saving a Tech from the BlockMemory
+            int iterating = 0;
+            while (toHide.Count > iterating)
+            {
+                var item = toHide.ElementAt(iterating);
+                if (item.Key <= Time.time)
+                {
+                    try
+                    {
+                        Singleton.Manager<ManHUD>.inst.HideHudElement(ManHUD.HUDElementType.Hint, item.Value.hintID);
+                    }
+                    catch { }
+                    toHide.RemoveAt(iterating);
+                }
+                else
+                    iterating++;
             }
         }
 
