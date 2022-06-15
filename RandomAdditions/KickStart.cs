@@ -278,7 +278,7 @@ namespace RandomAdditions
         /// </summary>
         public static void DelayedInitAll()
         {
-            GetAvailSFX();
+            //GetAvailSFX();
         }
 #endif
 
