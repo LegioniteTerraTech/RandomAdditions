@@ -278,11 +278,13 @@ namespace RandomAdditions
         /// </summary>
         public static void DelayedInitAll()
         {
-            //GetAvailSFX();
+#if DEBUG
+            GetAvailSFX();
+#endif
         }
 #endif
 
-        public static bool LookForMod(string name)
+            public static bool LookForMod(string name)
         {
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
             {
