@@ -10,7 +10,7 @@ namespace RandomAdditions
 #if STEAM
     public class KickStartRandomAdditions : ModBase
     {
-        internal static KickStartRandomAdditions oInst;
+        internal static KickStartRandomAdditions oInst = null;
 
         bool isInit = false;
         bool firstInit = false;

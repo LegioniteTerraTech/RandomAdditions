@@ -25,6 +25,7 @@ namespace RandomAdditions
         private bool isSaving = false;
 
         private Transform HangarEntry;
+        private Transform HangarExit;
         private Transform HangarInside;
         private ModuleTractorBeam TracBeam;
         private ModuleEnergy energyMan;
@@ -90,6 +91,17 @@ namespace RandomAdditions
                 HangarEntry = this.transform;
                 LogHandler.ThrowWarning("RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Entry\" for the hangar enterance!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
+
+            try
+            {
+                HangarExit = KickStart.HeavyObjectSearch(transform, "_Exit");
+            }
+            catch { }
+            if (HangarExit == null)
+            {
+                HangarExit = HangarEntry;
+            }
+
             try
             {
                 HangarInside = KickStart.HeavyObjectSearch(transform, "_Inside");
@@ -348,10 +360,10 @@ namespace RandomAdditions
 
         private void LaunchTech(bool killTechs = false)
         {
-            Vector3 ExitPosScene = HangarEntry.position;
+            Vector3 ExitPosScene = HangarExit.position;
             if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
                 return; // Cannot animate more than one or we will have clipping Techs in the end!!!
-            else if (ExitPosScene.y > HangarEntry.position.y)
+            else if (ExitPosScene.y > HangarExit.position.y)
                 return; // Cannot fire into the ground
             if (LaunchAnimating)
                 return; // Cannot animate more than one or we will have clipping Techs in the end!!!
@@ -401,7 +413,7 @@ namespace RandomAdditions
 
             if (!killTechs)
             {
-                foreach (Visible Vis in ManVisible.inst.VisiblesTouchingRadius(HangarEntry.position, MaxTechExtents, searchBit))
+                foreach (Visible Vis in ManVisible.inst.VisiblesTouchingRadius(HangarExit.position, MaxTechExtents, searchBit))
                 {
                     if (Vis.ID != tank.visible.ID)
                     {
@@ -419,14 +431,14 @@ namespace RandomAdditions
                 isPopulation = tank.IsPopulation,
                 teamID = tank.Team,
                 techData = garrisonedTech.Value,
-                position = HangarEntry.position,
+                position = HangarExit.position,
                 placement = ManSpawn.TankSpawnParams.Placement.BoundsCentredAtPosition,
                 hideMarker = false,
                 hasRewardValue = false,
                 explodeDetachingBlocksDelay = 0,
                 ignoreSceneryOnSpawnProjection = true,
                 inventory = null,
-                rotation = HangarEntry.rotation,
+                rotation = HangarExit.rotation,
                 shouldExplodeDetachingBlocks = false,
             };
             try
@@ -449,7 +461,7 @@ namespace RandomAdditions
                 catch { }
                 if (killTechs)
                 {
-                    newTech.visible.Teleport(HangarEntry.position, HangarEntry.rotation, false, false);
+                    newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false, false);
                     newTech.blockman.Disintegrate();
                     LinkedTechs.Remove(garrisonedTech.Key.ID);
                     GarrisonTechs.Remove(garrisonedTech);
@@ -471,9 +483,9 @@ namespace RandomAdditions
                     TB.visible.ColliderSwapper.EnableCollision(false);
                 }
                 newTech.trans.localScale = Vector3.one / 4;
-                newTech.visible.Teleport(HangarInside.position, HangarInside.rotation, false);
+                newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false);
                 LaunchAnimating = newTech;
-                LaunchAnimatingPos = HangarInside.localPosition;
+                LaunchAnimatingPos = HangarExit.localPosition;
             }
             catch (Exception e)
             {

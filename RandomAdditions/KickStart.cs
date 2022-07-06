@@ -71,14 +71,16 @@ namespace RandomAdditions
         static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
         //private static bool patched = false;
 #if STEAM
+        private static bool OfficialEarlyInited = false;
         public static void OfficialEarlyInit()
         {
             //Where the fun begins
 
             //Initiate the madness
+            DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
             try
             { // init changes
-                harmonyInstance.PatchAll();
+                harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
                 //EdgePatcher(true);
                 DebugRandAddi.Log("RandomAdditions: Patched");
                 patched = true;
@@ -131,12 +133,19 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on RegisterSaveSystem");
                 DebugRandAddi.Log(e);
             }
+            OfficialEarlyInited = true;
         }
 
 
         public static void MainOfficialInit()
         {
             //Where the fun begins
+            if (!OfficialEarlyInited)
+            {
+                DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
+                OfficialEarlyInit();
+            }
+            DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
 
             //Initiate the madness
             if (!patched)

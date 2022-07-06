@@ -48,7 +48,8 @@ namespace RandomAdditions
 
         public void Click(ManPointer.Event type, bool yes, bool yes2)
         {
-            // Not compatable with MP because of 
+            // Not compatable with MP because there's a tether - Will crash the game if activated in MP.
+            //  May consider making it teleport all players.
             if (tank.PlayerFocused && !ManNetwork.IsNetworked && yes && !jumpQueued)
             {
                 if (type == ManPointer.Event.RMB && ManPointer.inst.targetVisible == this.block.visible)
