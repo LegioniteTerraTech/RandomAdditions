@@ -3,7 +3,7 @@
 public class TorpedoProjectile : RandomAdditions.TorpedoProjectile { };
 namespace RandomAdditions
 {
-    public class TorpedoProjectile : MonoBehaviour
+    public class TorpedoProjectile : ExtProj
     {
         // With Watermod installed, any missile that goes into the water with this projectile type
         //   will change their thrust value to the one specified here.
@@ -25,17 +25,15 @@ namespace RandomAdditions
         private bool killThrust = false;
         private Vector3 addedThrustPosition;
         private Vector3 addedThrustDirection;
-        private Rigidbody fetchedRBody;
         private Transform thisTrans;
         private ParticleSystem ps;
 
-        public void OnPool()
+        internal override void Pool()
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
             {
                 DebugRandAddi.Info("RandomAdditions: Launched TorpedoProjectile on " + gameObject.name);
                 thisTrans = gameObject.transform;
-                fetchedRBody = gameObject.GetComponent<Rigidbody>();
                 var isTransformPresent = gameObject.transform.Find("_subProp");
                 if (isTransformPresent)
                 {
@@ -54,7 +52,7 @@ namespace RandomAdditions
                 }
             }
         }
-        public void OnFire()
+        internal override void Fire(FireData fireData)
         {
             killThrust = false;
         }
@@ -72,7 +70,7 @@ namespace RandomAdditions
                     if (ThrustUntilProjectileDeath || !killThrust)
                     {
                         //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
-                        fetchedRBody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
+                        PB.rbody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
                         if (ps && !ps.isPlaying)
                             ps.Play(false);
                     }

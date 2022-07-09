@@ -32,7 +32,7 @@ namespace RandomAdditions
             "ShotCooldown": 1.0,            // Rate per second to deploy SplitPayloads
         },// ^ Reference an existing FireData (and be sure to edit it) below this
     */
-    public class SpiltProjectile : MonoBehaviour
+    public class SpiltProjectile : ExtProj
     {
         public int SpawnAmount = 4;
         public bool UseSeeking = false;
@@ -47,17 +47,15 @@ namespace RandomAdditions
         private BulletCasing SplitCasing;
 
         private Transform direct;
-        private Projectile inst;
         private ModuleWeapon weap;
         private bool Fired = false;
         private float Timer = 0;
 
         private static FieldInfo weapon = typeof(Projectile).GetField("m_Weapon", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        public void Reset(Projectile instIn)
+        internal override void Fire(FireData fireData)
         {
-            inst = instIn;
-            weap = (ModuleWeapon)weapon.GetValue(inst);
+            weap = (ModuleWeapon)weapon.GetValue(PB.project);
 
             if (SpawnAmount > 100)
                 SpawnAmount = 100;
@@ -101,19 +99,19 @@ namespace RandomAdditions
                 if (velocityHandler < 0.1)
                     velocityHandler = 0.1f;
                 Vector3 tankVeloCancel;
-                if (inst.Shooter.rbody)
-                    tankVeloCancel = inst.Shooter.rbody.velocity;
+                if (PB.shooter.rbody)
+                    tankVeloCancel = PB.shooter.rbody.velocity;
                 else
                     tankVeloCancel = Vector3.zero;
                 //tankVeloCancel += inst.rbody.velocity;
-                Vector3 fireVelo = direct.forward + ((inst.rbody.velocity - tankVeloCancel) / velocityHandler);
+                Vector3 fireVelo = direct.forward + ((PB.project.rbody.velocity - tankVeloCancel) / velocityHandler);
 
 
                 for (int step = 0; step < SpawnAmount; step++)
                 {
                     WeaponRound weaponRound = SplitPayload.Spawn(Singleton.dynamicContainer, direct.position, direct.rotation);
 
-                    weaponRound.Fire(fireVelo, fire, weap, inst.Shooter, UseSeeking);
+                    weaponRound.Fire(fireVelo, fire, weap, PB.shooter, UseSeeking);
                     TechWeapon.RegisterWeaponRound(weaponRound);
                 }
             }

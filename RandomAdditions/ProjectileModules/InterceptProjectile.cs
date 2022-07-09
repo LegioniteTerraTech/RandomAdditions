@@ -30,7 +30,7 @@ namespace RandomAdditions
             "InterceptMultiplier": 3,// How much to multiply the aiming strength if targeting a missile
         },
     */
-    public class InterceptProjectile : MonoBehaviour
+    public class InterceptProjectile : ExtProj
     {
         public bool IsFlare = false;
         public bool ConstantDistract = false;
@@ -54,8 +54,6 @@ namespace RandomAdditions
 
         public Transform trans;
         public int team = -1;
-        private Projectile proj;
-        private Rigidbody rbody;
         private bool init = false;
         private bool hitFast = false;
         private byte startDelay = 3;
@@ -65,15 +63,29 @@ namespace RandomAdditions
         private float RotRate = 50;
 
         private Rigidbody LockedTarget;
+        internal override void Pool()
+        {
+            GrabValues();
+        }
+
+        internal override void Fire(FireData fireData)
+        {
+            var pd = fireData.GetComponent<ModulePointDefense>();
+            if ((bool)pd)
+                Reset(pd.Target, pd.CanInterceptFast);
+            else
+                Reset();
+        }
 
         public void Reset(Rigidbody target = null, bool hitFast = false)
         {
             this.hitFast = hitFast;
             LockedTarget = target;
             timer = startDelay;
-            //Debug.Log("RandomAdditions: InterceptProjectile - RESET");
             init = false;
-            GrabValues();
+            var teamM = PB.project.Shooter;
+            if (teamM)
+                team = teamM.Team;
         }
         public void GrabValues()
         {
@@ -86,11 +98,6 @@ namespace RandomAdditions
             else
                 startDelay = (byte)StartDelay;
             trans = gameObject.transform;
-            rbody = gameObject.GetComponent<Rigidbody>();
-            proj = gameObject.GetComponent<Projectile>();
-            var teamM = proj.Shooter;
-            if (teamM)
-                team = teamM.Team;
             if (PointDefDamage <= 0)
             {
                 var dmg = gameObject.GetComponent<WeaponRound>();
@@ -122,14 +129,14 @@ namespace RandomAdditions
             if (!FindAndHome(out Vector3 posOut))
                 return false;
             Vector3 vec = posOut - trans.position;
-            Vector3 directed = Vector3.Cross(rbody.velocity, vec).normalized;
+            Vector3 directed = Vector3.Cross(PB.rbody.velocity, vec).normalized;
             float b = Vector3.Angle(seeking.transform.forward, vec);
             Quaternion quat = Quaternion.AngleAxis(Mathf.Min(RotRate * InterceptMultiplier * Time.deltaTime, b), directed);
-            rbody.velocity = quat * rbody.velocity;
+            PB.rbody.velocity = quat * PB.rbody.velocity;
             if (AimAtTarg)
             {
-                Quaternion rot = quat * rbody.rotation;
-                rbody.MoveRotation(rot);
+                Quaternion rot = quat * PB.rbody.rotation;
+                PB.rbody.MoveRotation(rot);
             }
             return true;
         }
@@ -141,7 +148,7 @@ namespace RandomAdditions
                 if (!GetOrTrack(out Rigidbody rbodyT))
                     return false;
 
-                float sqrDist = (rbodyT.position - rbody.position).sqrMagnitude;
+                float sqrDist = (rbodyT.position - PB.rbody.position).sqrMagnitude;
                 if (sqrDist < InterceptRange * InterceptRange)
                 {
                     try
@@ -153,8 +160,8 @@ namespace RandomAdditions
                             targ.GetHealth();
                         }
                         targ.TakeDamage(PointDefDamage, InterceptedExplode);
-                        ForceExplode(); //Blows up THE InterceptProjectile
-                        proj.Recycle(worldPosStays: false);
+                        ProjBase.ExplodeNoDamage(PB.project); //Blows up THE InterceptProjectile
+                        Recycle();
                     }
                     catch
                     {
@@ -186,7 +193,7 @@ namespace RandomAdditions
                     if (IsFlare && ConstantDistract)
                     {
                         if (UnityEngine.Random.Range(1, 100) <= DistractChance)
-                            DistractedProjectile.Distract(LockedTarget, rbody);
+                            DistractedProjectile.Distract(LockedTarget, PB.rbody);
                     }
                     update = IsFlare || !enabled;
                     updateBullet = true;
@@ -195,7 +202,7 @@ namespace RandomAdditions
                 timer--;
                 if (!LockedTarget.IsSleeping())
                 {
-                    if ((LockedTarget.position - rbody.position).sqrMagnitude > Range * Range)
+                    if ((LockedTarget.position - PB.rbody.position).sqrMagnitude > Range * Range)
                     {
                         LockedTarget = null;
                     }
@@ -209,9 +216,9 @@ namespace RandomAdditions
 
             if (updateBullet)
             {   // Get target from TankPointDefense
-                if ((bool)proj?.Shooter)
+                if ((bool)PB.project?.Shooter)
                 {
-                    var PD = proj.Shooter.GetComponent<TankPointDefense>();
+                    var PD = PB.project.Shooter.GetComponent<TankPointDefense>();
                     if ((bool)PD)
                     {
                         if (PD.GetFetchedTargetsNoScan(out List<Rigidbody> rbodys, !hitFast))
@@ -227,9 +234,9 @@ namespace RandomAdditions
                                     if (UnityEngine.Random.Range(1, 100) <= DistractChance)
                                     {
                                         if (DistractsMoreThanOne)
-                                            DistractedProjectile.DistractAll(rbodys, rbody);
+                                            DistractedProjectile.DistractAll(rbodys, PB.rbody);
                                         else
-                                            DistractedProjectile.Distract(rbodyCatch, rbody);
+                                            DistractedProjectile.Distract(rbodyCatch, PB.rbody);
 
                                     }
                                 }
@@ -251,9 +258,9 @@ namespace RandomAdditions
                         if (UnityEngine.Random.Range(1, 100) <= DistractChance)
                         {
                             if (DistractsMoreThanOne)
-                                DistractedProjectile.DistractAll(rbodys, rbody);
+                                DistractedProjectile.DistractAll(rbodys, PB.rbody);
                             else
-                                DistractedProjectile.Distract(rbodyCatch2, rbody);
+                                DistractedProjectile.Distract(rbodyCatch2, PB.rbody);
 
                         }
                     }
@@ -270,30 +277,5 @@ namespace RandomAdditions
             FindAndHome(out _);
         }
 
-        internal static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
-        public void ForceExplode()
-        {
-            Transform explodo = (Transform)explode.GetValue(proj); 
-            if ((bool)explodo)
-            {
-                var boom = explodo.GetComponent<Explosion>();
-                if ((bool)boom)
-                {
-                    Explosion boom2 = explodo.UnpooledSpawnWithLocalTransform(null, proj.trans.position, Quaternion.identity).GetComponent<Explosion>();
-                    if (boom2 != null)
-                    {
-                        boom2.gameObject.SetActive(true);
-                        boom2.m_EffectRadiusMaxStrength = 1;
-                        boom2.m_EffectRadius = 2;
-                        boom2.DoDamage = false;
-                    }
-                }
-                else
-                {
-                    Transform transCase = explodo.UnpooledSpawnWithLocalTransform(null, proj.trans.position, Quaternion.identity);
-                    transCase.gameObject.SetActive(true);
-                }
-            }
-        }
     }
 }

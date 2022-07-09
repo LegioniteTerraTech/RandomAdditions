@@ -63,8 +63,49 @@ namespace RandomAdditions
             gameObject.GetComponent<TankBlock>().AttachEvent.Unsubscribe(OnAttach);
         }
 
-
-
+        private ManDamage.DamageInfo newDMG;
+        public ManDamage.DamageInfo RecalcDamage(ref ManDamage.DamageInfo info)
+        {
+            newDMG = info.Clone();
+            if ((bool)info.Source)
+            {
+                if (ModifyAoEDamage && info.Source.GetComponent<Explosion>())
+                {
+                    newDMG.ApplyDamageMultiplier(ExplosionMultiplier);
+                }
+            }
+            if (UseMultipliers)
+            {
+                switch (newDMG.DamageType)
+                {
+                    case ManDamage.DamageType.Standard:
+                        newDMG.ApplyDamageMultiplier(Standard);
+                        break;
+                    case ManDamage.DamageType.Bullet:
+                        newDMG.ApplyDamageMultiplier(Bullet);
+                        break;
+                    case ManDamage.DamageType.Energy:
+                        newDMG.ApplyDamageMultiplier(Energy);
+                        break;
+                    case ManDamage.DamageType.Explosive:
+                        newDMG.ApplyDamageMultiplier(Explosive);
+                        break;
+                    case ManDamage.DamageType.Impact:
+                        newDMG.ApplyDamageMultiplier(Impact);
+                        break;
+                    case ManDamage.DamageType.Cutting:
+                        newDMG.ApplyDamageMultiplier(Cutting);
+                        break;
+                    case ManDamage.DamageType.Fire:
+                        newDMG.ApplyDamageMultiplier(Fire);
+                        break;
+                    case ManDamage.DamageType.Plasma:
+                        newDMG.ApplyDamageMultiplier(Plasma);
+                        break;
+                }
+            }
+            return newDMG;
+        }
 
 
 

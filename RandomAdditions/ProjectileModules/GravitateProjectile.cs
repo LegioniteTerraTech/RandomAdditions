@@ -3,7 +3,7 @@
 public class GravitateProjectile : RandomAdditions.GravitateProjectile { };
 namespace RandomAdditions
 {
-    public class GravitateProjectile : MonoBehaviour
+    public class GravitateProjectile : ExtProj
     {
         //A projectile that floats off (gravitationally-ish) in the specified direction with the specified force. 
         //  Can be used to create floating mines or balloon-like ordinances.
@@ -60,21 +60,19 @@ namespace RandomAdditions
         {
             get {
                 if (WorldUseTerrainOffset)
-                    return OffsetFromGround();
+                    return GetOffsetFromGround();
                 return WorldHeightBias;
             }
         }
         private float movementDampening = 10;
         private float heightModifier = 1;
         private bool hasFiredOnce = false;
-        private Rigidbody fetchedRBody;
         private Transform thisTrans;
 
 
-        public void OnPool()
+        internal override void Pool()
         {
             thisTrans = gameObject.transform;
-            fetchedRBody = gameObject.GetComponent<Rigidbody>();
             if (MovementDampening < 0.001)
             {
                 movementDampening = 1;
@@ -84,7 +82,7 @@ namespace RandomAdditions
                 movementDampening = MovementDampening;
             hasFiredOnce = true;
         }
-        public float OffsetFromGround()
+        public float GetOffsetFromGround()
         {
             float final_y;
             float input = thisTrans.position.y;
@@ -111,7 +109,7 @@ namespace RandomAdditions
         private void FixedUpdate()
         {
             if (!hasFiredOnce)
-                OnPool();
+                Pool();
 
             if (AffectedByWater && KickStart.isWaterModPresent)
             {
@@ -135,11 +133,11 @@ namespace RandomAdditions
 
             Vector3 directionalForce = WorldGravitateDirection.normalized * WorldGravitateStrength;
             directionalForce.y *= heightModifier;
-            fetchedRBody.AddForceAtPosition(directionalForce, thisTrans.TransformPoint(GravitateCenter), ForceMode.Impulse);
+            PB.rbody.AddForceAtPosition(directionalForce, thisTrans.TransformPoint(GravitateCenter), ForceMode.Impulse);
             
             if (WorldAugmentedDragEnabled)
             {
-                fetchedRBody.velocity *= 1f - WorldAugmentedDragStrength;
+                PB.rbody.velocity *= 1f - WorldAugmentedDragStrength;
             }
         }
     }

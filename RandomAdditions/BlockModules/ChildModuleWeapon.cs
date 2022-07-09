@@ -96,23 +96,6 @@ namespace RandomAdditions
                 return;
             }
 
-            MW = block.GetComponent<ModuleWeapon>();
-            if (!(bool)MW)
-            {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
-                enabled = false;
-                block.damage.SelfDestruct(0.5f);
-                return;
-            }
-            MWG = block.GetComponent<ModuleWeaponGun>();
-            if (!(bool)MWG)
-            {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
-                enabled = false;
-                block.damage.SelfDestruct(0.5f);
-                return;
-            }
-
             RACannonBarrel[] barrelsTemp = GetComponentsInChildren<RACannonBarrel>();
             foreach (var item in barrelsTemp)
             {
@@ -139,6 +122,26 @@ namespace RandomAdditions
             enabled = false;
         }
 
+        protected override void PostPool()
+        {
+            MW = block.GetComponent<ModuleWeapon>();
+            if (!(bool)MW)
+            {
+                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                enabled = false;
+                block.damage.SelfDestruct(0.5f);
+                return;
+            }
+            MWG = block.GetComponent<ModuleWeaponGun>();
+            if (!(bool)MWG)
+            {
+                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                enabled = false;
+                block.damage.SelfDestruct(0.5f);
+                return;
+            }
+
+        }
         public override void OnAttach()
         {
             enabled = true;
@@ -591,6 +594,7 @@ namespace RandomAdditions
 
         private AnimationState animState;
         private Animation recoilAnim;
+        private ManAnimette altAnim;
 
         private ChildModuleWeapon childWeap;
         private BeamWeapon beamWeap;
@@ -738,6 +742,10 @@ namespace RandomAdditions
                     recoilAnim.Play();
                 }
             }
+            if (altAnim)
+            {
+                altAnim.RunOnce();
+            }
             return true;
         }
 
@@ -827,6 +835,7 @@ namespace RandomAdditions
                     });
                 }
             }
+            altAnim = GetComponent<ManAnimette>();
         }
 
         private void OnSpawn()

@@ -181,6 +181,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Anim\AniAnalog.cs" />
+    <Compile Include="Anim\AniLinear.cs" />
+    <Compile Include="Anim\AnimetteScaler.cs" />
+    <Compile Include="Anim\ManAnimette.cs" />
+    <Compile Include="Anim\AnimetteMover.cs" />
     <Compile Include="BlockModules\ExtModule.cs" />
     <Compile Include="BlockModules\ModuleCustomShop.cs" />
     <Compile Include="BlockModules\ModuleHangar.cs" />
@@ -197,9 +202,12 @@
     <Compile Include="BlockModules\ModuleTrajectory.cs" />
     <Compile Include="BlockModules\ModuleUsageHint.cs" />
     <Compile Include="DebugRandAddi.cs" />
+    <Compile Include="Anim\AnimetteRotator.cs" />
+    <Compile Include="Anim\AnimetteNumber.cs" />
     <Compile Include="GlobalChanges\DistractedProjectile.cs" />
     <Compile Include="BlockModules\ModulePointDefense.cs" />
     <Compile Include="GlobalChanges\ExtGimbalControl.cs" />
+    <Compile Include="GlobalChanges\MirageDestraction.cs" />
     <Compile Include="GlobalChanges\TankDistraction.cs" />
     <Compile Include="BlockModules\ModuleReplace.cs" />
     <Compile Include="GlobalChanges\ProjectileHealth.cs" />
@@ -208,7 +216,11 @@
     <Compile Include="BlockModules\ModuleMoveGimbal.cs" />
     <Compile Include="OptimizeCake.cs" />
     <Compile Include="ProjectileCubeArray.cs" />
+    <Compile Include="ProjectileModules\ChildProjectile.cs" />
+    <Compile Include="ProjectileModules\ProxProjectile.cs" />
+    <Compile Include="ProjectileModules\PulseProjectile.cs" />
     <Compile Include="ProjectileModules\RaycastProjectile.cs" />
+    <Compile Include="ProjectileModules\ProjBase.cs" />
     <Compile Include="ProjectileModules\TrailProjectile.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <Compile Include="GlobalChanges\TankPointDefense.cs" />

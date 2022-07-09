@@ -27,6 +27,7 @@ namespace RandomAdditions
         private Transform HangarEntry;
         private Transform HangarExit;
         private Transform HangarInside;
+        private Transform HangarInsideExit;
         private ModuleTractorBeam TracBeam;
         private ModuleEnergy energyMan;
                                                 // If there's a ModuleTractorBeam in the same block, this will be able to queue 
@@ -112,6 +113,17 @@ namespace RandomAdditions
                 HangarInside = this.transform;
                 LogHandler.ThrowWarning("RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Inside\" for the hangar inside!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
+
+            try
+            {
+                HangarInsideExit = KickStart.HeavyObjectSearch(transform, "_InsideExit");
+            }
+            catch { }
+            if (HangarInsideExit == null)
+            {
+                HangarInsideExit = HangarInside;
+            }
+
             TracBeam = gameObject.GetComponent<ModuleTractorBeam>();
             if (ChargeStoredTechsRate >= -1 || RepairStoredTechsRate > 0)
             {

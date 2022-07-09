@@ -22,10 +22,8 @@ namespace RandomAdditions
     /// <summary>
     /// Uses a LineRenderer much like BeamWeapon but pulsed instead.
     /// </summary>
-    public class RaycastProjectile : MonoBehaviour
+    public class RaycastProjectile : ExtProj
     {
-        private Rigidbody rbody;
-        private Projectile project;
         private Vector3 launchVelo = Vector3.zero;
 
         public int PierceDepth = 0;
@@ -40,25 +38,25 @@ namespace RandomAdditions
         private static RaycastHit[] targHit = new RaycastHit[32];
 
 
-        public void Fire(Tank shooter)
+        internal override void Fire(FireData fireData)
         {
-            rbody.useGravity = false;
-            rbody.angularVelocity = Vector3.zero;
-            if (shooter)
+            PB.rbody.useGravity = false;
+            PB.rbody.angularVelocity = Vector3.zero;
+            if (PB.shooter)
             {
                 Collider col = GetComponentInChildren<Collider>();
                 if (col)
                     col.enabled = false;
                 fadeCurrent = 1;
 
-                if (shooter.rbody)
+                if (PB.shooter.rbody)
                 {
-                    transform.rotation = Quaternion.LookRotation((rbody.velocity - shooter.rbody.velocity).normalized);
-                    launchVelo = shooter.rbody.velocity;
+                    transform.rotation = Quaternion.LookRotation((PB.rbody.velocity - PB.shooter.rbody.velocity).normalized);
+                    launchVelo = PB.shooter.rbody.velocity;
                 }
                 else
                     launchVelo = Vector3.zero;
-                rbody.velocity = launchVelo;
+                PB.rbody.velocity = launchVelo;
 
 
                 float distEnd = MaxRange;
@@ -76,7 +74,7 @@ namespace RandomAdditions
                             if (hit.collider.gameObject.layer == Globals.inst.layerShieldBulletsFilter)
                             {
                                 Visible vis = ManVisible.inst.FindVisible(hit.collider);
-                                if (vis?.block?.tank && !vis.block.tank.IsEnemy(shooter.Team))
+                                if (vis?.block?.tank && !vis.block.tank.IsEnemy(PB.shooter.Team))
                                     continue;
                             }
                             hitIndex = step;
@@ -88,7 +86,7 @@ namespace RandomAdditions
                         hit = targHit[hitIndex];
                         Damageable toDamage = hit.collider.GetComponentInParents<Damageable>(false);
                         if (toDamage)
-                            project.HandleCollision(toDamage, hit.point, hit.collider, false);
+                            PB.project.HandleCollision(toDamage, hit.point, hit.collider, false);
                     }
                 }
                 else
@@ -103,7 +101,7 @@ namespace RandomAdditions
                             if (layerHit == Globals.inst.layerShieldBulletsFilter)
                             {
                                 Visible vis = ManVisible.inst.FindVisible(hit.collider);
-                                if (vis?.block?.tank && !vis.block.tank.IsEnemy(shooter.Team))
+                                if (vis?.block?.tank && !vis.block.tank.IsEnemy(PB.shooter.Team))
                                     continue;
                             }
                             if (hit.collider.GetComponent<TerrainCollider>())
@@ -113,7 +111,7 @@ namespace RandomAdditions
                                 if (layerHit == Globals.inst.layerTank || layerHit == Globals.inst.layerTankIgnoreTerrain)
                                 {
                                     Visible vis = ManVisible.inst.FindVisible(hit.collider);
-                                    if (vis?.block?.tank && !vis.block.tank.IsEnemy(shooter.Team))
+                                    if (vis?.block?.tank && !vis.block.tank.IsEnemy(PB.shooter.Team))
                                         distEnd = hit.distance;
                                 }
                             }
@@ -135,7 +133,7 @@ namespace RandomAdditions
                         {
                             foreach (KeyValuePair<Damageable, RaycastHit> toDamage in damaged)
                             {
-                                project.HandleCollision(toDamage.Key, toDamage.Value.point, toDamage.Value.collider, false);
+                                PB.project.HandleCollision(toDamage.Key, toDamage.Value.point, toDamage.Value.collider, false);
                             }
                         }
                         else
@@ -144,7 +142,7 @@ namespace RandomAdditions
                             int max = PierceDepth;
                             foreach (KeyValuePair<Damageable, RaycastHit> toDamage in damagedL)
                             {
-                                project.HandleCollision(toDamage.Key, toDamage.Value.point, toDamage.Value.collider, false);
+                                PB.project.HandleCollision(toDamage.Key, toDamage.Value.point, toDamage.Value.collider, false);
                                 max--;
                                 if (max == 0)
                                     break;
@@ -172,7 +170,7 @@ namespace RandomAdditions
         }
         private void FixedUpdate()
         {
-            rbody.velocity = launchVelo;
+            PB.rbody.velocity = launchVelo;
         }
 
         private void Update()
@@ -203,10 +201,9 @@ namespace RandomAdditions
             }
         }
 
-        private void OnPool()
+        internal override void Pool()
         {
-            rbody = GetComponent<Rigidbody>();
-            project = GetComponent<Projectile>();
+            PB.rbody = GetComponent<Rigidbody>();
             line = GetComponent<LineRenderer>();
             SmokeTrail ST = GetComponent<SmokeTrail>();
             if (FadeTime <= 0)

@@ -134,7 +134,7 @@ namespace RandomAdditions
             }
 
         }
-        internal virtual void UpdateAimAngleX(float rotThisFrame)
+        internal void UpdateAimAngleX(float rotThisFrame)
         {
             Vector3 driveHeading;
             Vector3 driveHeadingR;

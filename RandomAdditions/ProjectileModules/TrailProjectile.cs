@@ -13,18 +13,17 @@ namespace RandomAdditions
     /// <summary>
     /// A special type of projectile that contines dealing damage based on a provided TrailRenderer
     /// </summary>
-    public class TrailProjectile : MonoBehaviour
+    public class TrailProjectile : ExtProj
     {
         private Collider[] cols;
-        private Rigidbody rbody;
         private TrailRenderer trail;
         private bool hasEmiss = false;
         private ParticleSystem[] emiss;
         private bool wasGrav = false;
 
-        public void Fire()
+        internal override void Fire(FireData fireData)
         {
-            rbody.useGravity = wasGrav;
+            PB.rbody.useGravity = wasGrav;
             if (hasEmiss)
                 foreach (var emis in emiss)
                     emis.SetEmissionEnabled(true);
@@ -39,8 +38,14 @@ namespace RandomAdditions
                 col.enabled = true;
         }
 
-        public void HandleCollision()
+        internal override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
+            if (ForceDestroy)
+            {
+                //__instance.trans.position = hitPoint;
+                ForceDestroy = false;
+            }
+
             if (trail)
                 trail.emitting = false;
             foreach (var col in cols)
@@ -49,15 +54,15 @@ namespace RandomAdditions
                 foreach (var emis in emiss)
                     emis.SetEmissionEnabled(false);
 
-            rbody.useGravity = false;
-            rbody.velocity = Vector3.zero;
+            PB.rbody.useGravity = false;
+            PB.rbody.velocity = Vector3.zero;
         }
 
         private void OnPool()
         {
             cols = GetComponentsInChildren<Collider>();
-            rbody = GetComponent<Rigidbody>();
-            wasGrav = rbody.useGravity;
+            PB.rbody = GetComponent<Rigidbody>();
+            wasGrav = PB.rbody.useGravity;
             trail = GetComponent<TrailRenderer>();
             var particles = GetComponentsInChildren<ParticleSystem>();
             if (particles != null)

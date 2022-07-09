@@ -48,7 +48,7 @@ namespace RandomAdditions
             {
                 if (origin == __result)
                     return;
-                TankDistraction TD = __instance.GetComponent<TankDistraction>();
+                TankDestraction TD = __instance.GetComponent<TankDestraction>();
                 if (TD)
                 {
                     __result = TD.GetPosDistract(__result);
@@ -711,18 +711,9 @@ namespace RandomAdditions
         [HarmonyPatch("PrePool")]//On Creation
         private class PatchProjectilePre
         {
-            static FieldInfo collodo = typeof(Projectile).GetField("m_Collider", BindingFlags.NonPublic | BindingFlags.Instance);
             private static void Postfix(Projectile __instance)
             {
-                //Debug.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
-                var ModuleCheck = __instance.gameObject.GetComponent<LanceProjectile>();
-                if (ModuleCheck != null)
-                {
-                    Collider fetchedCollider = (Collider)collodo.GetValue(__instance);
-                    fetchedCollider.isTrigger = true;// Make it not collide
-                    ModuleCheck.project = __instance;
-                    DebugRandAddi.Log("RandomAdditions: Overwrote Collision");
-                }
+                ProjBase.PrePoolTryApplyThis(__instance);
                 var pHP = __instance.gameObject.GetComponent<ProjectileHealth>();
                 if (!(bool)pHP)
                 {
@@ -740,18 +731,11 @@ namespace RandomAdditions
             private static void Postfix(Projectile __instance)
             {
                 //Debug.Log("RandomAdditions: Patched Projectile OnPool(WeightedProjectile)");
-                var ModuleCheck = __instance.gameObject.GetComponent<WeightedProjectile>();
-                if (ModuleCheck != null)
+                if (ProjBase.PrePoolTryApplyThis(__instance))
                 {
-                    ModuleCheck.SetProjectileMass();
-                    //Debug.Log("RandomAdditions: Overwrote Mass - This enables physics collisions and will make the projectile more scary.");
+                    var ModuleCheck = __instance.gameObject.GetComponent<ProjBase>();
+                    ModuleCheck.Pool(__instance);
                 }
-                /*
-                var ModuleCheckI = __instance.gameObject.GetComponent<InterceptProjectile>();
-                if (ModuleCheckI != null)
-                {   // Handle intercept
-                    __instance.gameObject.layer = Globals.inst.layerTank;
-                }*/
             }
         }
 
@@ -776,6 +760,9 @@ namespace RandomAdditions
                 var health = __instance.GetComponent<ProjectileHealth>();
                 if (health)
                     health.Reset();
+                var ModuleCheck = __instance.GetComponent<ProjBase>();
+                if (ModuleCheck)
+                    ModuleCheck.OnWorldRemoval();
             }
         }
         /*
@@ -797,56 +784,10 @@ namespace RandomAdditions
             private static void Prefix(Projectile __instance, ref Damageable damageable, ref Vector3 hitPoint, ref Collider otherCollider, ref bool ForceDestroy)//
             {
                 //Debug.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile & OHKOProjectile)");
-                var ModuleCheckR = __instance.GetComponent<TrailProjectile>();
+                var ModuleCheckR = __instance.GetComponent<ProjBase>();
                 if (ModuleCheckR != null)
                 {
-                    ModuleCheckR.HandleCollision();
-                    if (ForceDestroy)
-                    {
-                        __instance.trans.position = hitPoint;
-                        ForceDestroy = false;
-                    }
-                }
-                var ModuleCheckS = __instance.GetComponent<KeepSeekingProjectile>();
-                if (ModuleCheckS != null)
-                {
-                    var validation = __instance.GetComponent<SeekingProjectile>();
-                    if (validation)
-                    {
-                        ModuleCheckS.wasThisSeeking = validation.enabled; //Keep going!
-                    }
-                }
-                var ModuleCheck = __instance.GetComponent<OHKOProjectile>();
-                if (ModuleCheck != null && (ManNetwork.IsHost || !ManNetwork.IsNetworked))
-                {
-                    Damageable dmg = otherCollider.GetComponentInParent<Damageable>();
-                    if ((bool)dmg)
-                    {
-                        if (!ModuleCheck.InstaKill && !ModuleCheck.GuaranteedKillOnLowHP)
-                            return;
-                        if (__instance.CanDamageBlock(dmg))
-                        {
-                            //Debug.Log("RandomAdditions: queued block death");
-                            try
-                            {
-                                if (ModuleCheck.InstaKill || (dmg.Health <= 0 && ModuleCheck.GuaranteedKillOnLowHP))
-                                {
-                                    var validation = dmg.GetComponent<TankBlock>();
-                                    OHKOInsurance.TryQueueUnstoppableDeath(validation);
-                                    //Debug.Log("RandomAdditions: omae wa - mou shindeiru");
-                                    return;
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                DebugRandAddi.Log("RandomAdditions: Error on applying OHKOInsurance! " + e);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    //Debug.Log("RandomAdditions: let block live");
+                    ModuleCheckR.OnImpact(otherCollider, damageable, hitPoint, ref ForceDestroy);
                 }
             }
         }
@@ -879,63 +820,24 @@ namespace RandomAdditions
         [HarmonyPatch("Fire")]//On Fire
         private class PatchProjectileFire
         {
-            private static void Postfix(Projectile __instance, ref FireData fireData, ref Tank shooter)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            private static void Postfix(Projectile __instance, ref FireData fireData, ref ModuleWeapon weapon, ref Tank shooter)
             {
-                //Debug.Log("RandomAdditions: Patched Projectile Fire(WeightedProjectile)");
-
-                var ModuleCheck0 = __instance.gameObject.GetComponent<RaycastProjectile>();
-                if (ModuleCheck0 != null)
-                {
-                    ModuleCheck0.Fire(shooter);
-                    return;
-                }
-
-                var Split = __instance.GetComponent<SpiltProjectile>();
-                if ((bool)Split)
-                {
-                    Split.Reset(__instance);
-                }
-                var ModuleCheck3 = __instance.gameObject.GetComponent<TrailProjectile>();
-                if (ModuleCheck3 != null)
-                {
-                    ModuleCheck3.Fire();
-                }
-
-                var ModuleCheckI = __instance.GetComponent<InterceptProjectile>();
-                if (ModuleCheckI != null)
-                {
-                    var pd = fireData.GetComponent<ModulePointDefense>();
-                    if ((bool)pd)
-                        ModuleCheckI.Reset(pd.Target, pd.CanInterceptFast);
-                    else
-                        ModuleCheckI.Reset();
-                }
-                var ModuleCheck = __instance.GetComponent<WeightedProjectile>();
+                var ModuleCheck = __instance.gameObject.GetComponent<ProjBase>();
                 if (ModuleCheck != null)
                 {
-                    if (shooter != null && ModuleCheck.CustomGravity && ModuleCheck.CustomGravityFractionSpeed)
-                    {
-                        Vector3 final = ((__instance.rbody.velocity - shooter.rbody.velocity) * ModuleCheck.GravityAndSpeedScale) + shooter.rbody.velocity;
-                        DebugRandAddi.Log("RandomAdditions: Scaled WeightedProjectile Speed from " + __instance.rbody.velocity + " to " + final);
-                        __instance.rbody.velocity = final;
-                    }
-                }
-                var ModuleCheck2 = __instance.GetComponent<TorpedoProjectile>();
-                if (ModuleCheck2 != null)
-                {
-                    ModuleCheck2.OnFire();
+                    ModuleCheck.Fire(fireData, shooter, weapon);
                 }
 
                 float projSped = fireData.m_MuzzleVelocity;
                 if (ProjectileHealth.IsCheaty(projSped))
                     ProjectileManager.HandleCheaty(__instance);
 
-                var ModuleCheck4 = __instance.GetComponent<LaserProjectile>();
-                var ModuleCheck5 = __instance.GetComponent<MissileProjectile>();
-                if (!ModuleCheck5 && !ModuleCheck4)
+                var ModuleCheck2 = __instance.GetComponent<LaserProjectile>();
+                var ModuleCheck3 = __instance.GetComponent<MissileProjectile>();
+                if (!ModuleCheck3 && !ModuleCheck2)
                 {
-                    var ModuleCheck6 = __instance.GetComponent<ProjectileHealth>();
-                    if (ModuleCheck6 != null)
+                    var ModuleCheck4 = __instance.GetComponent<ProjectileHealth>();
+                    if (ModuleCheck4 != null)
                     {
 
                         if (ProjectileHealth.IsFast(projSped))
@@ -946,7 +848,7 @@ namespace RandomAdditions
                         else
                         {
                             //Debug.Log("RandomAdditions: ASSERT - Abberation in Projectile!  " + __instance.gameObject.name);
-                            UnityEngine.Object.Destroy(ModuleCheck6);
+                            UnityEngine.Object.Destroy(ModuleCheck4);
                         }
                     }
                     else
@@ -988,21 +890,7 @@ namespace RandomAdditions
                     {
                         if (modifPresent.DenyExplosion)
                         {   // Prevent explosion from triggering
-                            Transform explodo = (Transform)InterceptProjectile.explode.GetValue(__instance);
-                            if ((bool)explodo)
-                            {
-                                var boom = explodo.GetComponent<Explosion>();
-                                if ((bool)boom)
-                                {
-                                    Explosion boom2 = explodo.UnpooledSpawnWithLocalTransform(null, __instance.trans.position, Quaternion.identity).GetComponent<Explosion>();
-                                    if ((bool)boom2)
-                                    {
-                                        boom2.gameObject.SetActive(true);
-                                        boom2.m_EffectRadius = 2;
-                                        boom2.m_EffectRadiusMaxStrength = 1;
-                                    }
-                                }
-                            }
+                            ProjBase.ExplodeNoDamage(__instance);
                             return false;
                         }
                     }
@@ -1054,7 +942,7 @@ namespace RandomAdditions
             private static bool Prefix(SeekingProjectile __instance, ref Vector3 __result)
             {
                 Visible vis = (Visible)targ.Invoke(__instance, new object[] { });
-                TankDistraction ModuleCheck = vis.GetComponent<TankDistraction>();
+                TankDestraction ModuleCheck = vis.GetComponent<TankDestraction>();
                 if (ModuleCheck != null)
                 {
                     __result = ModuleCheck.GetPosDistract(__result);
@@ -1149,43 +1037,7 @@ namespace RandomAdditions
                     var multi = __instance.GetComponent<ModuleReinforced>();
                     if (multi != null)
                     {
-                        if ((bool)info.Source)
-                        {
-                            if (multi.ModifyAoEDamage && info.Source.GetComponent<Explosion>())
-                            {
-                                info.ApplyDamageMultiplier(multi.ExplosionMultiplier);
-                            }
-                        }
-                        if (multi.UseMultipliers)
-                        {
-                            switch (info.DamageType)
-                            {
-                                case ManDamage.DamageType.Standard:
-                                    info.ApplyDamageMultiplier(multi.Standard);
-                                    return;
-                                case ManDamage.DamageType.Bullet:
-                                    info.ApplyDamageMultiplier(multi.Bullet);
-                                    return;
-                                case ManDamage.DamageType.Energy:
-                                    info.ApplyDamageMultiplier(multi.Energy);
-                                    return;
-                                case ManDamage.DamageType.Explosive:
-                                    info.ApplyDamageMultiplier(multi.Explosive);
-                                    return;
-                                case ManDamage.DamageType.Impact:
-                                    info.ApplyDamageMultiplier(multi.Impact);
-                                    return;
-                                case ManDamage.DamageType.Cutting:
-                                    info.ApplyDamageMultiplier(multi.Cutting);
-                                    return;
-                                case ManDamage.DamageType.Fire:
-                                    info.ApplyDamageMultiplier(multi.Fire);
-                                    return;
-                                case ManDamage.DamageType.Plasma:
-                                    info.ApplyDamageMultiplier(multi.Plasma);
-                                    return;
-                            }
-                        }
+                        info = multi.RecalcDamage(ref info);
                     }
                 }
                 catch { }

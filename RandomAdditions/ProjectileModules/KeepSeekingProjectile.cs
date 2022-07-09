@@ -3,7 +3,7 @@
 public class KeepSeekingProjectile : RandomAdditions.KeepSeekingProjectile { };
 namespace RandomAdditions
 {
-    public class KeepSeekingProjectile : MonoBehaviour
+    public class KeepSeekingProjectile : ExtProj
     {
         // a module that makes sure SeekingProjectile stays active even on ground collision
         /*
@@ -13,5 +13,14 @@ namespace RandomAdditions
          */
         public bool KeepBoosting = false;
         public bool wasThisSeeking = false;
+
+        internal override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
+        {
+            var validation = PB.GetComponent<SeekingProjectile>();
+            if (validation)
+            {
+                wasThisSeeking = validation.enabled; //Keep going!
+            }
+        }
     }
 }

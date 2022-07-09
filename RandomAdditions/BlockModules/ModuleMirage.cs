@@ -22,7 +22,7 @@ namespace RandomAdditions
     */
     public class ModuleMirage : ExtModule
     {
-        internal TankDistraction distraction;
+        internal MirageDestraction distraction;
 
         public MirageType MirageType = MirageType.Circle;
         public float MiragePower = 10;
@@ -31,13 +31,13 @@ namespace RandomAdditions
         {
             // MP not supported correctly rn
             if (!ManNetwork.IsNetworked)
-                TankDistraction.HandleAddition(tank, this);
+                MirageDestraction.HandleAddition(tank, this);
         }
         public override void OnDetach()
         {
             // MP not supported correctly rn
             if (!ManNetwork.IsNetworked)
-                TankDistraction.HandleRemoval(tank, this);
+                MirageDestraction.HandleRemoval(tank, this);
         }
     }
     public enum MirageType

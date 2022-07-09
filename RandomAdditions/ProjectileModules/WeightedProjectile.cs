@@ -3,7 +3,7 @@
 public class WeightedProjectile : RandomAdditions.WeightedProjectile { };
 namespace RandomAdditions
 {
-    public class WeightedProjectile : MonoBehaviour
+    public class WeightedProjectile : ExtProj
     {
         /* Throw this within m_BulletPrefab
         "RandomAdditions.WeightedProjectile":{ // launch bowling balls but they actually have proper weight
@@ -21,16 +21,12 @@ namespace RandomAdditions
         public float GravityAndSpeedScale = 1.0f;
 
 
-        private Rigidbody fetchedRBody;
         private Transform thisTrans;
-        private Projectile fetchedProjectile;
         private bool hasFiredOnce = false;
 
         public void FirstUpdate()
         {
             thisTrans = gameObject.transform;
-            fetchedRBody = gameObject.GetComponent<Rigidbody>();
-            fetchedProjectile = gameObject.GetComponent<Projectile>();
             hasFiredOnce = true;
             //Debug.Log("RandomAdditions: Launched WeightedProjectile on " + gameObject.name);
         }
@@ -42,8 +38,8 @@ namespace RandomAdditions
             if (CustomGravity)
                 ForceProjectileGrav();
         }
-        
-        public void SetProjectileMass()
+
+        internal override void Pool()
         {
             try 
             { 
@@ -52,10 +48,26 @@ namespace RandomAdditions
             }
             catch { DebugRandAddi.Log("RandomAdditions: Could not set host projectile mass!"); }
         }
+
+        internal override void Fire(FireData fireData)
+        {
+            if (PB.shooter != null && CustomGravity && CustomGravityFractionSpeed)
+            {
+                Vector3 final = ((PB.rbody.velocity - PB.shooter.rbody.velocity) * GravityAndSpeedScale) + PB.shooter.rbody.velocity;
+                DebugRandAddi.Log("RandomAdditions: Scaled WeightedProjectile Speed from " + PB.rbody.velocity + " to " + final);
+                PB.rbody.velocity = final;
+            }
+        }
+
         public void ForceProjectileGrav()
         {
-            Vector3 grav = Physics.gravity * fetchedProjectile.GetGravityScale() * fetchedRBody.mass;
-            fetchedRBody.AddForceAtPosition(grav * GravityAndSpeedScale - grav, fetchedRBody.centerOfMass);
+            if (!PB)
+                LogHandler.ThrowWarning("PROJECTILE BASE IS NULL");
+            else
+            {
+                Vector3 grav = Physics.gravity * PB.project.GetGravityScale() * PB.rbody.mass;
+                PB.rbody.AddForceAtPosition(grav * GravityAndSpeedScale - grav, PB.rbody.centerOfMass);
+            }
         }
     }
 }
