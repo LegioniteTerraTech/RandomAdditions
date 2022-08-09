@@ -52,7 +52,7 @@ namespace RandomAdditions
             }
         }
 
-        internal override void Fire(FireData fireData)
+        public override void Fire(FireData fireData)
         {
             if (PB.launcher?.block)
             {
@@ -63,7 +63,7 @@ namespace RandomAdditions
                 Enable(false);
             }
         }
-        internal override void WorldRemoval()
+        public override void WorldRemoval()
         {
             Enable(false);
         }

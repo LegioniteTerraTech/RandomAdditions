@@ -71,9 +71,9 @@ namespace RandomAdditions
             }
             if (currentTank.IsNotNull())
             {
-                if (currentTank.GetComponent<GlobalClock.TimeTank>())
+                if (currentTank.GetComponent<RandomTank>())
                 {
-                    if (currentTank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
+                    if (currentTank.GetComponent<RandomTank>().DisplayTimeTank)
                     {
                         if (!isCurrentlyOpen)
                         {
@@ -94,9 +94,9 @@ namespace RandomAdditions
                 currentTime = Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay;
                 if (currentTank.IsNotNull())
                 {
-                    if (currentTank.GetComponent<GlobalClock.TimeTank>())
+                    if (currentTank.GetComponent<RandomTank>())
                     {
-                        if (currentTank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank)
+                        if (currentTank.GetComponent<RandomTank>().DisplayTimeTank)
                         {
                             if (!isCurrentlyOpen)
                             {
@@ -189,7 +189,7 @@ namespace RandomAdditions
         public static void CloseClockWindow()
         {
             isCurrentlyOpen = false;
-            KickStart.ReleaseControl(GUIClockID);
+            KickStart.ReleaseControl();
             GUIWindow.SetActive(false);
         }
     }

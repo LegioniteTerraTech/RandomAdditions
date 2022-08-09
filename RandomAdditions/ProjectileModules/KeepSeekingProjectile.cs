@@ -14,7 +14,7 @@ namespace RandomAdditions
         public bool KeepBoosting = false;
         public bool wasThisSeeking = false;
 
-        internal override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
+        public override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
             var validation = PB.GetComponent<SeekingProjectile>();
             if (validation)

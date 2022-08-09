@@ -122,7 +122,6 @@ namespace RandomAdditions
         public bool SetClock()
         {
             // Update to global time.  This is done by the GlobalClock
-            var thisInst = gameObject.GetComponent<ModuleClock>();
 
             if (!IsAttached)
                 return false;
@@ -132,9 +131,9 @@ namespace RandomAdditions
                 try
                 {
                     float timeAngle = ((float)GlobalClock.LastHour / (float)24) * 360;
-                    Vector3 inTo = thisInst.TimeObject.localEulerAngles;
+                    Vector3 inTo = TimeObject.localEulerAngles;
                     inTo.z = timeAngle;
-                    thisInst.TimeObject.localEulerAngles = inTo;
+                    TimeObject.localEulerAngles = inTo;
                     DebugRandAddi.Info("RandomAdditions: Set clock hand to " + inTo.z);
                 }
                 catch
@@ -147,7 +146,7 @@ namespace RandomAdditions
             {   // Load a little HUD window with the time
                 if (tank.IsNotNull())
                 {
-                    tank.GetComponent<GlobalClock.TimeTank>().DisplayTimeTank = true;
+                    tank.GetComponent<RandomTank>().DisplayTimeTank = true;
                 }
             }
             /*

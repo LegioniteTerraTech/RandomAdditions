@@ -529,7 +529,7 @@ namespace RandomAdditions
         }
         private static void CloseGUI()
         {
-            KickStart.ReleaseControl(GUIJumperID);
+            KickStart.ReleaseControl();
             GUIWindow.SetActive(false);
             playerSelected = null;
         }

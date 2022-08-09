@@ -26,9 +26,12 @@ namespace RandomAdditions
         private Vector3 addedThrustPosition;
         private Vector3 addedThrustDirection;
         private Transform thisTrans;
+        private bool runAnim = false;
         private ParticleSystem ps;
+        private Spinner spin;
+        private AnimetteController anim;
 
-        internal override void Pool()
+        public override void Pool()
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
             {
@@ -50,9 +53,11 @@ namespace RandomAdditions
                     addedThrustDirection = Vector3.forward;
                     DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " does not have any previous effectors or thrust transforms!  Defaulting to the center of the projectile!  \nAdd a \"_subProp\" to your projectile's JSON!");
                 }
+                spin = GetComponent<Spinner>();
+                anim = FetchAnimette("_subProp", AnimCondition.TorpedoProjectile);
             }
         }
-        internal override void Fire(FireData fireData)
+        public override void Fire(FireData fireData)
         {
             killThrust = false;
         }
@@ -71,8 +76,7 @@ namespace RandomAdditions
                     {
                         //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
                         PB.rbody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
-                        if (ps && !ps.isPlaying)
-                            ps.Play(false);
+                        runAnim = false;
                     }
                     else if (ps && ps.isPlaying)
                         ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
@@ -83,6 +87,34 @@ namespace RandomAdditions
                     if (ps && ps.isPlaying)
                         ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
                 }
+            }
+        }
+
+        public override void SlowUpdate()
+        {
+            if (runAnim)
+            {
+                if (ps)
+                {
+                    if (!ps.isPlaying)
+                        ps.Play(false);
+                }
+                if (spin)
+                    spin.SetAutoSpin(true);
+                if (anim)
+                    anim.Run();
+            }
+            else
+            {
+                if (ps)
+                {
+                    if (ps.isPlaying)
+                        ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                }
+                if (spin)
+                    spin.SetAutoSpin(false);
+                if (anim)
+                    anim.Stop();
             }
         }
     }

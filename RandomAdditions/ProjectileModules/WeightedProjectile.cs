@@ -39,7 +39,7 @@ namespace RandomAdditions
                 ForceProjectileGrav();
         }
 
-        internal override void Pool()
+        public override void Pool()
         {
             try 
             { 
@@ -49,7 +49,7 @@ namespace RandomAdditions
             catch { DebugRandAddi.Log("RandomAdditions: Could not set host projectile mass!"); }
         }
 
-        internal override void Fire(FireData fireData)
+        public override void Fire(FireData fireData)
         {
             if (PB.shooter != null && CustomGravity && CustomGravityFractionSpeed)
             {

@@ -48,6 +48,10 @@
     <Reference Include="LocalCorpAudioExt">
       <HintPath>..\..\..\..\Desktop\Advanced AI\Assets\Mods\Random Additions\LocalCorpAudioExt.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -183,39 +187,50 @@
   <ItemGroup>
     <Compile Include="Anim\AniAnalog.cs" />
     <Compile Include="Anim\AniLinear.cs" />
+    <Compile Include="Anim\AnimetteManager.cs" />
     <Compile Include="Anim\AnimetteScaler.cs" />
-    <Compile Include="Anim\ManAnimette.cs" />
+    <Compile Include="Anim\AnimetteController.cs" />
     <Compile Include="Anim\AnimetteMover.cs" />
-    <Compile Include="BlockModules\ExtModule.cs" />
-    <Compile Include="BlockModules\ModuleCustomShop.cs" />
-    <Compile Include="BlockModules\ModuleHangar.cs" />
-    <Compile Include="BlockModules\ModuleHardpoint.cs" />
-    <Compile Include="BlockModules\ModuleJumpDrive.cs" />
-    <Compile Include="BlockModules\ModuleLoneMove.cs" />
-    <Compile Include="BlockModules\ChildModuleWeapon.cs" />
-    <Compile Include="BlockModules\ModuleMirage.cs" />
-    <Compile Include="BlockModules\ModuleModeSwitch.cs" />
-    <Compile Include="BlockModules\ModuleOmniCore.cs" />
-    <Compile Include="BlockModules\ModuleRepairAimer.cs" />
-    <Compile Include="BlockModules\ModuleSimpleLegs.cs" />
-    <Compile Include="BlockModules\ModuleTractorBeam.cs" />
-    <Compile Include="BlockModules\ModuleTrajectory.cs" />
-    <Compile Include="BlockModules\ModuleUsageHint.cs" />
+    <Compile Include="MultiBlockModules\ModuleTechTether.cs" />
+    <Compile Include="MultiBlockModules\ModuleRailwayController.cs" />
+    <Compile Include="ReliantBlockModules\ExtModule.cs" />
+    <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleJumpDrive.cs" />
+    <Compile Include="ReliantBlockModules\ModuleLoneMove.cs" />
+    <Compile Include="ReliantBlockModules\ChildModuleWeapon.cs" />
+    <Compile Include="ReliantBlockModules\ModuleClicker.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleMirage.cs" />
+    <Compile Include="ReliantBlockModules\ModuleModeSwitch.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleOmniCore.cs" />
+    <Compile Include="MultiBlockModules\ModuleRailwaySegment.cs" />
+    <Compile Include="ReliantBlockModules\ModuleRepairAimer.cs" />
+    <Compile Include="ReliantBlockModules\ModuleSimpleLegs.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleTileLoader.cs" />
+    <Compile Include="ReliantBlockModules\ModuleTractorBeam.cs" />
+    <Compile Include="ReliantBlockModules\ModuleTrajectory.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleUsageHint.cs" />
     <Compile Include="DebugRandAddi.cs" />
     <Compile Include="Anim\AnimetteRotator.cs" />
     <Compile Include="Anim\AnimetteNumber.cs" />
-    <Compile Include="GlobalChanges\DistractedProjectile.cs" />
-    <Compile Include="BlockModules\ModulePointDefense.cs" />
     <Compile Include="GlobalChanges\ExtGimbalControl.cs" />
+    <Compile Include="GlobalChanges\ManExtSounds.cs" />
     <Compile Include="GlobalChanges\MirageDestraction.cs" />
+    <Compile Include="GlobalChanges\RandomTank.cs" />
     <Compile Include="GlobalChanges\TankDistraction.cs" />
-    <Compile Include="BlockModules\ModuleReplace.cs" />
-    <Compile Include="GlobalChanges\ProjectileHealth.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleReplace.cs" />
+    <Compile Include="GlobalChanges\ManTileLoader.cs" />
+    <Compile Include="JSONRandAddModules.cs" />
     <Compile Include="KickStartRandomAdditions.cs" />
     <Compile Include="LazyRender.cs" />
-    <Compile Include="BlockModules\ModuleMoveGimbal.cs" />
+    <Compile Include="ReliantBlockModules\ModuleMoveGimbal.cs" />
     <Compile Include="OptimizeCake.cs" />
-    <Compile Include="ProjectileCubeArray.cs" />
+    <Compile Include="PatchBatch\GlobalPatches.cs" />
+    <Compile Include="PatchBatch\MassPatcher.cs" />
+    <Compile Include="PatchBatch\ModulePatches.cs" />
+    <Compile Include="PatchBatch\AllProjectilePatches.cs" />
+    <Compile Include="PatchBatch\AllTankPatches.cs" />
     <Compile Include="ProjectileModules\ChildProjectile.cs" />
     <Compile Include="ProjectileModules\ProxProjectile.cs" />
     <Compile Include="ProjectileModules\PulseProjectile.cs" />
@@ -223,36 +238,32 @@
     <Compile Include="ProjectileModules\ProjBase.cs" />
     <Compile Include="ProjectileModules\TrailProjectile.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
-    <Compile Include="GlobalChanges\TankPointDefense.cs" />
     <None Include="GlobalChanges\CustomDamageType.cs" />
     <Compile Include="AI\AIEnhancedCore.cs" />
     <Compile Include="GlobalChanges\ItemIgnoreCollision.cs" />
-    <Compile Include="ProjectileModules\InterceptProjectile.cs" />
-    <Compile Include="ProjectileManager.cs" />
     <Compile Include="ProjectileModules\GravitateProjectile.cs" />
     <Compile Include="GlobalChanges\GlobalClock.cs" />
     <Compile Include="GlobalChanges\GUIClock.cs" />
     <Compile Include="ProjectileModules\KeepSeekingProjectile.cs" />
     <Compile Include="ProjectileModules\LanceProjectile.cs" />
     <Compile Include="LogHandler.cs" />
-    <Compile Include="BlockModules\BurnerJet.cs" />
-    <Compile Include="BlockModules\ModuleClock.cs" />
+    <Compile Include="ReliantBlockModules\BurnerJet.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleClock.cs" />
     <Compile Include="GlobalChanges\OHKOInsurance.cs" />
-    <Compile Include="BlockModules\ModuleFuelEnergyGenerator.cs" />
-    <Compile Include="BlockModules\ModuleItemFixedHolderBeam.cs" />
-    <Compile Include="BlockModules\ModuleItemSilo.cs" />
+    <Compile Include="ReliantBlockModules\ModuleFuelEnergyGenerator.cs" />
+    <Compile Include="ReliantBlockModules\ModuleItemFixedHolderBeam.cs" />
+    <Compile Include="ReliantBlockModules\ModuleItemSilo.cs" />
     <Compile Include="ProjectileModules\OHKOProjectile.cs" />
     <Compile Include="ModuleReinforced.cs" />
     <Compile Include="PatchBatch.cs" />
     <Compile Include="ProjectileModules\SeekingProjectileIgnoreLock.cs" />
-    <Compile Include="BlockModules\SiloDisplay.cs" />
-    <Compile Include="BlockModules\SiloGauge.cs" />
+    <Compile Include="ReliantBlockModules\SiloDisplay.cs" />
+    <Compile Include="ReliantBlockModules\SiloGauge.cs" />
     <Compile Include="GlobalChanges\TankBlockScaler.cs" />
-    <Compile Include="BlockModules\ModuleLudicrousSpeedButton.cs" />
+    <Compile Include="ReliantBlockModules\ModuleLudicrousSpeedButton.cs" />
     <Compile Include="ProjectileModules\TorpedoProjectile.cs" />
     <Compile Include="ProjectileModules\WeightedProjectile.cs" />
     <Compile Include="KickStart.cs" />
-    <Compile Include="ProjectileOctree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -260,6 +271,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>del *.pdb

@@ -42,7 +42,7 @@ namespace RandomAdditions
         internal List<ExtGimbalAimer> gimbals = new List<ExtGimbalAimer>();       //
 
         private RACannonBarrel MainGun;       //
-        internal List<RACannonBarrel> BarrelsMain = new List<RACannonBarrel>(); //
+        public List<RACannonBarrel> BarrelsMain { get; private set; } = new List<RACannonBarrel>(); //
 
         public float m_ShotCooldown = 1f;
         public float m_BurstCooldown = 1f;
@@ -73,6 +73,7 @@ namespace RandomAdditions
         private Visible targ;
         private Vector3 targPos;
         private Func<Vector3, Vector3> aimFunc;
+        private AnimetteController spoolAnim;
 
         public bool Linear()
         {
@@ -119,6 +120,8 @@ namespace RandomAdditions
             {
                 aimFunc = GetAimDirection;
             }
+            spoolAnim = FetchAnimette("_spooler", AnimCondition.WeaponSpooling);
+
             enabled = false;
         }
 
@@ -585,16 +588,16 @@ namespace RandomAdditions
         public Transform trans { get; private set; }
 
         private ParticleSystem[] PS;
-        internal MuzzleFlash flash;
+        public MuzzleFlash flash { get; private set; }
 
-        internal Transform bulletTrans;
-        internal Transform recoilTrans;
+        public Transform bulletTrans { get; private set; }
+        public Transform recoilTrans { get; private set; }
 
         private Spinner rotBarrel;
 
         private AnimationState animState;
         private Animation recoilAnim;
-        private ManAnimette altAnim;
+        private AnimetteController altAnim;
 
         private ChildModuleWeapon childWeap;
         private BeamWeapon beamWeap;
@@ -835,7 +838,7 @@ namespace RandomAdditions
                     });
                 }
             }
-            altAnim = GetComponent<ManAnimette>();
+            altAnim = GetComponent<AnimetteController>();
         }
 
         private void OnSpawn()

@@ -11,6 +11,7 @@ public class SplitProjectile : RandomAdditions.SpiltProjectile { };
 public class SpiltProjectile : RandomAdditions.SpiltProjectile { };
 namespace RandomAdditions
 {
+    public class SplitProjectile : SpiltProjectile { };
     // Spawns MORE projectiles on host projectile "Explosion"
     // DO NOT TRY TO CHAIN OPERATE!!!!
     //   I mean there's almost no limit on how far you can daisy-chain this.
@@ -53,7 +54,7 @@ namespace RandomAdditions
 
         private static FieldInfo weapon = typeof(Projectile).GetField("m_Weapon", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        internal override void Fire(FireData fireData)
+        public override void Fire(FireData fireData)
         {
             weap = (ModuleWeapon)weapon.GetValue(PB.project);
 

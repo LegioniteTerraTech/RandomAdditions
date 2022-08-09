@@ -52,6 +52,55 @@ namespace RandomAdditions
         public virtual void OnDetach() { }
 
 
+        public AnimetteController[] FetchAnimettes(AnimCondition condition)
+        {
+            try
+            {
+                AnimetteController[] MA = GetComponentsInChildren<AnimetteController>(true);
+                if (MA != null && MA.Length > 0)
+                {
+                    List<AnimetteController> MAs = new List<AnimetteController>();
+                    foreach (var item in MA)
+                    {
+                        if (item.Condition == condition || item.Condition == AnimCondition.Any)
+                        {
+                            MAs.Add(item);
+                        }
+                    }
+                    if (MAs.Count > 0)
+                    {
+                        Debug.Log("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
+                        return MAs.ToArray();
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+        public AnimetteController FetchAnimette(string gameObjectName, AnimCondition condition)
+        {
+            try
+            {
+                AnimetteController[] MA;
+                if (gameObjectName == null)
+                    MA = GetComponentsInChildren<AnimetteController>(true);
+                else
+                    MA = transform.Find(gameObjectName).GetComponentsInChildren<AnimetteController>(true);
+                if (MA != null && MA.Length > 0)
+                {
+                    foreach (var item in MA)
+                    {
+                        if (item.Condition == condition || item.Condition == AnimCondition.Any)
+                        {
+                            Debug.Log("RandomAdditions: FetchAnimette - fetched animette in " + item.name);
+                            return item;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
     }
 
     /// <summary>
@@ -129,6 +178,26 @@ namespace RandomAdditions
         protected virtual void PostPool() { }
         public virtual void OnAttach() { }
         public virtual void OnDetach() { }
+
+        public AnimetteController FetchAnimette(string gameObjectName, AnimCondition condition)
+        {
+            try
+            {
+                AnimetteController[] MA = transform.Find(gameObjectName).GetComponentsInChildren<AnimetteController>();
+                if (MA != null && MA.Length > 0)
+                {
+                    foreach (var item in MA)
+                    {
+                        if (item.Condition == condition || item.Condition == AnimCondition.Any)
+                        {
+                            return item;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
 
     }
 }

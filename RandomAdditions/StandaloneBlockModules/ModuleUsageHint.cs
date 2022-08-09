@@ -38,7 +38,7 @@ namespace RandomAdditions
             }
         }
     }
-    internal class ExtUsageHint
+    public class ExtUsageHint
     {
         private static FieldInfo 
         defD = typeof(EnumString).GetField("m_EnumValueInt", BindingFlags.NonPublic | BindingFlags.Instance),
@@ -148,7 +148,7 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("RandomAdditions: \nModuleUsageHint TECHINCAL ERROR \nCause of error - Block " + subjectName);
             }
         }
-        internal static void ShowExistingHint(int hintID)
+        public static void ShowExistingHint(int hintID)
         {
             try
             {

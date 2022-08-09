@@ -25,8 +25,6 @@ namespace RandomAdditions
     public class ManModeSwitch : MonoBehaviour
     {
         public static ManModeSwitch inst;
-        private static float clockInterval = 1;
-        private float clock = 0;
 
         public EventNoParams UpdateSwitchCheckFast = new EventNoParams();
         public EventNoParams UpdateSwitchCheck = new EventNoParams();
@@ -36,12 +34,14 @@ namespace RandomAdditions
             if (inst)
                 return;
             inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
+            GlobalClock.SlowUpdateEvent.Subscribe(inst.UpdateSlow);
             DebugRandAddi.Log("RandomAdditions: Created ManModeSwitch.");
         }
         public static void DeInit()
         {
             if (!inst)
                 return;
+            GlobalClock.SlowUpdateEvent.Unsubscribe(inst.UpdateSlow);
             Destroy(inst);
             inst = null;
             DebugRandAddi.Log("RandomAdditions: DeInit ManModeSwitch.");
@@ -49,13 +49,11 @@ namespace RandomAdditions
 
         public void Update()
         {
-            clock += Time.deltaTime;
             UpdateSwitchCheckFast.Send();
-            if (clock > clockInterval)
-            {
-                UpdateSwitchCheck.Send();
-                clock = 0;
-            }
+        }
+        public void UpdateSlow()
+        {
+            UpdateSwitchCheck.Send();
         }
     }
     public class ModuleModeSwitch : ExtModule
@@ -67,9 +65,11 @@ namespace RandomAdditions
         private CannonBarrel[] BarrelsMain; //
         private CannonBarrel[] BarrelsAux;  //
         private float m_ShotTimer = 0;      //
+        private AnimetteController[] anims;
 
         private bool working = false;
         private bool sharedBarrels = false;
+        public Event<bool> ModeSwitchEvent = new Event<bool>();
 
         public ModeSwitchCondition ModeSwitch = ModeSwitchCondition.PrimarySecondary;
         public float SetValue = 0;
@@ -189,6 +189,7 @@ namespace RandomAdditions
                 BarrelsMain = BarrelsFetched.ToArray();
                 BarrelsAux = BarrelsFetched.ToArray();
             }
+            anims = FetchAnimettes(AnimCondition.WeaponSwitch);
             //Debug.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
         public override void OnAttach()
@@ -457,6 +458,7 @@ namespace RandomAdditions
         {
             working = !working;
             SwitchModeModuleWeapon();
+            ModeSwitchEvent.Send(working);
         }
         public void SetMode(bool setWorking)
         {
@@ -549,6 +551,11 @@ namespace RandomAdditions
                 }
                 catch { }
             }
+            if (anims != null)
+                foreach (var item in anims)
+                {
+                    item.RunBool(working);
+                }
         }
 
 

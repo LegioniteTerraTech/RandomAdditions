@@ -48,14 +48,19 @@ namespace RandomAdditions
         private int TimeStep = 0;
         private bool Burning = false;
         public bool isSetup = false;
+        
+        private static FieldInfo effectoor = typeof(BoosterJet).GetField("m_Effector", BindingFlags.NonPublic | BindingFlags.Instance);
 
 
         public void Initiate(BoosterJet jet)
         {
             isSetup = true;
             Jet = jet;
-            FieldInfo effectoor = typeof(BoosterJet).GetField("m_Effector", BindingFlags.NonPublic | BindingFlags.Instance);
-            Effector = (Transform)effectoor.GetValue(Jet);
+            try
+            {
+                Effector = (Transform)effectoor.GetValue(Jet);
+            }
+            catch { }
             if (DamagePerSecond < 0)
             {
                 LogHandler.ThrowWarning("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);

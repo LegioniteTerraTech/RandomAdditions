@@ -17,7 +17,7 @@ namespace RandomAdditions
         public bool InstaKill = true;
         public bool GuaranteedKillOnLowHP = true;
 
-        internal override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
+        public override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
             if (ManNetwork.IsHost || !ManNetwork.IsNetworked)
             {

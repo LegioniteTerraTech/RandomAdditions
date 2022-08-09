@@ -38,7 +38,7 @@ namespace RandomAdditions
         private static RaycastHit[] targHit = new RaycastHit[32];
 
 
-        internal override void Fire(FireData fireData)
+        public override void Fire(FireData fireData)
         {
             PB.rbody.useGravity = false;
             PB.rbody.angularVelocity = Vector3.zero;
@@ -201,7 +201,7 @@ namespace RandomAdditions
             }
         }
 
-        internal override void Pool()
+        public override void Pool()
         {
             PB.rbody = GetComponent<Rigidbody>();
             line = GetComponent<LineRenderer>();

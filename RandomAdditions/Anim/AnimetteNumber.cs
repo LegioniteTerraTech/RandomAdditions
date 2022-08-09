@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
+public class AnimetteNumber : RandomAdditions.AnimetteNumber { }
 namespace RandomAdditions
 {
     /// <summary>
@@ -22,7 +23,7 @@ namespace RandomAdditions
         private Transform G;
         private byte num = 1;
 
-        internal void OnPool()
+        protected override void Setup()
         {
             enabled = true;
             try
@@ -35,15 +36,17 @@ namespace RandomAdditions
                 F = transform.Find("_F");
                 G = transform.Find("_G");
             }
-            catch 
+            catch
             {
                 LogHandler.ThrowWarning("Make sure SevenSegDisplay has _A through _G declared as valid GameObjects!");
                 enabled = false;
             }
         }
-        protected override void UpdateTrans() 
+        protected override void UpdateTrans(float currentTime) 
         {
-            SnapToNumber(Mathf.FloorToInt(currentTime / 10f + 0.025f));
+            int num = Mathf.RoundToInt((currentTime * 10f) + 0.025f);
+            //DebugRandAddi.Log("AnimetteNumber in " + name + " set to " + num);
+            SnapToNumber(num);
         }
         internal void SnapToNumber(int num)
         {

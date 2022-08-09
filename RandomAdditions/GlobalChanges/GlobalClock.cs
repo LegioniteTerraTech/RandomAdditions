@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,9 +13,10 @@ namespace RandomAdditions
         public static int SavedTime = 0;// The Hour to keep the world set to 
         internal static int LastHour = 0;     // Last Hour 
         public static readonly List<ModuleClock> clocks = new List<ModuleClock>();
-        public static readonly List<TimeTank> tanks = new List<TimeTank>();
+        public static readonly List<RandomTank> tanks = new List<RandomTank>();
 
         public static bool TimeControllerPresent = false;// Is the time locked to a master block?
+        public static EventNoParams SlowUpdateEvent = new EventNoParams();
 
         public class ClockManager : MonoBehaviour
         {
@@ -22,6 +24,7 @@ namespace RandomAdditions
             //The global timekeeper for all clocks
             //  think of it as the "atomic clock" of the offworld.
             //  Also handles setting the time and then locking it.
+            //   Also handles static updating of various other modules.
             public static void Initiate()
             {
                 if (inst)
@@ -29,15 +32,24 @@ namespace RandomAdditions
                 inst = new GameObject("GlobalClockGeneral").AddComponent<ClockManager>();
                 clocks.Clear();
                 tanks.Clear();
+                ManTechs.inst.PlayerTankChangedEvent.Subscribe(inst.PlayerTechUpdate);
                 DebugRandAddi.Log("RandomAdditions: Created GlobalClock.");
             }
             public static void DeInit()
             {
                 if (!inst)
                     return;
+                ManTechs.inst.PlayerTankChangedEvent.Unsubscribe(inst.PlayerTechUpdate);
                 Destroy(inst.gameObject);
                 inst = null;
                 DebugRandAddi.Log("RandomAdditions: DeInit GlobalClock.");
+            }
+
+
+            public void PlayerTechUpdate(Tank Tech, bool set)
+            {
+                if (Tech)
+                    Tech.GetComponent<RandomTank>().ReevaluateLoadingDiameter();
             }
 
             //All ModuleClock(s) will control the time based on global values.
@@ -116,12 +128,14 @@ namespace RandomAdditions
             }
             public void UpdateTanks()
             {
-                foreach (TimeTank tonk in tanks)
+                foreach (RandomTank tonk in tanks)
                 {
                     tonk.ResetUIValid();
                 }
             }
 
+            private const float SlowUpdateTime = 0.6f;
+            private float SlowUpdate = 0;
             private void Update()
             {
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
@@ -135,26 +149,19 @@ namespace RandomAdditions
                     GetTimeSetClocks();
                 }
                 ExtUsageHint.UpdateHintTimers();
+
+                if (SlowUpdate < Time.time)
+                {
+                    SlowUpdate = Time.time + SlowUpdateTime;
+                    UpdateSlow();
+                }
+            }
+            private void UpdateSlow()
+            {
+                SlowUpdateEvent.Send();
+                ProjBase.UpdateSlow();
             }
         }
 
-        public class TimeTank : MonoBehaviour
-        {
-            //This handles the GUI clock used on the Tank.  Know your time and set your mines
-            //  Charge your tech with solars before nightfall.
-            private Tank tank;
-            //private ClockManager man;
-            public bool DisplayTimeTank = false;
-            public void Initiate()
-            {
-                tank = gameObject.GetComponent<Tank>();
-                tanks.Add(this);
-            }
-
-            internal void ResetUIValid()
-            {
-                DisplayTimeTank = false;
-            }
-        }
     }
 }

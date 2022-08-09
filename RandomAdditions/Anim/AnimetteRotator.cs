@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
+public class AnimetteRotator : RandomAdditions.AnimetteRotator { }
 namespace RandomAdditions
 {
     /// <summary>
@@ -17,41 +18,41 @@ namespace RandomAdditions
         private Quaternion startRot = Quaternion.identity;
         private float angle = 0;
 
-        public void OnPool()
+        protected override void Setup()
         {
             startRot = transform.localRotation;
-            enabled = false;
+            enabled = true;
         }
 
-        protected override void UpdateTrans()
+        protected override void UpdateTrans(float currentTime)
         {
             switch (Axis)
             {
                 case ExtGimbalAxis.Y:
-                    UpdateAimAngleY();
+                    UpdateAimAngleY(currentTime);
                     break;
                 case ExtGimbalAxis.Z:
-                    UpdateAimAngleZ();
+                    UpdateAimAngleZ(currentTime);
                     break;
                 default:
-                    UpdateAimAngleX();
+                    UpdateAimAngleX(currentTime);
                     break;
             }
         }
-        internal void UpdateAimAngleX()
+        internal void UpdateAimAngleX(float currentTime)
         {
             angle = Mathf.Lerp(RotateRange[0], RotateRange[1], currentTime);
-            transform.localRotation = startRot * Quaternion.AngleAxis(angle, Vector3.up);
+            trans.localRotation = startRot * Quaternion.AngleAxis(angle, Vector3.up);
         }
-        internal void UpdateAimAngleY()
+        internal void UpdateAimAngleY(float currentTime)
         {
             angle = Mathf.Lerp(RotateRange[0], RotateRange[1], currentTime);
-            transform.localRotation = startRot * Quaternion.AngleAxis(angle, Vector3.right);
+            trans.localRotation = startRot * Quaternion.AngleAxis(angle, Vector3.right);
         }
-        internal void UpdateAimAngleZ()
+        internal void UpdateAimAngleZ(float currentTime)
         {
             angle = Mathf.Lerp(RotateRange[0], RotateRange[1], currentTime);
-            transform.localRotation = startRot * Quaternion.AngleAxis(angle, Vector3.forward);
+            trans.localRotation = startRot * Quaternion.AngleAxis(angle, Vector3.forward);
         }
 
     }

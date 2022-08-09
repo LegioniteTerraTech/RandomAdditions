@@ -30,6 +30,10 @@ namespace RandomAdditions
         public float ReactSpeed = 125;
         public float ExtendSpeed = 12;
 
+        public Material BeamMaterial = null;
+        public Color BeamColorStart = new Color(0.05f, 0.1f, 1f, 0.8f);
+        public Color BeamColorEnd = new Color(0.05f, 0.1f, 1f, 0.8f);
+
         /// <summary>
         /// Where to move it to
         /// </summary>
@@ -373,13 +377,16 @@ namespace RandomAdditions
             if (!(bool)lr)
             {
                 lr = gO.AddComponent<LineRenderer>();
-                lr.material = new Material(Shader.Find("Sprites/Default"));
+                if (BeamMaterial != null)
+                    lr.material = BeamMaterial;
+                else
+                    lr.material = new Material(Shader.Find("Sprites/Default"));
                 lr.positionCount = 2;
                 lr.endWidth = 0.1f;
                 lr.startWidth = 1;
                 lr.useWorldSpace = true;
-                lr.startColor = new Color(0.25f, 1, 0.25f, 0.5f);
-                lr.endColor = new Color(0.1f, 1, 0.1f, 0.75f);
+                lr.startColor = BeamColorStart;
+                lr.endColor = BeamColorEnd;
                 lr.numCapVertices = 8;
                 lr.SetPositions(new Vector3[2] { new Vector3(0, 0, -1), Vector3.zero });
             }
@@ -400,8 +407,9 @@ namespace RandomAdditions
             if (animPulse > 3.14f)
                 animPulse -= 3.14f;
             float pulse = (Mathf.Cos(animPulse) / 4) + 0.7f;
+            /*
             TracBeamVis.startColor = new Color(0.25f, 1, 0.25f, 0.5f * pulse);
-            TracBeamVis.endColor = new Color(0.1f, 1, 0.1f, 0.75f * pulse);
+            TracBeamVis.endColor = new Color(0.1f, 1, 0.1f, 0.75f * pulse);*/
             TracBeamVis.positionCount = 2;
             TracBeamVis.SetPositions(new Vector3[2] { forceEmitterEnd.position + (Vector3.up * (pulse - 0.5f) * TargetRad), forceEmitterEnd.TransformPoint(Vector3.forward * -(lastZDist - targeterZOffset)) });
         }

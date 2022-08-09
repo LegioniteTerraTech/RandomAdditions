@@ -36,8 +36,9 @@ namespace RandomAdditions
         public int MaxTechCapacity = 1;         // The maximum Techs this hangar can store
         public int MaxTechExtents = 6;          // The max length/width/height a Tech can have before being stored in the hangar
         public int MaxTechBlocksPerSpot = 12;   // The max blocks a stored Tech is allowed to have in storage
+        public int MaxVolumeCapacity = int.MaxValue; // The max block cell volume across ALL spots the hangar can EVER store
         public float DockDeploySpeed = 50;      // The velocity of which to launch the Techs deployed from this hangar
-        public bool AllowHammerspace = false;   // Hangars in hangars.  Matroska dolls
+        public bool AllowHammerspace = false;   // Hangars in hangars.  Matroska dolls.
 
         // REQUIRES ModuleEnergy!
         public float MinimumEnergyPercent = 0.5f;// If our energy is below this percent then we don't use energy
@@ -50,6 +51,8 @@ namespace RandomAdditions
         private bool shouldTaxThisFrame = false;
         private bool isDeploying = false;
         private bool isEjecting = false;
+        [SSaveField]
+        public int HangarStoredVolume = 0;
         [SSaveField]
         public int HangarExistTime = 0;
         [SSaveField]
@@ -73,6 +76,7 @@ namespace RandomAdditions
         internal void OnPool()
         {
             enabled = true;
+            HangarStoredVolume = 0;
             try
             {
                 block.AttachEvent.Subscribe(OnAttach);
@@ -209,6 +213,8 @@ namespace RandomAdditions
                     fireTimes--;
                 }
             }
+            DebugRandAddi.Assert(HangarStoredVolume != 0, "RandomAdditions: ModuleHangar - HangarStoredBlocks was not exactly zero (" + HangarStoredVolume + ") when unloading Techs was finished. \nMaybe some blocks weren't able to be deployed correctly?!");
+            HangarStoredVolume = 0;
             enabled = false;
         }
         internal void Update()
@@ -370,7 +376,7 @@ namespace RandomAdditions
         }
 
 
-        private void LaunchTech(bool killTechs = false)
+        private void LaunchTech(bool Disassemble = false)
         {
             Vector3 ExitPosScene = HangarExit.position;
             if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
@@ -423,7 +429,7 @@ namespace RandomAdditions
                 return;
             }
 
-            if (!killTechs)
+            if (!Disassemble)
             {
                 foreach (Visible Vis in ManVisible.inst.VisiblesTouchingRadius(HangarExit.position, MaxTechExtents, searchBit))
                 {
@@ -458,7 +464,7 @@ namespace RandomAdditions
                 Tank newTech = ManSpawn.inst.SpawnTank(TSP, true);
                 if (!newTech)
                 {
-                    if (killTechs)
+                    if (Disassemble)
                         DebugRandAddi.LogError("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
                     else
                         DebugRandAddi.Log("RandomAdditions: ModuleHangar - Could not deploy Tech at this time.");
@@ -471,7 +477,7 @@ namespace RandomAdditions
                     LoadToTech(newTech, garrisonedTech.Key);
                 }
                 catch { }
-                if (killTechs)
+                if (Disassemble)
                 {
                     newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false, false);
                     newTech.blockman.Disintegrate();
@@ -493,6 +499,12 @@ namespace RandomAdditions
                 {
                     TB.visible.SetInteractionTimeout(4);
                     TB.visible.ColliderSwapper.EnableCollision(false);
+                    HangarStoredVolume -= TB.filledCells.Length;
+                }
+                if (HangarStoredVolume < 0)
+                {
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Stored volume on Tech deployment left a negative value in HangarStoredVolume!  Assuming block changes and snapping to 0...");
+                    HangarStoredVolume = 0;
                 }
                 newTech.trans.localScale = Vector3.one / 4;
                 newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false);
@@ -570,6 +582,7 @@ namespace RandomAdditions
                                 TechHPMax += Mathf.CeilToInt(dmg.MaxHealth);
                                 TechHP += Mathf.CeilToInt(dmg.Health);
                             }
+                            HangarStoredVolume += TB.filledCells.Length;
                         }
                         foreach (ModuleEnergyStore MES in TankWantsToDock.blockman.IterateBlockComponents<ModuleEnergyStore>())
                         {
@@ -680,6 +693,18 @@ namespace RandomAdditions
             {
                 if (debugLog)
                     DebugRandAddi.Log("RandomAdditions: ModuleHangar - Tech has more blocks than a slot allows: Hangar block limit " + MaxTechBlocksPerSpot + " VS Tech block count " + tech.blockman.blockCount + " - \n" + StackTraceUtility.ExtractStackTrace());
+                return false;
+            }
+            int techVolume = 0;
+            foreach (var item in tech.blockman.IterateBlocks())
+            {
+                techVolume += item.filledCells.Length;
+            }
+            bool enoughSpaceInHangar = techVolume + HangarStoredVolume <= MaxVolumeCapacity;
+            if (!enoughSpaceInHangar)
+            {
+                if (debugLog)
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Tech has more blocks than the whole hangar has room for: Hangar volume limit " + MaxVolumeCapacity + " + stored " + HangarStoredVolume + " VS Tech block count " + tech.blockman.blockCount + " - \n" + StackTraceUtility.ExtractStackTrace());
                 return false;
             }
 

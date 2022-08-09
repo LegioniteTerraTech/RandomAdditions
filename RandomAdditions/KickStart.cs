@@ -45,13 +45,23 @@ namespace RandomAdditions
 
         public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
-        public static void ReleaseControl(int ID)
+        public static void ReleaseControl(string Name = null)
         {
-            if (GUIUtility.hotControl == ID)
+            string focused = GUI.GetNameOfFocusedControl();
+            if (Name == null)
             {
                 GUI.FocusControl(null);
                 GUI.UnfocusWindow();
                 GUIUtility.hotControl = 0;
+            }
+            else
+            {
+                if (focused == Name)
+                {
+                    GUI.FocusControl(null);
+                    GUI.UnfocusWindow();
+                    GUIUtility.hotControl = 0;
+                }
             }
         }
 
@@ -68,7 +78,7 @@ namespace RandomAdditions
         }
 
         private static bool patched = false;
-        static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
+        internal static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
         //private static bool patched = false;
 #if STEAM
         private static bool OfficialEarlyInited = false;
@@ -78,6 +88,7 @@ namespace RandomAdditions
 
             //Initiate the madness
             DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
+
             try
             { // init changes
                 harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
@@ -96,8 +107,8 @@ namespace RandomAdditions
                 logMan.AddComponent<LogHandler>();
                 logMan.GetComponent<LogHandler>().Initiate();
             }
+            JSONRandAddModules.CompileLookupAndInit();
             GlobalClock.ClockManager.Initiate();
-            ProjectileManager.Initiate();
 
 
             if (LookForMod("WaterMod"))
@@ -112,7 +123,7 @@ namespace RandomAdditions
             }
             if (LookForMod("NuterraSteam"))
             {
-                DebugRandAddi.Log("TACtical_AI: Found NuterraSteam!  Making sure blocks work!");
+                DebugRandAddi.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
                 isNuterraSteamPresent = true;
             }
             try
@@ -165,10 +176,12 @@ namespace RandomAdditions
                     DebugRandAddi.Log(e);
                 }
             }
-            GUIClock.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
+            ManTethers.Init();
             LazyRender.Initiate();
+            GUIClock.Initiate();
+            ManTileLoader.Initiate();
 
             try
             { // init changes
@@ -208,9 +221,11 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
             }
+            ManTileLoader.DeInit();
             GlobalClock.ClockManager.DeInit();
             GUIClock.DeInit();
             ManModeSwitch.DeInit();
+            ManTethers.DeInit();
             ReplaceManager.RemoveAllBlocks();
         }
 
@@ -221,16 +236,11 @@ namespace RandomAdditions
             //Where the fun begins
 
             //Initiate the madness
-            Harmony harmonyInstance = new Harmony("legionite.randomadditions");
-            try
-            {
-                harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
-            }
-            catch (Exception e)
+            if (!MassPatcher.MassPatchAll())
             {
                 Debug.Log("RandomAdditions: Error on patch");
-                Debug.Log(e);
             }
+
             try
             {
                 SafeSaves.ManSafeSaves.RegisterSaveSystem(Assembly.GetExecutingAssembly());
@@ -240,14 +250,17 @@ namespace RandomAdditions
                 Debug.Log("RandomAdditions: Error on RegisterSaveSystem");
                 Debug.Log(e);
             }
-            GlobalClock.ClockManager.Initiate();
-            GUIClock.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
+            ManTethers.Init();
             logMan = new GameObject("logMan");
             logMan.AddComponent<LogHandler>();
             logMan.GetComponent<LogHandler>().Initiate();
             LazyRender.Initiate();
+
+            // After everything else since this calls updates in the others
+            GlobalClock.ClockManager.Initiate();
+            GUIClock.Initiate();
 
             if (LookForMod("WaterMod"))
             {
@@ -261,11 +274,11 @@ namespace RandomAdditions
             }
             if (LookForMod("NuterraSteam"))
             {
-                Debug.Log("TACtical_AI: Found NuterraSteam!  Making sure blocks work!");
+                Debug.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
                 isNuterraSteamPresent = true;
             }
 
-            
+
             try
             {
                 KickStartOptions.TryInitOptionAndConfig();
@@ -287,13 +300,14 @@ namespace RandomAdditions
         /// </summary>
         public static void DelayedInitAll()
         {
+            ManTileLoader.Initiate();
 #if DEBUG
             GetAvailSFX();
 #endif
         }
 #endif
 
-            public static bool LookForMod(string name)
+        public static bool LookForMod(string name)
         {
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
             {

@@ -12,7 +12,7 @@ namespace RandomAdditions
          */
         static FieldInfo collodo = typeof(Projectile).GetField("m_Collider", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        internal override void PrePool(Projectile proj)
+        public override void PrePool(Projectile proj)
         {
             //Debug.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
             Collider fetchedCollider = (Collider)collodo.GetValue(proj);
@@ -20,7 +20,7 @@ namespace RandomAdditions
             DebugRandAddi.Log("RandomAdditions: Overwrote Collision");
         }
 
-        internal override void ImpactDamageable(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
+        public override void ImpactDamageable(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
             TryDealDamage(other);
         }

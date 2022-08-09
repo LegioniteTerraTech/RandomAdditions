@@ -70,7 +70,7 @@ namespace RandomAdditions
         private Transform thisTrans;
 
 
-        internal override void Pool()
+        public override void Pool()
         {
             thisTrans = gameObject.transform;
             if (MovementDampening < 0.001)

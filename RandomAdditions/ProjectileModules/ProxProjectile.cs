@@ -11,23 +11,34 @@ namespace RandomAdditions
     /// </summary>
     internal class ProxProjectile : ExtProj
     {
-        public bool Aiming = false;
+        public bool ActivateOnlyOnStuck = true;
 
         /// <summary>
         /// Fires until projectile deathDelay ends.  Leave at zero to fire only once
         /// </summary>
         public float ExplosionInterval = 0;
+        public float ProximityRange = 12;
 
 
+        private float ProximityRangeSq = 1;
         private float explodeTimer = 0;
         private Visible Target = null;
+        public bool Deployed = false;
+        private AnimetteController anim;
 
 
-        internal override void Pool()
+        public override void Pool()
         {
+            anim = FetchAnimette("_ImpactAnim", AnimCondition.ProxProjectile);
+            ProximityRangeSq = ProximityRange * ProximityRange;
+        }
+        public override void Fire(FireData fireData)
+        {
+            if (anim)
+                anim.SetState(0);
         }
 
-        private void Update()
+        public override void SlowUpdate()
         {
             explodeTimer += Time.deltaTime;
             if (!PB.launcher?.block || !PB.shooter)
@@ -37,7 +48,25 @@ namespace RandomAdditions
             }
             else
             {
-                UpdateProximity();
+                if (ActivateOnlyOnStuck)
+                {
+                    if (PB.project.Stuck)
+                    {
+                        if (!Deployed)
+                        {
+                            if (anim)
+                            {
+                                anim.RunBool(true);
+                            }
+                            Deployed = true;
+                        }
+                        UpdateProximity();
+                    }
+                }
+                else
+                {
+                    UpdateProximity();
+                }
             }
         }
 
@@ -49,7 +78,8 @@ namespace RandomAdditions
                 Target = PB.shooter.Vision.GetFirstVisibleTechIsEnemy(PB.shooter.Team);
             }
 
-            if (Target && Target.isActive)
+            if (Target && Target.isActive && 
+                (Target.centrePosition - PB.transform.position).sqrMagnitude <= ProximityRangeSq)
             {
                 TargetInRange();
             }

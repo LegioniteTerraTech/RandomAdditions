@@ -123,6 +123,37 @@
           "ShotCooldown": 1.0,            // Rate per second to deploy SplitPayloads
         },// ^ Reference an existing FireData (and be sure to edit it) below this
 
+        Like such:
+        "JSONBLOCK": {
+          "FireData": { // Any firedata
+            "m_BulletPrefab": {
+              "SplitProjectile":{
+              },
+              "Reference|REF_BLOCKNAME\FireData.": {
+              },
+            },
+          },
+        },
+
+        or if you are feeling extra spicy:
+
+        "JSONBLOCK": {
+          "FireData": { // Any firedata (yes you can nest them)
+            "m_BulletPrefab": {
+              "SplitProjectile":{
+              },
+              "Reference|REF_BLOCKNAME\FireData.": {
+                "m_BulletPrefab": {
+                  "SplitProjectile":{
+                  },
+                  "Reference|REF_BLOCKNAME\FireData.": {
+                  },
+                },
+              },
+            },
+          },
+        },
+
 -----------------------------------------------------------------------------------------------------
 
     "RandomAdditions.TrailProjectile": {}, // Keep trails until the projectile reaches the end of it's DeathDelay against shield collisions.
@@ -139,6 +170,13 @@
     },
 
 -----------------------------------------------------------------------------------------------------
+
+    "RandomAdditions.ChildProjectile": {}, // PENDING - Allows ChildModules to work on Projectiles
+
+    "RandomAdditions.ProximityProjectile": {}, // PENDING - Triggers on enemy entering radius, like a gun.
+
+-----------------------------------------------------------------------------------------------------
+
 
 	Need help? Let me know on the official TerraTech Community Discord!
 

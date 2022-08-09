@@ -17,7 +17,7 @@ namespace RandomAdditions
     /// </summary>
     public class ExtProj : MonoBehaviour
     {
-        internal ProjBase PB;
+        public ProjBase PB;
 
         public void Recycle() 
         {
@@ -27,19 +27,35 @@ namespace RandomAdditions
             }
         }
 
-        internal virtual void PrePool(Projectile proj) { }
+        public virtual void PrePool(Projectile proj) { }
         /// <summary>
         /// Use PB (ProjBase) to access the main projectile from now on.
         /// </summary>
-        internal virtual void Pool() { }
-        internal virtual void Fire(FireData fireData) { }
+        public virtual void Pool() { }
+        public virtual void Fire(FireData fireData) { }
 
 
 
-        internal virtual void WorldRemoval() { }
-        internal virtual void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy) { }
-        internal virtual void ImpactOther(Collider other, Vector3 hitPoint, ref bool ForceDestroy) { }
-        internal virtual void ImpactDamageable(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy) { }
+        public virtual void WorldRemoval() { }
+        public virtual void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy) { }
+        public virtual void ImpactOther(Collider other, Vector3 hitPoint, ref bool ForceDestroy) { }
+        public virtual void ImpactDamageable(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy) { }
+
+        public virtual void SlowUpdate() { }
+
+        public AnimetteController FetchAnimette(string gameObjectName, AnimCondition condition)
+        {
+            try
+            {
+                AnimetteController MA = transform.Find(gameObjectName).GetComponent<AnimetteController>();
+                if (MA && (MA.Condition == condition || MA.Condition == AnimCondition.Any))
+                {
+                    return MA;
+                }
+            }
+            catch { }
+            return null;
+        }
     }
 
     /// <summary>
@@ -47,10 +63,12 @@ namespace RandomAdditions
     /// </summary>
     public class ProjBase : MonoBehaviour
     {
-        internal Projectile project;
-        internal Rigidbody rbody;
-        internal ModuleWeapon launcher;
-        internal Tank shooter;
+        protected static readonly List<ProjBase> projPool = new List<ProjBase>();
+
+        public Projectile project { get; internal set; }
+        public Rigidbody rbody { get; internal set; }
+        public ModuleWeapon launcher { get; internal set; }
+        public Tank shooter { get; internal set; }
         protected ExtProj[] projTypes;
 
         /// <summary>
@@ -108,6 +126,7 @@ namespace RandomAdditions
             {
                 item.Fire(fireData);
             }
+            projPool.Add(this);
         }
 
         internal void OnWorldRemoval()
@@ -116,6 +135,7 @@ namespace RandomAdditions
             {
                 item.WorldRemoval();
             }
+            projPool.Remove(this);
         }
         internal void OnImpact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
@@ -139,6 +159,39 @@ namespace RandomAdditions
             }
         }
 
+        internal void SlowUpdate()
+        {
+            foreach (var item in projTypes)
+            {
+                item.SlowUpdate();
+            }
+        }
+
+
+        internal static void UpdateSlow()
+        {
+            string errorBreak = null;
+            foreach (var item in projPool)
+            {
+                try
+                {
+                    item.SlowUpdate();
+                }
+                catch 
+                {
+                    try
+                    {
+                        errorBreak = item.name;
+                    }
+                    catch
+                    {
+                        errorBreak = "ITEM WAS NULL";
+                    }
+                    break;
+                }
+            }
+            DebugRandAddi.Assert(errorBreak != null, "A projectile errored out - " + errorBreak);
+        }
 
 
         internal static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -176,7 +229,7 @@ namespace RandomAdditions
                     Explosion boom2 = explodo.UnpooledSpawnWithLocalTransform(null, inst.trans.position, Quaternion.identity).GetComponent<Explosion>();
                     if ((bool)boom2)
                     {
-                        boom2.SetDamageSource(null);
+                        boom2.SetDamageSource(inst.Shooter);
                         boom2.SetDirectHitTarget(null);
                         boom2.gameObject.SetActive(true);
                         boom2.DoDamage = false;

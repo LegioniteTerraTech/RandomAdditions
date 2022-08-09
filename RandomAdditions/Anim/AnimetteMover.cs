@@ -1,23 +1,26 @@
 ﻿using System;
 using UnityEngine;
 
+public class AnimetteMover : RandomAdditions.AnimetteMover { }
+
 namespace RandomAdditions
 {
     public class AnimetteMover : AniLinear
     {
-        public Vector3 endLocalPosition = Vector3.forward;
-
         private Vector3 startLocalPosition = Vector3.forward;
 
-        public void OnPool()
+        public Vector3 endLocalPosition = Vector3.forward;
+
+
+        protected override void Setup()
         {
             startLocalPosition = transform.localPosition;
-            enabled = false;
+            enabled = true;
         }
 
-        protected override void UpdateTrans()
+        protected override void UpdateTrans(float currentTime)
         {
-            transform.localPosition = Vector3.Lerp(startLocalPosition, endLocalPosition, currentTime);
+            trans.localPosition = Vector3.Lerp(startLocalPosition, endLocalPosition, currentTime);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
+public class AnimetteScaler : RandomAdditions.AnimetteScaler { }
 namespace RandomAdditions
 {
     public class AnimetteScaler : AniLinear
@@ -9,15 +10,15 @@ namespace RandomAdditions
 
         public Vector3 endLocalScale = Vector3.one * 2;
 
-        public void OnPool()
+        protected override void Setup()
         {
             startLocalScale = transform.localScale;
-            enabled = false;
+            enabled = true;
         }
 
-        protected override void UpdateTrans()
+        protected override void UpdateTrans(float currentTime)
         {
-            transform.localPosition = Vector3.Lerp(startLocalScale, endLocalScale, currentTime);
+            trans.localScale = Vector3.Lerp(startLocalScale, endLocalScale, currentTime);
         }
     }
 }

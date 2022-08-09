@@ -21,7 +21,7 @@ namespace RandomAdditions
         private ParticleSystem[] emiss;
         private bool wasGrav = false;
 
-        internal override void Fire(FireData fireData)
+        public override void Fire(FireData fireData)
         {
             PB.rbody.useGravity = wasGrav;
             if (hasEmiss)
@@ -38,7 +38,7 @@ namespace RandomAdditions
                 col.enabled = true;
         }
 
-        internal override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
+        public override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
             if (ForceDestroy)
             {

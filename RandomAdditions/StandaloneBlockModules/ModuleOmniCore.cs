@@ -177,7 +177,7 @@ namespace RandomAdditions
         }
         private void DriveCommand(TankControl.ControlState controlState)
         {
-            LastTrans = controlState.InputMovement;
+            LastTrans = Vector3.ClampMagnitude(controlState.Throttle + controlState.InputMovement, 1);
             LastRotat = controlState.InputRotation;
             //Debug.LogError("RandomAdditions: CommandRequest");
         }

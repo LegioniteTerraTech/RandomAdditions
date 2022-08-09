@@ -277,6 +277,7 @@
 
     "RandomAdditions.ModuleHangar": {
       "MaxDockingRadius": 3.0,      // The maximum distance from GameObject "_Entry" before the hangar begins trying to dock
+      "MaxVolumeCapacity": 2147483647,// The max block cell volume across ALL spots the hangar can EVER store
       "MaxTechCapacity": 1,         // The maximum Techs this hangar can store
       "MaxTechExtents": 6,          // The max length/width/height a Tech can have before being stored in the hangar
       "MaxTechBlocksPerSpot": 12,   // The max blocks a stored Tech is allowed to have in storage
@@ -299,11 +300,6 @@
       "ReactSpeed": 125,        // The aiming rate
       "ExtendSpeed": 800,       // The tractor beam extend speed
     },
------------------------------------------------------------------------------------------------------
-
-    "ModuleLoneMove": {}, // PENDING
-    "PausedPosition": {}, // PENDING
-
 -----------------------------------------------------------------------------------------------------
 
     "ModuleOmniCore": {//Applies thrust directly to Tech Center of Mass
@@ -355,6 +351,43 @@
     },
 
     "RandomAdditions.ModuleHardpoint": {}, // Controls all RandomAdditions.Hardpoints
+
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleTechTether": { // Creates a beam tech-to-tech tether on left-click linking two ModuleTechTethers together
+      // Forces
+      "SpringTensionForce": 750,  // The max force this can apply when the tether is at MaxDistance
+      // Additive distance - when two tethers are linked both of their values are merged
+      "MaxDistance": 6,   // The distance beyond of which the tether snaps. must be bigger than LooseDistance
+      "LooseDistance": 3, // the distance the tether will apply no tension forces
+      "TetherScale": 0.4, // Width of the tether's beam effect
+
+      // Visibles
+      "BeamMaterial": null,
+      "BeamColorStart": {"r": 0.05, "g": 0.1,"b": 1, "a": 0.8},
+      "BeamColorEnd": {"r": 0.05, "g": 0.1,"b": 1, "a": 0.8},
+    },
+
+-----------------------------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------------------------------
+
+    // WIP - Work in Progress
+
+    // Debatable due to Unity's Physics Distance Limitation for extreme cases. 
+    //   Will mostly work fine for anchored bases but not mobile Techs.
+    "ModuleTileLoader": {  // LOAD WORLD TILES REMOTELY - DO NOT OVERUSE
+      "AnchorOnly": true,
+      "MaxTileLoadingDiameter": 5,
+    },
+
+    "ModuleLoneMove": {}, // PENDING - Cab module (partially functional)
+    "PausedPosition": {}, // PENDING - Technically used for "wheel-based" walker feet standing anim
+
+    "ModuleClicker": {}, // PENDING - Allows button-based control of block animettes (crude block animations) - Saving issues
+
+    "ModuleMirage": {}, // PENDING - Tech digital mirror weapon - issues with model ripping
+    "ModuleJumpDrive": {}, // PENDING - Tech teleporter that lets Techs teleport to other allied techs - No VFX (Visual effects)
 
 -----------------------------------------------------------------------------------------------------
 
