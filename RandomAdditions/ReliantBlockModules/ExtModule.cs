@@ -52,6 +52,20 @@ namespace RandomAdditions
         public virtual void OnDetach() { }
 
 
+        protected TankBlock[] GetAllAttachedAPNeighboors()
+        {
+            List<TankBlock> fetched = new List<TankBlock>();
+            for (int step = 0; step < block.attachPoints.Length; step++)
+            {
+                if (!block.ConnectedBlocksByAP[step].IsNotNull())
+                {
+                    fetched.Add(block.ConnectedBlocksByAP[step]);
+                }
+            }
+            if (fetched.Count > 0)
+                return fetched.ToArray();
+            return null;
+        }
         public AnimetteController[] FetchAnimettes(AnimCondition condition)
         {
             try

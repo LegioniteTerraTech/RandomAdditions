@@ -191,6 +191,9 @@
     <Compile Include="Anim\AnimetteScaler.cs" />
     <Compile Include="Anim\AnimetteController.cs" />
     <Compile Include="Anim\AnimetteMover.cs" />
+    <Compile Include="MultiBlockModules\ModulePartWeaponDongle.cs" />
+    <Compile Include="MultiBlockModules\ModulePartWeapon.cs" />
+    <Compile Include="MultiBlockModules\ModulePartWeaponGun.cs" />
     <Compile Include="MultiBlockModules\ModuleTechTether.cs" />
     <Compile Include="MultiBlockModules\ModuleRailwayController.cs" />
     <Compile Include="ReliantBlockModules\ExtModule.cs" />

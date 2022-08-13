@@ -121,7 +121,7 @@ namespace RandomAdditions
         //  The latest Techs will override this however.
         public bool SetClock()
         {
-            // Update to global time.  This is done by the GlobalClock
+            // Update to global time.  This is updated by the GlobalClock
 
             if (!IsAttached)
                 return false;
