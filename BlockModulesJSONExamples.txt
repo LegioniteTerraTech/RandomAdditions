@@ -339,7 +339,13 @@
 
 -----------------------------------------------------------------------------------------------------
 
-    "RandomAdditions.ModuleCustomShop": {}, // Set to block's corp
+    "RandomAdditions.ModuleCustomShop": {}, // Set the Block Terminal/Shop to block's corp
+
+    // If you have CommunityPatch(Steam) installed, you can use the below instead which does 
+    //  both Terminals AND Crafting systems
+    "TerraTechCustomCorpFix.ModuleCustomCorpFix": {
+      "CorpID": "GT"
+    },
 
 -----------------------------------------------------------------------------------------------------
 

@@ -110,16 +110,17 @@ namespace RandomAdditions
         /// - crashed players can cause cascade crashes along other players in 
         ///   this player's lobby / the games this player joins
         /// </summary>
-        public static void ForceQuitScreen()
+        public static void ForceQuitScreen(bool Crashed = true)
         {
             if (threwForceEnd)
                 return;
 #if STEAM
             if (threwForceEnd)
                 return;
-            DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
-                "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
-                " Forcing crash screen!");
+            if (Crashed)
+                DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
+                    "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
+                    " Forcing crash screen!");
 
             UIScreenBugReport UISBR = Singleton.Manager<ManUI>.inst.GetScreen(ManUI.ScreenType.BugReport) as UIScreenBugReport;
             crsh.Invoke(UISBR, new object[] { });

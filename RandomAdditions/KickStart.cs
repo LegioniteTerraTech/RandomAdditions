@@ -21,9 +21,9 @@ namespace RandomAdditions
     {
         internal const string ModName = "RandomAdditions";
 
-        public static bool isWaterModPresent = false;
-        public static bool isTweakTechPresent = false;
-
+        // MOD SUPPORT
+        internal static bool isWaterModPresent = false;
+        internal static bool isTweakTechPresent = false;
         internal static bool isNuterraSteamPresent = false;
 
         public static GameObject logMan;
@@ -80,15 +80,55 @@ namespace RandomAdditions
         private static bool patched = false;
         internal static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
         //private static bool patched = false;
+        public static bool VALIDATE_MODS()
+        {
+            isWaterModPresent = false;
+            isTweakTechPresent = false;
+            isNuterraSteamPresent = false;
+
+#if STEAM
+            if (!LookForMod("NuterraSteam"))
+            {
+                DebugRandAddi.FatalError("This mod NEEDS NuterraSteam to function!  Please subscribe to it on the Steam Workshop.");
+                return false;
+            }
+#endif
+            if (!LookForMod("0Harmony"))
+            {
+                DebugRandAddi.FatalError("This mod NEEDS Harmony to function!  Please subscribe to it on the Steam Workshop.");
+                return false;
+            }
+            if (LookForMod("WaterMod"))
+            {
+                DebugRandAddi.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
+                isWaterModPresent = true;
+            }
+            if (LookForMod("WaterMod"))
+            {
+                DebugRandAddi.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
+                isWaterModPresent = true;
+            }
+            if (LookForMod("TweakTech"))
+            {
+                DebugRandAddi.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
+                isTweakTechPresent = true;
+            }
+            if (LookForMod("NuterraSteam"))
+            {
+                DebugRandAddi.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
+                isNuterraSteamPresent = true;
+            }
+            return true;
+        }
 #if STEAM
         private static bool OfficialEarlyInited = false;
         public static void OfficialEarlyInit()
         {
             //Where the fun begins
+            DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
+            VALIDATE_MODS();
 
             //Initiate the madness
-            DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
-
             try
             { // init changes
                 harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
@@ -110,29 +150,13 @@ namespace RandomAdditions
             JSONRandAddModules.CompileLookupAndInit();
             GlobalClock.ClockManager.Initiate();
 
-
-            if (LookForMod("WaterMod"))
-            {
-                DebugRandAddi.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
-                isWaterModPresent = true;
-            }
-            if (LookForMod("TweakTech"))
-            {
-                DebugRandAddi.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
-                isTweakTechPresent = true;
-            }
-            if (LookForMod("NuterraSteam"))
-            {
-                DebugRandAddi.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
-                isNuterraSteamPresent = true;
-            }
             try
             {
                 KickStartOptions.TryInitOptionAndConfig();
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup");
+                DebugRandAddi.Log("RandomAdditions: Could not init Option & Config since ConfigHelper and/or Nuterra.NativeOptions is absent?");
                 DebugRandAddi.Log(e);
             }
             try
@@ -151,6 +175,11 @@ namespace RandomAdditions
         public static void MainOfficialInit()
         {
             //Where the fun begins
+            DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
+            if (!VALIDATE_MODS())
+            {
+                return;
+            }
             if (!OfficialEarlyInited)
             {
                 DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
@@ -161,18 +190,19 @@ namespace RandomAdditions
             //Initiate the madness
             if (!patched)
             {
-                int patchStep = 0;
                 try
                 {
-                    harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
-                    patchStep++;
-                    //EdgePatcher(true);
-                    DebugRandAddi.Log("RandomAdditions: Patched");
-                    patched = true;
+                    if (MassPatcher.MassPatchAll())
+                    {
+                        DebugRandAddi.Log("RandomAdditions: Patched");
+                        patched = true;
+                    }
+                    else
+                        Debug.Log("RandomAdditions: Error on patch");
                 }
                 catch (Exception e)
                 {
-                    DebugRandAddi.Log("RandomAdditions: Error on patch " + patchStep);
+                    DebugRandAddi.Log("RandomAdditions: Error on patch");
                     DebugRandAddi.Log(e);
                 }
             }
@@ -200,10 +230,13 @@ namespace RandomAdditions
             {
                 try
                 {
-                    harmonyInstance.UnpatchAll("legionite.randomadditions");
-                    //EdgePatcher(false);
-                    DebugRandAddi.Log("RandomAdditions: UnPatched");
-                    patched = false;
+                    if (MassPatcher.MassUnPatchAll())
+                    {
+                        DebugRandAddi.Log("RandomAdditions: UnPatched");
+                        patched = false;
+                    }
+                    else
+                        DebugRandAddi.Log("RandomAdditions: Error on UnPatch");
                 }
                 catch (Exception e)
                 {
@@ -234,11 +267,16 @@ namespace RandomAdditions
         public static void Main()
         {
             //Where the fun begins
+            DebugRandAddi.Log("RandomAdditions: MAIN (TTMM Version) startup");
+            if (!VALIDATE_MODS())
+            {
+                return;
+            }
 
             //Initiate the madness
             if (!MassPatcher.MassPatchAll())
             {
-                Debug.Log("RandomAdditions: Error on patch");
+                DebugRandAddi.Log("RandomAdditions: Error on patch");
             }
 
             try
@@ -262,30 +300,13 @@ namespace RandomAdditions
             GlobalClock.ClockManager.Initiate();
             GUIClock.Initiate();
 
-            if (LookForMod("WaterMod"))
-            {
-                Debug.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
-                isWaterModPresent = true;
-            }
-            if (LookForMod("TweakTech"))
-            {
-                Debug.Log("RandomAdditions: Found TweakTech!  Adding compatability!");
-                isTweakTechPresent = true;
-            }
-            if (LookForMod("NuterraSteam"))
-            {
-                Debug.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
-                isNuterraSteamPresent = true;
-            }
-
-
             try
             {
                 KickStartOptions.TryInitOptionAndConfig();
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on Option & Config setup");
+                DebugRandAddi.Log("RandomAdditions: Could not init Option & Config since ConfigHelper and/or Nuterra.NativeOptions is absent?");
                 Debug.Log(e);
             }
         }

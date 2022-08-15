@@ -50,9 +50,13 @@ namespace RandomAdditions
                 return;
             UnityEngine.Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
         }
-        internal static void FatalError(Exception e)
+        internal static void FatalError(string e)
         {
-            ManUI.inst.ShowErrorPopup(modName + ": ENCOUNTERED CRITICAL ERROR: " + e);
+            try
+            {
+                ManUI.inst.ShowErrorPopup(modName + ": ENCOUNTERED CRITICAL ERROR: " + e);
+            }
+            catch { }
             UnityEngine.Debug.Log(modName + ": ENCOUNTERED CRITICAL ERROR");
             UnityEngine.Debug.Log(modName + ": MAY NOT WORK PROPERLY AFTER THIS ERROR, PLEASE REPORT!");
         }
