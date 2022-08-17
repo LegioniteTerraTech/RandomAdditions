@@ -80,19 +80,20 @@ namespace RandomAdditions
         private static bool patched = false;
         internal static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
         //private static bool patched = false;
+        internal static bool isSteamManaged = false;
         public static bool VALIDATE_MODS()
         {
             isWaterModPresent = false;
             isTweakTechPresent = false;
             isNuterraSteamPresent = false;
 
-#if STEAM
-            if (!LookForMod("NuterraSteam"))
+            if (!LookForMod("NLogManager"))
             {
-                DebugRandAddi.FatalError("This mod NEEDS NuterraSteam to function!  Please subscribe to it on the Steam Workshop.");
-                return false;
+                isSteamManaged = false;
             }
-#endif
+            else
+                isSteamManaged = true;
+
             if (!LookForMod("0Harmony"))
             {
                 DebugRandAddi.FatalError("This mod NEEDS Harmony to function!  Please subscribe to it on the Steam Workshop.");
@@ -120,13 +121,15 @@ namespace RandomAdditions
             }
             return true;
         }
-#if STEAM
+
         private static bool OfficialEarlyInited = false;
         public static void OfficialEarlyInit()
         {
             //Where the fun begins
             DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
+#if STEAM
             VALIDATE_MODS();
+#endif
 
             //Initiate the madness
             try
@@ -172,20 +175,26 @@ namespace RandomAdditions
         }
 
 
+
         public static void MainOfficialInit()
         {
             //Where the fun begins
-            DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
-            if (!VALIDATE_MODS())
-            {
-                return;
-            }
-            if (!OfficialEarlyInited)
-            {
-                DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
-                OfficialEarlyInit();
-            }
-            DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
+#if STEAM
+                DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
+                if (!VALIDATE_MODS())
+                {
+                    return;
+                }
+                if (!OfficialEarlyInited)
+                {
+                    DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
+                    OfficialEarlyInit();
+                }
+                DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
+#else
+            DebugRandAddi.Log("RandomAdditions: Startup was invoked by TTSMM!  Set-up to handle LATE initialization");
+            OfficialEarlyInit();
+#endif
 
             //Initiate the madness
             if (!patched)
@@ -224,6 +233,8 @@ namespace RandomAdditions
                 DebugRandAddi.Log(e);
             }
         }
+
+#if STEAM
         public static void DeInitALL()
         {
             if (patched)
@@ -272,6 +283,7 @@ namespace RandomAdditions
             {
                 return;
             }
+
 
             //Initiate the madness
             if (!MassPatcher.MassPatchAll())
