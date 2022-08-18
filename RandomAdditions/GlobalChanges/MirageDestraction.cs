@@ -10,7 +10,6 @@ namespace RandomAdditions
     public class MirageDestraction : Destraction
     {
         public static bool forceDisable = false;
-        private Tank tank;
         private MirageType type = MirageType.Circle;
         private List<ModuleMirage> ModuleMirages = new List<ModuleMirage>();
         internal List<MirageTank> Mirages = new List<MirageTank>();
@@ -23,6 +22,7 @@ namespace RandomAdditions
         private const float BaseMirageLifetime = 24f;
 
         // Local Stats
+        private float lastDistractTime = 0;
         private float AllPower = 0;
         private int Strength = 0;
         private int Strain = 0;
@@ -44,9 +44,11 @@ namespace RandomAdditions
             if (!(bool)dis)
             {
                 dis = tank.gameObject.AddComponent<MirageDestraction>();
+                DebugRandAddi.Info("RandomAdditions: MirageEffect - MirageDestraction of " + tank.name + " has been inited");
                 TankDestraction.HandleAddition(tank, dis);
                 dis.reg = tank.EnergyRegulator;
             }
+            dis.tank = tank;
 
             if (!dis.ModuleMirages.Contains(mirage))
             {
@@ -54,7 +56,7 @@ namespace RandomAdditions
                 dis.dirty = true;
             }
             else
-                DebugRandAddi.Log("RandomAdditions: MirageEffect - ModuleMirage of " + mirage.name + " was already added to " + tank.name + " but an add request was given?!?");
+                DebugRandAddi.LogError("RandomAdditions: MirageEffect - ModuleMirage of " + mirage.name + " was already added to " + tank.name + " but an add request was given?!?");
             mirage.distraction = dis;
         }
         public static void HandleRemoval(Tank tank, ModuleMirage mirage)
@@ -68,11 +70,11 @@ namespace RandomAdditions
             var dis = tank.GetComponent<MirageDestraction>();
             if (!(bool)dis)
             {
-                DebugRandAddi.Log("RandomAdditions: MirageEffect - Got request to remove for tech " + tank.name + " but there's no TankDistraction assigned?!?");
+                DebugRandAddi.LogError("RandomAdditions: MirageEffect - Got request to remove for tech " + tank.name + " but there's no TankDistraction assigned?!?");
                 return;
             }
             if (!dis.ModuleMirages.Remove(mirage))
-                DebugRandAddi.Log("RandomAdditions: MirageEffect - ModuleMirage of " + mirage.name + " requested removal from " + tank.name + " but no such ModuleMirage is assigned.");
+                DebugRandAddi.LogError("RandomAdditions: MirageEffect - ModuleMirage of " + mirage.name + " requested removal from " + tank.name + " but no such ModuleMirage is assigned.");
             else
             {
                 dis.dirty = true;
@@ -86,6 +88,7 @@ namespace RandomAdditions
                     item.Destroy();
                 }
                 dis.Mirages.Clear();
+                DebugRandAddi.Info("RandomAdditions: MirageEffect - MirageDestraction of " + tank.name + " has been de-inited");
                 TankDestraction.HandleRemoval(tank, dis);
                 Destroy(dis);
             }
@@ -131,20 +134,26 @@ namespace RandomAdditions
         {
             MirageTank lastDistraction = null;
             float best = float.MaxValue;
-            foreach (var item in Mirages)
+            if (lastDistractTime < Time.time)
             {
-                if (item.GetPosition(out Vector3 dis))
+                foreach (var item in Mirages)
                 {
-                    float dist = (dis - pos).sqrMagnitude;
-                    if (dist < best)
+                    if (item.GetPosition(out Vector3 dis))
                     {
-                        best = dist;
-                        lastDistraction = item;
+                        float dist = (dis - pos).sqrMagnitude;
+                        if (dist < best)
+                        {
+                            best = dist;
+                            lastDistraction = item;
+                        }
                     }
                 }
             }
             if (lastDistraction && lastDistraction.GetPosition(out dis2))
+            {
+                lastDistractTime = Time.time + 4f;
                 return true;
+            }
             else
             {
                 dis2 = pos;
@@ -383,7 +392,10 @@ namespace RandomAdditions
         private bool MakeCopyMeshAll(Transform child, GameObject toAddTo)
         {
             if (!child.gameObject.activeSelf)
+            {
+                Debug.Log("Gameobject " + child.name + " was inactive!");
                 return false;
+            }
             MeshFilter MF = child.GetComponent<MeshFilter>();
             if (MF == null || !MF.sharedMesh)
                 return false;
@@ -529,7 +541,6 @@ namespace RandomAdditions
             private Vector3 offset = Vector3.one;
             private Vector3 offsetLocal = Vector3.zero;
             private Vector3 offsetRand = Vector3.zero;
-            private float lastDistractTime = 0;
             private float lastRandTime = 0;
             private float offsetYVelo = 0;
             private float radius = 0;
@@ -561,26 +572,21 @@ namespace RandomAdditions
                 {
                     if (distractActive)
                     {
-                        if (lastDistractTime < Time.time)
+                        if (UnityEngine.Random.Range(0, 1f) < controller.Potentency + 0.1f)
                         {
-                            if (UnityEngine.Random.Range(0, 1f) < controller.Potentency + 0.1f)
-                            {
-                                distracting = true;
-                                pos = transform.position;
-                                lastDistractTime = Time.time + 4f;
-                                return true;
-                            }
-                            else
-                                distracting = false;
-                            lastDistractTime = Time.time + 4f;
+                            distracting = true;
+                            pos = transform.position;
+                            return true;
                         }
                         else
+                            distracting = false;
+                    }
+                    else
+                    {
+                        if (distracting)
                         {
-                            if (distracting)
-                            {
-                                pos = transform.position;
-                                return true;
-                            }
+                            pos = transform.position;
+                            return true;
                         }
                     }
                 }

@@ -99,10 +99,14 @@ namespace RandomAdditions
                 DebugRandAddi.FatalError("This mod NEEDS Harmony to function!  Please subscribe to it on the Steam Workshop.");
                 return false;
             }
-            if (LookForMod("WaterMod"))
+            if (!LookForMod("SafeSaves"))
             {
-                DebugRandAddi.Log("RandomAdditions: Found Water Mod!  Enabling water-related features!");
-                isWaterModPresent = true;
+#if STEAM
+                DebugRandAddi.FatalError("This mod NEEDS Mod Saves to function!  Please subscribe to it on the Steam Workshop.");
+#else
+                DebugRandAddi.FatalError("This mod NEEDS SafeSaves to function!  Please install it via TTMM.");
+#endif
+                return false;
             }
             if (LookForMod("WaterMod"))
             {
@@ -151,7 +155,6 @@ namespace RandomAdditions
                 logMan.GetComponent<LogHandler>().Initiate();
             }
             JSONRandAddModules.CompileLookupAndInit();
-            GlobalClock.ClockManager.Initiate();
 
             try
             {
@@ -180,17 +183,17 @@ namespace RandomAdditions
         {
             //Where the fun begins
 #if STEAM
-                DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
-                if (!VALIDATE_MODS())
-                {
-                    return;
-                }
-                if (!OfficialEarlyInited)
-                {
-                    DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
-                    OfficialEarlyInit();
-                }
-                DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
+            DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
+            if (!VALIDATE_MODS())
+            {
+                return;
+            }
+            if (!OfficialEarlyInited)
+            {
+                DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
+                OfficialEarlyInit();
+            }
+            DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
 #else
             DebugRandAddi.Log("RandomAdditions: Startup was invoked by TTSMM!  Set-up to handle LATE initialization");
             OfficialEarlyInit();
@@ -215,6 +218,7 @@ namespace RandomAdditions
                     DebugRandAddi.Log(e);
                 }
             }
+            GlobalClock.ClockManager.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
             ManTethers.Init();
@@ -266,11 +270,11 @@ namespace RandomAdditions
                 DebugRandAddi.Log(e);
             }
             ManTileLoader.DeInit();
-            GlobalClock.ClockManager.DeInit();
             GUIClock.DeInit();
             ManModeSwitch.DeInit();
             ManTethers.DeInit();
             ReplaceManager.RemoveAllBlocks();
+            GlobalClock.ClockManager.DeInit();
         }
 
         // UNOFFICIAL
@@ -450,6 +454,20 @@ namespace RandomAdditions
             catch (Exception e)
             {
                 DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup");
+                DebugRandAddi.Log(e);
+            }
+
+        }
+
+        public static void TrySaveConfigData()
+        {
+            try
+            {
+                config.WriteConfigJsonFile();
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Error on Config Saving");
                 DebugRandAddi.Log(e);
             }
 

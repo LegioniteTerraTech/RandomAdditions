@@ -34,6 +34,8 @@ namespace RandomAdditions
                 tanks.Clear();
                 ManTechs.inst.PlayerTankChangedEvent.Subscribe(inst.PlayerTechUpdate);
                 DebugRandAddi.Log("RandomAdditions: Created GlobalClock.");
+                inst.gameObject.SetActive(true);
+                inst.enabled = true;
             }
             public static void DeInit()
             {
@@ -49,7 +51,7 @@ namespace RandomAdditions
             public void PlayerTechUpdate(Tank Tech, bool set)
             {
                 if (Tech)
-                    Tech.GetComponent<RandomTank>().ReevaluateLoadingDiameter();
+                    RandomTank.Ensure(Tech).ReevaluateLoadingDiameter();
             }
 
             //All ModuleClock(s) will control the time based on global values.
@@ -136,7 +138,7 @@ namespace RandomAdditions
 
             private const float SlowUpdateTime = 0.6f;
             private float SlowUpdate = 0;
-            private void Update()
+            public void Update()
             {
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                 {

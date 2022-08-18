@@ -71,17 +71,15 @@ namespace RandomAdditions
             }
             if (currentTank.IsNotNull())
             {
-                if (currentTank.GetComponent<RandomTank>())
+                var randTank = RandomTank.Ensure(currentTank);
+                if (randTank.DisplayTimeTank)
                 {
-                    if (currentTank.GetComponent<RandomTank>().DisplayTimeTank)
+                    if (!isCurrentlyOpen)
                     {
-                        if (!isCurrentlyOpen)
-                        {
-                            GlobalClock.SetByGUI = true;//update it!
-                            LaunchClockWindow();
-                        }
-                        return;
+                        GlobalClock.SetByGUI = true;//update it!
+                        LaunchClockWindow();
                     }
+                    return;
                 }
             }
             if (isCurrentlyOpen)
@@ -94,26 +92,23 @@ namespace RandomAdditions
                 currentTime = Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay;
                 if (currentTank.IsNotNull())
                 {
-                    if (currentTank.GetComponent<RandomTank>())
+                    var randTank = RandomTank.Ensure(currentTank);
+                    if (randTank.DisplayTimeTank)
                     {
-                        if (currentTank.GetComponent<RandomTank>().DisplayTimeTank)
+                        if (!isCurrentlyOpen)
                         {
-                            if (!isCurrentlyOpen)
-                            {
-                                LaunchClockWindow();
-                            }
-                            else
-                                UpdateInfo();
+                            LaunchClockWindow();
                         }
                         else
-                        {
-                            if (isCurrentlyOpen)
-                                CloseClockWindow();
-                            else
-                                UpdateInfo();
-                        }
+                            UpdateInfo();
                     }
-                    // else there's strangely no TimeTank assigned!? SKIP!
+                    else
+                    {
+                        if (isCurrentlyOpen)
+                            CloseClockWindow();
+                        else
+                            UpdateInfo();
+                    }
                 }
             }
             catch { }

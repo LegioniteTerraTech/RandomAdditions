@@ -36,6 +36,7 @@ namespace RandomAdditions
             inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
             GlobalClock.SlowUpdateEvent.Subscribe(inst.UpdateSlow);
             DebugRandAddi.Log("RandomAdditions: Created ManModeSwitch.");
+            inst.gameObject.SetActive(true);
         }
         public static void DeInit()
         {
@@ -215,6 +216,11 @@ namespace RandomAdditions
         public bool GetTargetInfo(out Visible target)
         {
             var weap = block.tank.Weapons.GetFirstWeapon();
+            if (!weap)
+            {
+                target = null;
+                return false;
+            }
             target = weap.GetComponent<TargetAimer>()?.Target;
             return target;
         }
@@ -552,10 +558,12 @@ namespace RandomAdditions
                 catch { }
             }
             if (anims != null)
+            {
                 foreach (var item in anims)
                 {
                     item.RunBool(working);
                 }
+            }
         }
 
 

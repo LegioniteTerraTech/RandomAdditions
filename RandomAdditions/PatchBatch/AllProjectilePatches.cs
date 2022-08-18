@@ -169,11 +169,14 @@ namespace RandomAdditions
             private static bool GetTargetAimPosition_Prefix(SeekingProjectile __instance, ref Vector3 __result)
             {
                 Visible vis = (Visible)targ.Invoke(__instance, new object[] { });
-                TankDestraction ModuleCheck = vis.GetComponent<TankDestraction>();
-                if (ModuleCheck != null)
+                if (vis)
                 {
-                    __result = ModuleCheck.GetPosDistract(__result);
-                    return false;
+                    TankDestraction ModuleCheck = vis.GetComponent<TankDestraction>();
+                    if (ModuleCheck != null)
+                    {
+                        __result = ModuleCheck.GetPosDistract(__result);
+                        return false;
+                    }
                 }
                 return true;
             }

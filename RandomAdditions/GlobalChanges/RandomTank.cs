@@ -20,6 +20,16 @@ namespace RandomAdditions
         private bool isLoading = false;
         public int MaxTileLoadingDiameter = 1; // Only supports up to diamater of 5 for performance's sake
 
+        public static RandomTank Ensure(Tank tank)
+        {
+            var rt = tank.GetComponent<RandomTank>();
+            if (!rt)
+            {
+                rt = tank.gameObject.AddComponent<RandomTank>();
+                rt.Initiate();
+            }
+            return rt;
+        }
         public void Initiate()
         {
             tank = gameObject.GetComponent<Tank>();
@@ -44,7 +54,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: RandomTank(HandleAddition) - TANK IS NULL");
                 return;
             }
-            var dis = tank.GetComponent<RandomTank>();
+            var dis = Ensure(tank);
             if (!dis.loaders.Contains(loader))
             {
                 dis.loaders.Add(loader);
@@ -61,7 +71,7 @@ namespace RandomAdditions
                 return;
             }
 
-            var dis = tank.GetComponent<RandomTank>();
+            var dis = Ensure(tank);
 
             if (dis.loaders.Remove(loader))
                 dis.ReevaluateLoadingDiameter();

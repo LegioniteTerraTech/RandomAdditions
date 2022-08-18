@@ -88,11 +88,20 @@ namespace RandomAdditions
             }
             return transform.TransformPoint(destractLocalPos);
         }
+
+        private void Update()
+        {
+            foreach (var item in Destractions)
+            {
+                item.UpdateThis();
+            }
+        }
     }
 
     public class Destraction : MonoBehaviour
     {
         protected TankDestraction TD;
+        protected Tank tank;
 
         internal virtual void UpdateThis() { }
         internal virtual float GetRadDistract()

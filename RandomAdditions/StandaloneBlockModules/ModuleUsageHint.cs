@@ -157,7 +157,10 @@ namespace RandomAdditions
                 if (!HintsSeen.Contains(hintID))
                     ShowHint(hintNum);
             }
-            catch { }
+            catch (Exception e)
+            {
+                Debug.Assert(true, e);
+            }
         }
         private static void ShowHint(GameHints.HintID hintID)
         {
@@ -183,9 +186,16 @@ namespace RandomAdditions
                     toHide.Add(new KeyValuePair<float, UIHints.ShowContext>(Time.time + hintDisplayTime, showContext));
                     HintsSeen.Add((int)hintID);
                     HintsSeenToSave();
-#if !STEAM          // NEED TO REVIEW ALL OF THESE LATER
-                    KickStartOptions.config.WriteConfigJsonFile();
-#endif
+
+                    try
+                    {
+                        KickStartOptions.TrySaveConfigData();
+                    }
+                    catch
+                    {
+                        DebugRandAddi.Log("RandomAdditions: Could not save to Config since ConfigHelper is absent.");
+                    }
+
                     Singleton.Manager<ManSFX>.inst.PlayUISFX(ManSFX.UISfxType.Hint);
                 }
             }
@@ -205,7 +215,10 @@ namespace RandomAdditions
                     {
                         Singleton.Manager<ManHUD>.inst.HideHudElement(ManHUD.HUDElementType.Hint, item.Value.hintID);
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        Debug.Assert(true, e);
+                    }
                     toHide.RemoveAt(iterating);
                 }
                 else
@@ -249,7 +262,10 @@ namespace RandomAdditions
                 mem.Add(int.Parse(blockCase.ToString()));
                 HintsSeen = mem;
             }
-            catch { }
+            catch (Exception e)
+            {
+                Debug.Assert(true, e);
+            }
         }
 
 

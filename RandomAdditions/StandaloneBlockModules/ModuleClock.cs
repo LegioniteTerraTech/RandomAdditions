@@ -146,7 +146,7 @@ namespace RandomAdditions
             {   // Load a little HUD window with the time
                 if (tank.IsNotNull())
                 {
-                    tank.GetComponent<RandomTank>().DisplayTimeTank = true;
+                    RandomTank.Ensure(tank).DisplayTimeTank = true;
                 }
             }
             /*
