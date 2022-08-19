@@ -17,7 +17,24 @@ namespace RandomAdditions
     /// </summary>
     public class ExtProj : MonoBehaviour
     {
-        public ProjBase PB;
+        private ProjBase _PB;
+        public ProjBase PB
+        {
+            get 
+            {
+                if (_PB == null)
+                {
+                    _PB = GetComponent<ProjBase>();
+                    if (_PB == null)
+                        _PB = gameObject.AddComponent<ProjBase>().PoolEmergency(GetComponent<Projectile>());
+                }
+                return _PB;
+            }
+            set
+            {
+                _PB = value;
+            }
+        }
 
         public void Recycle() 
         {
@@ -115,6 +132,12 @@ namespace RandomAdditions
             }
         }
 
+        public ProjBase PoolEmergency(Projectile inst)
+        {
+            PrePoolTryApplyThis(inst);
+            Pool(inst);
+            return this;
+        }
 
 
         internal void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
