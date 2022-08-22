@@ -85,24 +85,39 @@ namespace RandomAdditions
 
         public void OnHeldAdd(Visible vis, ModuleItemHolder.Stack transferstack)
         {
-            if (!HeldVis.Contains(vis)) //Add to animation handler!
+            if (vis) //Add to animation handler!
             {
-                HeldVis.Add(vis);
-                HeldVisPos.Add(transform.InverseTransformPoint(vis.centrePosition));
-                vis.gameObject.GetComponent<ItemIgnoreCollision>().ForceIgnoreTank(tank);
-                //Debug.Log("RandomAdditions: OnHeldAdd - Added " + vis.name);
+                if (!HeldVis.Contains(vis))
+                {
+                    HeldVis.Add(vis);
+                    HeldVisPos.Add(transform.InverseTransformPoint(vis.centrePosition));
+                    ItemIgnoreCollision.Insure(vis).ForceIgnoreTank(tank);
+                    //DebugRandAddi.Log("RandomAdditions: OnHeldAdd - Added " + vis.name); 
+                }
+                else
+                    DebugRandAddi.Assert("ModuleItemFixedHolderBeam - Was told to add a visible already present in the managed list!  Block " + gameObject.name);
             }
+            else
+                DebugRandAddi.Assert("ModuleItemFixedHolderBeam - Was told to add a NULL visible!  Block " + gameObject.name);
         }
         public void OnHeldRemove(Visible vis, ModuleItemHolder.Stack unused, ModuleItemHolder.Stack transferstack)
         {
             if (vis)
             {
-                int index = HeldVis.IndexOf(vis);
-                if (transferstack == null || !transferstack.myHolder.GetComponent<ModuleItemFixedHolderBeam>())
-                    vis.pickup.InitRigidbody();
-                HeldVisPos.RemoveAt(index);
-                HeldVis.RemoveAt(index);
+                if (HeldVis.Contains(vis))
+                {
+                    int index = HeldVis.IndexOf(vis);
+                    if (transferstack == null || !transferstack.myHolder.GetComponent<ModuleItemFixedHolderBeam>())
+                        vis.pickup.InitRigidbody();
+                    HeldVisPos.RemoveAt(index);
+                    HeldVis.RemoveAt(index);
+                }
+                else
+                    DebugRandAddi.Assert("ModuleItemFixedHolderBeam - Was told to remove a visible not present in the managed list!  Block " + gameObject.name);
+                
             }
+            else
+                DebugRandAddi.Assert("ModuleItemFixedHolderBeam - Was told to remove a NULL visible! Block " + gameObject.name);
         }
 
         public void VaildateHeld()
@@ -120,7 +135,7 @@ namespace RandomAdditions
                         HeldVisPos.RemoveAt(step);
                         step--;
                         countCheck--;
-                        //Debug.Log("RandomAdditions: GetLocalizedPosition - Removed visible at " + step);
+                        //DebugRandAddi.Log("RandomAdditions: GetLocalizedPosition - Removed visible at " + step);
                     }
                     bool InStack = false;
                     int fireTimes = theHolder.NumStacks;
@@ -143,7 +158,7 @@ namespace RandomAdditions
                         visStored.pickup.InitRigidbody();
                         step--;
                         countCheck--;
-                        //Debug.Log("RandomAdditions: GetLocalizedPosition - Removed visible at " + step);
+                        //DebugRandAddi.Log("RandomAdditions: GetLocalizedPosition - Removed visible at " + step);
                     }
                 }
                 catch
@@ -178,7 +193,7 @@ namespace RandomAdditions
                 if (vis.UsePrevHeldPos && ManNetwork.IsHost)
                 {
                     float beat = 1f - (tank.Holders.NextHeartBeatTime - Time.time) / tank.Holders.CurrentHeartbeatInterval;
-                    //Debug.Log("RandomAdditions: GetLocalizedPosition.VaildateHeld - " + beat);
+                    //DebugRandAddi.Log("RandomAdditions: GetLocalizedPosition.VaildateHeld - " + beat);
                     final = Vector3.Lerp(final, posInStack, Maths.SinEaseInOut(beat));
                     if (beat == Mathf.Infinity)
                     {

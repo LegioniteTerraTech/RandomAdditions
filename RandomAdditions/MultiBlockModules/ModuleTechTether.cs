@@ -24,7 +24,7 @@ namespace RandomAdditions
             {
                 if (main == null)
                 {
-                    Debug.Assert(true, "ManTethers.TetherPair has unset tether relations.  This should not be possible.");
+                    DebugRandAddi.Assert(true, "ManTethers.TetherPair has unset tether relations.  This should not be possible.");
                     return;
                 }
                 if (playSound)
@@ -41,7 +41,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    Debug.Log("ManTethers.TetherPair - error " + error);
+                    DebugRandAddi.Log("ManTethers.TetherPair - error " + error);
                 }
             }
         }

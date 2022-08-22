@@ -27,14 +27,14 @@ namespace RandomAdditions
                         return;
                     if (PB.project.CanDamageBlock(damageable))
                     {
-                        //Debug.Log("RandomAdditions: queued block death");
+                        //DebugRandAddi.Log("RandomAdditions: queued block death");
                         try
                         {
                             if (InstaKill || (damageable.Health <= 0 && GuaranteedKillOnLowHP))
                             {
                                 var validation = damageable.GetComponent<TankBlock>(); // make sure that it's not a shield
                                 OHKOInsurance.TryQueueUnstoppableDeath(validation);
-                                //Debug.Log("RandomAdditions: omae wa - mou shindeiru");
+                                //DebugRandAddi.Log("RandomAdditions: omae wa - mou shindeiru");
                                 return;
                             }
                         }
@@ -47,7 +47,7 @@ namespace RandomAdditions
             }
             else
             {
-                //Debug.Log("RandomAdditions: let block live");
+                //DebugRandAddi.Log("RandomAdditions: let block live");
             }
         }
     }

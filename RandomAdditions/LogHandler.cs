@@ -49,10 +49,10 @@ namespace RandomAdditions
             customLog = true;
             if (!FiredBigDisplay)
             {
-                Debug.Log("RandomAdditions: FORCING CRASH!!!");
+                DebugRandAddi.Log("RandomAdditions: FORCING CRASH!!!");
                 Tank LithobreakerX = null;
                 string crashQueue = LithobreakerX.GetComponent<Rigidbody>().mass.ToString();
-                Debug.Log("RandomAdditions: " + crashQueue + LithobreakerX); //CRASH IT!  CRASH IT NOW!!!
+                DebugRandAddi.Log("RandomAdditions: " + crashQueue + LithobreakerX); //CRASH IT!  CRASH IT NOW!!!
             }
             else 
             {
@@ -126,7 +126,7 @@ namespace RandomAdditions
             crsh.Invoke(UISBR, new object[] { });
             ManGameMode.inst.TriggerSwitch<ModeAttract>();
 #else
-            Debug.Log("RandomAdditions: Unofficial Modding will let you continue, but do AT YOUR OWN RISK");
+            DebugRandAddi.Log("RandomAdditions: Unofficial Modding will let you continue, but do AT YOUR OWN RISK");
             Singleton.Manager<ManUI>.inst.ShowErrorPopup("The server pool for Unofficial Modding will\nlet you continue, but do so AT YOUR OWN RISK");
 #endif
             threwForceEnd = true;
@@ -138,7 +138,7 @@ namespace RandomAdditions
             if (logCount > 0)
             {
                 logCount--;
-                //Debug.Log("RandomAdditions: Log received is size " + logString.Length);
+                //DebugRandAddi.Log("RandomAdditions: Log received is size " + logString.Length);
                 logFinal += "\n" + logString;
             }
             */

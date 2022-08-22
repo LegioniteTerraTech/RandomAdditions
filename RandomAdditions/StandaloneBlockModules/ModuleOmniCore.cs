@@ -179,7 +179,7 @@ namespace RandomAdditions
         {
             LastTrans = Vector3.ClampMagnitude(controlState.Throttle + controlState.InputMovement, 1);
             LastRotat = controlState.InputRotation;
-            //Debug.LogError("RandomAdditions: CommandRequest");
+            //DebugRandAddi.LogError("RandomAdditions: CommandRequest");
         }
 
         private void OnResetTank(int num)

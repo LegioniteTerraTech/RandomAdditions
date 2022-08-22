@@ -28,7 +28,7 @@ namespace RandomAdditions
         {
             thisTrans = gameObject.transform;
             hasFiredOnce = true;
-            //Debug.Log("RandomAdditions: Launched WeightedProjectile on " + gameObject.name);
+            //DebugRandAddi.Log("RandomAdditions: Launched WeightedProjectile on " + gameObject.name);
         }
 
         private void FixedUpdate()

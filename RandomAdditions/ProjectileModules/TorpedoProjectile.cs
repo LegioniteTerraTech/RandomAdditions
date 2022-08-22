@@ -45,7 +45,7 @@ namespace RandomAdditions
                     ps = isTransformPresent.GetComponent<ParticleSystem>();
                     if (ps)
                         ps.Clear(false);
-                    //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " Thrust is " + addedThrustDirection + " | and position is " + addedThrustPosition);
+                    //DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " Thrust is " + addedThrustDirection + " | and position is " + addedThrustPosition);
                 }
                 else
                 {
@@ -74,7 +74,7 @@ namespace RandomAdditions
                     isSubmerged = true;
                     if (ThrustUntilProjectileDeath || !killThrust)
                     {
-                        //Debug.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
+                        //DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
                         PB.rbody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
                         runAnim = false;
                     }

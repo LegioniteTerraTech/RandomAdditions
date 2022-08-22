@@ -75,7 +75,7 @@ namespace RandomAdditions
         {
             if (!TempLoaders.TryGetValue(posTile, out _))
             {
-                Debug.Log("TEMP LOADING TILE " + posTile.ToString());
+                DebugRandAddi.Log("TEMP LOADING TILE " + posTile.ToString());
                 TempLoaders.Add(posTile, TempDuration + Time.time);
                 return true;
             }
@@ -166,7 +166,7 @@ namespace RandomAdditions
                         error++;
                         List<IntVector2> tiles = Singleton.Manager<ManSaveGame>.inst.CurrentState.m_StoredTiles.Keys.ToList();
                         error++;
-                        Debug.Log("TRYING TO FETCH LAST PLAYER TECH!!!");
+                        DebugRandAddi.Log("TRYING TO FETCH LAST PLAYER TECH!!!");
                         foreach (IntVector2 tile in tiles)
                         {
                             error += 10;
@@ -184,7 +184,7 @@ namespace RandomAdditions
                                         if (tech.m_ID == lastTechID)
                                         {
                                             TempLoadTile(tile);
-                                            Debug.Log("Fetched last player Tech");
+                                            DebugRandAddi.Log("Fetched last player Tech");
                                             lastTechUpdateTime = Time.time + EmergencyTileLoad;
                                         }
                                     }
@@ -246,7 +246,7 @@ namespace RandomAdditions
                                     }
                                 }
 
-                                //Debug.Log("Evaluating: " + tech.m_TechData.Name + "  TileLoader? " + tileLoader + " Active? " + tileLoaderActive);
+                                //DebugRandAddi.Log("Evaluating: " + tech.m_TechData.Name + "  TileLoader? " + tileLoader + " Active? " + tileLoaderActive);
                             }
                         }
                     }

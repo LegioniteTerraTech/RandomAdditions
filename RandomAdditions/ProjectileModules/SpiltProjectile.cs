@@ -74,7 +74,7 @@ namespace RandomAdditions
             {
                 SplitPayload = fire.m_BulletPrefab;
                 SplitCasing = fire.m_BulletCasingPrefab;
-                //Debug.Log("RandomAdditions: SpiltProjectile - Grabbed FireData for " + gameObject.name);
+                //DebugRandAddi.Log("RandomAdditions: SpiltProjectile - Grabbed FireData for " + gameObject.name);
             }
             else
             {
@@ -95,7 +95,7 @@ namespace RandomAdditions
             var fire = GetComponent<FireData>();
             if ((bool)fire)
             {
-                //Debug.Log("RandomAdditions: Fired SpiltProjectile on " + gameObject.name);
+                //DebugRandAddi.Log("RandomAdditions: Fired SpiltProjectile on " + gameObject.name);
                 float velocityHandler = fire.m_MuzzleVelocity;
                 if (velocityHandler < 0.1)
                     velocityHandler = 0.1f;

@@ -50,7 +50,7 @@ namespace RandomAdditions
 
         private static void DestroyBlock(TankBlock TB)
         {   // insta-death
-            //Debug.Log("RandomAdditions: Block has gone poof");
+            //DebugRandAddi.Log("RandomAdditions: Block has gone poof");
             TankBlock cache = TB;
             cache.damage.Explode(true);
             ManLooseBlocks.inst.RequestDespawnBlock(cache, DespawnReason.Host);

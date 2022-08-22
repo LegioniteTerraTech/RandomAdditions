@@ -93,7 +93,7 @@ namespace RandomAdditions
         {
             if (queuedGeneration > 1)
             {
-                //Debug.Log("Pushing generation " + queuedGeneration);
+                //DebugRandAddi.Log("Pushing generation " + queuedGeneration);
                 tank.EnergyRegulator.Supply(EnergyRegulator.EnergyType.Electric, Energy, queuedGeneration);
                 queuedGeneration = 0;
             }
@@ -117,11 +117,11 @@ namespace RandomAdditions
 
         private void BoostGenerate()
         {
-            //Debug.Log("Trying to Generate");
+            //DebugRandAddi.Log("Trying to Generate");
             if (!tank.Boosters.FuelBurnedOut)
             {
                 float generateVal = FuelRatePerSecond * updateDelay * Time.fixedDeltaTime;
-                //Debug.Log("Generating " + generateVal);
+                //DebugRandAddi.Log("Generating " + generateVal);
                 burnRateCurrent = FuelConsumeRate * Time.fixedDeltaTime;
                 queuedGeneration += generateVal;
                 isBoostingNow = true;
@@ -131,14 +131,14 @@ namespace RandomAdditions
         }
         private void BoostGenerateFull()
         {
-            //Debug.Log("Trying to Generate (full)");
+            //DebugRandAddi.Log("Trying to Generate (full)");
             if ((float)boostRegenGet.GetValue(tank.Boosters) > FuelRatePerSecond)
             {
                 float burnt = Mathf.Clamp((float)boostRegenGet.GetValue(tank.Boosters), 0, FuelConsumeRate) * Time.deltaTime;
                 burnRateCurrent = burnt;
                 queuedGeneration += burnt * FuelToEnergyRate * updateDelay;
                 isBoostingNow = true;
-                //Debug.Log("Generating " + burnt * FuelToEnergyRate);
+                //DebugRandAddi.Log("Generating " + burnt * FuelToEnergyRate);
             }
             else
                 isBoostingNow = false;
@@ -166,7 +166,7 @@ namespace RandomAdditions
         {
             if (!ManPauseGame.inst.IsPaused && updateDelayClock > updateDelay && IsBoostPossible())
             {
-                //Debug.Log("update");
+                //DebugRandAddi.Log("update");
                 float output;
                 switch (GenerateCondition)
                 {
@@ -274,11 +274,11 @@ namespace RandomAdditions
             var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
             if (tank != null || reg.storageTotal > 1)
             {
-                //Debug.Log("GetCurrentEnergyPercent - " + ((reg.storageTotal - reg.spareCapacity) / reg.storageTotal));
+                //DebugRandAddi.Log("GetCurrentEnergyPercent - " + ((reg.storageTotal - reg.spareCapacity) / reg.storageTotal));
                 return (reg.storageTotal - reg.spareCapacity) / reg.storageTotal;
             }
             //else
-            //    Debug.Log("GetCurrentEnergyPercent - Not working!");
+            //    DebugRandAddi.Log("GetCurrentEnergyPercent - Not working!");
             return 0;
         }
     }

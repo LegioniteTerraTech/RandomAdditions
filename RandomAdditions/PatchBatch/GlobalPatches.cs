@@ -43,7 +43,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Letting the player continue with a crashed STEAM client. " +
                     "Note that this will still force a quit screen under certain conditions.");
 #else
-                Debug.Log("RandomAdditions: Letting the player continue with a crashed Unofficial client. " +
+                DebugRandAddi.Log("RandomAdditions: Letting the player continue with a crashed Unofficial client. " +
                 "Note that this will NOT force a quit screen under certain conditions, but " +
                 "you know the rules, and so do I.");
 #endif
@@ -70,7 +70,7 @@ namespace RandomAdditions
             {
                 //Custom error menu
                 //  Credit to Exund who provided the nesseary tools to get this working nicely!
-                //Debug.Log("RandomAdditions: Fired error menu"); 
+                //DebugRandAddi.Log("RandomAdditions: Fired error menu"); 
                 FieldInfo errorGet = typeof(UIScreenBugReport).GetField("m_Description", BindingFlags.NonPublic | BindingFlags.Instance);
                 var UIMan = Singleton.Manager<ManUI>.inst;
                 var UIObj = UIMan.GetScreen(ManUI.ScreenType.BugReport).gameObject;
@@ -79,8 +79,8 @@ namespace RandomAdditions
 
                 //ETC
                 //Text newError = (string)textGet.GetValue(bugReport);
-                //Debug.Log("RandomAdditions: error menu " + bugReport.text.ToString());
-                //Debug.Log("RandomAdditions: error menu host gameobject " +
+                //DebugRandAddi.Log("RandomAdditions: error menu " + bugReport.text.ToString());
+                //DebugRandAddi.Log("RandomAdditions: error menu host gameobject " +
                 //Nuterra.NativeOptions.UIUtilities.GetComponentTree(UIObj, ""));
 
                 //Cleanup of unused UI elements
@@ -97,7 +97,7 @@ namespace RandomAdditions
 #else
                 UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) CONTINUE ANYWAYS";
 #endif
-                //Debug.Log("RandomAdditions: Cleaned Bug Reporter UI");
+                //DebugRandAddi.Log("RandomAdditions: Cleaned Bug Reporter UI");
 
                 //Setup the UI
                 StringBuilder SB = new StringBuilder();
@@ -113,7 +113,7 @@ namespace RandomAdditions
                         {
                             SB.Append("userName");
                         }
-                        //Debug.Log("RandomAdditions: " + toSearch[step] + " | " );
+                        //DebugRandAddi.Log("RandomAdditions: " + toSearch[step] + " | " );
                         if (toSearch[step] == '/')
                             ignoreThisCase = false;
                         if (ignoreThisCase)
@@ -187,7 +187,7 @@ namespace RandomAdditions
             /// <param name="__instance"></param>
             internal static void OnPool_Postfix(TankBlock __instance)
             {
-                //Debug.Log("RandomAdditions: Patched TankBlock OnPool(ModuleOHKOInsurance & TankBlockScaler)");
+                //DebugRandAddi.Log("RandomAdditions: Patched TankBlock OnPool(ModuleOHKOInsurance & TankBlockScaler)");
                 var block = __instance.gameObject;
                 if (!(bool)block.GetComponent<TankBlockScaler>())
                 {   //This allows for an override to be concocted if the block maker wants to specify a custom size
@@ -227,7 +227,7 @@ namespace RandomAdditions
                 {
                     if (!__instance.block.IsAttached)
                     {
-                        //Debug.Log("RandomAdditions: Overwrote visible to handle resources");
+                        //DebugRandAddi.Log("RandomAdditions: Overwrote visible to handle resources");
                         if (stack != null)
                         {
                             if (KickStart.AutoScaleBlocksInSCU || !stack.myHolder.gameObject.GetComponent<ModuleHeart>())
@@ -241,7 +241,7 @@ namespace RandomAdditions
                                 }
                                 ModuleScale.Downscale = true;
                                 ModuleScale.enabled = true;
-                                //Debug.Log("RandomAdditions: Queued Rescale Down");
+                                //DebugRandAddi.Log("RandomAdditions: Queued Rescale Down");
                             }
 
                             var ModuleCheck = stack.myHolder.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
@@ -275,7 +275,7 @@ namespace RandomAdditions
                             }
                             ModuleScale.Downscale = false;
                             ModuleScale.enabled = true;
-                            //Debug.Log("RandomAdditions: Queued Rescale Up");
+                            //DebugRandAddi.Log("RandomAdditions: Queued Rescale Up");
 
                             //Reset them collodos
                             if (__instance.ColliderSwapper.CollisionEnabled)
@@ -283,14 +283,14 @@ namespace RandomAdditions
                                 __instance.ColliderSwapper.EnableCollision(false);
                                 __instance.ColliderSwapper.EnableCollision(true);
                             }
-                            //Debug.Log("RandomAdditions: reset " + __instance.name + "'s active colliders");
+                            //DebugRandAddi.Log("RandomAdditions: reset " + __instance.name + "'s active colliders");
 
                         }
                     }
                 }
                 if ((bool)__instance.pickup)
                 {
-                    //Debug.Log("RandomAdditions: Overwrote visible to handle resources");
+                    //DebugRandAddi.Log("RandomAdditions: Overwrote visible to handle resources");
                     if (stack != null)
                     {
 
@@ -299,71 +299,44 @@ namespace RandomAdditions
                         {
                             if (ModuleCheck.FixateToTech)
                             {
-                                var IIC = __instance.gameObject.GetComponent<ItemIgnoreCollision>();
-                                if (!IIC)
-                                {
-                                    IIC = __instance.gameObject.AddComponent<ItemIgnoreCollision>();
-                                }
-                                IIC.UpdateCollision(true);
+                                ItemIgnoreCollision.Insure(__instance).UpdateCollision(true);
                             }
                             if (ModuleCheck.AllowOtherTankCollision)
                             {
-                                var IIC = __instance.gameObject.GetComponent<ItemIgnoreCollision>();
-                                if (!IIC)
-                                {
-                                    IIC = __instance.gameObject.AddComponent<ItemIgnoreCollision>();
-                                }
-                                IIC.AllowOtherTankCollisions = true;
+                                ItemIgnoreCollision.Insure(__instance).AllowOtherTankCollisions = true;
                             }
                         }
                     }
                     else
                     {
-                        var IIC = __instance.gameObject.GetComponent<ItemIgnoreCollision>();
-                        if (!IIC)
-                        {
-                            IIC = __instance.gameObject.AddComponent<ItemIgnoreCollision>();
-                        }
-                        IIC.UpdateCollision(false);
+                        ItemIgnoreCollision.Insure(__instance).UpdateCollision(false);
                     }
                 }
             }
 
         }
-        internal static class TrackedVisiblePatches
+
+
+        internal static class ObjectSpawnerPatches
         {
-            internal static Type target = typeof(TrackedVisible);
-            private static bool TankExists(TrackedVisible tv)
+            internal static Type target = typeof(ObjectSpawner);
+
+            private static void TrySpawn_Prefix(ref ManSpawn.ObjectSpawnParams objectSpawnParams, ref ManFreeSpace.FreeSpaceParams freeSpaceParams)
             {
-                if (tv != null)
+                if ((ManNetwork.IsHost || !ManNetwork.IsNetworked) && objectSpawnParams != null)
                 {
-                    if (tv.visible != null)
+                    if (objectSpawnParams is ManSpawn.TechSpawnParams TSP)
                     {
-                        if (ManWorld.inst.CheckIsTileAtPositionLoaded(tv.Position))
+                        if (TSP.m_IsPopulation)
                         {
-                            if (tv.visible.tank != null)
-                            {
-                                return true;
-                            }
+                            ReplaceManager.TryReplaceBlocks(TSP.m_TechToSpawn, freeSpaceParams);
                         }
                     }
                 }
-                return false;
-            }
-
-            /// <summary>
-            /// PerformBlocksSwapOperation
-            /// </summary>
-            /// 
-            private static void OnRespawn_Postfix(TrackedVisible __instance)
-            {   // Change the parts on the Tech with blocks with ModuleReplace attached
-                if (!TankExists(__instance))
-                    return;
-                Tank tank = __instance.visible.tank;
-                ReplaceManager.TryReplaceBlocks(tank);
             }
         }
 
+        /*
         internal static class ResourcePickupPatches
         {
             internal static Type target = typeof(ResourcePickup);
@@ -373,11 +346,11 @@ namespace RandomAdditions
             /// <param name="__instance"></param>
             private static void OnPool_Postfix(ResourcePickup __instance)
             {
-                //Debug.Log("RandomAdditions: Patched ResourcePickup OnPool(ModulePickupIgnore)");
+                //DebugRandAddi.Log("RandomAdditions: Patched ResourcePickup OnPool(ModulePickupIgnore)");
                 var chunk = __instance.gameObject;
                 chunk.AddComponent<ItemIgnoreCollision>();
             }
-        }
+        }*/
 
         internal static class DamageablePatches
         {
@@ -392,7 +365,7 @@ namespace RandomAdditions
             /// </summary>
             private static void Damage_Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
             {
-                //Debug.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
+                //DebugRandAddi.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
                 try
                 {
                     if (__instance == null)
@@ -411,14 +384,14 @@ namespace RandomAdditions
             /// </summary>
             private static void OnPool_Prefix(Damageable __instance)
             {
-                //Debug.Log("RandomAdditions: Patched Damageable OnPool(ModuleReinforced)");
+                //DebugRandAddi.Log("RandomAdditions: Patched Damageable OnPool(ModuleReinforced)");
                 var modifPresent = __instance.gameObject.GetComponent<ModuleReinforced>();
                 if (modifPresent != null)
                 {
                     if (modifPresent.DoDamagableSwitch)
                     {
                         __instance.DamageableType = modifPresent.TypeToSwitch;
-                        //Debug.Log("RandomAdditions: Damageable Switched to " + __instance.DamageableType);
+                        //DebugRandAddi.Log("RandomAdditions: Damageable Switched to " + __instance.DamageableType);
                     }
                     else if (modifPresent.UseMultipliers)
                     {
@@ -442,7 +415,7 @@ namespace RandomAdditions
                     if (KickStart.TrueShields && __instance.Damageable.DamageableType == ManDamage.DamageableType.Standard)
                     {
                         __instance.Damageable.DamageableType = ManDamage.DamageableType.Shield;
-                        //Debug.Log("RandomAdditions: PatchShieldsToActuallyBeShieldTyping - Changed " + __instance.transform.root.name + " to actually be shield typing");
+                        //DebugRandAddi.Log("RandomAdditions: PatchShieldsToActuallyBeShieldTyping - Changed " + __instance.transform.root.name + " to actually be shield typing");
                     }
                 }
                 catch (Exception e)
@@ -465,7 +438,7 @@ namespace RandomAdditions
             {
                 if (KickStart.NoShake)
                 {
-                    //Debug.Log("RandomAdditions: Stopping irritation.");
+                    //DebugRandAddi.Log("RandomAdditions: Stopping irritation.");
                     shaker.SetValue(__instance, 0);
                     return false;
                 }

@@ -62,7 +62,7 @@ namespace RandomAdditions
         {
             if (queuedDrain > 0)
             {
-                //Debug.Log("Consuming " + queuedDrain);
+                //DebugRandAddi.Log("Consuming " + queuedDrain);
                 Energy.ConsumeIfEnough(EnergyRegulator.EnergyType.Electric, queuedDrain);
                 queuedDrain = 0;
             }
@@ -161,7 +161,7 @@ namespace RandomAdditions
                     float energy = GetCurrentEnergy();
                     if (energy < drainRate)
                     {
-                        //Debug.Log("Energy too low");
+                        //DebugRandAddi.Log("Energy too low");
                         ResetSpeed();
                         return;
                     }
@@ -169,8 +169,8 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    //Debug.Log("Speed out of threshold");
-                    //Debug.Log("Speed " + sped);
+                    //DebugRandAddi.Log("Speed out of threshold");
+                    //DebugRandAddi.Log("Speed " + sped);
                 }
             }
             else if (sped <= 0.2)

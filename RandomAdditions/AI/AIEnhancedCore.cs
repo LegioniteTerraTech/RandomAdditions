@@ -70,7 +70,7 @@ namespace RandomAdditions.AI
                         savedMode = TankBlock.transform.root.GetComponent<AI.AIECore.TankAIHelper>().DediAI
                     };
                     serialData.Store(blockSpec.saveState);
-                    Debug.Log("TACtical AI: Saved " + SavedAI.ToString() + " in gameObject " + gameObject.name);
+                    DebugRandAddi.Log("TACtical AI: Saved " + SavedAI.ToString() + " in gameObject " + gameObject.name);
                      */
                 }
                 else

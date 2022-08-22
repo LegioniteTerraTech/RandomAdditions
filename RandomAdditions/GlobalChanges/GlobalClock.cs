@@ -64,7 +64,7 @@ namespace RandomAdditions
                 TimeControllerPresent = UpdateClocks();
                 if (TimeControllerPresent && LockTime)
                 {
-                    //Debug.Log("RandomAdditions: Time Controller present.");
+                    //DebugRandAddi.Log("RandomAdditions: Time Controller present.");
                     if (SetByGUI)
                     {
                         SetAllTimeControllers();

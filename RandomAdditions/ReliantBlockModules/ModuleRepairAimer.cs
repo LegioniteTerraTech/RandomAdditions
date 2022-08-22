@@ -119,7 +119,7 @@ namespace RandomAdditions
                 return;
             if (TargetAimer == null || Targeter == null)
                 return;
-            //Debug.Log("RandomAdditions: ModuleRepairAimer - UPDATING
+            //DebugRandAddi.Log("RandomAdditions: ModuleRepairAimer - UPDATING
 
             if (aimTarget != null && aimTargBlock != null)
             {
@@ -252,7 +252,7 @@ namespace RandomAdditions
                 else
                 {
                     StopBeam();
-                    //Debug.Log("RandomAdditions: ModuleRepairAimer - UPDATING - not enough energy " + Energy.GetCurrentAmount(EnergyRegulator.EnergyType.Electric));
+                    //DebugRandAddi.Log("RandomAdditions: ModuleRepairAimer - UPDATING - not enough energy " + Energy.GetCurrentAmount(EnergyRegulator.EnergyType.Electric));
                 }
             }
             else

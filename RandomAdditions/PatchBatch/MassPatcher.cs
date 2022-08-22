@@ -17,7 +17,7 @@ namespace RandomAdditions
         public static void CheckIfUnstable()
         {
             IsUnstable = SKU.DisplayVersion.Count(x => x == '.') > 2;
-            Debug.Log(modName + ": Is " + SKU.DisplayVersion + " an Unstable? - " + IsUnstable);
+            DebugRandAddi.Log(modName + ": Is " + SKU.DisplayVersion + " an Unstable? - " + IsUnstable);
         }
 
         internal static bool MassPatchAll()
@@ -34,7 +34,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log(modName + ": FAILED ON ALL PATCH ATTEMPTS - CASCADE FAILIURE " + e);
+                DebugRandAddi.Log(modName + ": FAILED ON ALL PATCH ATTEMPTS - CASCADE FAILIURE " + e);
             }
             return false;
         }
@@ -51,7 +51,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log(modName + ": FAILED ON ALL UN-PATCH ATTEMPTS - CASCADE FAILIURE " + e);
+                DebugRandAddi.Log(modName + ": FAILED ON ALL UN-PATCH ATTEMPTS - CASCADE FAILIURE " + e);
             }
             return false;
         }
@@ -61,10 +61,11 @@ namespace RandomAdditions
             bool errorless = true;
             try
             {
+                DebugRandAddi.Info(modName + ": MassPatchAllWithin - Target " + ToPatch.ToString());
                 Type[] types = ToPatch.GetNestedTypes(BindingFlags.Static | BindingFlags.NonPublic);
                 if (types == null)
                 {
-                    Debug.Log(modName + ": FAILED TO patch " + ToPatch.Name + " - There's no nested classes?");
+                    DebugRandAddi.Log(modName + ": FAILED TO patch " + ToPatch.Name + " - There's no nested classes?");
                     return false;
                 }
                 foreach (var typeCase in types)
@@ -78,23 +79,23 @@ namespace RandomAdditions
                         }
                         catch
                         {
-                            Debug.Log(modName + ": FAILED TO patch " + typeCase.Name + " of " + ToPatch.Name + " - There must be a declared target type in a field \"target\"");
+                            DebugRandAddi.Log(modName + ": FAILED TO patch " + typeCase.Name + " of " + ToPatch.Name + " - There must be a declared target type in a field \"target\"");
                             continue;
                         }
                         MethodInfo[] methods = typeCase.GetMethods(BindingFlags.Static | BindingFlags.NonPublic);
                         if (methods == null)
                         {
-                            Debug.Log(modName + ": FAILED TO patch " + typeCase.Name + " of " + ToPatch.Name + " - There are no methods to patch?");
+                            DebugRandAddi.Log(modName + ": FAILED TO patch " + typeCase.Name + " of " + ToPatch.Name + " - There are no methods to patch?");
                             continue;
                         }
-                        //Debug.Log("MethodCount: " + methods.Length);
+                        //DebugRandAddi.Log("MethodCount: " + methods.Length);
                         Dictionary<string, MassPatcherTemplate> methodsToPatch = new Dictionary<string, MassPatcherTemplate>();
                         foreach (var item in methods)
                         {
                             int underscore = item.Name.LastIndexOf('_');
                             if (underscore == -1)
                             {
-                                //Debug.Log("No Underscore");
+                                //DebugRandAddi.Log("No Underscore");
                                 continue;
                             }
                             bool StableOnly = item.Name.EndsWith("1");
@@ -104,14 +105,14 @@ namespace RandomAdditions
                             string patchingExecution = nameNoDivider.Substring(underscore + 1, nameNoDivider.Length - 1 - underscore);
                             if (!methodsToPatch.TryGetValue(patcherMethod, out MassPatcherTemplate MPT))
                             {
-                                //Debug.Log("Patching " + patcherMethod);
+                                //DebugRandAddi.Log("Patching " + patcherMethod);
                                 MPT = new MassPatcherTemplate
                                 {
                                     fullName = item.Name,
                                 };
                                 methodsToPatch.Add(patcherMethod, MPT);
                             }
-                            //Debug.Log("patchingExecution " + patchingExecution);
+                            //DebugRandAddi.Log("patchingExecution " + patchingExecution);
                             if (UnstableOnly)
                             {   // It's clearly an unstable handler
                                 if (IsUnstable)
@@ -172,29 +173,29 @@ namespace RandomAdditions
                                 {
                                     MethodInfo methodCase = AccessTools.Method(patcherType, item.Key);
                                     harmonyInst.Patch(methodCase, item.Value.prefix, item.Value.postfix);
-                                    //Debug.Log(modName + ": (" + item.Value.fullName + ") Patched " + item.Key + " of " + ToPatch.Name);//+ "  prefix: " + (item.Value.prefix != null) + "  postfix: " + (item.Value.postfix != null)
+                                    DebugRandAddi.Info(modName + ": (" + item.Value.fullName + ") Patched " + item.Key + " of " + ToPatch.Name);//+ "  prefix: " + (item.Value.prefix != null) + "  postfix: " + (item.Value.postfix != null)
                                 }
                             }
                             catch (Exception e)
                             {
-                                Debug.Log(modName + ": FAILED (" + item.Value.fullName + ") on patch of " + ToPatch.Name + " in type - " + typeCase.Name + " - " + e.Message); 
+                                DebugRandAddi.Log(modName + ": FAILED (" + item.Value.fullName + ") on patch of " + ToPatch.Name + " in type - " + typeCase.Name + " - " + e.Message); 
                                 errorless = false;
                             }
                         }
                     }
                     catch (Exception e)
                     {
-                        Debug.Log(modName + ": Failed to handle patch of " + ToPatch.Name + " in type - " + typeCase.Name + " - " + e.Message);
+                        DebugRandAddi.Log(modName + ": Failed to handle patch of " + ToPatch.Name + " in type - " + typeCase.Name + " - " + e.Message);
                         errorless = false;
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.Log(modName + ": FAILED TO patch " + ToPatch.Name + " - " + e);
+                DebugRandAddi.Log(modName + ": FAILED TO patch " + ToPatch.Name + " - " + e);
                 errorless = false;
             }
-            Debug.Log(modName + ": Mass patched " + ToPatch.Name);
+            DebugRandAddi.Log(modName + ": Mass patched " + ToPatch.Name);
             return errorless;
         }
         internal static bool MassUnPatchAllWithin(Type ToPatch)
@@ -204,7 +205,7 @@ namespace RandomAdditions
                 Type[] types = ToPatch.GetNestedTypes(BindingFlags.Static | BindingFlags.NonPublic);
                 if (types == null)
                 {
-                    Debug.Log(modName + ": FAILED TO patch " + ToPatch.Name + " - There's no nested classes?");
+                    DebugRandAddi.Log(modName + ": FAILED TO patch " + ToPatch.Name + " - There's no nested classes?");
                     return false;
                 }
                 foreach (var typeCase in types)
@@ -218,13 +219,13 @@ namespace RandomAdditions
                         }
                         catch
                         {
-                            Debug.Log(modName + ": FAILED TO un-patch " + typeCase.Name + " of " + ToPatch.Name + " - There must be a declared target type in a field \"target\"");
+                            DebugRandAddi.Log(modName + ": FAILED TO un-patch " + typeCase.Name + " of " + ToPatch.Name + " - There must be a declared target type in a field \"target\"");
                             continue;
                         }
                         MethodInfo[] methods = typeCase.GetMethods(BindingFlags.Static | BindingFlags.NonPublic);
                         if (methods == null)
                         {
-                            Debug.Log(modName + ": FAILED TO un-patch " + typeCase.Name + " of " + ToPatch.Name + " - There are no methods to patch?");
+                            DebugRandAddi.Log(modName + ": FAILED TO un-patch " + typeCase.Name + " of " + ToPatch.Name + " - There are no methods to patch?");
                             continue;
                         }
                         List<string> methodsToUnpatch = new List<string>();
@@ -251,16 +252,16 @@ namespace RandomAdditions
                     }
                     catch (Exception e)
                     {
-                        Debug.Log(modName + ": Failed to handle un-patch of " + ToPatch.Name + " in type - " + typeCase.Name + " - " + e.Message);
+                        DebugRandAddi.Log(modName + ": Failed to handle un-patch of " + ToPatch.Name + " in type - " + typeCase.Name + " - " + e.Message);
                         return false;
                     }
                 }
             }
             catch (Exception e)
             {
-                Debug.Log(modName + ": FAILED TO un-patch " + ToPatch.Name + " - " + e);
+                DebugRandAddi.Log(modName + ": FAILED TO un-patch " + ToPatch.Name + " - " + e);
             }
-            Debug.Log(modName + ": Mass un-patched " + ToPatch.Name);
+            DebugRandAddi.Log(modName + ": Mass un-patched " + ToPatch.Name);
             return true;
         }
 

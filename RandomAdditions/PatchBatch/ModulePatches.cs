@@ -40,7 +40,7 @@ namespace RandomAdditions
                         {
                             item.PrevHeldPos = WorldPosition.FromScenePosition(item.trans.position);
                         }
-                        //Debug.Log("RandomAdditions: Overwrote trac beams to remain on");
+                        //DebugRandAddi.Log("RandomAdditions: Overwrote trac beams to remain on");
                     }
                     FieldInfo scaleGet = typeof(ModuleItemHolderBeam).GetField("m_ScaleChanged", BindingFlags.NonPublic | BindingFlags.Instance);
                     bool m_ScaleChanged = (bool)scaleGet.GetValue(__instance);
@@ -76,7 +76,7 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
                 {
-                    //Debug.Log("RandomAdditions: Overwrote trac beams to remain on");
+                    //DebugRandAddi.Log("RandomAdditions: Overwrote trac beams to remain on");
                     return false;
                 }
                 return true;
@@ -159,9 +159,9 @@ namespace RandomAdditions
                             List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
                             int notAvail = notAvailR.Count;
 
-                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
                             int ToReturn = totRequest - notAvail;
-                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
                             for (int E = 0; E < ToReturn; E++)
                             {
                                 var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
@@ -179,9 +179,9 @@ namespace RandomAdditions
                             List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
                             int notAvail = notAvailR.Count;
 
-                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
                             int ToReturn = totRequest - notAvail;
-                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
                             for (int E = 0; E < ToReturn; E++)
                             {
                                 var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, __instance.transform.position, Quaternion.identity);
@@ -221,9 +221,9 @@ namespace RandomAdditions
                             List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
                             int notAvail = notAvailR.Count;
 
-                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
                             int ToReturn = totRequest - notAvail;
-                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
                             for (int E = 0; E < ToReturn; E++)
                             {
                                 if (compare.ObjectType == ObjectTypes.Block)
@@ -249,9 +249,9 @@ namespace RandomAdditions
                             List<ItemTypeInfo> notAvailR = __instance.InputsRemaining.FindAll(delegate (ItemTypeInfo cand) { return cand == compare; });
                             int notAvail = notAvailR.Count;
 
-                            //Debug.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - still requesting " + notAvail + " chunks");
                             int ToReturn = totRequest - notAvail;
-                            //Debug.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
+                            //DebugRandAddi.Log("RandomAdditions: CONSUME - returning " + ToReturn + " chunks");
                             for (int E = 0; E < ToReturn; E++)
                             {
                                 if (compare.ObjectType == ObjectTypes.Block)
@@ -271,7 +271,7 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    //Debug.Log("RandomAdditions: CONSUME INPUTS - Nothing more to eject.");
+                    //DebugRandAddi.Log("RandomAdditions: CONSUME INPUTS - Nothing more to eject.");
                 }
                 /* // Output emergency throwout -  doesn't work as the devs mess something up down the line
                  * //   And null something that they can still pull somehow on their end
@@ -279,12 +279,12 @@ namespace RandomAdditions
                 {   // Output emergency throwout
                     //if ((int)isFinished.GetValue(__instance) == 1)
                     //{
-                    //    Debug.Log("RandomAdditions: CONSUME (Output throwout) - Queued");
+                    //    DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - Queued");
                     //}
-                    Debug.Log("RandomAdditions: CONSUME (Output throwout) - Queued");
+                    DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - Queued");
                     if (ejectorTransform != null)
                     {
-                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - what");
+                        DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - what");
                         Stack<ItemTypeInfo> reMatch = new Stack<ItemTypeInfo>();
 
                         for (int Queue = fetchedRecipe.m_OutputItems.Length - 1; Queue >= 0; Queue--)
@@ -296,7 +296,7 @@ namespace RandomAdditions
                             }
                         }
                         int fireTimesOut = reMatch.Count;
-                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - " + fireTimesOut + " items in reserve");
+                        DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - " + fireTimesOut + " items in reserve");
                         for (int C = 0; C < fireTimesOut; C++)
                         {
                             ItemTypeInfo toEject = reMatch.Pop();
@@ -315,25 +315,25 @@ namespace RandomAdditions
                     }
                     else
                     {   // Else it has the resources coming out of an Output
-                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - 0");
+                        DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - 0");
                         Stack<ItemTypeInfo> reMatch = new Stack<ItemTypeInfo>();
-                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - 0.5");
+                        DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - 0.5");
 
-                        Debug.Log("RandomAdditions: CONSUME (Output throwout) - 1");
+                        DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - 1");
                         int fireTimesOut;
                         try
                         {
                             int queuepre = fetchedRecipe.m_OutputItems.Length;
-                            Debug.Log("RandomAdditions: CONSUME (Output throwout) - count " + queuepre);
+                            DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - count " + queuepre);
                             for (int Queue = queuepre - 1; Queue >= 0; Queue--)
                             {   // shove to the queue to shove out all at once
 
                                 _ = reMatch.Count;
-                                Debug.Log("RandomAdditions: CONSUME (Output throwout) - 2");
+                                DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - 2");
                                 RecipeTable.Recipe.ItemSpec itemSpec = fetchedRecipe.m_OutputItems[Queue];
                                 for (int N = 0; N < itemSpec.m_Quantity; N++)
                                 {
-                                    Debug.Log("RandomAdditions: CONSUME (Output throwout) - 3");
+                                    DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout) - 3");
                                     reMatch.Push(itemSpec.m_Item);
                                 }
                             }
@@ -343,7 +343,7 @@ namespace RandomAdditions
                         {
                             fireTimesOut = fetchedRecipeS.outputQueue.Count;
                         }
-                        Debug.Log("RandomAdditions: CONSUME (Output throwout - Fallback) - " + fireTimesOut + " items in reserve");
+                        DebugRandAddi.Log("RandomAdditions: CONSUME (Output throwout - Fallback) - " + fireTimesOut + " items in reserve");
                         for (int C = 0; C < fireTimesOut; C++)
                         {
                             ItemTypeInfo toEject = reMatch.Pop();
@@ -364,8 +364,8 @@ namespace RandomAdditions
                 catch (Exception e)
                 {
 
-                    Debug.Log("RandomAdditions: CONSUME OUTPUTS - " + e);
-                    //Debug.Log("RandomAdditions: CONSUME OUTPUTS - Nothing more to eject.");
+                    DebugRandAddi.Log("RandomAdditions: CONSUME OUTPUTS - " + e);
+                    //DebugRandAddi.Log("RandomAdditions: CONSUME OUTPUTS - Nothing more to eject.");
                 }
                 */
             }
@@ -393,9 +393,9 @@ namespace RandomAdditions
                                 for (int i = 0; i < count; i++)
                                 {
                                     collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)ModuleCheck.GetChunkType));
-                                    //Debug.Log("RandomAdditions: Added " + __instance.items[0].pickup.ChunkType.ToString() + " to available recipie items");
+                                    //DebugRandAddi.Log("RandomAdditions: Added " + __instance.items[0].pickup.ChunkType.ToString() + " to available recipie items");
                                 }
-                                //Debug.Log("RandomAdditions: Searched silo (Chunks)");
+                                //DebugRandAddi.Log("RandomAdditions: Searched silo (Chunks)");
                             }
                             else
                             {
@@ -407,7 +407,7 @@ namespace RandomAdditions
                                     }
                                     catch { }// Chances are we can't get modded blocks with this
                                 }
-                                //Debug.Log("RandomAdditions: Searched silo (Blocks)");
+                                //DebugRandAddi.Log("RandomAdditions: Searched silo (Blocks)");
                             }
                             ModuleCheck.WasSearched = true;
                         }

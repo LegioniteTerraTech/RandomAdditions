@@ -83,7 +83,7 @@ namespace RandomAdditions
                     }
                     if (MAs.Count > 0)
                     {
-                        Debug.Log("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
+                        DebugRandAddi.Log("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
                         return MAs.ToArray();
                     }
                 }
@@ -106,7 +106,7 @@ namespace RandomAdditions
                     {
                         if (item.Condition == condition || item.Condition == AnimCondition.Any)
                         {
-                            Debug.Log("RandomAdditions: FetchAnimette - fetched animette in " + item.name);
+                            DebugRandAddi.Log("RandomAdditions: FetchAnimette - fetched animette in " + item.name);
                             return item;
                         }
                     }

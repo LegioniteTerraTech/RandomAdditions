@@ -113,7 +113,7 @@ namespace RandomAdditions
             }
             set
             {
-                Debug.Log("RandomAdditions: ModuleItemSilo - setting value " + value);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - setting value " + value);
                 Saving = value;
             }
         }*/
@@ -214,7 +214,7 @@ namespace RandomAdditions
             }
             if (itemStore.IsNull())
             {
-                //Debug.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
+                //DebugRandAddi.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
                 LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly. \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + TankBlock.name);
             }
             if (MaxCapacity <= 0)
@@ -236,7 +236,7 @@ namespace RandomAdditions
         }
         private void OnDetach()
         {
-            //Debug.Log("RandomAdditions: isSaving " + isSaving);
+            //DebugRandAddi.Log("RandomAdditions: isSaving " + isSaving);
             if (!isSaving || ManTechSwapper.inst.CheckOperatingOnTech(block.tank))
             {   // Only eject when the world is NOT saving
                 if (SavedCount > 0)
@@ -264,7 +264,7 @@ namespace RandomAdditions
             if (HartStep == TechHolders.Heartbeat.PostPass)
             {
                 GetChunkCountPercent = (float)SavedCount / (float)MaxCapacity;
-                //Debug.Log("RandomAdditions: fill is " + GetChunkCountPercent);
+                //DebugRandAddi.Log("RandomAdditions: fill is " + GetChunkCountPercent);
                 CheckRelease();
                 WasSearched = false;
                 UpdateGaugesAndDisplays();
@@ -725,7 +725,7 @@ namespace RandomAdditions
                 }
                 if (EmergencyEjectSpeed < TankBlock.tank.GetForwardSpeed())
                 {
-                    Debug.Log("RandomAdditions: Silo " + gameObject.name + " has gone over their maximum stable speed and will eject everything to prevent exploding!");
+                    DebugRandAddi.Log("RandomAdditions: Silo " + gameObject.name + " has gone over their maximum stable speed and will eject everything to prevent exploding!");
                     EmergencyEjectAllContents();
                 }
             }
@@ -947,7 +947,7 @@ namespace RandomAdditions
                     //DebugRandAddi.Assert(true, "SAVING " + TankBlock.name);
                     //var tile = Singleton.Manager<ManWorld>.inst.TileManager.LookupTile(transform.position);
                     //tile.
-                    //Debug.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
+                    //DebugRandAddi.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
                     if (Singleton.Manager<ManPointer>.inst.targetVisible)
                     {
                         if (!Singleton.Manager<ManPointer>.inst.targetVisible.block == TankBlock)

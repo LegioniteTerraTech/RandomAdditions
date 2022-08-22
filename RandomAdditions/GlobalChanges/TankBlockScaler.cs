@@ -20,7 +20,7 @@ namespace RandomAdditions
         {
             if (AimedDownscale < 0 || AimedDownscale > 0.5)
             {
-                //Debug.Log("RandomAdditions: TankBlockScaler value is invalid on block " + gameObject.name + "!  Overriding to 0.5!");
+                //DebugRandAddi.Log("RandomAdditions: TankBlockScaler value is invalid on block " + gameObject.name + "!  Overriding to 0.5!");
                 AimedDownscale = 0.5f;
             }
         }
@@ -43,7 +43,7 @@ namespace RandomAdditions
         {
             if (Downscale)
             {
-                //Debug.Log("RandomAdditions: Firing Rescale Down for " + gameObject.name);
+                //DebugRandAddi.Log("RandomAdditions: Firing Rescale Down for " + gameObject.name);
                 if (AimedDownscale - 0.1f < transform.localScale.y && transform.localScale.y < 0.1f + AimedDownscale)
                 {
                     transform.localScale = AimedDownscale * Vector3.one;
@@ -56,7 +56,7 @@ namespace RandomAdditions
             }
             else
             {
-                //Debug.Log("RandomAdditions: Firing Rescale Up for " + gameObject.name);
+                //DebugRandAddi.Log("RandomAdditions: Firing Rescale Up for " + gameObject.name);
                 if (0.9f < transform.localScale.y && transform.localScale.y < 1.1f)
                 {
                     transform.localScale = Vector3.one;

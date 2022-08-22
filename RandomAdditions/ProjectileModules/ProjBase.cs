@@ -132,6 +132,16 @@ namespace RandomAdditions
             }
         }
 
+        public static ProjBase Insure(Projectile inst)
+        {
+            var ModuleCheck = inst.GetComponent<ProjBase>();
+            if (ModuleCheck == null)
+            {
+                ModuleCheck = inst.gameObject.AddComponent<ProjBase>();
+                return ModuleCheck.PoolEmergency(inst);
+            }
+            return ModuleCheck;
+        }
         public ProjBase PoolEmergency(Projectile inst)
         {
             PrePoolTryApplyThis(inst);
@@ -145,6 +155,7 @@ namespace RandomAdditions
             launcher = firingPiece;
             this.shooter = shooter;
             DebugRandAddi.Assert(!shooter, "RandomAdditions: ProjBase was given NO SHOOTER, this may cause issues!");
+            //DebugRandAddi.Log("Projectile " + gameObject.name + " fired with");
             foreach (var item in projTypes)
             {
                 item.Fire(fireData);

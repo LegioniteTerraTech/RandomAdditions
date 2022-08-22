@@ -89,7 +89,7 @@ namespace RandomAdditions
             displayChunk = siloMain.GetChunkType;
             ScaleToAimFor = (MaxHeightMultiplier - MinHeightMultiplier) * siloMain.GetCountPercent + MinHeightMultiplier;
             updatingDisplay = true;
-            //Debug.Log("RandomAdditions: ScaleToAimFor " + ScaleToAimFor + " | update " + updatingDisplay);
+            //DebugRandAddi.Log("RandomAdditions: ScaleToAimFor " + ScaleToAimFor + " | update " + updatingDisplay);
         }
         public void UpdateTextures()
         {
@@ -136,7 +136,7 @@ namespace RandomAdditions
         }
         private void StepSize()
         {
-            //Debug.Log("RandomAdditions: Firing StepSize");
+            //DebugRandAddi.Log("RandomAdditions: Firing StepSize");
             Vector3 toSet = transform.localScale;
             if (displayDamperInstant)
             {
@@ -146,7 +146,7 @@ namespace RandomAdditions
             }
             else
             {
-                //Debug.Log("RandomAdditions: Firing StepSize");
+                //DebugRandAddi.Log("RandomAdditions: Firing StepSize");
                 if (ScaleToAimFor - 0.01f < transform.localScale.y && transform.localScale.y < 0.01f + ScaleToAimFor)
                 {
                     toSet.y = ScaleToAimFor;

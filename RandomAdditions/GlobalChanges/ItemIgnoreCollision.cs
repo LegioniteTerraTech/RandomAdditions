@@ -16,6 +16,15 @@ namespace RandomAdditions
         private List<Collider> IgnoredColliders= new List<Collider>();
         private Visible thisVisible;
 
+        public static ItemIgnoreCollision Insure(Visible inst)
+        {
+            var IIC = inst.gameObject.GetComponent<ItemIgnoreCollision>();
+            if (!IIC)
+            {
+                IIC = inst.gameObject.AddComponent<ItemIgnoreCollision>();
+            }
+            return IIC;
+        }
 
         public void UpdateCollision(bool ignoreCol)
         {
@@ -47,7 +56,7 @@ namespace RandomAdditions
                 thisVisible = gameObject.GetComponent<Visible>();
                 if (thisVisible.holderStack.myHolder.IsNull() || !IgnoreAll)
                 {
-                    //Debug.Log("RandomAdditions: no ignore + " + thisVisible.holderStack.myHolder.IsNull());
+                    //DebugRandAddi.Log("RandomAdditions: no ignore + " + thisVisible.holderStack.myHolder.IsNull());
                     return;
                 }
                 int filter = collodo.collider.gameObject.layer;
@@ -66,7 +75,7 @@ namespace RandomAdditions
                     {
                         Physics.IgnoreCollision(collodo.collider, coll, true);
                         IgnoredColliders.Add(collodo.collider);
-                        //Debug.Log("RandomAdditions: Disabled collision between " + gameObject.name + " and " + collodo.gameObject.name);
+                        //DebugRandAddi.Log("RandomAdditions: Disabled collision between " + gameObject.name + " and " + collodo.gameObject.name);
                     }
                 }
             }
@@ -84,7 +93,7 @@ namespace RandomAdditions
                         Physics.IgnoreCollision(coll, collThis, true);
                     }
                 }
-                //Debug.Log("RandomAdditions: Disabled all collision between " + gameObject.name + " and " + tankToIgnore.name);
+                //DebugRandAddi.Log("RandomAdditions: Disabled all collision between " + gameObject.name + " and " + tankToIgnore.name);
                 IgnoredTank = tankToIgnore;
             }
         }

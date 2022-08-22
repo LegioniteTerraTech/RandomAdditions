@@ -88,7 +88,7 @@ namespace RandomAdditions
         {
             Vector3 worldPosBurnCenter = (Effector.forward * (Radius * RadiusStretchMultiplier * CurrentStrength)) + Effector.position;
             //Effector.forward
-            //Debug.Log("RandomAdditions: BURRRRRRRRRRRRRRRNING");
+            //DebugRandAddi.Log("RandomAdditions: BURRRRRRRRRRRRRRRNING");
             float radSq = Radius * Radius;
             InArea.Clear();
             Tank attacking = transform.root.GetComponent<Tank>();

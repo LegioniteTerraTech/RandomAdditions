@@ -132,21 +132,40 @@ namespace RandomAdditions
             //Where the fun begins
             DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
 #if STEAM
-            VALIDATE_MODS();
-#endif
-
-            //Initiate the madness
+            if (!VALIDATE_MODS())
+            {
+                return;
+            }
             try
             { // init changes
-                harmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
-                //EdgePatcher(true);
-                DebugRandAddi.Log("RandomAdditions: Patched");
-                patched = true;
+                LocalCorpAudioExt.ManExtendAudio.Subscribe();
+                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - Sub");
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log("RandomAdditions: Error on patch");
+                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
+            }
+#endif
+
+            //Initiate the madness
+            if (!patched)
+            {
+                try
+                { // init changes
+                    if (MassPatcher.MassPatchAll())
+                    {
+                        DebugRandAddi.Log("RandomAdditions: Patched");
+                        patched = true;
+                    }
+                    else
+                        DebugRandAddi.Log("RandomAdditions: Error on patch");
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("RandomAdditions: Error on patch");
+                    DebugRandAddi.Log(e);
+                }
             }
             if (!logMan)
             {
@@ -194,6 +213,16 @@ namespace RandomAdditions
                 OfficialEarlyInit();
             }
             DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
+            try
+            { // init changes
+                LocalCorpAudioExt.ManExtendAudio.Subscribe();
+                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - Sub");
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
+                DebugRandAddi.Log(e);
+            }
 #else
             DebugRandAddi.Log("RandomAdditions: Startup was invoked by TTSMM!  Set-up to handle LATE initialization");
             OfficialEarlyInit();
@@ -210,7 +239,7 @@ namespace RandomAdditions
                         patched = true;
                     }
                     else
-                        Debug.Log("RandomAdditions: Error on patch");
+                        DebugRandAddi.Log("RandomAdditions: Error on patch");
                 }
                 catch (Exception e)
                 {
@@ -226,16 +255,6 @@ namespace RandomAdditions
             GUIClock.Initiate();
             ManTileLoader.Initiate();
 
-            try
-            { // init changes
-                LocalCorpAudioExt.ManExtendAudio.Subscribe();
-                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - Sub");
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
-                DebugRandAddi.Log(e);
-            }
         }
 
 #if STEAM
@@ -301,8 +320,8 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Log("RandomAdditions: Error on RegisterSaveSystem");
-                Debug.Log(e);
+                DebugRandAddi.Log("RandomAdditions: Error on RegisterSaveSystem");
+                DebugRandAddi.Log(e);
             }
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
@@ -323,7 +342,7 @@ namespace RandomAdditions
             catch (Exception e)
             {
                 DebugRandAddi.Log("RandomAdditions: Could not init Option & Config since ConfigHelper and/or Nuterra.NativeOptions is absent?");
-                Debug.Log(e);
+                DebugRandAddi.Log(e);
             }
         }
 
@@ -362,15 +381,15 @@ namespace RandomAdditions
 
         public static void GetAvailSFX()
         {
-            Debug.Log("----- GETTING ALL SFX -----");
+            DebugRandAddi.Log("----- GETTING ALL SFX -----");
             FieldInfo FI = typeof(FMODEventInstance).GetField("m_ParamDatabase", BindingFlags.NonPublic | BindingFlags.Static);
             Dictionary<string, Dictionary<string, int>> w = (Dictionary<string, Dictionary<string, int>>)FI.GetValue(null);
             foreach (var item in w)
             {
-                Debug.Log(item.Key);
+                DebugRandAddi.Log(item.Key);
                 foreach (var item2 in item.Value)
                 {
-                    Debug.Log(item2.Key + " | " + item2.Value);
+                    DebugRandAddi.Log(item2.Key + " | " + item2.Value);
                 }
             }
         }
@@ -535,7 +554,7 @@ namespace RandomAdditions
             var validation = damageable.GetComponent<TankBlock>();
             if (!validation)
             {
-                //Debug.Log("RandomAdditions: did not hit possible block");
+                //DebugRandAddi.Log("RandomAdditions: did not hit possible block");
                 return false;
             }
             if (damageable.Invulnerable)
@@ -543,32 +562,32 @@ namespace RandomAdditions
             Tank tank = validation.transform.root.GetComponent<Tank>();
             if (tank)
             {
-                //Debug.Log("RandomAdditions: tank");
+                //DebugRandAddi.Log("RandomAdditions: tank");
                 if (inst.Shooter)
                 {
                     if (!Tank.IsEnemy(inst.Shooter.Team, tank.Team))
                     {
-                        //Debug.Log("RandomAdditions: not enemy");
+                        //DebugRandAddi.Log("RandomAdditions: not enemy");
                         return false;// Stop friendly-fire
                     }
                     else if (inst.Shooter == tank)
                     {
-                        //Debug.Log("RandomAdditions: self");
+                        //DebugRandAddi.Log("RandomAdditions: self");
                         return false;// Stop self-fire 
                     }
                     else
                     {
-                        //Debug.Log("RandomAdditions: enemy " + inst.Shooter.Team + " | " + tank.Team);
+                        //DebugRandAddi.Log("RandomAdditions: enemy " + inst.Shooter.Team + " | " + tank.Team);
                     }
                 }
                 else if (tank.IsNeutral())
                 {
-                    //Debug.Log("RandomAdditions: neutral");
+                    //DebugRandAddi.Log("RandomAdditions: neutral");
                     return false;// No damage Invinci
                 }
                 else
                 {
-                    //Debug.Log("RandomAdditions: no shooter");
+                    //DebugRandAddi.Log("RandomAdditions: no shooter");
                     return false;
                 }
             }

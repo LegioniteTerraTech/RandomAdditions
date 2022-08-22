@@ -18,37 +18,43 @@ namespace RandomAdditions
         {
             if (!ShouldLog || !LogAll)
                 return;
-            UnityEngine.Debug.Log(message);
+            Debug.Log(message);
         }
         internal static void Log(string message)
         {
             if (!ShouldLog)
                 return;
-            UnityEngine.Debug.Log(message);
+            Debug.Log(message);
         }
         internal static void Log(Exception e)
         {
             if (!ShouldLog)
                 return;
-            UnityEngine.Debug.Log(e);
+            Debug.Log(e);
+        }
+        internal static void Assert(string message)
+        {
+            if (!ShouldLog)
+                return;
+            Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
         }
         internal static void Assert(bool shouldAssert, string message)
         {
             if (!ShouldLog || !shouldAssert)
                 return;
-            UnityEngine.Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
+            Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
         }
         internal static void LogError(string message)
         {
             if (!ShouldLog)
                 return;
-            UnityEngine.Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
+            Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
         }
         internal static void LogDevOnly(string message)
         {
             if (!LogDev)
                 return;
-            UnityEngine.Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
+            Debug.Log(message + "\n" + StackTraceUtility.ExtractStackTrace().ToString());
         }
         internal static void FatalError(string e)
         {
@@ -57,8 +63,8 @@ namespace RandomAdditions
                 ManUI.inst.ShowErrorPopup(modName + ": ENCOUNTERED CRITICAL ERROR: " + e);
             }
             catch { }
-            UnityEngine.Debug.Log(modName + ": ENCOUNTERED CRITICAL ERROR");
-            UnityEngine.Debug.Log(modName + ": MAY NOT WORK PROPERLY AFTER THIS ERROR, PLEASE REPORT!");
+            Debug.Log(modName + ": ENCOUNTERED CRITICAL ERROR");
+            Debug.Log(modName + ": MAY NOT WORK PROPERLY AFTER THIS ERROR, PLEASE REPORT!");
         }
     }
 }

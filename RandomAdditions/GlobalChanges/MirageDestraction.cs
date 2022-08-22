@@ -393,7 +393,7 @@ namespace RandomAdditions
         {
             if (!child.gameObject.activeSelf)
             {
-                Debug.Log("Gameobject " + child.name + " was inactive!");
+                DebugRandAddi.Log("Gameobject " + child.name + " was inactive!");
                 return false;
             }
             MeshFilter MF = child.GetComponent<MeshFilter>();
@@ -798,7 +798,7 @@ namespace RandomAdditions
                     Transform randTran = allTrans.GetRandomEntry();
                     if (randTran == null)
                     {
-                        //Debug.Log("RandomAdditions: MirageTank has encountered null transforms, cleaning up...");
+                        //DebugRandAddi.Log("RandomAdditions: MirageTank has encountered null transforms, cleaning up...");
                         List<Transform> transChecked = new List<Transform>();
                         foreach (Transform trans in allTrans)
                         {
@@ -818,7 +818,7 @@ namespace RandomAdditions
                         randTran = allTrans.GetRandomEntry();
                         if (randTran == null)
                         {
-                            //Debug.Log("RandomAdditions: MirageTank has encountered stubborn transforms, ignoring...");
+                            //DebugRandAddi.Log("RandomAdditions: MirageTank has encountered stubborn transforms, ignoring...");
                             return;
                         }
                     }

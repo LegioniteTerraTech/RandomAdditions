@@ -90,12 +90,12 @@ namespace RandomAdditions
                     {
                         lingo.Remove(lingoSearch);
                         lingo.Add(lingoSearch, HintDescription);
-                        //Debug.Log("RandomAdditions: Refreshed the loc desc for gameObject " + subjectName);
+                        //DebugRandAddi.Log("RandomAdditions: Refreshed the loc desc for gameObject " + subjectName);
                     }
                     else
                         lingo.Add(lingoSearch, HintDescription);
                     locFA.SetValue(Localisation.inst, lingo);
-                    //Debug.Log("RandomAdditions: Saved the loc desc for gameObject " + subjectName);
+                    //DebugRandAddi.Log("RandomAdditions: Saved the loc desc for gameObject " + subjectName);
                 }
                 catch (Exception e)
                 {
@@ -131,12 +131,12 @@ namespace RandomAdditions
                     {
                         lingo.Remove(lingoSearch);
                         lingo.Add(lingoSearch, HintDescription);
-                        //Debug.Log("RandomAdditions: Refreshed the loc desc for module " + subjectName);
+                        //DebugRandAddi.Log("RandomAdditions: Refreshed the loc desc for module " + subjectName);
                     }
                     else
                         lingo.Add(lingoSearch, HintDescription);
                     locFA.SetValue(Localisation.inst, lingo);
-                    //Debug.Log("RandomAdditions: Saved the loc desc for module " + subjectName);
+                    //DebugRandAddi.Log("RandomAdditions: Saved the loc desc for module " + subjectName);
                 }
                 catch (Exception e)
                 {
@@ -159,7 +159,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Assert(true, e);
+                DebugRandAddi.Assert(true, e.Message);
             }
         }
         private static void ShowHint(GameHints.HintID hintID)
@@ -217,7 +217,7 @@ namespace RandomAdditions
                     }
                     catch (Exception e)
                     {
-                        Debug.Assert(true, e);
+                        DebugRandAddi.Assert(true, e.Message);
                     }
                     toHide.RemoveAt(iterating);
                 }
@@ -264,7 +264,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                Debug.Assert(true, e);
+                DebugRandAddi.Assert(true, e.Message);
             }
         }
 

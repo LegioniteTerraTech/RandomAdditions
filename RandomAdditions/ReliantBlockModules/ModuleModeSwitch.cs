@@ -128,11 +128,11 @@ namespace RandomAdditions
             {
                 for (int step = 0; step < batch.Length; step++)
                 {
-                    //Debug.Log("RandomAdditions: ModuleModeSwitch - FireData in " + batch[step].gameObject.name);
+                    //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - FireData in " + batch[step].gameObject.name);
                     if (GetComponent<FireData>() != batch[step])
                     {
                         FireDataAlt = batch[step];
-                        //Debug.Log("RandomAdditions: ModuleModeSwitch - Picked alt FireData in " + FireDataAlt.gameObject.name);
+                        //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - Picked alt FireData in " + FireDataAlt.gameObject.name);
                         break;
                     }
                 }
@@ -191,7 +191,7 @@ namespace RandomAdditions
                 BarrelsAux = BarrelsFetched.ToArray();
             }
             anims = FetchAnimettes(AnimCondition.WeaponSwitch);
-            //Debug.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
+            //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
         public override void OnAttach()
         {

@@ -302,7 +302,7 @@ namespace RandomAdditions
             float xMenuMax = HotWindow.x + HotWindow.width;
             float yMenuMin = HotWindow.y;
             float yMenuMax = HotWindow.y + HotWindow.height;
-            //Debug.Log(Mous + " | " + xMenuMin + " | " + xMenuMax + " | " + yMenuMin + " | " + yMenuMax);
+            //DebugRandAddi.Log(Mous + " | " + xMenuMin + " | " + xMenuMax + " | " + yMenuMin + " | " + yMenuMax);
             if (Mous.x > xMenuMin && Mous.x < xMenuMax && Mous.y > yMenuMin && Mous.y < yMenuMax)
             {
                 return true;

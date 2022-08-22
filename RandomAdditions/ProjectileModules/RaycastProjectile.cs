@@ -224,7 +224,7 @@ namespace RandomAdditions
                     try
                     {
                         DestroyImmediate(ST);
-                        //Debug.Log("Purged SmokeTrail");
+                        //DebugRandAddi.Log("Purged SmokeTrail");
                     }
                     catch { }
                 }

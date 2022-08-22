@@ -356,7 +356,7 @@ namespace RandomAdditions
                         catch { }
                     }
                 }
-                //Debug.Log("RandomAdditions: GetAllPlayerTechPositions Handled " + count + " Techs");
+                //DebugRandAddi.Log("RandomAdditions: GetAllPlayerTechPositions Handled " + count + " Techs");
             }
             catch { }
         }

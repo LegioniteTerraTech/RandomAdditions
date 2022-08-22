@@ -14,7 +14,7 @@ namespace RandomAdditions
 
         public override void PrePool(Projectile proj)
         {
-            //Debug.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
+            //DebugRandAddi.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
             Collider fetchedCollider = (Collider)collodo.GetValue(proj);
             fetchedCollider.isTrigger = true;// Make it not collide
             DebugRandAddi.Log("RandomAdditions: Overwrote Collision");
