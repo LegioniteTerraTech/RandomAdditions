@@ -10,6 +10,7 @@ Global
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 		Steam|Any CPU = Steam|Any CPU
+		SteamDev|Any CPU = SteamDev|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{F4A7B033-A91A-4939-BFAC-D85847C621E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -18,6 +19,8 @@ Global
 		{F4A7B033-A91A-4939-BFAC-D85847C621E9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F4A7B033-A91A-4939-BFAC-D85847C621E9}.Steam|Any CPU.ActiveCfg = Steam|Any CPU
 		{F4A7B033-A91A-4939-BFAC-D85847C621E9}.Steam|Any CPU.Build.0 = Steam|Any CPU
+		{F4A7B033-A91A-4939-BFAC-D85847C621E9}.SteamDev|Any CPU.ActiveCfg = SteamDev|Any CPU
+		{F4A7B033-A91A-4939-BFAC-D85847C621E9}.SteamDev|Any CPU.Build.0 = SteamDev|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

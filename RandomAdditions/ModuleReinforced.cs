@@ -66,7 +66,7 @@ namespace RandomAdditions
         private ManDamage.DamageInfo newDMG;
         public ManDamage.DamageInfo RecalcDamage(ref ManDamage.DamageInfo info)
         {
-            newDMG = info.Clone();
+            newDMG = info;// Clone it here
             if ((bool)info.Source)
             {
                 if (ModifyAoEDamage && info.Source.GetComponent<Explosion>())

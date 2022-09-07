@@ -8,7 +8,8 @@ using cakeslice;
 namespace RandomAdditions
 {
 	/// <summary>
-	/// Remove this later
+	/// Adds in a fake, nearly invisible mesh at the root block GameObject level to silence OutlineEffect's massive log spam. 
+	/// Will remove this later when it is fixed.
 	/// </summary>
     internal class OptimizeOutline : MonoBehaviour
 	{

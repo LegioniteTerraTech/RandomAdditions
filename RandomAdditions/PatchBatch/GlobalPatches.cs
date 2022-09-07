@@ -42,13 +42,19 @@ namespace RandomAdditions
 #if STEAM
                 DebugRandAddi.Log("RandomAdditions: Letting the player continue with a crashed STEAM client. " +
                     "Note that this will still force a quit screen under certain conditions.");
+#if !DEBUG
+                if (!ManNetwork.IsNetworked)
+                    cat.SetValue(__instance, false);
+#else
+                cat.SetValue(__instance, false);
+#endif
+
 #else
                 DebugRandAddi.Log("RandomAdditions: Letting the player continue with a crashed Unofficial client. " +
                 "Note that this will NOT force a quit screen under certain conditions, but " +
                 "you know the rules, and so do I.");
+                cat.SetValue(__instance, false);
 #endif
-                if (!ManNetwork.IsNetworked)
-                    cat.SetValue(__instance, false);
             }
 
             /// <summary>
@@ -363,20 +369,17 @@ namespace RandomAdditions
             /// <summary>
             /// PatchDamageableRA
             /// </summary>
-            private static void Damage_Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
+            private static bool Damage_Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
-                try
+                if (__instance == null)
+                    return true;
+                var multi = __instance.GetComponent<ModuleReinforced>();
+                if (multi != null)
                 {
-                    if (__instance == null)
-                        return;
-                    var multi = __instance.GetComponent<ModuleReinforced>();
-                    if (multi != null)
-                    {
-                        info = multi.RecalcDamage(ref info);
-                    }
+                    info = multi.RecalcDamage(ref info);
                 }
-                catch { }
+                return true;
             }
 
             /// <summary>
@@ -400,6 +403,26 @@ namespace RandomAdditions
                 }
             }
 
+        }
+        internal static class ModuleDamagePatches
+        {
+            internal static Type target = typeof(ModuleDamage);
+            //-----------------------------------------------------------------------------------------------
+            //-----------------------------------------------------------------------------------------------
+            // Used for Custom Blocks
+
+            // Allow blocks to have one special resistance
+            /// <summary>
+            /// PatchDamageableRA
+            /// </summary>
+            private static bool OnDamaged_Prefix(ModuleDamage __instance, ref ManDamage.DamageInfo info)
+            {
+                if (__instance.GetComponent<ModuleReinforced>() != null)
+                {
+                    return info.Damage > 0;
+                }
+                return true;
+            }
         }
         internal static class BubbleShieldPatches
         {
@@ -487,6 +510,7 @@ namespace RandomAdditions
         }*/
         internal static class TileManagerPatches
         {
+            private const float maxDistFromOrigin = 80000;
             internal static Type target = typeof(TileManager);
             private static List<IntVector2> starTiles = null;
             private static Dictionary<IntVector2, WorldTile> exisTiles = null;
@@ -504,17 +528,23 @@ namespace RandomAdditions
 
                 foreach (var item in ManTileLoader.RequestedLoaded)
                 {
-                    if (exisTiles.ContainsKey(item))
+                    Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
+                    if (pos.x > -maxDistFromOrigin && pos.x < maxDistFromOrigin &&
+                        pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
+                        pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
                     {
-                        if (exisTiles.TryGetValue(item, out WorldTile WT))
+                        if (exisTiles.ContainsKey(item))
                         {
-                            WT.m_RequestState = WorldTile.State.Loaded;
+                            if (exisTiles.TryGetValue(item, out WorldTile WT))
+                            {
+                                WT.m_RequestState = WorldTile.State.Loaded;
+                            }
                         }
-                    }
-                    else
-                    {
-                        if (!starTiles.Contains(item))
-                            starTiles.Add(item);
+                        else
+                        {
+                            if (!starTiles.Contains(item))
+                                starTiles.Add(item);
+                        }
                     }
                 }
             }

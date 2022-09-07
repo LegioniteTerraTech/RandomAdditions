@@ -42,6 +42,17 @@ namespace RandomAdditions
         public static bool MandateSeaReplacement = true;
         public static bool MandateLandReplacement = false;
 
+        // CONTROLS
+        public static bool LockPropEnabled => LockPropPitch || LockPropRoll || LockPropYaw;
+        public static bool LockPropWhenPropBoostOnly = true;
+        public static bool LockPropPitch = false;
+        public static bool LockPropYaw = false;
+        public static bool LockPropRoll = false;
+        public static KeyCode SnapBlockButton = KeyCode.KeypadPlus;
+        public static int _snapBlockButton = (int)SnapBlockButton;
+        public static KeyCode HangarButton = KeyCode.H;
+        public static int _hangarButton = (int)HangarButton;
+
 
         public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
@@ -376,7 +387,13 @@ namespace RandomAdditions
         }
         public static Transform HeavyObjectSearch(Transform trans, string name)
         {
-            return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand) { return cand.name == name; });
+            if (name.NullOrEmpty())
+                return null;
+            return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand) { 
+                if (cand.name.NullOrEmpty())
+                    return false;
+                return cand.name.CompareTo(name) == 0;
+            });
         }
 
         public static void GetAvailSFX()
@@ -412,6 +429,14 @@ namespace RandomAdditions
         public static OptionToggle rpSea;
         public static OptionToggle rpLand;
 
+        // CONTROLS
+        public static OptionToggle lockP_BoostProps;
+        public static OptionToggle lockP_Pitch;
+        public static OptionToggle lockP_Yaw;
+        public static OptionToggle lockP_Roll;
+        public static OptionKey hangarKey;
+        public static OptionKey blockSnap;
+
         private static bool launched = false;
 
         public static void TryInitOptionAndConfig()
@@ -436,10 +461,19 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
                 thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
                 thisModConfig.BindConfig<ExtUsageHint>(null, "HintsSeenSAV");
+
+                // CONTROLS
+                thisModConfig.BindConfig<KickStart>(null, "LockPropWhenPropBoostOnly");
+                thisModConfig.BindConfig<KickStart>(null, "LockPropPitch");
+                thisModConfig.BindConfig<KickStart>(null, "LockPropRoll");
+                thisModConfig.BindConfig<KickStart>(null, "LockPropYaw");
+                thisModConfig.BindConfig<KickStart>(null, "_hangarButton");
+                thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
+
                 config = thisModConfig;
                 ExtUsageHint.SaveToHintsSeen();
 
-                var RandomProperties = KickStart.ModName;
+                var RandomProperties = KickStart.ModName + " - General";
 #if !STEAM
                 realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
                 realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
@@ -468,6 +502,29 @@ namespace RandomAdditions
                         config.WriteConfigJsonFile();
                     }
                 });
+
+                var RandomControls = KickStart.ModName + " - Controls";
+                lockP_BoostProps = new OptionToggle("Lock Propellers Only When Prop Button is Pressed", RandomControls, KickStart.LockPropWhenPropBoostOnly);
+                lockP_BoostProps.onValueSaved.AddListener(() => { KickStart.LockPropWhenPropBoostOnly = lockP_BoostProps.SavedValue; });
+                lockP_Pitch = new OptionToggle("Lock Propellers Pitch", RandomControls, KickStart.LockPropPitch);
+                lockP_Pitch.onValueSaved.AddListener(() => { KickStart.LockPropPitch = lockP_Pitch.SavedValue; });
+                lockP_Roll = new OptionToggle("Lock Propellers Roll", RandomControls, KickStart.LockPropRoll);
+                lockP_Roll.onValueSaved.AddListener(() => { KickStart.LockPropRoll = lockP_Roll.SavedValue; });
+                lockP_Yaw = new OptionToggle("Lock Propellers Yaw", RandomControls, KickStart.LockPropYaw);
+                lockP_Yaw.onValueSaved.AddListener(() => { KickStart.LockPropYaw = lockP_Yaw.SavedValue; });
+
+                hangarKey = new OptionKey("Hangar Docking Hotkey [+ Left Click]", RandomControls, KickStart.HangarButton);
+                hangarKey.onValueSaved.AddListener(() => {
+                    KickStart.HangarButton = hangarKey.SavedValue;
+                    KickStart._hangarButton = (int)hangarKey.SavedValue;
+                });
+                blockSnap = new OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomControls, KickStart.SnapBlockButton);
+                blockSnap.onValueSaved.AddListener(() => {
+                    KickStart.SnapBlockButton = blockSnap.SavedValue;
+                    KickStart._snapBlockButton = (int)blockSnap.SavedValue;
+                });
+
+
                 NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
             }
             catch (Exception e)

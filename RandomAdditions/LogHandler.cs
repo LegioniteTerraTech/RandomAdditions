@@ -115,16 +115,15 @@ namespace RandomAdditions
             if (threwForceEnd)
                 return;
 #if STEAM
-            if (threwForceEnd)
-                return;
             if (Crashed)
                 DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
                     "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
                     " Forcing crash screen!");
-
+#if !DEBUG
             UIScreenBugReport UISBR = Singleton.Manager<ManUI>.inst.GetScreen(ManUI.ScreenType.BugReport) as UIScreenBugReport;
             crsh.Invoke(UISBR, new object[] { });
             ManGameMode.inst.TriggerSwitch<ModeAttract>();
+#endif
 #else
             DebugRandAddi.Log("RandomAdditions: Unofficial Modding will let you continue, but do AT YOUR OWN RISK");
             Singleton.Manager<ManUI>.inst.ShowErrorPopup("The server pool for Unofficial Modding will\nlet you continue, but do so AT YOUR OWN RISK");

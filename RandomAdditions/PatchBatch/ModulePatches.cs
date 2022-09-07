@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using System.Reflection;
+using HarmonyLib;
 
 namespace RandomAdditions
 {
@@ -109,12 +110,12 @@ namespace RandomAdditions
             }
         }
 
-        internal static class ModuleBoosterPatches
+        internal static class BoosterJetPatches
         {
             internal static Type target = typeof(BoosterJet);
             //Let BurnerJet do it's job accurately
             /// <summary>
-            /// RunModuleBoosterBurner
+            /// RunModuleBoosterBurner</summary>
             private static void OnFixedUpdate_Prefix(BoosterJet __instance)
             {
                 var ModuleCheck = __instance.gameObject.GetComponent<BurnerJet>();
@@ -124,6 +125,37 @@ namespace RandomAdditions
                         ModuleCheck.Initiate(__instance);
                     ModuleCheck.Run(__instance.IsFiring);
                 }
+            }
+
+        }
+
+        internal static class ModuleBoosterPatches
+        {
+            internal static Type target = typeof(ModuleBooster);
+            // Block turn controls when using prop button
+            [HarmonyPriority(999)]
+            private static bool DriveControlInput_Prefix(ModuleBooster __instance, ref TankControl.ControlState driveData)
+            {
+                if ((driveData.BoostProps || !KickStart.LockPropWhenPropBoostOnly) && KickStart.LockPropEnabled)
+                {
+                    //Debug.Log("DriveControlInput_Prefix: Prev rotation is " + driveData.InputRotation.x + " " + driveData.InputRotation.y + " " + driveData.InputRotation.z);
+                    TankControl.ControlState driveR = new TankControl.ControlState();
+                    driveR.m_State = new TankControl.State
+                    {
+                        m_ThrottleValues = driveData.Throttle,
+                        m_BoostJets = driveData.BoostJets,
+                        m_BoostProps = driveData.BoostProps,
+                        m_InputMovement = driveData.InputMovement,
+                        m_InputRotation = new Vector3(
+                        KickStart.LockPropPitch ? 0 : driveData.InputRotation.x,
+                        KickStart.LockPropYaw ? 0 : driveData.InputRotation.y,
+                        KickStart.LockPropRoll ? 0 : driveData.InputRotation.z
+                        ),
+                    };
+                    driveData = driveR;
+                    //Debug.Log("DriveControlInput_Prefix: Rotation is " + driveData.InputRotation.x + " " + driveData.InputRotation.y + " " + driveData.InputRotation.z);
+                }
+                return true;
             }
         }
 
@@ -166,6 +198,7 @@ namespace RandomAdditions
                             {
                                 var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
                                 itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
+                                __instance.InputsRemaining.Add(new ItemTypeInfo(compare.ObjectType, compare.ItemType));
                             }
                         }
                     }
@@ -186,6 +219,7 @@ namespace RandomAdditions
                             {
                                 var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, __instance.transform.position, Quaternion.identity);
                                 itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
+                                __instance.InputsRemaining.Add(new ItemTypeInfo(compare.ObjectType, compare.ItemType));
                             }   // we just assume that the output is upright
                         }
                     }
@@ -202,6 +236,8 @@ namespace RandomAdditions
             /// </summary>
             private static void ResetState_Prefix(ModuleItemConsume __instance)
             {
+                if (ManSaveGame.Storing)
+                    return;
                 FieldInfo recipeGetS = typeof(ModuleItemConsume).GetField("m_ConsumeProgress", BindingFlags.NonPublic | BindingFlags.Instance);
                 ModuleItemConsume.Progress fetchedRecipeS = (ModuleItemConsume.Progress)recipeGetS.GetValue(__instance);
                 RecipeTable.Recipe fetchedRecipe = fetchedRecipeS.currentRecipe;
@@ -237,6 +273,7 @@ namespace RandomAdditions
                                     var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, ejectorTransform.position, Quaternion.identity);
                                     itemSpawn.rbody.AddRandomVelocity(ejectorTransform.forward * 12, Vector3.one * 5, 30);
                                 }
+                                __instance.InputsRemaining.Add(new ItemTypeInfo(compare.ObjectType, compare.ItemType));
                             }
                         }
                     }
@@ -265,6 +302,7 @@ namespace RandomAdditions
                                     var itemSpawn = Singleton.Manager<ManSpawn>.inst.SpawnItem(compare, __instance.transform.position, Quaternion.identity);
                                     itemSpawn.rbody.AddRandomVelocity(Vector3.up * 12, Vector3.one * 5, 30);
                                 }
+                                __instance.InputsRemaining.Add(new ItemTypeInfo(compare.ObjectType, compare.ItemType));
                             }
                         }
                     }
@@ -390,23 +428,16 @@ namespace RandomAdditions
                         {
                             if (!ModuleCheck.StoresBlocksInsteadOfChunks)
                             {
-                                for (int i = 0; i < count; i++)
-                                {
-                                    collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)ModuleCheck.GetChunkType));
-                                    //DebugRandAddi.Log("RandomAdditions: Added " + __instance.items[0].pickup.ChunkType.ToString() + " to available recipie items");
-                                }
+                                collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)ModuleCheck.GetChunkType));
                                 //DebugRandAddi.Log("RandomAdditions: Searched silo (Chunks)");
                             }
                             else
                             {
-                                for (int i = 0; i < count; i++)
+                                try
                                 {
-                                    try
-                                    {
-                                        collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Block, (int)ModuleCheck.GetBlockType));
-                                    }
-                                    catch { }// Chances are we can't get modded blocks with this
+                                    collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Block, (int)ModuleCheck.GetBlockType));
                                 }
+                                catch { }// Chances are we can't get modded blocks with this
                                 //DebugRandAddi.Log("RandomAdditions: Searched silo (Blocks)");
                             }
                             ModuleCheck.WasSearched = true;

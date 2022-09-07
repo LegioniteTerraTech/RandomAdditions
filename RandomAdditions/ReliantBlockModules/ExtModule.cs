@@ -57,7 +57,7 @@ namespace RandomAdditions
             List<TankBlock> fetched = new List<TankBlock>();
             for (int step = 0; step < block.attachPoints.Length; step++)
             {
-                if (!block.ConnectedBlocksByAP[step].IsNotNull())
+                if (block.ConnectedBlocksByAP[step].IsNotNull())
                 {
                     fetched.Add(block.ConnectedBlocksByAP[step]);
                 }

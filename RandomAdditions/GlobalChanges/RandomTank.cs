@@ -113,9 +113,7 @@ namespace RandomAdditions
 
         public List<IntVector2> GetActiveTiles()
         {
-            if (!tank)
-                return new List<IntVector2>();
-            if (!ManSpawn.IsPlayerTeam(tank.Team))
+            if (!tank || !ManSpawn.IsPlayerTeam(tank.Team))
                 return new List<IntVector2>();
 
             List<IntVector2> tiles;

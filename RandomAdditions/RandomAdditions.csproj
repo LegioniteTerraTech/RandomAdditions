@@ -40,6 +40,10 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'SteamDev|AnyCPU'">
+    <OutputPath>bin\SteamDev\</OutputPath>
+    <DefineConstants>DEBUG;STEAM</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
@@ -121,7 +125,7 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)'=='Steam'">
+  <ItemGroup Condition="'$(Configuration)'=='Steam'OR'$(Configuration)'=='SteamDev'">
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
     <!--> THE MATTERS BELOW ARE OFFICIAL </!-->
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
@@ -191,11 +195,12 @@
     <Compile Include="Anim\AnimetteScaler.cs" />
     <Compile Include="Anim\AnimetteController.cs" />
     <Compile Include="Anim\AnimetteMover.cs" />
-    <Compile Include="MultiBlockModules\ModulePartWeaponDongle.cs" />
+    <Compile Include="MultiBlockModules\ModulePartWeaponPart.cs" />
     <Compile Include="MultiBlockModules\ModulePartWeapon.cs" />
     <Compile Include="MultiBlockModules\ModulePartWeaponGun.cs" />
     <Compile Include="MultiBlockModules\ModuleTechTether.cs" />
     <Compile Include="MultiBlockModules\ModuleRailwayController.cs" />
+    <Compile Include="MultiBlockModules\WeaponDongleStats.cs" />
     <Compile Include="ReliantBlockModules\ExtModule.cs" />
     <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
@@ -310,7 +315,7 @@ xcopy /S /Y /R "!e:~0,-1!" !modpath2!
 set modpath3="C:\Program Files (x86)\Steam\steamapps\common\TerraTech\LocalMods\Random Additions"
 
 if exist !modpath3! (
-if $(ConfigurationName) == Steam (
+if $(ConfigurationName) == Steam OR $(ConfigurationName) == SteamDev (
 echo Copying to SteamModLocalDirect
 set e=$(TargetDir)&gt;nul
 xcopy /S /Y /R "!e:~0,-1!" !modpath3!
@@ -319,7 +324,7 @@ xcopy /S /Y /R "!e:~0,-1!" !modpath3!
 set modpath4="C:\Program Files (x86)\Steam\steamapps\workshop\content\285920\2765334969"
 
 if exist !modpath4! (
-if $(ConfigurationName) == Steam (
+if $(ConfigurationName) == Steam OR $(ConfigurationName) == SteamDev (
 echo Copying to SteamModWorkshopDirect
 set e=$(TargetDir)&gt;nul
 xcopy /S /Y /R "!e:~0,-1!" !modpath4!

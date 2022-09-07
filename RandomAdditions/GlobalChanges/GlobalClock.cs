@@ -51,7 +51,13 @@ namespace RandomAdditions
             public void PlayerTechUpdate(Tank Tech, bool set)
             {
                 if (Tech)
-                    RandomTank.Ensure(Tech).ReevaluateLoadingDiameter();
+                {
+                    foreach (var item in ManTechs.inst.IterateTechs())
+                    {
+                        if (item)
+                            RandomTank.Ensure(item).ReevaluateLoadingDiameter();
+                    }
+                }
             }
 
             //All ModuleClock(s) will control the time based on global values.

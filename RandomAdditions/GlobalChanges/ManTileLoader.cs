@@ -217,8 +217,8 @@ namespace RandomAdditions
                         {
                             if (Vis is ManSaveGame.StoredTech tech)
                             {
-                                bool tileLoader = false;
-                                bool tileLoaderActive = false;
+                                //bool tileLoader = false;
+                                //bool tileLoaderActive = false;
                                 BlockTypes[] blockTypes = tech.m_TechData.m_BlockSpecs.Select(x => x.m_BlockType).Distinct().ToArray();
                                 foreach (var id in blockTypes)
                                 {
@@ -226,9 +226,9 @@ namespace RandomAdditions
                                     ModuleTileLoader MTL = prefab?.GetComponent<ModuleTileLoader>();
                                     if (MTL)
                                     {
-                                        tileLoader = true;
+                                        //tileLoader = true;
                                         TempLoadTile(tile);
-                                        tileLoaderActive = true;
+                                        //tileLoaderActive = true;
                                         /*
                                         if (MTL.AnchorOnly)
                                         {

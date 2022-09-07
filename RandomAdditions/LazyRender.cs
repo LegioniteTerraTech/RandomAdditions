@@ -32,64 +32,88 @@ namespace RandomAdditions
         private static bool allowQuickSnap = true;
         private static bool cooldown = false;
         private static TankBlock target;
-        public static void OnClick(ManPointer.Event mEvent, bool yes, bool yes2)
+        public static void OnClick(ManPointer.Event mEvent, bool DOWN, bool yes2)
         {
-            if (allowQuickSnap && !cooldown && mEvent == ManPointer.Event.LMB && Singleton.Manager<ManPointer>.inst.targetVisible)
+            Visible targVis = Singleton.Manager<ManPointer>.inst.targetVisible;
+            if (targVis)
             {
-                if ((bool)Singleton.Manager<ManPointer>.inst.targetVisible.block && Input.GetKey(KeyCode.KeypadPlus))
+                if (DOWN && mEvent == ManPointer.Event.RMB && targVis.block)
                 {
-                    target = Singleton.Manager<ManPointer>.inst.targetVisible.block;
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                    inst.Invoke("BeforeSnap", 1f);
-                    cooldown = true;
-                }
-            }
-            // THIS IS FOR MODULE HANGAR
-
-            if (Singleton.playerTank && mEvent == ManPointer.Event.LMB && Singleton.Manager<ManPointer>.inst.targetVisible)
-            {
-                Tank tech = Singleton.Manager<ManPointer>.inst.targetVisible.trans.root.GetComponent<Tank>();
-                if (tech)
-                {
-                    if (tech.Team == Singleton.playerTank.Team && Singleton.playerTank != tech)
+                    TankBlock TB = targVis.block;
+                    if (TB.GetComponent<ModulePartWeapon>())
                     {
-                        if (Input.GetKey(KeyCode.H))
+                        TB.GetComponent<ModulePartWeapon>().HighlightEntireWeapon(true);
+                    }
+                    else if (TB.GetComponent<ModulePartWeaponBarrel>())
+                    {
+                        var MPWB = TB.GetComponent<ModulePartWeaponBarrel>();
+                        if (MPWB.AssignedMPW)
+                            MPWB.AssignedMPW.HighlightEntireWeapon(true);
+                    }
+                    else if (TB.GetComponent<ModulePartWeaponDongle>())
+                    {
+                        var MPWD = TB.GetComponent<ModulePartWeaponDongle>();
+                        if (MPWD.AssignedMPW)
+                            MPWD.AssignedMPW.HighlightEntireWeapon(true);
+                    }
+                }
+                if (allowQuickSnap && !cooldown && mEvent == ManPointer.Event.LMB)
+                {
+                    if ((bool)targVis.block && Input.GetKey(KickStart.SnapBlockButton))
+                    {
+                        target = targVis.block;
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                        inst.Invoke("BeforeSnap", 1f);
+                        cooldown = true;
+                    }
+                }
+                // THIS IS FOR MODULE HANGAR
+
+                if (Singleton.playerTank && mEvent == ManPointer.Event.LMB)
+                {
+                    Tank tech = targVis.trans.root.GetComponent<Tank>();
+                    if (tech)
+                    {
+                        if (tech.Team == Singleton.playerTank.Team && Singleton.playerTank != tech)
                         {
-                            foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
+                            if (Input.GetKey(KickStart.HangarButton))
                             {
-                                ModuleHangar MH = TB.GetComponent<ModuleHangar>();
-                                if (MH)
+                                foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
                                 {
-                                    if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
+                                    ModuleHangar MH = TB.GetComponent<ModuleHangar>();
+                                    if (MH)
                                     {
-                                        if (MH.AssignToDock(tech))
-                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                                        else
-                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                                        break;
+                                        if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
+                                        {
+                                            if (MH.AssignToDock(tech))
+                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                                            else
+                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
+                                            break;
+                                        }
                                     }
                                 }
                             }
+                            /*
+                            if (Input.GetKey(KeyCode.N))
+                            {
+                                foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
+                                {
+                                    ModuleHangar MH = TB.GetComponent<ModuleHangar>();
+                                    if (MH)
+                                    {
+                                        if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
+                                        {
+                                            if (MH.RequestAssignToDock(tech))
+                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                                            else
+                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }*/
                         }
-                        /*
-                        if (Input.GetKey(KeyCode.N))
-                        {
-                            foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
-                            {
-                                ModuleHangar MH = TB.GetComponent<ModuleHangar>();
-                                if (MH)
-                                {
-                                    if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
-                                    {
-                                        if (MH.RequestAssignToDock(tech))
-                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                                        else
-                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                                        break;
-                                    }
-                                }
-                            }
-                        }*/
                     }
                 }
             }
