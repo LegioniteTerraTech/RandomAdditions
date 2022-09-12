@@ -245,8 +245,7 @@ namespace RandomAdditions
                                     var bound = __instance.block.BlockCellBounds.extents;
                                     ModuleScale.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
                                 }
-                                ModuleScale.Downscale = true;
-                                ModuleScale.enabled = true;
+                                ModuleScale.DownScale(true);
                                 //DebugRandAddi.Log("RandomAdditions: Queued Rescale Down");
                             }
 
@@ -279,8 +278,7 @@ namespace RandomAdditions
                                 var bound = __instance.block.BlockCellBounds.extents;
                                 ModuleScale.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
                             }
-                            ModuleScale.Downscale = false;
-                            ModuleScale.enabled = true;
+                            ModuleScale.DownScale(false);
                             //DebugRandAddi.Log("RandomAdditions: Queued Rescale Up");
 
                             //Reset them collodos

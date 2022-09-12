@@ -11,10 +11,12 @@ namespace RandomAdditions
                 // Minimum 0.01, Maximum 0.5.
             },
         */
+        private const int stepsAllowedUntilSnap = 80;
+        private const float scaleLerp = 5;
+        private bool Downscale = true;
 
-        public bool Downscale = true;
         public float AimedDownscale = 0.5f;
-        public int attempts = 25;
+        public int attempts = stepsAllowedUntilSnap;
 
         public void OnPool()
         {
@@ -23,6 +25,12 @@ namespace RandomAdditions
                 //DebugRandAddi.Log("RandomAdditions: TankBlockScaler value is invalid on block " + gameObject.name + "!  Overriding to 0.5!");
                 AimedDownscale = 0.5f;
             }
+        }
+
+        public void DownScale(bool downscale)
+        {
+            Downscale = downscale;
+            enabled = true;
         }
 
         private void Update()
@@ -35,8 +43,7 @@ namespace RandomAdditions
             }
             else
             {
-                attempts = 25;
-                enabled = false;
+                RescaleSnap();
             }
         }
         private void Rescale()
@@ -44,28 +51,43 @@ namespace RandomAdditions
             if (Downscale)
             {
                 //DebugRandAddi.Log("RandomAdditions: Firing Rescale Down for " + gameObject.name);
-                if (AimedDownscale - 0.1f < transform.localScale.y && transform.localScale.y < 0.1f + AimedDownscale)
+                if (transform.localScale.y < 0.1f + AimedDownscale)
                 {
                     transform.localScale = AimedDownscale * Vector3.one;
-                    attempts = 25;
+                    attempts = stepsAllowedUntilSnap;
                     enabled = false;
                     return;
                 }
-                float reScaleOp = ((AimedDownscale - transform.localScale.y) / 4) + transform.localScale.y;
+                float reScaleOp = ((AimedDownscale - transform.localScale.y) / scaleLerp) + transform.localScale.y;
                 transform.localScale = reScaleOp * Vector3.one;
             }
             else
             {
                 //DebugRandAddi.Log("RandomAdditions: Firing Rescale Up for " + gameObject.name);
-                if (0.9f < transform.localScale.y && transform.localScale.y < 1.1f)
+                if (0.98f < transform.localScale.y)
                 {
                     transform.localScale = Vector3.one;
-                    attempts = 25;
+                    attempts = stepsAllowedUntilSnap;
                     enabled = false;
                     return;
                 }
-                float reScaleOp = ((1 - transform.localScale.y) / 3) + transform.localScale.y;
+                float reScaleOp = ((1 - transform.localScale.y) / scaleLerp) + transform.localScale.y;
                 transform.localScale = reScaleOp * Vector3.one;
+            }
+        }
+        private void RescaleSnap()
+        {
+            if (Downscale)
+            {
+                transform.localScale = AimedDownscale * Vector3.one;
+                attempts = stepsAllowedUntilSnap;
+                enabled = false;
+            }
+            else
+            {
+                transform.localScale = Vector3.one;
+                attempts = stepsAllowedUntilSnap;
+                enabled = false;
             }
         }
     }

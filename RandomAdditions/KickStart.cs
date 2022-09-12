@@ -503,6 +503,53 @@ namespace RandomAdditions
             return BTVanilla;
         }
 
+        internal static TankBlock SpawnBlockS(BlockTypes type, Vector3 position, Quaternion quat, out bool worked)
+        {
+            if (Singleton.Manager<ManWorld>.inst.CheckIsTileAtPositionLoaded(position))
+            {
+                if (Singleton.Manager<ManSpawn>.inst.IsBlockAllowedInCurrentGameMode(type))
+                {
+                    worked = true;
+
+                    TankBlock block = Singleton.Manager<ManLooseBlocks>.inst.HostSpawnBlock(type, position, quat, false);
+                    var dmg = block.GetComponent<Damageable>();
+                    if (dmg)
+                    {
+                        if (!dmg.IsAtFullHealth)
+                            block.InitNew();
+                    }
+                    return block;
+                }
+                try
+                {
+                    DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Error on block " + type.ToString());
+                }
+                catch
+                {
+                    DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Error on unfetchable block");
+                }
+                if (!Singleton.Manager<ManSpawn>.inst.IsTankBlockLoaded(type))
+                    DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Could not spawn block!  Block does not exist!");
+                else
+                    DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Could not spawn block!  Block is invalid in current gamemode!");
+
+            }
+            else
+            {
+                try
+                {
+                    DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Error on block " + type.ToString());
+                }
+                catch
+                {
+                    DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Error on unfetchable block");
+                }
+                DebugRandAddi.Log("RandomAdditions: SpawnBlockS - Could not spawn block!  Block tried to spawn out of bounds!");
+            }
+            worked = false;
+            return null;
+        }
+
 
         public static AnimetteController[] FetchAnimettes(Transform transform, AnimCondition condition)
         {

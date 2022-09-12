@@ -19,7 +19,7 @@ namespace RandomAdditions
         private static StringBuilder Warnings = new StringBuilder();
         private static bool WarningQueued = false;
         private static int WarningCount = 0;
-        private const int WarningCountMax = 5;
+        private const int WarningCountMax = 2;
 
         public void Initiate()
         {

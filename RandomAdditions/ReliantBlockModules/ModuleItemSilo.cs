@@ -54,7 +54,7 @@ namespace RandomAdditions
             {
                 if (StoresBlocksInsteadOfChunks)
                 {
-                    if (Empty)
+                    if (GetBlockType == BlockTypes.GSOAIController_111)
                         return 0;
                     else
                         return 1;
@@ -134,8 +134,6 @@ namespace RandomAdditions
         {
             TankBlock = gameObject.GetComponent<TankBlock>();
             TankBlock.SubToBlockAttachConnected(OnAttach, OnDetach);
-            TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
 
             gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>().ToList();
             disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>().ToList();
@@ -234,10 +232,8 @@ namespace RandomAdditions
         }
         private void OnAttach()
         {
-            SavedCount = 0;
-            GetBlockType = BlockTypes.GSOAIController_111;
-            GetChunkType = ChunkTypes.Null;
-
+            TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+            //TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
 
             ResetGaugesAndDisplays();
@@ -246,17 +242,23 @@ namespace RandomAdditions
         }
         private void OnDetach()
         {
+            TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+            //TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
+
             //DebugRandAddi.Log("RandomAdditions: isSaving " + isSaving);
             if (!isSaving || ManTechSwapper.inst.CheckOperatingOnTech(block.tank))
             {   // Only eject when the world is NOT saving
-                if (SavedCount > 0)
+                if (!StoresBlocksInsteadOfChunks)
                 {
-                    TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemCannonDelivered);
-                    try
+                    if (SavedCount > 0)
                     {
-                        TankBlock.tank.TechAudio.PlayOneshot(sound);
+                        TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemCannonDelivered);
+                        try
+                        {
+                            TankBlock.tank.TechAudio.PlayOneshot(sound);
+                        }
+                        catch { }
                     }
-                    catch { }
                 }
                 // SILO COMPROMISED!  EJECT ALL!
                 EmergencyEjectAllContents();
@@ -351,10 +353,10 @@ namespace RandomAdditions
             }
             else
             {
+                if (GetBlockType == BlockTypes.GSOAIController_111)
+                    return;
                 foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                 {
-                    if (GetBlockType == BlockTypes.GSOAIController_111)
-                        break;
                     HandleReleaseStackBlocks(stack);
                 }
             }
@@ -369,6 +371,8 @@ namespace RandomAdditions
                 if (SavedCount >= MaxCapacity)
                     break;
                 var toManage = stack.FirstItem;
+                if (!toManage.pickup)
+                    continue;
                 if (SavedCount == 0)
                 {
                     Empty = false;
@@ -399,10 +403,10 @@ namespace RandomAdditions
             int FireTimes = stack.NumItems - StackSet;
             for (int step = 0; step < FireTimes; step++)
             {
-                if (SavedCount >= MaxCapacity)
-                    break;
                 var toManage = stack.FirstItem;
-                if (SavedCount == 0)
+                if (!toManage.block)
+                    continue;
+                if (GetBlockType == BlockTypes.GSOAIController_111)
                 {
                     Empty = false;
                     GetBlockType = toManage.block.BlockType;
@@ -586,8 +590,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnBlock(GetBlockType, siloSpawn.position, Quaternion.identity).visible;
-                    toManage.block.InitNew();
+                    toManage = KickStart.SpawnBlockS(GetBlockType, siloSpawn.position, Quaternion.identity, out _).visible;
                 }
                 stack.Take(toManage);
                 ReleaseAnimating.Add(toManage);
@@ -600,8 +603,7 @@ namespace RandomAdditions
                     toManage = Singleton.Manager<ManSpawn>.inst.SpawnItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)GetChunkType), siloSpawn.position, Quaternion.identity);
                 else
                 {
-                    toManage = Singleton.Manager<ManSpawn>.inst.SpawnBlock(GetBlockType, siloSpawn.position, Quaternion.identity).visible;
-                    toManage.block.InitNew();
+                    toManage = KickStart.SpawnBlockS(GetBlockType, siloSpawn.position, Quaternion.identity, out _).visible;
                 }
                 stack.Take(toManage);
                 //toManage.SetHolder(null, true);
@@ -835,9 +837,11 @@ namespace RandomAdditions
                         float scaler = 1;
                         if (toManage.GetComponent<TankBlockScaler>())
                             scaler = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
+                        
                         if (0.9f * scaler < toManage.trans.localScale.y || !UseShrinkAnim)
                         {
-                            toManage.trans.localScale = Vector3.one * scaler;
+                            toManage.trans.localScale = Vector3.one;
+                            toManage.ColliderSwapper.EnableCollision(true);
                             ReleaseAnimating.RemoveAt(step);
                             step--;
                             fireTimes2--;
@@ -852,7 +856,6 @@ namespace RandomAdditions
                     else
                     {
                         ReleaseAnimating.RemoveAt(step);
-                        toManage.ColliderSwapper.EnableCollision(true);
                         step--;
                         fireTimes2--;
                     }
@@ -999,7 +1002,6 @@ namespace RandomAdditions
             {
                 if (saving)
                 {   // On Save (non-snap)
-                    //DebugRandAddi.Assert(true, "SAVING " + TankBlock.name);
                     //var tile = Singleton.Manager<ManWorld>.inst.TileManager.LookupTile(transform.position);
                     //tile.
                     //DebugRandAddi.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
@@ -1013,25 +1015,30 @@ namespace RandomAdditions
                     }
                     else
                         isSaving = true;// only disable ejecting when the world is removed
-                    if (!Singleton.Manager<ManScreenshot>.inst.TakingSnapshot)
+                    if (ManSaveGame.Storing)
                     {   // Only save on world save
-                        BlockTypeString = block.name;
-                        this.SerializeToSafe();
+                        var bloc = ManSpawn.inst.GetBlockPrefab(GetBlockType);
+                        if (bloc)
+                            BlockTypeString = bloc.name;
+                        if (this.SerializeToSafe())
+                        {
+                            DebugRandAddi.Log("SAVING " + TankBlock.name);
+                            DebugRandAddi.Log("Block type is " + GetBlockType);
+                        }
                     }
                 }
                 else
                 {   //Load from Save
-                    //DebugRandAddi.Assert(true, "LOADING " + TankBlock.name);
                     try
                     {
-                        //ManUndo.inst.UndoInProgress
-                        if (!block.tank.FirstUpdateAfterSpawn)
-                            return; // we ignore undo / swap
                         isSaving = false;
-                        if (!this.DeserializeFromSafe())
+                        DebugRandAddi.Log("LOADING " + TankBlock.name);
+                        DebugRandAddi.Log("Block type prev is " + GetBlockType);
+                        if (this.DeserializeFromSafe())
                         {
                             if (BlockTypeString != null)
                                 GetBlockType = KickStart.GetProperBlockType(GetBlockType, BlockTypeString);
+                            DebugRandAddi.Log("Block type is now " + GetBlockType);
                         }
                         SetColorOfGauges();
                         ResetGaugesAndDisplays();

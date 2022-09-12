@@ -59,7 +59,6 @@ namespace RandomAdditions
                     var meshR = gameObject.GetComponent<MeshRenderer>();
                     meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(new ItemTypeInfo(ObjectTypes.Block, (int)displayBlock)).texture);
                 }
-
             }
             else
             {
