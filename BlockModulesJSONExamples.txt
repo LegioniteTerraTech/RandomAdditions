@@ -435,6 +435,15 @@ Can be placed anywhere BUT on the base GameObject Layer: Must be within at least
     "RACannonBarrel": {}, // Put this in a referenced _barrel GameObject and MAKE SURE you null that CannonBarrel!
     "CannonBarrel": null, // Disable the ModuleWeapon CannonBarrel to hand over control to RACannonBarrel.
     
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleStickyWheels": { // Stick to non-moving surfaces. Needs ModuleWheels.
+      "WheelStickyForce": 1000, // The downwards force applied in relation to the surface the wheel is contacting.
+      // High values my cause stuttering!
+      "DownwardsForce": 0,      // The force appied when ANY wheel on this block is contacting the ground.
+      // This requires a GameObject called _effectorDown which applies the force in the direction it is facing
+      //   at the position it is located on the block.
+    },
 
 -----------------------------------------------------------------------------------------------------
 

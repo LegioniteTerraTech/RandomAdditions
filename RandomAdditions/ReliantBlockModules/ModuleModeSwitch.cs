@@ -190,7 +190,7 @@ namespace RandomAdditions
                 BarrelsMain = BarrelsFetched.ToArray();
                 BarrelsAux = BarrelsFetched.ToArray();
             }
-            anims = FetchAnimettes(AnimCondition.WeaponSwitch);
+            anims = KickStart.FetchAnimettes(transform, AnimCondition.WeaponSwitch);
             //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
         public override void OnAttach()

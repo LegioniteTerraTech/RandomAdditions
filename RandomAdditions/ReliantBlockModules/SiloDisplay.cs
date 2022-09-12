@@ -5,12 +5,13 @@ namespace RandomAdditions
 {
     public class SiloDisplay : MonoBehaviour
     {
-        internal ModuleItemSilo siloMain;
+        private ModuleItemSilo siloMain;
         private ChunkTypes displayChunk;
         private BlockTypes displayBlock;
 
-        public void OnPool()
+        public void Setup(ModuleItemSilo MIS)
         {
+            siloMain = MIS;
             var meshFV = gameObject.GetComponent<MeshFilter>();
             if (!meshFV)
             {
@@ -47,7 +48,6 @@ namespace RandomAdditions
             else
                 meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(new ItemTypeInfo(ObjectTypes.Chunk, (int)ChunkTypes.Null)).texture);
         }
-
 
         public void UpdateDisplay()
         {

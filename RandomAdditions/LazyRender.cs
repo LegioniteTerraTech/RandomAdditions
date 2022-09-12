@@ -13,8 +13,7 @@ namespace RandomAdditions
     /// This class uses parts from the Official Mod Tool to render NuterraSteam blocks ingame.
     /// </summary>
     public class LazyRender : MonoBehaviour
-    {   // crafting on fast just too slow?  enter *ludicrous speed*
-
+    {   
         // Startup
         private static LazyRender inst;
         private static bool hooked = false;
@@ -94,25 +93,6 @@ namespace RandomAdditions
                                     }
                                 }
                             }
-                            /*
-                            if (Input.GetKey(KeyCode.N))
-                            {
-                                foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
-                                {
-                                    ModuleHangar MH = TB.GetComponent<ModuleHangar>();
-                                    if (MH)
-                                    {
-                                        if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
-                                        {
-                                            if (MH.RequestAssignToDock(tech))
-                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                                            else
-                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }*/
                         }
                     }
                 }
@@ -183,6 +163,7 @@ namespace RandomAdditions
             RenderTexture.active = null;
             RenderTexture.ReleaseTemporary(rendTex);
         }
+
 
     }
 }

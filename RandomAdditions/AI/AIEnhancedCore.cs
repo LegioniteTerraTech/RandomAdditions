@@ -39,8 +39,8 @@ namespace RandomAdditions.AI
             public void OnPool()
             {
                 TankBlock = gameObject.GetComponent<TankBlock>();
-                TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
-                TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
+                //TankBlock.AttachEvent.Subscribe(new Action(OnAttach));
+                //TankBlock.DetachEvent.Subscribe(new Action(OnDetach));
             }
             public void OnAttach()
             {

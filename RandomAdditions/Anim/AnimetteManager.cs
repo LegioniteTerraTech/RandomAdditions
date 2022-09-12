@@ -30,13 +30,13 @@ namespace RandomAdditions
         protected override void Pool()
         {
             List<AnimetteController> AC = new List<AnimetteController>();
-            AnimetteController AC0 = FetchAnimette("_segDisplay0", AnimCondition.ManagerManaged);
+            AnimetteController AC0 = KickStart.FetchAnimette(transform, "_segDisplay0", AnimCondition.ManagerManaged);
             if (AC0)
             {
                 AC.Add(AC0);
                 for (int step = 1; ; step++)
                 {
-                    AnimetteController ACn = FetchAnimette("_segDisplay" + step, AnimCondition.ManagerManaged);
+                    AnimetteController ACn = KickStart.FetchAnimette(transform, "_segDisplay" + step, AnimCondition.ManagerManaged);
                     if (ACn)
                     {
                         AC.Add(ACn);

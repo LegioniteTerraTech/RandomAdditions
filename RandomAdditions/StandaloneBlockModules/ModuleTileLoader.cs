@@ -19,7 +19,7 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
-            anim = FetchAnimette("_tileLoadAnim", AnimCondition.TileLoader);
+            anim = KickStart.FetchAnimette(transform, "_tileLoadAnim", AnimCondition.TileLoader);
         }
 
         public override void OnAttach()

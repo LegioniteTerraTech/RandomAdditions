@@ -27,7 +27,7 @@ namespace RandomAdditions
         public bool UseResourceColorsForGauge = false;
 
 
-        internal ModuleItemSilo siloMain;
+        private ModuleItemSilo siloMain;
         private bool updatingDisplay;
         private ChunkTypes displayChunk;
         private Shader shade;
@@ -36,19 +36,16 @@ namespace RandomAdditions
         private bool displayDamperInstant = false;
         private float ScaleToAimFor = 0;
 
-        public void OnPool()
+        public void Setup(ModuleItemSilo MIS)
         {
-            var shader = Shader.Find("Standard");
+            siloMain = MIS;
+            IEnumerable<Shader> shaders = Resources.FindObjectsOfTypeAll<Shader>();
+            shaders = shaders.Where(s => s.name == "Standard"); ////Standard
+            var shader = shaders.ElementAt(1);
             if (shader.IsNull())
-            {
-                DebugRandAddi.Log("RandomAdditions: Could not find Shader Standard!  Trying to find the next possible shader!");
-                IEnumerable<Shader> shaders = Resources.FindObjectsOfTypeAll<Shader>();
-                shaders = shaders.Where(s => s.name == "Standard"); ////Standard
-                shader = shaders.ElementAt(1);
-                if (shader.IsNull())
-                    LogHandler.ThrowWarning("RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
-            }
+                LogHandler.ThrowWarning("RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
             shade = shader;
+
             var meshV = gameObject.GetComponent<MeshRenderer>();
             if (!meshV)
             {
@@ -65,7 +62,7 @@ namespace RandomAdditions
                 graphics = toReplace;
                 gameObject.GetComponent<MeshRenderer>().material = new Material(shader);
             }
-            if (DisplayDampener < 0.01)
+            if (DisplayDampener < 0.01f)
                 displayDamperInstant = true;
             UpdateTextures();
         }
@@ -106,13 +103,13 @@ namespace RandomAdditions
             else
                 recoloredGraphics = graphics;
             var change = gameObject.GetComponent<MeshRenderer>();
-            change.material.SetColor("_Color", siloMain.GetSavedChunkColor);
+            change.material.SetColor("_Color", siloMain.GetSavedGaugeColor);
             change.material.SetTexture("_MainTex", recoloredGraphics);
         }
 
         public void RecolorTexture()
         {
-            Color pixC = siloMain.GetSavedChunkColor;
+            Color pixC = siloMain.GetSavedGaugeColor;
 
             Texture2D reColor = (Texture2D)graphics;
             for (int stepY = 0; graphics.height > stepY; stepY++)
@@ -127,7 +124,7 @@ namespace RandomAdditions
             recoloredGraphics = reColor;
         }
 
-        private void Update()
+        internal void UpdateScale()
         {
             if (updatingDisplay)
             {

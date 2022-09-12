@@ -54,8 +54,7 @@ namespace RandomAdditions
         {
             TankBlock = gameObject.GetComponent<TankBlock>();
             Energy = gameObject.GetComponent<ModuleEnergy>();
-            TankBlock.AttachEvent.Subscribe(OnAttach);
-            TankBlock.DetachEvent.Subscribe(OnDetach);
+            TankBlock.SubToBlockAttachConnected(OnAttach, OnDetach);
             Energy.UpdateConsumeEvent.Subscribe(OnDrain);
         }
         private void OnDrain()

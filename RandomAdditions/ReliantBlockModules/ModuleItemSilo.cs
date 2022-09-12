@@ -72,14 +72,22 @@ namespace RandomAdditions
         private float GetChunkCountPercent = 0;
         [SSaveField]
         public ChunkTypes GetChunkType = ChunkTypes.Wood;
-        internal Color GetSavedChunkColor
+        /// <summary>
+        /// Return the chuck color, unless it's a corp block, then it uses that corp's respective color.
+        /// </summary>
+        internal Color GetSavedGaugeColor
         {
-            get { return SavedChunkColor; }
+            get { 
+
+                return SavedGaugeColor; 
+            }
         }
 
         //Collection (Blocks)
         [SSaveField]
         public BlockTypes GetBlockType = BlockTypes.GSOAIController_111;
+        [SSaveField]
+        public string BlockTypeString = null;
 
 
         //Processing
@@ -94,9 +102,12 @@ namespace RandomAdditions
         private Transform siloSpawn;
         private Transform input;
         private Transform output;
-        private SiloGauge[] gauges = Array.Empty<SiloGauge>();
-        private SiloDisplay[] disps = Array.Empty<SiloDisplay>();
-        private Color SavedChunkColor = Color.magenta;
+        private List<SiloGauge> gauges = new List<SiloGauge>();
+        private List<SiloDisplay> disps = new List<SiloDisplay>();
+        /// <summary>
+        /// Also used to save the color of the block's corp
+        /// </summary>
+        private Color SavedGaugeColor = Color.magenta;
         //private bool queuedBlink = false;
         private List<Visible> AbsorbAnimating = new List<Visible>();
         private List<Vector3> AbsorbAnimatingPos = new List<Vector3>();
@@ -122,13 +133,12 @@ namespace RandomAdditions
         public void OnPool()
         {
             TankBlock = gameObject.GetComponent<TankBlock>();
-            TankBlock.AttachEvent.Subscribe(OnAttach);
-            TankBlock.DetachEvent.Subscribe(OnDetach);
+            TankBlock.SubToBlockAttachConnected(OnAttach, OnDetach);
             TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
 
-            gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>();
-            disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>();
+            gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>().ToList();
+            disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>().ToList();
             itemStore = gameObject.GetComponent<ModuleItemStore>();
             itemHold = gameObject.GetComponent<ModuleItemHolder>();
             siloSpawn = gameObject.transform.Find("_siloSpawn");
@@ -137,7 +147,7 @@ namespace RandomAdditions
             int possibleAPs = 0;
             if (StoresBlocksInsteadOfChunks)
             {
-                SavedChunkColor = new Color(0.46f, 0.52f, 46f, 1);
+                SavedGaugeColor = new Color(0.46f, 0.52f, 0.46f, 1);
                 foreach (ModuleItemHolder.Stack stack in itemHold.Stacks)
                 {
                     if (stack.apConnectionIndices.Length > possibleAPs)
@@ -175,26 +185,26 @@ namespace RandomAdditions
             }
             itemHold.OverrideStackCapacity(stackOverride);  //  MUST be at least 2
             DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
-            if (gauges.Length == 0)
+            if (gauges.Count == 0)
             {
-                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - Detected no gauges on silo!\n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - There are no gauges on this silo.\n  Block " + TankBlock.name);
             }
             else
             {
                 foreach (SiloGauge sGauge in gauges)
                 {
-                    sGauge.siloMain = this;
+                    sGauge.Setup(this);
                 }
             }
-            if (disps.Length == 0)
+            if (disps.Count == 0)
             {
-                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Block " + TankBlock.name);
             }
             else
             {
                 foreach (SiloDisplay sDisp in disps)
                 {
-                    sDisp.siloMain = this;
+                    sDisp.Setup(this);
                 }
             }
             if (siloSpawn.IsNull())
@@ -275,7 +285,7 @@ namespace RandomAdditions
             GetChunkType = ChunkTypes.Null;
             GetBlockType = BlockTypes.GSOAIController_111;
             SavedCount = 0;
-            SavedChunkColor = Color.black;
+            SavedGaugeColor = Color.black;
             isSaving = false;
         }
         private void OnRecycle()
@@ -364,7 +374,7 @@ namespace RandomAdditions
                     Empty = false;
                     GetChunkType = toManage.pickup.ChunkType;
                     //Save the chunk's color for gauge referencing
-                    SaveTextureOfChunk();
+                    SetColorOfGauges();
                 }
                 if (toManage.pickup.ChunkType == GetChunkType)
                 {
@@ -396,6 +406,7 @@ namespace RandomAdditions
                 {
                     Empty = false;
                     GetBlockType = toManage.block.BlockType;
+                    SetColorOfGauges();
                 }
                 if (toManage.block.BlockType == GetBlockType)
                 {
@@ -438,7 +449,7 @@ namespace RandomAdditions
                     Empty = true;
                     GetChunkType = ChunkTypes.Null;
                     //Reset color for gauge referencing
-                    SaveTextureOfChunk();
+                    SetColorOfGauges();
                     if (SavedCount < 0)
                     {
                         DebugRandAddi.LogError("RandomAdditions: SILO HAS NEGATIVE RESOURCES!!!");
@@ -488,6 +499,7 @@ namespace RandomAdditions
                                         {
                                             Empty = true;
                                             GetBlockType = BlockTypes.GSOAIController_111;
+                                            SetColorOfGauges();
                                             if (availQuant < 0)
                                                 DebugRandAddi.Log("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
                                             break;
@@ -515,6 +527,7 @@ namespace RandomAdditions
                                         {
                                             Empty = true;
                                             GetBlockType = BlockTypes.GSOAIController_111;
+                                            SetColorOfGauges();
                                             if (availQuant < 0)
                                                 DebugRandAddi.LogError("RandomAdditions: SILO HAS NEGATIVE BLOCKS!!!");
                                             break;
@@ -626,79 +639,116 @@ namespace RandomAdditions
                 sGauge.UpdateGauge();
             }
         }
-        private void SaveTextureOfChunk()
+        private void SetColorOfGauges()
         {
-            switch (GetChunkType)
+            if (StoresBlocksInsteadOfChunks)
             {
-                case ChunkTypes.Wood:
-                    SavedChunkColor = new Color(1, 0.75f, 0.42f, 1);
-                    break;
-                case ChunkTypes.FibronChunk:
-                    SavedChunkColor = new Color(0.99f, 0.85f, 0.49f, 1);
-                    break;
-                case ChunkTypes.RubberJelly:
-                    SavedChunkColor = new Color(0.62f, 0.45f, 0.18f, 1);
-                    break;
-                case ChunkTypes.RubberBrick:
-                    SavedChunkColor = new Color(0.28f, 0.28f, 0.28f, 1);
-                    break;
-                case ChunkTypes.LuxiteShard:
-                    SavedChunkColor = new Color(0.82f, 0.77f, 0.13f, 1);
-                    break;
-                case ChunkTypes.LuxianCrystal:
-                    SavedChunkColor = new Color(1f, 1f, 0.29f, 1);
-                    break;
-                case ChunkTypes.PlumbiteOre:
-                    SavedChunkColor = new Color(0.62f, 0.62f, 0.62f, 1);
-                    break;
-                case ChunkTypes.PlumbiaIngot:
-                    SavedChunkColor = new Color(0.73f, 0.73f, 0.73f, 1);
-                    break;
-                case ChunkTypes.TitaniteOre:
-                    SavedChunkColor = new Color(0.48f, 0.79f, 1f, 1);
-                    break;
-                case ChunkTypes.TitanicAlloy:
-                    SavedChunkColor = new Color(0.24f, 0.4f, 0.79f, 1);
-                    break;
-                case ChunkTypes.CarbiteOre:
-                    SavedChunkColor = new Color(0.35f, 0.35f, 0.35f, 1);
-                    break;
-                case ChunkTypes.CarbiusBrick:
-                    SavedChunkColor = new Color(0.1f, 0.1f, 0.1f, 1);
-                    break;
-                case ChunkTypes.RoditeOre:
-                    SavedChunkColor = new Color(0.27f, 1f, 0.72f, 1);
-                    break;
-                case ChunkTypes.RodiusCapsule:
-                    SavedChunkColor = new Color(0.08f, 0.83f, 0.65f, 1);
-                    break;
-                case ChunkTypes.OleiteJelly:
-                    SavedChunkColor = new Color(0.38f, 0.12f, 0.12f, 1);
-                    break;
-                case ChunkTypes.OlasticBrick:
-                    SavedChunkColor = new Color(0.91f, 0.26f, 0.26f, 1);
-                    break;
-                case ChunkTypes.IgniteShard:
-                    SavedChunkColor = new Color(0.91f, 0.5f, 0.15f, 1);
-                    break;
-                case ChunkTypes.IgnianCrystal:
-                    SavedChunkColor = new Color(1f, 0.62f, 0.01f, 1);
-                    break;
-                case ChunkTypes.EruditeShard:
-                    SavedChunkColor = new Color(0.15f, 0.65f, 0.12f, 1);
-                    break;
-                case ChunkTypes.ErudianCrystal:
-                    SavedChunkColor = new Color(0.25f, 0.96f, 0.17f, 1);
-                    break;
-                case ChunkTypes.CelestiteShard:
-                    SavedChunkColor = new Color(0.23f, 0.78f, 1f, 1);
-                    break;
-                case ChunkTypes.CelestianCrystal:
-                    SavedChunkColor = new Color(0.19f, 0.65f, 1f, 1);
-                    break;
-                default:
-                    SavedChunkColor = new Color(0.46f, 0.52f, 46f, 1);
-                    break;
+                FactionSubTypes FST = ManSpawn.inst.GetCorporation(GetBlockType);
+                switch (FST)
+                {
+                    case FactionSubTypes.NULL:
+                        SavedGaugeColor = new Color(0.5f, 0.5f, 0.5f, 1);
+                        break;
+                    case FactionSubTypes.GSO:
+                        SavedGaugeColor = new Color(0.45f, 0.49f, 0.56f, 1);
+                        break;
+                    case FactionSubTypes.GC:
+                        SavedGaugeColor = new Color(1f, 1f, 0.3f, 1);
+                        break;
+                    case FactionSubTypes.EXP:
+                        SavedGaugeColor = new Color(0.4f, 0.4f, 0.4f, 1);
+                        break;
+                    case FactionSubTypes.VEN:
+                        SavedGaugeColor = new Color(1f, 0.3f, 0.3f, 1);
+                        break;
+                    case FactionSubTypes.HE:
+                        SavedGaugeColor = new Color(0.1f, 0.1f, 0.1f, 1);
+                        break;
+                    case FactionSubTypes.SPE:
+                        SavedGaugeColor = new Color(0.4f, 0.4f, 0.4f, 1);
+                        break;
+                    case FactionSubTypes.BF:
+                        SavedGaugeColor = new Color(0.96f, 0.96f, 0.96f, 1);
+                        break;
+                    default:
+                        SavedGaugeColor = new Color(0.46f, 0.52f, 0.46f, 1);
+                        break;
+                }
+            }
+            else
+            {
+                switch (GetChunkType)
+                {
+                    case ChunkTypes.Wood:
+                        SavedGaugeColor = new Color(1, 0.75f, 0.42f, 1);
+                        break;
+                    case ChunkTypes.FibronChunk:
+                        SavedGaugeColor = new Color(0.99f, 0.85f, 0.49f, 1);
+                        break;
+                    case ChunkTypes.RubberJelly:
+                        SavedGaugeColor = new Color(0.62f, 0.45f, 0.18f, 1);
+                        break;
+                    case ChunkTypes.RubberBrick:
+                        SavedGaugeColor = new Color(0.28f, 0.28f, 0.28f, 1);
+                        break;
+                    case ChunkTypes.LuxiteShard:
+                        SavedGaugeColor = new Color(0.82f, 0.77f, 0.13f, 1);
+                        break;
+                    case ChunkTypes.LuxianCrystal:
+                        SavedGaugeColor = new Color(1f, 1f, 0.29f, 1);
+                        break;
+                    case ChunkTypes.PlumbiteOre:
+                        SavedGaugeColor = new Color(0.62f, 0.62f, 0.62f, 1);
+                        break;
+                    case ChunkTypes.PlumbiaIngot:
+                        SavedGaugeColor = new Color(0.73f, 0.73f, 0.73f, 1);
+                        break;
+                    case ChunkTypes.TitaniteOre:
+                        SavedGaugeColor = new Color(0.48f, 0.79f, 1f, 1);
+                        break;
+                    case ChunkTypes.TitanicAlloy:
+                        SavedGaugeColor = new Color(0.24f, 0.4f, 0.79f, 1);
+                        break;
+                    case ChunkTypes.CarbiteOre:
+                        SavedGaugeColor = new Color(0.35f, 0.35f, 0.35f, 1);
+                        break;
+                    case ChunkTypes.CarbiusBrick:
+                        SavedGaugeColor = new Color(0.1f, 0.1f, 0.1f, 1);
+                        break;
+                    case ChunkTypes.RoditeOre:
+                        SavedGaugeColor = new Color(0.27f, 1f, 0.72f, 1);
+                        break;
+                    case ChunkTypes.RodiusCapsule:
+                        SavedGaugeColor = new Color(0.08f, 0.83f, 0.65f, 1);
+                        break;
+                    case ChunkTypes.OleiteJelly:
+                        SavedGaugeColor = new Color(0.38f, 0.12f, 0.12f, 1);
+                        break;
+                    case ChunkTypes.OlasticBrick:
+                        SavedGaugeColor = new Color(0.91f, 0.26f, 0.26f, 1);
+                        break;
+                    case ChunkTypes.IgniteShard:
+                        SavedGaugeColor = new Color(0.91f, 0.5f, 0.15f, 1);
+                        break;
+                    case ChunkTypes.IgnianCrystal:
+                        SavedGaugeColor = new Color(1f, 0.62f, 0.01f, 1);
+                        break;
+                    case ChunkTypes.EruditeShard:
+                        SavedGaugeColor = new Color(0.15f, 0.65f, 0.12f, 1);
+                        break;
+                    case ChunkTypes.ErudianCrystal:
+                        SavedGaugeColor = new Color(0.25f, 0.96f, 0.17f, 1);
+                        break;
+                    case ChunkTypes.CelestiteShard:
+                        SavedGaugeColor = new Color(0.23f, 0.78f, 1f, 1);
+                        break;
+                    case ChunkTypes.CelestianCrystal:
+                        SavedGaugeColor = new Color(0.19f, 0.65f, 1f, 1);
+                        break;
+                    default:
+                        SavedGaugeColor = new Color(0.46f, 0.52f, 46f, 1);
+                        break;
+                }
             }
         }
         private void TryHandleSpeed()
@@ -742,7 +792,7 @@ namespace RandomAdditions
 
         // Main
         /// <summary>
-        /// Run chunk "animator" module
+        /// Run chunk "animator" module and update displays
         /// </summary>
         private void Update()
         {
@@ -848,6 +898,11 @@ namespace RandomAdditions
                         fireTimes2--;
                     }
                 }
+            }
+
+            foreach (var item in gauges)
+            {
+                item.UpdateScale();
             }
         }
 
@@ -960,18 +1015,7 @@ namespace RandomAdditions
                         isSaving = true;// only disable ejecting when the world is removed
                     if (!Singleton.Manager<ManScreenshot>.inst.TakingSnapshot)
                     {   // Only save on world save
-                        /*
-                        SerialData serialData = new SerialData()
-                        {
-                            savedChunk = GetChunkType,
-                            savedBlock = GetBlockType,
-                            savedCount = SavedCount,
-                            savedColorR = SavedChunkColor.r,
-                            savedColorG = SavedChunkColor.g,
-                            savedColorB = SavedChunkColor.b
-                        };
-                        serialData.Store(blockSpec.saveState);
-                        */
+                        BlockTypeString = block.name;
                         this.SerializeToSafe();
                     }
                 }
@@ -986,19 +1030,10 @@ namespace RandomAdditions
                         isSaving = false;
                         if (!this.DeserializeFromSafe())
                         {
-                            SerialData serialData2 = SerialData<SerialData>.Retrieve(blockSpec.saveState);
-                            if (serialData2 != null)
-                            {
-                                GetBlockType = serialData2.savedBlock;
-
-                                GetChunkType = serialData2.savedChunk;
-                                SavedCount = serialData2.savedCount;
-                                SavedChunkColor.r = serialData2.savedColorR;
-                                SavedChunkColor.g = serialData2.savedColorG;
-                                SavedChunkColor.b = serialData2.savedColorB;
-                            }
+                            if (BlockTypeString != null)
+                                GetBlockType = KickStart.GetProperBlockType(GetBlockType, BlockTypeString);
                         }
-                        SaveTextureOfChunk();
+                        SetColorOfGauges();
                         ResetGaugesAndDisplays();
                     }
                     catch { }

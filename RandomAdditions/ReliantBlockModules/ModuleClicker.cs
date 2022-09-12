@@ -28,7 +28,7 @@ namespace RandomAdditions
         // Events
         protected override void Pool()
         {
-            anim = FetchAnimettes(AnimCondition.Clickable);
+            anim = KickStart.FetchAnimettes(transform, AnimCondition.Clickable);
             if (anim != null)
             {
                 ActiveState = new float[anim.Length];

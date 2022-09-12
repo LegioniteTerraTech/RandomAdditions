@@ -79,8 +79,7 @@ namespace RandomAdditions
             HangarStoredVolume = 0;
             try
             {
-                block.AttachEvent.Subscribe(OnAttach);
-                block.DetachEvent.Subscribe(OnDetach);
+                block.SubToBlockAttachConnected(OnAttach, OnDetach);
             }
             catch
             {

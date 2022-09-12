@@ -53,14 +53,14 @@ namespace RandomAdditions
             try
             {
                 if (DenyExplosion)
-                    gameObject.GetComponent<TankBlock>().AttachEvent.Subscribe(OnAttach);
+                    gameObject.GetComponent<TankBlock>().SubToBlockAttachConnected(OnAttach, null);
             }
             catch { }
         }
         private void OnAttach()
         {
             ExtUsageHint.ShowExistingHint(4008);
-            gameObject.GetComponent<TankBlock>().AttachEvent.Unsubscribe(OnAttach);
+            gameObject.GetComponent<TankBlock>().GetComponent<TankBlock>().UnSubToBlockAttachConnected(OnAttach, null);
         }
 
         private ManDamage.DamageInfo newDMG;

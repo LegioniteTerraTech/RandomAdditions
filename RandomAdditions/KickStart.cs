@@ -41,6 +41,8 @@ namespace RandomAdditions
         public static int GlobalBlockReplaceChance = 50;
         public static bool MandateSeaReplacement = true;
         public static bool MandateLandReplacement = false;
+        public static int ForceIntoModeStartup = 0;
+
 
         // CONTROLS
         public static bool LockPropEnabled => LockPropPitch || LockPropRoll || LockPropYaw;
@@ -203,6 +205,19 @@ namespace RandomAdditions
             {
                 DebugRandAddi.Log("RandomAdditions: Error on RegisterSaveSystem");
                 DebugRandAddi.Log(e);
+            }
+            try
+            {
+                if (ForceIntoModeStartup > 0)
+                {
+                    // FORCE STARTUP SWITCH
+                    DebugRandAddi.Log("RandomAdditions: Prepping Quick Start...");
+                    MassPatcher.MassPatchAllWithin(typeof(PatchStartup));
+                }
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Error on Prepping Quick Start");
             }
             OfficialEarlyInited = true;
         }
@@ -389,7 +404,8 @@ namespace RandomAdditions
         {
             if (name.NullOrEmpty())
                 return null;
-            return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand) { 
+            return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand)
+            {
                 if (cand.name.NullOrEmpty())
                     return false;
                 return cand.name.CompareTo(name) == 0;
@@ -411,6 +427,132 @@ namespace RandomAdditions
             }
         }
 
+        // Additional section for immedeate game entering
+        private static bool forcedToGame = false;
+        public static bool QuickStartGame()
+        {
+            if (forcedToGame)
+                return true;
+            forcedToGame = true;
+            try
+            {
+                if (ForceIntoModeStartup > 0)
+                {
+                    ManProfile.Profile prof = ManProfile.inst.GetCurrentUser();
+                    if (prof != null)
+                    {
+                        DebugRandAddi.Log("RandomAdditions: Quick-Starting...");
+                        ManGameMode.GameType GT = ManGameMode.GameType.Creative;
+                        bool hasSaveName = false;
+                        switch (ForceIntoModeStartup)
+                        {
+                            case 1:
+                                if (prof.m_LastUsedSaveName != null)
+                                {
+                                    if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                                        break;
+                                    hasSaveName = true;
+                                    GT = prof.m_LastUsedSaveType;
+                                }
+                                break;
+                            case 2:
+                                GT = ManGameMode.GameType.Creative;
+                                break;
+                            case 3:
+                                if (!ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                                    break;
+                                GT = ManGameMode.GameType.RaD;
+                                break;
+                            default:
+                                break;
+                        }
+                        DebugRandAddi.Log("RandomAdditions: Next mode, " + GT.ToString());
+                        ManUI.inst.ExitAllScreens();
+                        ManGameMode.inst.ClearModeInitSettings();
+                        if (hasSaveName)
+                            ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
+                        else
+                            ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
+                        ManGameMode.inst.NextModeSetting.SwitchToMode();
+                        ManUI.inst.FadeToBlack(0, true);
+                        DebugRandAddi.Log("RandomAdditions: Success");
+                        return false;
+                    }
+                    else
+                        DebugRandAddi.Log("RandomAdditions: User profile is not set!  Cannot Execute!");
+                }
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Failed in quickstarting " + e);
+            }
+            ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
+            return true;
+        }
+        public static void OnFinishedQuickstart(Mode unused)
+        {
+            ManUI.inst.ClearFade(1);
+            MassPatcher.MassUnPatchAllWithin(typeof(PatchStartup));
+            ManGameMode.inst.ModeStartEvent.Unsubscribe(OnFinishedQuickstart);
+        }
+
+        public static BlockTypes GetProperBlockType(BlockTypes BTVanilla, string blockTypeString)
+        {
+            if (Singleton.Manager<ManMods>.inst.IsModdedBlock(BTVanilla, false))
+                return (BlockTypes)Singleton.Manager<ManMods>.inst.GetBlockID(blockTypeString);
+            return BTVanilla;
+        }
+
+
+        public static AnimetteController[] FetchAnimettes(Transform transform, AnimCondition condition)
+        {
+            try
+            {
+                AnimetteController[] MA = transform.GetComponentsInChildren<AnimetteController>(true);
+                if (MA != null && MA.Length > 0)
+                {
+                    List<AnimetteController> MAs = new List<AnimetteController>();
+                    foreach (var item in MA)
+                    {
+                        if (item.Condition == condition || item.Condition == AnimCondition.Any)
+                        {
+                            MAs.Add(item);
+                        }
+                    }
+                    if (MAs.Count > 0)
+                    {
+                        DebugRandAddi.Log("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
+                        return MAs.ToArray();
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+        public static AnimetteController FetchAnimette(Transform transform, string gameObjectName, AnimCondition condition)
+        {
+            try
+            {
+                AnimetteController[] MA;
+                if (gameObjectName == null)
+                    MA = transform.GetComponentsInChildren<AnimetteController>(true);
+                else
+                    MA = transform.Find(gameObjectName).GetComponentsInChildren<AnimetteController>(true);
+                if (MA != null && MA.Length > 0)
+                {
+                    foreach (var item in MA)
+                    {
+                        if (item.Condition == condition || item.Condition == AnimCondition.Any)
+                        {
+                            DebugRandAddi.Log("RandomAdditions: FetchAnimette - fetched animette in " + item.name);
+                            return item;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
     }
 
     public class KickStartOptions
@@ -418,7 +560,7 @@ namespace RandomAdditions
         internal static ModConfig config;
 
         // NativeOptions Parameters
-        public static OptionToggle allowPopups;
+        // GENERAL
         public static OptionToggle altDateFormat;
         public static OptionToggle noCameraShake;
         public static OptionToggle scaleBlocksInSCU;
@@ -435,7 +577,11 @@ namespace RandomAdditions
         public static OptionToggle lockP_Yaw;
         public static OptionToggle lockP_Roll;
         public static OptionKey hangarKey;
+
+        // DEVELOPMENT
         public static OptionKey blockSnap;
+        public static OptionToggle allowPopups;
+        public static OptionList<string> startup;
 
         private static bool launched = false;
 
@@ -448,7 +594,6 @@ namespace RandomAdditions
             try
             {
                 ModConfig thisModConfig = new ModConfig();
-                thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
                 thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
                 thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
                 thisModConfig.BindConfig<KickStart>(null, "NoShake");
@@ -468,7 +613,11 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "LockPropRoll");
                 thisModConfig.BindConfig<KickStart>(null, "LockPropYaw");
                 thisModConfig.BindConfig<KickStart>(null, "_hangarButton");
+
+                // DEVELOPMENT
+                thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
                 thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
+                thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
 
                 config = thisModConfig;
                 ExtUsageHint.SaveToHintsSeen();
@@ -478,8 +627,6 @@ namespace RandomAdditions
                 realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
                 realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
 #endif
-                allowPopups = new OptionToggle("Enable custom block debug popups", RandomProperties, KickStart.DebugPopups);
-                allowPopups.onValueSaved.AddListener(() => { KickStart.DebugPopups = allowPopups.SavedValue; });
                 altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
                 altDateFormat.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = altDateFormat.SavedValue; });
                 noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, KickStart.NoShake);
@@ -518,11 +665,28 @@ namespace RandomAdditions
                     KickStart.HangarButton = hangarKey.SavedValue;
                     KickStart._hangarButton = (int)hangarKey.SavedValue;
                 });
-                blockSnap = new OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomControls, KickStart.SnapBlockButton);
+
+                var RandomDev = KickStart.ModName + " - Development";
+                allowPopups = new OptionToggle("Enable custom block debug popups", RandomDev, KickStart.DebugPopups);
+                allowPopups.onValueSaved.AddListener(() => { KickStart.DebugPopups = allowPopups.SavedValue; });
+                blockSnap = new OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomDev, KickStart.SnapBlockButton);
                 blockSnap.onValueSaved.AddListener(() => {
                     KickStart.SnapBlockButton = blockSnap.SavedValue;
                     KickStart._snapBlockButton = (int)blockSnap.SavedValue;
                 });
+                List<string> gamemodeSwitch = new List<string> {
+                    "Don't Skip",
+                    "Last Save",
+                    "Creative",
+                };
+                if (ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                    gamemodeSwitch.Add("R&D");
+                startup = new OptionList<string>("Skip Title Screen", RandomDev, gamemodeSwitch, KickStart.ForceIntoModeStartup);
+                startup.onValueSaved.AddListener(() =>
+                {
+                    KickStart.ForceIntoModeStartup = startup.SavedValue;
+                });
+
 
 
                 NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
@@ -548,11 +712,33 @@ namespace RandomAdditions
             }
 
         }
+
     }
 
 
     internal static class ExtraExtensions
     {
+        /// <summary>
+        /// For block attachment updates when Tank is set to a valid reference
+        /// </summary>
+        public static void SubToBlockAttachConnected(this TankBlock TB, Action attachEvent, Action detachEvent)
+        {
+            if (attachEvent != null)
+                TB.AttachEvent.Subscribe(attachEvent);
+            if (detachEvent != null)
+                TB.DetachEvent.Subscribe(detachEvent);
+        }
+        /// <summary>
+        /// For block attachment updates when Tank is set to a valid reference
+        /// </summary>
+        public static void UnSubToBlockAttachConnected(this TankBlock TB, Action attachEvent, Action detachEvent)
+        {
+            if (attachEvent != null)
+                TB.AttachEvent.Unsubscribe(attachEvent);
+            if (detachEvent != null)
+                TB.DetachEvent.Unsubscribe(detachEvent);
+        }
+
 
         public static T[] GetComponentsLowestFirst<T>(this GameObject GO) where T : MonoBehaviour
         {
@@ -651,6 +837,28 @@ namespace RandomAdditions
             else
                 DebugRandAddi.Log("RandomAdditions: no tank!");
             return true;
+        }
+    }
+
+    internal class PatchStartup : MassPatcher
+    {
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------
+        // The NEW crash handler with useful mod-crash-related information
+
+        internal static class ModePatches
+        {
+            internal static Type target = typeof(Mode);
+            /// <summary>
+            /// Startup
+            /// </summary>
+            //[HarmonyPatch(MethodType.Normal, new Type[1] { typeof(Type)})]
+            private static bool UpdateMode_Prefix()
+            {
+                return KickStart.QuickStartGame();
+            }
         }
     }
 }

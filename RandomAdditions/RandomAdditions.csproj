@@ -149,6 +149,9 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2484820102\NuterraSteam.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="TerraTechETCUtil">
+      <HintPath>..\..\TTETCUtil\TerraTechETCUtil\TerraTechETCUtil\obj\Steam\TerraTechETCUtil.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)'=='Release'OR'$(Configuration)'=='Debug'">
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
@@ -178,14 +181,8 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\QMods\Water Mod\WaterMod.dll</HintPath>
       <Private>False</Private>
     </Reference>
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)'=='Steam'">
-    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
-    <!--> THE MATTERS BELOW ARE OFFICIAL </!-->
-    <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
-    <Reference Include="0Nuterra.NativeOptions">
-      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2685130411\0Nuterra.NativeOptions.dll</HintPath>
-      <Private>False</Private>
+    <Reference Include="TerraTechETCUtil">
+      <HintPath>..\..\TTETCUtil\TerraTechETCUtil\TerraTechETCUtil\obj\Release\TerraTechETCUtil.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -203,6 +200,7 @@
     <Compile Include="MultiBlockModules\WeaponDongleStats.cs" />
     <Compile Include="ReliantBlockModules\ExtModule.cs" />
     <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
+    <Compile Include="ReliantBlockModules\ModuleStickyWheels.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
     <Compile Include="StandaloneBlockModules\ModuleJumpDrive.cs" />

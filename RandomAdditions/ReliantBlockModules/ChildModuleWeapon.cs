@@ -120,7 +120,7 @@ namespace RandomAdditions
             {
                 aimFunc = GetAimDirection;
             }
-            spoolAnim = FetchAnimette("_spooler", AnimCondition.WeaponSpooling);
+            spoolAnim = KickStart.FetchAnimette(transform, "_spooler", AnimCondition.WeaponSpooling);
 
             enabled = false;
         }
