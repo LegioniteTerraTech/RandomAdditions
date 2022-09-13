@@ -10,7 +10,7 @@ namespace RandomAdditions
     {
         private const string modName = "RandomAdditions";
 
-        internal static bool LogAll = false;
+        internal static bool LogAll = true;
         internal static bool ShouldLog = true;
         private static bool LogDev = true;
 

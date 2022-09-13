@@ -21,7 +21,8 @@ namespace RandomAdditions
         "RandomAdditions.ModuleItemSilo":{ // Add internal resource storage capacity to your block
             "StoresBlocksInsteadOfChunks": false,   // Send blocks the the SCU instead of storing chunks?
             "UseShrinkAnim": true,                  // Do we shrink the items when storing?
-            "MaxOutputRate": 0,                     // Max Rate this silo can output at - also determines stack heights. Leave at 0 to auto-set
+            "MaxOutputRate": 0,                     // Max Rate this silo can output at - also determines stack heights. 
+            // Change at 0 to turn into a beam "SCU", leave at -1 to auto set.
 
             // For Chunks: 
             "MaxCapacity": 10,                      // Max resource storage capacity
@@ -42,7 +43,7 @@ namespace RandomAdditions
         //Collection (General)
         public bool StoresBlocksInsteadOfChunks = false;
         public bool UseShrinkAnim = true;
-        public int MaxOutputRate = 0;
+        public int MaxOutputRate = -1;
         private float ReleaseOffset = 0.2f;
         private bool ImmedeateOutput = true;
         //public bool KeepAtLeastOneItemOut = true;//WIP
@@ -170,19 +171,19 @@ namespace RandomAdditions
                     }
                 }
             }
-            int stackOverride;
-            if (MaxOutputRate > 0)
+            if (MaxOutputRate > -1)
             {
-                stackOverride = MaxOutputRate * 2;
                 StackSet = MaxOutputRate;
             }
             else
             {
-                stackOverride = possibleAPs * 2;
                 StackSet = possibleAPs;
             }
-            itemHold.OverrideStackCapacity(stackOverride);  //  MUST be at least 2
-            DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + stackOverride);
+            if (StackSet == 0)
+                itemHold.OverrideStackCapacity(16);
+            else
+                itemHold.OverrideStackCapacity(StackSet * 2);  //  MUST be at least 2
+            DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + (StackSet * 2));
             if (gauges.Count == 0)
             {
                 DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - There are no gauges on this silo.\n  Block " + TankBlock.name);
@@ -229,9 +230,14 @@ namespace RandomAdditions
             {
                 LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\n  Cause of error - Block " + TankBlock.name);
             }
+            ResetGaugesAndDisplays();
         }
         private void OnAttach()
         {
+            if (StackSet == 0)
+                itemHold.OverrideStackCapacity(16);
+            else
+                itemHold.OverrideStackCapacity(StackSet * 2);  //  MUST be at least 2
             TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             //TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
@@ -406,32 +412,47 @@ namespace RandomAdditions
                 var toManage = stack.FirstItem;
                 if (!toManage.block)
                     continue;
-                if (GetBlockType == BlockTypes.GSOAIController_111)
+                if (StackSet != 0)
                 {
-                    Empty = false;
-                    GetBlockType = toManage.block.BlockType;
-                    SetColorOfGauges();
+                    if (GetBlockType == BlockTypes.GSOAIController_111)
+                    {
+                        Empty = false;
+                        GetBlockType = toManage.block.BlockType;
+                        SetColorOfGauges();
+                    }
+                    if (toManage.block.BlockType == GetBlockType)
+                    {
+                        QueueStoreAnim(toManage);
+                        if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
+                        else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
+                        {
+                            if (block.tank?.netTech?.NetPlayer?.Inventory)
+                                block.tank.netTech.NetPlayer.Inventory.HostAddItem(GetBlockType, 1);
+                        }
+                        else
+                            Singleton.Manager<ManPlayer>.inst.AddBlockToInventory(GetBlockType);
+                    }
+                    else
+                    {
+                        DebugRandAddi.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
+                        toManage.InBeam = false;//DROP IT NOW!!!
+                        if (toManage.InBeam == true)
+                        {
+                            LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
+                        }
+                    }
                 }
-                if (toManage.block.BlockType == GetBlockType)
-                {
+                else
+                {   // It absorbs and doesn't give back
                     QueueStoreAnim(toManage);
                     if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
                     else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
                     {
                         if (block.tank?.netTech?.NetPlayer?.Inventory)
-                            block.tank?.netTech?.NetPlayer?.Inventory.HostAddItem(GetBlockType, 1);
+                            block.tank.netTech.NetPlayer.Inventory.HostAddItem(GetBlockType, 1);
                     }
                     else
                         Singleton.Manager<ManPlayer>.inst.AddBlockToInventory(GetBlockType);
-                }
-                else
-                {
-                    DebugRandAddi.LogError("RandomAdditions: SILO INPUT REQUEST DENIED!!!  WRONG INPUT FORCED BY PLAYER!!!");
-                    toManage.InBeam = false;//DROP IT NOW!!!
-                    if (toManage.InBeam == true)
-                    {
-                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
-                    }
                 }
             }
         }
@@ -811,11 +832,20 @@ namespace RandomAdditions
                 if (UseShrinkAnim)
                 {
                     if (toManage.GetComponent<TankBlockScaler>())
-                        toManage.trans.localScale = ((Vector3.one / 4) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.75f, 0.75f))) * toManage.GetComponent<TankBlockScaler>().AimedDownscale;
+                        toManage.trans.localScale = ((Vector3.one * 0.1f) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.9f, 0.9f))) * toManage.GetComponent<TankBlockScaler>().AimedDownscale;
                     else
-                        toManage.trans.localScale = (Vector3.one / 4) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.75f, 0.75f));
+                        toManage.trans.localScale = (Vector3.one * 0.1f) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.9f, 0.9f));
+                    if (fL.x - 0.01f < item.x && item.x < fL.x + 0.01f && fL.y - 0.01f < item.y && item.y < fL.y + 0.01f && fL.z - 0.01f < item.z && item.z < fL.z + 0.01f)
+                    {
+                        AbsorbAnimating.RemoveAt(step);
+                        AbsorbAnimatingPos.RemoveAt(step);
+                        toManage.ColliderSwapper.EnableCollision(true);
+                        toManage.RemoveFromGame();
+                        step--;
+                        fireTimes--;
+                    }
                 }
-                if (fL.x - 0.01f < item.x && item.x < fL.x + 0.01f && fL.y - 0.01f < item.y && item.y < fL.y + 0.01f && fL.z - 0.01f < item.z && item.z < fL.z + 0.01f)
+                else
                 {
                     AbsorbAnimating.RemoveAt(step);
                     AbsorbAnimatingPos.RemoveAt(step);
@@ -829,41 +859,39 @@ namespace RandomAdditions
             int fireTimes2 = ReleaseAnimating.Count;
             for (int step = 0; step < fireTimes2; step++)
             {
-                if (ImmedeateOutput)
+                Visible toManage = ReleaseAnimating.ElementAt(step);
+                float scaler = 1;
+                if (toManage.GetComponent<TankBlockScaler>())
+                    scaler = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
+                if (toManage.IsNotNull())
                 {
-                    Visible toManage = ReleaseAnimating.ElementAt(step);
-                    if (toManage.IsNotNull())
+
+                    if (ImmedeateOutput)
                     {
-                        float scaler = 1;
-                        if (toManage.GetComponent<TankBlockScaler>())
-                            scaler = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
-                        
-                        if (0.9f * scaler < toManage.trans.localScale.y || !UseShrinkAnim)
+                        if (UseShrinkAnim)
                         {
-                            toManage.trans.localScale = Vector3.one;
+                            if (0.9f * scaler < toManage.trans.localScale.y)
+                            {
+                                toManage.trans.localScale = Vector3.one * scaler;
+                                toManage.ColliderSwapper.EnableCollision(true);
+                                ReleaseAnimating.RemoveAt(step);
+                                step--;
+                                fireTimes2--;
+                            }
+                            if (toManage.trans.localScale.y == scaler)
+                                toManage.trans.localScale = (Vector3.one / 4) * scaler;
+                            toManage.trans.localScale = Vector3.one * ((((1 - toManage.trans.localScale.y) / 8) + toManage.trans.localScale.y) * scaler);
+                        }
+                        else
+                        {
+                            toManage.trans.localScale = Vector3.one * scaler;
                             toManage.ColliderSwapper.EnableCollision(true);
                             ReleaseAnimating.RemoveAt(step);
                             step--;
                             fireTimes2--;
                         }
-                        else if (UseShrinkAnim)
-                        {
-                            if (toManage.trans.localScale.y == scaler)
-                                toManage.trans.localScale = (Vector3.one / 4) * scaler;
-                            toManage.trans.localScale = Vector3.one * ((((1 - toManage.trans.localScale.y) / 8) + toManage.trans.localScale.y) * scaler);
-                        }
                     }
                     else
-                    {
-                        ReleaseAnimating.RemoveAt(step);
-                        step--;
-                        fireTimes2--;
-                    }
-                }
-                else
-                {
-                    Visible toManage = ReleaseAnimating.ElementAt(step);
-                    if (toManage.IsNotNull())
                     {
                         Vector3 toManagePos = ReleaseAnimatingPos.ElementAt(step);
                         ModuleItemHolder.Stack targNode = ReleaseTargetNode.ElementAt(step);
@@ -873,10 +901,29 @@ namespace RandomAdditions
                         toManage.centrePosition = transform.TransformPoint(toManagePos);
                         Vector3 item = toManagePos;
                         if (UseShrinkAnim)
-                            toManage.trans.localScale = Vector3.one - (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.75f, 0.75f));
-                        if (fL.x - 0.01f < item.x && item.x < fL.x + 0.01f && fL.y - 0.01f < item.y && item.y < fL.y + 0.01f && fL.z - 0.01f < item.z && item.z < fL.z + 0.01f)
                         {
-                            toManage.trans.localScale = Vector3.one;
+                            toManage.trans.localScale = (Vector3.one - (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.75f, 0.75f))) * scaler;
+                            if (fL.x - 0.01f < item.x && item.x < fL.x + 0.01f && fL.y - 0.01f < item.y && item.y < fL.y + 0.01f && fL.z - 0.01f < item.z && item.z < fL.z + 0.01f)
+                            {
+                                toManage.trans.localScale = Vector3.one * scaler;
+                                ReleaseTargetNode.RemoveAt(step);
+                                ReleaseAnimating.RemoveAt(step);
+                                ReleaseAnimatingPos.RemoveAt(step);
+                                if (StoresBlocksInsteadOfChunks)
+                                    toManage.block.InitRigidbody();
+                                else
+                                    toManage.pickup.InitRigidbody();
+                                toManage.ColliderSwapper.EnableCollision(true);
+                                toManage.SetGrabTimeout(0);
+                                toManage.SetItemCollectionTimeout(0);
+                                toManage.SetInteractionTimeout(0);
+                                step--;
+                                fireTimes2--;
+                            }
+                        }
+                        else
+                        {
+                            toManage.trans.localScale = Vector3.one * scaler;
                             ReleaseTargetNode.RemoveAt(step);
                             ReleaseAnimating.RemoveAt(step);
                             ReleaseAnimatingPos.RemoveAt(step);
@@ -891,6 +938,15 @@ namespace RandomAdditions
                             step--;
                             fireTimes2--;
                         }
+                    }
+                }
+                else
+                {
+                    if (ImmedeateOutput)
+                    {
+                        ReleaseAnimating.RemoveAt(step);
+                        step--;
+                        fireTimes2--;
                     }
                     else
                     {

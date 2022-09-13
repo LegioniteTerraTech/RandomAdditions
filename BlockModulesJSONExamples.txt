@@ -30,7 +30,8 @@
         "RandomAdditions.ModuleItemSilo":{ // Add internal resource storage capacity to your block
             "StoresBlocksInsteadOfChunks": false,   // Send blocks the the SCU instead of storing chunks?
             "UseShrinkAnim": true,                  // Do we shrink the items when storing?
-            "MaxOutputRate": 0,                     // Max Rate this silo can output at - also determines stack heights. Leave at 0 to auto-set
+            "MaxOutputRate": -1,                     // Max Rate this silo can output at - also determines stack heights.  
+            // Change to 0 to turn into a beam "SCU", leave at -1 to auto set.
 
             // For Chunks: 
             "MaxCapacity": 10,                      // How many chunks this stores inside - Does not account for chunks left outside
