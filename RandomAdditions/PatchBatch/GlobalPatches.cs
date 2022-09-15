@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace RandomAdditions
 {
-    internal class GlobalPatches : MassPatcher
+    internal class GlobalPatches : MassPatcherRA
     {
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class ModuleLudicrousSpeedButton : RandomAdditions.ModuleLudicrousSpeedButton { };
 

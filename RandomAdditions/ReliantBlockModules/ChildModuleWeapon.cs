@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class ChildModuleWeapon : RandomAdditions.ChildModuleWeapon { };
 public class ExtGimbalAimer : RandomAdditions.ExtGimbalAimer { };
@@ -32,7 +33,7 @@ namespace RandomAdditions
     /// Add separate turrets to your turret. Does not support deployment animations.
     /// Should not be found by the block weapon iterator since it hides in the children.
     /// </summary>
-    public class ChildModuleWeapon :  ChildModule, IModuleWeapon, IExtGimbalControl, TechAudio.IModuleAudioProvider
+    public class ChildModuleWeapon : ChildModule, IModuleWeapon, IChildModuleWeapon, IExtGimbalControl, TechAudio.IModuleAudioProvider
     {
         internal FireData FireDataAlt;       // 
         internal ModuleWeapon MW;            //
@@ -64,7 +65,7 @@ namespace RandomAdditions
 
         private float ReserveControl = 0;
         private bool ReserveControlShoot = false;
-        public bool  doSpool= false;
+        public bool doSpool = false;
         private float cooldown = 0;
         private int barrelStep = 0;
         private int burstCount = 0;
@@ -78,6 +79,15 @@ namespace RandomAdditions
         public bool Linear()
         {
             return false;
+        }
+
+        public int GetBarrelsMainCount()
+        {
+            return BarrelsMain.Count;
+        }
+        public IChildWeapBarrel GetBarrel(int index)
+        {
+            return BarrelsMain[index];
         }
 
         protected override void Pool()
@@ -583,7 +593,7 @@ namespace RandomAdditions
     /// A chopped down version of CannonBarrel for auxillary weapons
     /// code-wise is similar but with as many parts shaved off as possible
     /// </summary>
-    public class RACannonBarrel : MonoBehaviour
+    public class RACannonBarrel : MonoBehaviour, IChildWeapBarrel
     {
         public Transform trans { get; private set; }
 
@@ -608,6 +618,19 @@ namespace RandomAdditions
         private int lastBlockedFrame = 0;
         private bool notBlocked = false;
 
+
+        public Transform GetBulletTrans()
+        {
+            return bulletTrans;
+        }
+        public MuzzleFlash GetFlashTrans()
+        {
+            return flash;
+        }
+        public Transform GetRecoilTrans()
+        {
+            return recoilTrans;
+        }
 
         public void Setup()
         {

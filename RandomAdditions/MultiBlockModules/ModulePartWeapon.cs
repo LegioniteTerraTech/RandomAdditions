@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
@@ -850,6 +851,13 @@ namespace RandomAdditions
             }
             revolveAngle = Mathf.Repeat(revolveAngle + deltaRot, 360);
             barrelRotatingMount.localRotation = Quaternion.AngleAxis(revolveAngle, Vector3.forward);
+        }
+        protected int GetHighestBarrelIndice(int divisions)
+        {
+            float barrelRange = 360f / divisions;
+            float halfBarrelRange = barrelRange * 0.5f;
+            float barrelCentered = Mathf.Repeat(revolveAngle + halfBarrelRange, 360);
+            return Mathf.FloorToInt(barrelCentered / barrelRange);
         }
     }
 }

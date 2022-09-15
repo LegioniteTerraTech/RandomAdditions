@@ -28,7 +28,7 @@ namespace RandomAdditions
 
         public float shellScale = 1;
         public Vector3 flashScale = Vector3.one;
-        public float activeBarrels => Mathf.Clamp(m_BarrelCount, 1, maxBarrels);
+        public int activeBarrels => Mathf.FloorToInt(Mathf.Clamp(m_BarrelCount, 1, maxBarrels));
         public float recoilDurationBarrel => m_ShotCooldown * 0.75f * activeBarrels;
         public Color weaponTrail { get; private set; } = Color.white;
 
@@ -136,10 +136,16 @@ namespace RandomAdditions
 
         private void Update()
         {
-            doSpool = tank.control.FireControl;
+            if (doSpool != tank.control.FireControl)
+            {
+                doSpool = tank.control.FireControl;
+                if (doSpool)
+                    barrelStep = GetHighestBarrelIndice(activeBarrels) - 1;
+            }
             UpdateStats();
             UpdateSpool();
             UpdateWeapon();
+            UpdateFireSFX();
         }
 
         private void UpdateStats()
@@ -200,7 +206,6 @@ namespace RandomAdditions
             barrelsFired = 0;
             if (doSpool)
                 HandleFire();
-            LockOnFireSFX();
         }
 
 
@@ -279,7 +284,7 @@ namespace RandomAdditions
 
 
         // Weapon
-        private void LockOnFireSFX()
+        private void UpdateFireSFX()
         {
             try
             {

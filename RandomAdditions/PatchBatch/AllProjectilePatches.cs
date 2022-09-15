@@ -6,75 +6,12 @@ using System.Reflection;
 
 namespace RandomAdditions
 {
-    internal class AllProjectilePatches : MassPatcher
+    internal class AllProjectilePatches : MassPatcherRA
     {
         internal static class ProjectilePatches
         {
             internal static Type target = typeof(Projectile);
             static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            //-----------------------------------------------------------------------------------------------
-            //-----------------------------------------------------------------------------------------------
-            //-----------------------------------------------------------------------------------------------
-            //-----------------------------------------------------------------------------------------------
-            // Custom Projectiles
-
-            //Make sure that WeightedProjectile is checked for and add changes
-            /// <summary>
-            /// PatchProjectile
-            /// </summary>
-            private static void OnPool_Postfix(Projectile __instance)
-            {
-                //DebugRandAddi.Log("RandomAdditions: Patched Projectile OnPool(WeightedProjectile)");
-                if (ProjBase.PrePoolTryApplyThis(__instance))
-                {
-                    var ModuleCheck = __instance.gameObject.GetComponent<ProjBase>();
-                    ModuleCheck.Pool(__instance);
-                }
-            }
-
-            /*
-            [HarmonyPatch(typeof(MissileProjectile))]
-            [HarmonyPatch("OnSpawn")]//On Creation
-            private class PatchProjectileSpawn
-            {
-                private static void Prefix(Projectile __instance)
-                {
-                    ProjectileManager.Add(__instance);
-                }
-            }*/
-            /// <summary>
-            /// PatchProjectileRemove
-            /// </summary>
-            private static void OnRecycle_Prefix(Projectile __instance)
-            {
-                var ModuleCheck = __instance.GetComponent<ProjBase>();
-                if (ModuleCheck)
-                    ModuleCheck.OnWorldRemoval();
-            }
-
-            /*
-            [HarmonyPatch(typeof(Projectile))]
-            [HarmonyPatch("Destroy")]
-            private class PatchProjectileRemove2
-            {
-                private static void Prefix(Projectile __instance)
-                {
-                    ProjectileManager.Remove(__instance);
-                }
-            }*/
-            /// <summary>
-            /// PatchProjectileCollision
-            /// </summary>
-            private static void HandleCollision_Prefix(Projectile __instance, ref Damageable damageable, ref Vector3 hitPoint, ref Collider otherCollider, ref bool ForceDestroy)//
-                {
-                    //DebugRandAddi.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile & OHKOProjectile)");
-                    var ModuleCheckR = __instance.GetComponent<ProjBase>();
-                    if (ModuleCheckR != null)
-                    {
-                        ModuleCheckR.OnImpact(otherCollider, damageable, hitPoint, ref ForceDestroy);
-                    }
-                }
 
             /// <summary>
             /// PatchProjectileCollisionForOverride
@@ -99,14 +36,6 @@ namespace RandomAdditions
             }
 
             /// <summary>
-            /// PatchProjectileFire
-            /// </summary>
-            private static void Fire_Postfix(Projectile __instance, ref FireData fireData, ref ModuleWeapon weapon, ref Tank shooter)
-            {
-                ProjBase.Insure(__instance).Fire(fireData, shooter, weapon);
-            }
-
-            /// <summary>
             /// PatchProjectileForSplit
             /// </summary>
             private static bool SpawnExplosion_Prefix(Projectile __instance, ref Vector3 explodePos, ref Damageable directHitTarget)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
@@ -114,7 +43,7 @@ namespace RandomAdditions
                 var Split = __instance.GetComponent<SpiltProjectile>();
                 if ((bool)Split)
                 {
-                    Split.OnExplosion();
+                    Split.Explode();
                 }
                 try // Handle ModuleReinforced
                 {

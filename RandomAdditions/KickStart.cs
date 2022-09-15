@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
+using TerraTechETCUtil;
 #if !STEAM
 using ModHelper.Config;
 #else
@@ -166,7 +167,8 @@ namespace RandomAdditions
             {
                 try
                 { // init changes
-                    if (MassPatcher.MassPatchAll())
+                    LegModExt.InsurePatches();
+                    if (MassPatcherRA.MassPatchAll())
                     {
                         DebugRandAddi.Log("RandomAdditions: Patched");
                         patched = true;
@@ -212,7 +214,7 @@ namespace RandomAdditions
                 {
                     // FORCE STARTUP SWITCH
                     DebugRandAddi.Log("RandomAdditions: Prepping Quick Start...");
-                    MassPatcher.MassPatchAllWithin(typeof(PatchStartup));
+                    harmonyInstance.MassPatchAllWithin(typeof(PatchStartup), ModName);
                 }
             }
             catch (Exception e)
@@ -259,7 +261,8 @@ namespace RandomAdditions
             {
                 try
                 {
-                    if (MassPatcher.MassPatchAll())
+                    LegModExt.InsurePatches();
+                    if (MassPatcherRA.MassPatchAll())
                     {
                         DebugRandAddi.Log("RandomAdditions: Patched");
                         patched = true;
@@ -290,13 +293,14 @@ namespace RandomAdditions
             {
                 try
                 {
-                    if (MassPatcher.MassUnPatchAll())
+                    if (MassPatcherRA.MassUnPatchAll())
                     {
                         DebugRandAddi.Log("RandomAdditions: UnPatched");
                         patched = false;
                     }
                     else
                         DebugRandAddi.Log("RandomAdditions: Error on UnPatch");
+                    LegModExt.RemovePatches();
                 }
                 catch (Exception e)
                 {
@@ -335,6 +339,7 @@ namespace RandomAdditions
 
 
             //Initiate the madness
+            LegModExt.InsurePatches();
             if (!MassPatcher.MassPatchAll())
             {
                 DebugRandAddi.Log("RandomAdditions: Error on patch");
@@ -492,7 +497,7 @@ namespace RandomAdditions
         public static void OnFinishedQuickstart(Mode unused)
         {
             ManUI.inst.ClearFade(1);
-            MassPatcher.MassUnPatchAllWithin(typeof(PatchStartup));
+            harmonyInstance.MassUnPatchAllWithin(typeof(PatchStartup), ModName);
             ManGameMode.inst.ModeStartEvent.Unsubscribe(OnFinishedQuickstart);
         }
 
@@ -887,7 +892,7 @@ namespace RandomAdditions
         }
     }
 
-    internal class PatchStartup : MassPatcher
+    internal class PatchStartup : MassPatcherRA
     {
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------

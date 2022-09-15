@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SafeSaves;
 using UnityEngine;
-
+using TerraTechETCUtil;
 
 
 public class ModuleTechTether : RandomAdditions.ManTethers.ModuleTechTether { }

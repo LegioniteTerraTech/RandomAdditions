@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class ModuleUsageHint : RandomAdditions.ModuleUsageHint { }
 
@@ -38,6 +39,7 @@ namespace RandomAdditions
             }
         }
     }
+    /*
     public class ExtUsageHint
     {
         private static FieldInfo 
@@ -286,4 +288,5 @@ namespace RandomAdditions
         legsDesc = "This block is a leg block.  While it's slow, it has considerable grip and could even climb walls!",
         jumpDesc = "This block will let you jump to any tech you have in the world!";
     }
+    */
 }

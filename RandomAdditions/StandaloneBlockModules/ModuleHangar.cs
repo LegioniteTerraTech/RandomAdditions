@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using SafeSaves;
+using TerraTechETCUtil;
 
 public class ModuleHangar : RandomAdditions.ModuleHangar { };
 namespace RandomAdditions

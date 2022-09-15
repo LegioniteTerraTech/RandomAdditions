@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("RandomAdditions")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Adds in many new modules, quality-of-life, and stability changes to the base TerraTech game.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("RandomAdditions")]

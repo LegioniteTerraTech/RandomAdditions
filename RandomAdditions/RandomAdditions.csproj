@@ -196,9 +196,8 @@
     <Compile Include="MultiBlockModules\ModulePartWeapon.cs" />
     <Compile Include="MultiBlockModules\ModulePartWeaponGun.cs" />
     <Compile Include="MultiBlockModules\ModuleTechTether.cs" />
-    <Compile Include="MultiBlockModules\ModuleRailwayController.cs" />
+    <Compile Include="MultiBlockModules\ModuleRailwayBogey.cs" />
     <Compile Include="MultiBlockModules\WeaponDongleStats.cs" />
-    <Compile Include="ReliantBlockModules\ExtModule.cs" />
     <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
     <Compile Include="ReliantBlockModules\ModuleStickyWheels.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
@@ -220,7 +219,6 @@
     <Compile Include="DebugRandAddi.cs" />
     <Compile Include="Anim\AnimetteRotator.cs" />
     <Compile Include="Anim\AnimetteNumber.cs" />
-    <Compile Include="GlobalChanges\ExtGimbalControl.cs" />
     <Compile Include="GlobalChanges\ManExtSounds.cs" />
     <Compile Include="GlobalChanges\MirageDestraction.cs" />
     <Compile Include="GlobalChanges\RandomTank.cs" />
@@ -233,11 +231,10 @@
     <Compile Include="ReliantBlockModules\ModuleMoveGimbal.cs" />
     <Compile Include="OptimizeCake.cs" />
     <Compile Include="PatchBatch\GlobalPatches.cs" />
-    <Compile Include="PatchBatch\MassPatcher.cs" />
+    <Compile Include="PatchBatch\MassPatcherRA.cs" />
     <Compile Include="PatchBatch\ModulePatches.cs" />
     <Compile Include="PatchBatch\AllProjectilePatches.cs" />
     <Compile Include="PatchBatch\AllTankPatches.cs" />
-    <Compile Include="ProjectileModules\ChildProjectile.cs" />
     <Compile Include="ProjectileModules\ProxProjectile.cs" />
     <Compile Include="ProjectileModules\PulseProjectile.cs" />
     <Compile Include="ProjectileModules\RaycastProjectile.cs" />

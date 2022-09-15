@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using SafeSaves;
+using TerraTechETCUtil;
 
 
 public class ModuleItemSilo : RandomAdditions.ModuleItemSilo { };

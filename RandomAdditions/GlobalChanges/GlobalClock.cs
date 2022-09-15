@@ -156,8 +156,6 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Time Changed by Player!");
                     GetTimeSetClocks();
                 }
-                ExtUsageHint.UpdateHintTimers();
-
                 if (SlowUpdate < Time.time)
                 {
                     SlowUpdate = Time.time + SlowUpdateTime;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 /// <summary>
 /// COMPENSATE FOR MISPELL
@@ -33,7 +34,7 @@ namespace RandomAdditions
             "ShotCooldown": 1.0,            // Rate per second to deploy SplitPayloads
         },// ^ Reference an existing FireData (and be sure to edit it) below this
     */
-    public class SpiltProjectile : ExtProj
+    public class SpiltProjectile : ExtProj, IExplodeable
     {
         public int SpawnAmount = 4;
         public bool UseSeeking = false;
@@ -82,7 +83,7 @@ namespace RandomAdditions
             }
         }
 
-        public void OnExplosion()
+        public void Explode()
         {
             if ((Fired && !DeployOnEveryExplode) || !DeployOnExplode)
                 return;

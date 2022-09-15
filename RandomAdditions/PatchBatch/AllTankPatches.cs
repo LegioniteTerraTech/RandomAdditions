@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace RandomAdditions
 {
-    internal class AllTankPatches : MassPatcher
+    internal class AllTankPatches : MassPatcherRA
     {
         // Major Patches
         internal static class TankPatches

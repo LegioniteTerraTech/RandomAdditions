@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class ModuleItemFixedHolderBeam : RandomAdditions.ModuleItemFixedHolderBeam { };
 namespace RandomAdditions

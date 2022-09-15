@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SafeSaves;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class ModuleClicker : RandomAdditions.ModuleClicker { };
 

@@ -7,7 +7,7 @@ using HarmonyLib;
 
 namespace RandomAdditions
 {
-    internal class ModulePatches : MassPatcher
+    internal class ModulePatches : MassPatcherRA
     {
         internal static class ModuleItemHolderBeamPatches
         {

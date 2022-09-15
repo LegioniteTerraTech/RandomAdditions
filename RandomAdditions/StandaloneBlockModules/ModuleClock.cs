@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using SafeSaves;
+using TerraTechETCUtil;
 
 public class ModuleClock : RandomAdditions.ModuleClock { };
 namespace RandomAdditions
