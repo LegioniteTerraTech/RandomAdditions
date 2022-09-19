@@ -19,6 +19,7 @@ namespace RandomAdditions
             public float combinedTension;
             public float combinedMaxDist;
             public float combinedLooseDist;
+            public float combinedMinDist;
 
             internal void Disconnect(bool playSound = false)
             {
@@ -51,6 +52,7 @@ namespace RandomAdditions
         internal static TetherPair nullPair = new TetherPair();
         private static List<ModuleTechTether> ActiveTethers;
         private static ModuleTechTether SelectedTether;
+        private static ModuleTechTether hoveringOver;
         private static List<TetherPair> LinkedTethers;
         private static List<TetherPair> DeLinkedTethers = new List<TetherPair>();
         public static void Init()
@@ -74,48 +76,75 @@ namespace RandomAdditions
         }
         public void OnClick(ManPointer.Event mEvent, bool down, bool clicked)
         {
-            if (mEvent == ManPointer.Event.LMB && down)
+            if (mEvent == ManPointer.Event.RMB)
             {
                 var targVis = Singleton.Manager<ManPointer>.inst.targetVisible?.block;
-                if (SelectedTether)
+                if (targVis)
                 {
-                    if (SelectedTether.block.IsAttached)
+                    if (down)
                     {
-                        if (targVis && targVis.IsAttached)
+                        var tether = targVis.GetComponent<ModuleTechTether>();
+                        if (tether)
+                            hoveringOver = tether;
+                    }
+                    else
+                    {
+                        if (SelectedTether && SelectedTether.block.visible.isActive)
                         {
-                            var tether = Singleton.Manager<ManPointer>.inst.targetVisible.block.GetComponent<ModuleTechTether>();
-                            if (tether && tether != SelectedTether)
+                            if (SelectedTether.block.IsAttached)
                             {
-                                SelectedTether.ConnectToOther(tether);
-                                ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGSODeliCannonMob);
+                                if (targVis.IsAttached)
+                                {
+                                    var tether = targVis.GetComponent<ModuleTechTether>();
+                                    if (tether && tether == hoveringOver && tether != SelectedTether)
+                                    {
+                                        SelectedTether.ConnectToOther(tether);
+                                        ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGSODeliCannonMob);
+                                    }
+                                }
                             }
                         }
+                        else if (targVis.IsAttached)
+                        {
+                            var tether = targVis.GetComponent<ModuleTechTether>();
+                            if (tether && tether == hoveringOver)
+                            {
+                                if (tether.IsConnected)
+                                {
+                                    tether.Connection.Disconnect(true);
+                                }
+                                else
+                                {
+                                    SelectedTether = tether;
+                                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
+                                    foreach (var item in ActiveTethers)
+                                    {
+                                        if (item.tank != SelectedTether.tank)
+                                        {
+                                            item.block.visible.EnableOutlineGlow(true, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                                        }
+                                    }
+                                    hoveringOver = null;
+                                    return;
+                                }
+                            }
+                        }
+                        foreach (var item in ActiveTethers)
+                        {
+                            item.block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                        }
+                        hoveringOver = null;
+                        SelectedTether = null;
                     }
+                }
+                else
+                {
                     foreach (var item in ActiveTethers)
                     {
                         item.block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
                     }
+                    hoveringOver = null;
                     SelectedTether = null;
-                }
-                else if (targVis && targVis.IsAttached)
-                {
-                    var tether = Singleton.Manager<ManPointer>.inst.targetVisible.block.GetComponent<ModuleTechTether>();
-                    if (tether)
-                    {
-                        if (tether.IsConnected)
-                        {
-                            tether.Connection.Disconnect(true);
-                            return;
-                        }
-                        SelectedTether = tether;
-                        foreach (var item in ActiveTethers)
-                        {
-                            if (item.tank != SelectedTether.tank)
-                            {
-                                item.block.visible.EnableOutlineGlow(true, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -137,14 +166,26 @@ namespace RandomAdditions
                     }
                     else if (Dist > item.combinedLooseDist)
                     {
-                        float pullForce = item.combinedTension * Mathf.InverseLerp(item.combinedLooseDist, item.combinedMaxDist, Dist);
+                        float pullForce = item.combinedTension * Mathf.Min(Mathf.InverseLerp(item.combinedLooseDist, item.combinedMaxDist, Dist), 1);
 
                         if (item.main.tank.rbody)
-                            item.main.tank.rbody.AddForceAtPosition(-spacing.normalized * pullForce, item.main.tetherPoint.position, ForceMode.Acceleration);
+                            item.main.tank.rbody.AddForceAtPosition(-spacing.normalized * pullForce, item.main.tetherPoint.position, ForceMode.Force);
                         if (item.link.tank.rbody)
-                            item.link.tank.rbody.AddForceAtPosition(spacing.normalized * pullForce, item.link.tetherPoint.position, ForceMode.Acceleration);
+                            item.link.tank.rbody.AddForceAtPosition(spacing.normalized * pullForce, item.link.tetherPoint.position, ForceMode.Force);
                     }
-                    // no force applied
+                    else if (Dist < item.combinedMinDist)
+                    {
+                        float pushForce = item.combinedTension * Mathf.Min(Mathf.InverseLerp(item.combinedMinDist, 0, Dist), 1);
+
+                        if (item.main.tank.rbody)
+                            item.main.tank.rbody.AddForceAtPosition(spacing.normalized * pushForce, item.main.tetherPoint.position, ForceMode.Force);
+                        if (item.link.tank.rbody)
+                            item.link.tank.rbody.AddForceAtPosition(-spacing.normalized * pushForce, item.link.tetherPoint.position, ForceMode.Force);
+                    }
+                    else
+                    {
+                        // no force applied 
+                    }
                 }
                 else
                 {
@@ -167,6 +208,7 @@ namespace RandomAdditions
         {
             public float SpringTensionForce = 750;
             public float MaxDistance = 8;
+            public float MinDistance = 0;
             public float LooseDistance = 4;
             public float TetherScale = 0.4f;
             public bool RelayControls = false;
@@ -189,6 +231,7 @@ namespace RandomAdditions
             internal Transform tetherPoint;
             internal Transform tetherEnd;
             private TargetAimer TargetAimer;
+            private AnimetteController AC;
 
             protected override void Pool()
             {
@@ -221,6 +264,7 @@ namespace RandomAdditions
                 }
                 else
                     LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_Target\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                AC = KickStart.FetchAnimette(transform, "_Tether", AnimCondition.Tether);
                 block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             }
 
@@ -257,11 +301,14 @@ namespace RandomAdditions
                             link = tether,
                             combinedTension = (SpringTensionForce + tether.SpringTensionForce) / 2,
                             combinedLooseDist = Mathf.Pow(LooseDistance + tether.LooseDistance, 2),
-                            combinedMaxDist = Mathf.Pow(MaxDistance + tether.MaxDistance, 2)
+                            combinedMaxDist = Mathf.Pow(MaxDistance + tether.MaxDistance, 2),
+                            combinedMinDist = Mathf.Pow(MinDistance + tether.MinDistance, 2),
                         };
                         LinkedTethers.Add(NewConnection);
                         Connection = NewConnection;
                         tether.Connection = NewConnection;
+                        if (AC)
+                            AC.RunBool(true);
                         DebugRandAddi.Info("ModuleTechTether attached");
                     }
                 }
@@ -273,6 +320,8 @@ namespace RandomAdditions
                     BeamSide = false;
                     Connected = null;
                     Connection = nullPair;
+                    if (AC)
+                        AC.RunBool(false);
                     StopBeam();
                 }
             }

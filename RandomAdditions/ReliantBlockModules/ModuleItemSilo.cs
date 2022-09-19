@@ -413,7 +413,19 @@ namespace RandomAdditions
                 var toManage = stack.FirstItem;
                 if (!toManage.block)
                     continue;
-                if (StackSet != 0)
+                if (StackSet == 0)
+                {   // It absorbs and doesn't give back
+                    QueueStoreAnim(toManage);
+                    if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
+                    else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
+                    {
+                        if (block.tank?.netTech?.NetPlayer?.Inventory)
+                            block.tank.netTech.NetPlayer.Inventory.HostAddItem(toManage.block.BlockType, 1);
+                    }
+                    else
+                        Singleton.Manager<ManPlayer>.inst.AddBlockToInventory(toManage.block.BlockType);
+                }
+                else
                 {
                     if (GetBlockType == BlockTypes.GSOAIController_111)
                     {
@@ -442,18 +454,6 @@ namespace RandomAdditions
                             LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
                         }
                     }
-                }
-                else
-                {   // It absorbs and doesn't give back
-                    QueueStoreAnim(toManage);
-                    if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
-                    else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
-                    {
-                        if (block.tank?.netTech?.NetPlayer?.Inventory)
-                            block.tank.netTech.NetPlayer.Inventory.HostAddItem(GetBlockType, 1);
-                    }
-                    else
-                        Singleton.Manager<ManPlayer>.inst.AddBlockToInventory(GetBlockType);
                 }
             }
         }
@@ -1089,6 +1089,8 @@ namespace RandomAdditions
                     try
                     {
                         isSaving = false;
+                        if (!block.tank.FirstUpdateAfterSpawn)
+                            return; // we ignore undo / swap
                         DebugRandAddi.Log("LOADING " + TankBlock.name);
                         DebugRandAddi.Log("Block type prev is " + GetBlockType);
                         if (this.DeserializeFromSafe())

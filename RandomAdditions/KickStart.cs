@@ -11,6 +11,7 @@ using ModHelper.Config;
 using ModHelper;
 #endif
 using Nuterra.NativeOptions;
+using RandomAdditions.RailSystem;
 
 
 namespace RandomAdditions
@@ -280,10 +281,10 @@ namespace RandomAdditions
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
             ManTethers.Init();
-            LazyRender.Initiate();
+            ModHelpers.Initiate();
             GUIClock.Initiate();
             ManTileLoader.Initiate();
-
+            ManRails.Init();
         }
 
 #if STEAM
@@ -318,6 +319,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
             }
+            ManRails.DeInit();
             ManTileLoader.DeInit();
             GUIClock.DeInit();
             ManModeSwitch.DeInit();
@@ -439,6 +441,8 @@ namespace RandomAdditions
             if (forcedToGame)
                 return true;
             forcedToGame = true;
+            if (Input.GetKey(KeyCode.Escape))
+                return true;
             try
             {
                 if (ForceIntoModeStartup > 0)
@@ -604,6 +608,62 @@ namespace RandomAdditions
             }
             catch { }
             return null;
+        }
+        public static Vector3 GetClosestPoint(Vector3[] points, Vector3 scenePos, out float percentPos)
+        {
+            Vector3 closest = Vector3.zero;
+            float posDist = int.MaxValue;
+            float posCase;
+            int step = 0;
+            percentPos = 0;
+            foreach (var item in points)
+            {
+                posCase = (item - scenePos).sqrMagnitude;
+                if (posCase < posDist)
+                {
+                    posDist = posCase;
+                    closest = item;
+                    percentPos = (float)step / points.Count();
+                }
+                step++;
+            }
+            return closest;
+        }
+        public static Vector3 GetClosestPoint(Vector3[] points, Vector3 scenePos)
+        {
+            Vector3 closest = Vector3.zero;
+            float posDist = int.MaxValue;
+            float posCase;
+            int step = 0;
+            foreach (var item in points)
+            {
+                posCase = (item - scenePos).sqrMagnitude;
+                if (posCase < posDist)
+                {
+                    posDist = posCase;
+                    closest = item;
+                }
+                step++;
+            }
+            return closest;
+        }
+        public static int GetClosestIndex(Vector3[] points, Vector3 scenePos)
+        {
+            int closest = 0;
+            float posDist = int.MaxValue;
+            float posCase;
+            int step = 0;
+            foreach (var item in points)
+            {
+                posCase = (item - scenePos).sqrMagnitude;
+                if (posCase < posDist)
+                {
+                    posDist = posCase;
+                    closest = step;
+                }
+                step++;
+            }
+            return closest;
         }
     }
 

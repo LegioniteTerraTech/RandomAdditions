@@ -12,17 +12,17 @@ namespace RandomAdditions
     /// <summary>
     /// This class uses parts from the Official Mod Tool to render NuterraSteam blocks ingame.
     /// </summary>
-    public class LazyRender : MonoBehaviour
+    public class ModHelpers : MonoBehaviour
     {   
         // Startup
-        private static LazyRender inst;
+        private static ModHelpers inst;
         private static bool hooked = false;
         public static void Initiate()
         {
             if (hooked)
                 return;
             Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
-            inst = new GameObject("LazyRender").AddComponent<LazyRender>();
+            inst = new GameObject("LazyRender").AddComponent<ModHelpers>();
             hooked = true;
         }
 
@@ -66,36 +66,7 @@ namespace RandomAdditions
                         cooldown = true;
                     }
                 }
-                // THIS IS FOR MODULE HANGAR
-
-                if (Singleton.playerTank && mEvent == ManPointer.Event.LMB)
-                {
-                    Tank tech = targVis.trans.root.GetComponent<Tank>();
-                    if (tech)
-                    {
-                        if (tech.Team == Singleton.playerTank.Team && Singleton.playerTank != tech)
-                        {
-                            if (Input.GetKey(KickStart.HangarButton))
-                            {
-                                foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
-                                {
-                                    ModuleHangar MH = TB.GetComponent<ModuleHangar>();
-                                    if (MH)
-                                    {
-                                        if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
-                                        {
-                                            if (MH.AssignToDock(tech))
-                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                                            else
-                                                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                ModuleHangar.OnBlockSelect(targVis, mEvent, DOWN, yes2);
             }
         }
         internal void BeforeSnap()

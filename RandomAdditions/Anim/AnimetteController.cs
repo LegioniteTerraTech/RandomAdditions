@@ -20,16 +20,23 @@ namespace RandomAdditions
         None,
         Any,
 
-        ManagerManaged,
-        Clickable,
-
-        TileLoader,
-        WeaponSpooling,
-        WeaponSwitch,
-        TorpedoProjectile,
-        ProxProjectile,
+        // Block General
         Attached,
         Anchored,
+
+        // Block specific
+        ManagerManaged,
+        Clickable,
+        WeaponSpooling,
+
+        // RA 
+        TileLoader,
+        WeaponSwitch,
+        Tether,
+
+        // Projectiles
+        TorpedoProjectile,
+        ProxProjectile,
     }
 
 

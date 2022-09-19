@@ -20,12 +20,15 @@ namespace RandomAdditions
         private ModuleWheels wheels;
         private Rigidbody rbody => tank.rbody;
         private List<ManWheels.Wheel> wheelInst;
-        private readonly List<ManWheels.Wheel> wheelsSurface = new List<ManWheels.Wheel>();
+        private readonly Dictionary<ManWheels.Wheel, WheelStickiness> wheelsSurface = new Dictionary<ManWheels.Wheel, WheelStickiness>();
+        private readonly List<ManWheels.Wheel> wheelsRelease = new List<ManWheels.Wheel>();
         private Transform rootTrans;
         private Transform wheelsDownwards;
 
         public float WheelStickyForce = 1000;
+        public float WheelIdealCompression = 0.1f;
         public float DownwardsForce = 0;
+        public float PostWheelContactStickLossDelay = 0.4f;
 
         protected override void Pool()
         {
@@ -67,26 +70,73 @@ namespace RandomAdditions
             {
                 if (rbody && !tank.beam.IsActive)
                 {
+                    float nextTime = Time.time + PostWheelContactStickLossDelay;
                     foreach (var item in wheelInst)
                     {
                         if (item != null && item.Grounded && item.ContactCollider)
                         {
                             if (!item.ContactCollider.transform.root.GetComponent<Rigidbody>())
-                                wheelsSurface.Add(item);
+                            {
+                                if (wheelsSurface.TryGetValue(item, out WheelStickiness time))
+                                {
+                                    time.lastContactTime = nextTime;
+                                    time.lastContactVectorWorld = item.ContactNormal;
+                                    time.lastContactPointLocal = block.trans.InverseTransformPoint(item.ContactPoint);
+                                }
+                                else
+                                {
+                                    wheelsSurface.Add(item, new WheelStickiness 
+                                    {   lastContactTime = nextTime, 
+                                        lastContactVectorWorld = item.ContactNormal,
+                                        lastContactPointLocal = block.trans.InverseTransformPoint(item.ContactPoint),
+                                    });
+                                }
+                            }
                         }
                     }
                     if (wheelsSurface.Count > 0)
                     {
-                        rbody.AddForceAtPosition(wheelsDownwards.forward * DownwardsForce, wheelsDownwards.position, ForceMode.Force);
-                        float legForce = -WheelStickyForce;
+                        if (wheelsDownwards)
+                            rbody.AddForceAtPosition(wheelsDownwards.forward * DownwardsForce, wheelsDownwards.position
+                                , ForceMode.Force);
+                        float StickForce = -WheelStickyForce;
                         foreach (var item in wheelsSurface)
                         {
-                            rbody.AddForceAtPosition(item.ContactNormal * legForce * (1 - item.Compression), item.ContactPoint, ForceMode.Force);
+                            if (item.Value.lastContactTime < Time.time)
+                            {
+                                wheelsRelease.Add(item.Key);
+                            }
+                            else
+                            {
+                                DebugRandAddi.Log("compression " + item.Key.Compression);
+                                if (item.Key.Compression <= WheelIdealCompression)
+                                {
+                                    float StickyCompressionForce;
+                                    if (WheelIdealCompression == 0)
+                                        StickyCompressionForce = 1 - item.Key.Compression;
+                                    else
+                                        StickyCompressionForce = 1 - (item.Key.Compression / WheelIdealCompression);
+                                    rbody.AddForceAtPosition(item.Value.lastContactVectorWorld * StickForce * StickyCompressionForce
+                                        , transform.TransformPoint(item.Value.lastContactPointLocal), ForceMode.Force);
+                                }
+
+                            }
                         }
-                        wheelsSurface.Clear();
+                        foreach (var item in wheelsRelease)
+                        {
+                            wheelsSurface.Remove(item);
+                        }
+                        wheelsRelease.Clear();
                     }
                 }
             }
+        }
+
+        internal class WheelStickiness
+        {
+            public float lastContactTime = 0;
+            public Vector3 lastContactVectorWorld = Vector3.down;
+            public Vector3 lastContactPointLocal = Vector3.down;
         }
     }
 }

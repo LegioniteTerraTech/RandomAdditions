@@ -73,6 +73,37 @@ namespace RandomAdditions
         public bool HasRoom { get { return GarrisonTechs.Count < MaxTechCapacity; } }
         public bool HasStoredTechs { get { return GarrisonTechs.Count > 0; } }
 
+        public static void OnBlockSelect(Visible targVis, ManPointer.Event mEvent, bool DOWN, bool yes2)
+        {
+            if (Singleton.playerTank && mEvent == ManPointer.Event.LMB)
+            {
+                Tank tech = targVis.trans.root.GetComponent<Tank>();
+                if (tech)
+                {
+                    if (tech.Team == Singleton.playerTank.Team && Singleton.playerTank != tech)
+                    {
+                        if (Input.GetKey(KickStart.HangarButton))
+                        {
+                            foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
+                            {
+                                ModuleHangar MH = TB.GetComponent<ModuleHangar>();
+                                if (MH)
+                                {
+                                    if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
+                                    {
+                                        if (MH.AssignToDock(tech))
+                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                                        else
+                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         internal void OnPool()
         {

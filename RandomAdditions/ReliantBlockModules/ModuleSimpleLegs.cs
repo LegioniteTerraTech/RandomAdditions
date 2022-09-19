@@ -62,12 +62,14 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             DebugRandAddi.Log("OnAttach");
+            ManSimpleLegs.TankSimpleLegs.HandleAddition(tank, this);
             enabled = true;
         }
 
         public override void OnDetach()
         {
             DebugRandAddi.Log("OnDetach");
+            ManSimpleLegs.TankSimpleLegs.HandleRemoval(tank, this);
             enabled = false;
         }
 
@@ -194,7 +196,7 @@ namespace RandomAdditions
             {
                 if (tank.IsNull())
                 {
-                    DebugRandAddi.Log("RandomAdditions: TankPointDefense(HandleAddition) - TANK IS NULL");
+                    DebugRandAddi.Log("RandomAdditions: TankSimpleLegs(HandleAddition) - TANK IS NULL");
                     return;
                 }
                 var legCluster = tank.GetComponent<TankSimpleLegs>();
@@ -209,25 +211,25 @@ namespace RandomAdditions
                 if (!legCluster.LegBlocks.Contains(legs))
                     legCluster.LegBlocks.Add(legs);
                 else
-                    DebugRandAddi.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + legs.name + " was already added to " + tank.name + " but an add request was given?!?");
+                    DebugRandAddi.Log("RandomAdditions: TankSimpleLegs - ModuleSimpleLegs of " + legs.name + " was already added to " + tank.name + " but an add request was given?!?");
                 legs.TSL = legCluster;
             }
             public static void HandleRemoval(Tank tank, ModuleSimpleLegs Legs)
             {
                 if (tank.IsNull())
                 {
-                    DebugRandAddi.Log("RandomAdditions: TankPointDefense(HandleRemoval) - TANK IS NULL");
+                    DebugRandAddi.Log("RandomAdditions: TankSimpleLegs(HandleRemoval) - TANK IS NULL");
                     return;
                 }
 
                 var legCluster = tank.GetComponent<TankSimpleLegs>();
                 if (!(bool)legCluster)
                 {
-                    DebugRandAddi.Log("RandomAdditions: TankPointDefense - Got request to remove for tech " + tank.name + " but there's no TankPointDefense assigned?!?");
+                    DebugRandAddi.Log("RandomAdditions: TankSimpleLegs - Got request to remove for tech " + tank.name + " but there's no TankSimpleLegs assigned?!?");
                     return;
                 }
                 if (!legCluster.LegBlocks.Remove(Legs))
-                    DebugRandAddi.Log("RandomAdditions: TankPointDefense - ModulePointDefense of " + Legs.name + " requested removal from " + tank.name + " but no such ModulePointDefense is assigned.");
+                    DebugRandAddi.Log("RandomAdditions: TankSimpleLegs - ModuleSimpleLegs of " + Legs.name + " requested removal from " + tank.name + " but no such ModuleSimpleLegs is assigned.");
                 Legs.TSL = null;
 
                 if (legCluster.LegBlocks.Count() == 0)

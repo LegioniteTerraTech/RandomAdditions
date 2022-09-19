@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEngine;
 
-namespace RandomAdditions.ProjectileModules
+namespace RandomAdditions
 {
-    // Kinda like DOT but it does the damage calls less frequently
+    /// <summary>
+    ///  Kinda like DOT but it does the damage calls less frequently.  Unfinished.
+    /// </summary>
     internal class PulseProjectile : ExtProj
     {
     }

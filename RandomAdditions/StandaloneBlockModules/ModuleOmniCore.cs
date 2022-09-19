@@ -280,6 +280,15 @@ namespace RandomAdditions
                 return true;
             }
         }
+        private Vector3 PHYThrustDampen3D()
+        {
+            Vector3 localVelo = cab.InverseTransformVector(tank.rbody.velocity);
+            Vector3 InertiaDampenCheck = Vector3.zero;
+            InertiaDampenCheck.x = PHYThrustDampen(localVelo.x);
+            InertiaDampenCheck.y = PHYThrustDampen(localVelo.y);
+            InertiaDampenCheck.z = PHYThrustDampen(localVelo.z);
+            return InertiaDampenCheck;
+        }
         private float PHYThrustDampen(float velo)
         {
             return velo * tank.rbody.mass;
