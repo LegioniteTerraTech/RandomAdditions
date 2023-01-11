@@ -55,7 +55,7 @@ namespace RandomAdditions
                     foreach (var item in ManTechs.inst.IterateTechs())
                     {
                         if (item)
-                            RandomTank.Ensure(item).ReevaluateLoadingDiameter();
+                            RandomTank.Insure(item).ReevaluateLoadingDiameter();
                     }
                 }
             }
@@ -165,7 +165,6 @@ namespace RandomAdditions
             private void UpdateSlow()
             {
                 SlowUpdateEvent.Send();
-                ProjBase.UpdateSlow();
             }
         }
 

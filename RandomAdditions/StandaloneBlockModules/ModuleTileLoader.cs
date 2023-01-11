@@ -25,14 +25,14 @@ namespace RandomAdditions
 
         public override void OnAttach()
         {
-            RandomTank.HandleAddition(tank, this);
+            RandomTank.AddTileLoader(tank, this);
             if (anim)
                 anim.RunBool(true);
         }
 
         public override void OnDetach()
         {
-            RandomTank.HandleRemoval(tank, this);
+            RandomTank.RemoveTileLoader(tank, this);
             if (anim)
                 anim.RunBool(false);
         }

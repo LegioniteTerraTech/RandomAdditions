@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using RandomAdditions.RailSystem;
 
 namespace RandomAdditions
 {
@@ -39,6 +40,7 @@ namespace RandomAdditions
                 oInst = this;
 
             KickStart.MainOfficialInit();
+            ManRails.LateInit();
             isInit = true;
         }
         public override void DeInit()

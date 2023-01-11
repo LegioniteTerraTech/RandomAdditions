@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
+using TMPro;
 using UnityEngine;
 using System.Reflection;
 using TerraTechETCUtil;
@@ -29,6 +30,14 @@ namespace RandomAdditions
                 harmonyInst.MassPatchAllWithin(typeof(AllTankPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(AllProjectilePatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(ModulePatches), modName);
+                try
+                {
+                    harmonyInst.PatchAll(Assembly.GetExecutingAssembly());
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log(modName + ":Could not patch PatchBatch(Edge Cases) " + e);
+                }
 
                 return true;
             }
@@ -46,7 +55,14 @@ namespace RandomAdditions
                 harmonyInst.MassUnPatchAllWithin(typeof(AllTankPatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(AllProjectilePatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(ModulePatches), modName);
-
+                try
+                {
+                    harmonyInst.UnpatchAll(harmonyInst.Id);
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log(modName + ":Could not unpatch PatchBatch(Edge Cases) " + e);
+                }
                 return true;
             }
             catch (Exception e)

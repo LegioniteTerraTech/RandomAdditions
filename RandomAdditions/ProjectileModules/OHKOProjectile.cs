@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class OHKOProjectile : RandomAdditions.OHKOProjectile { };
 namespace RandomAdditions

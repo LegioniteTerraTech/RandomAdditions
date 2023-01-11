@@ -125,7 +125,7 @@ namespace RandomAdditions
                 Responsivness = 3,
             } },
             { WeaponDongleType.Payload, new WeaponDongleStats{
-                DamageType = ManDamage.DamageType.Explosive,
+                DamageType = (ManDamage.DamageType)3, // Blast
                 Damage = DamageVolume,
                 Accuraccy = -1f,
             } },
@@ -134,7 +134,7 @@ namespace RandomAdditions
                 Speed = 3f,
             } },
             { WeaponDongleType.Shells, new WeaponDongleStats{
-                DamageType = ManDamage.DamageType.Bullet,
+                DamageType = (ManDamage.DamageType)1, // Ballistic
                 Damage = DamageVolume,
             } },
             { WeaponDongleType.EPMInjector, new WeaponDongleStats{

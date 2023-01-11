@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace RandomAdditions
 {
-    internal static class DebugRandAddi
+    internal class DebugRandAddi : MonoBehaviour
     {
         private const string modName = "RandomAdditions";
 
@@ -60,11 +60,31 @@ namespace RandomAdditions
         {
             try
             {
-                ManUI.inst.ShowErrorPopup(modName + ": ENCOUNTERED CRITICAL ERROR: " + e);
+                ManUI.inst.ShowErrorPopup(modName + ": ENCOUNTERED CRITICAL ERROR: " + e + StackTraceUtility.ExtractStackTrace());
             }
             catch { }
-            Debug.Log(modName + ": ENCOUNTERED CRITICAL ERROR");
+            Debug.Log(modName + ": ENCOUNTERED CRITICAL ERROR: " + e);
             Debug.Log(modName + ": MAY NOT WORK PROPERLY AFTER THIS ERROR, PLEASE REPORT!");
+            Debug.Log(modName + ": STACKTRACE: " + StackTraceUtility.ExtractStackTrace());
+        }
+
+        internal static void DrawDirIndicator(Vector3 posScene, Vector3 vectorWorld, Color color, float duration = 2)
+        {
+            GameObject gO = Instantiate(new GameObject("DebugLine"), null, false);
+
+            var lr = gO.GetComponent<LineRenderer>();
+            if (!(bool)lr)
+            {
+                lr = gO.AddComponent<LineRenderer>();
+                lr.material = new Material(Shader.Find("Sprites/Default"));
+                lr.positionCount = 2;
+                lr.startWidth = 0.5f;
+            }
+            lr.startColor = color;
+            lr.endColor = color;
+            Vector3[] vecs = new Vector3[2] { posScene, vectorWorld + posScene };
+            lr.SetPositions(vecs);
+            Destroy(gO, duration);
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class TrailProjectile : RandomAdditions.TrailProjectile { }
 namespace RandomAdditions
@@ -61,7 +62,6 @@ namespace RandomAdditions
         private void OnPool()
         {
             cols = GetComponentsInChildren<Collider>();
-            PB.rbody = GetComponent<Rigidbody>();
             wasGrav = PB.rbody.useGravity;
             trail = GetComponent<TrailRenderer>();
             var particles = GetComponentsInChildren<ParticleSystem>();

@@ -58,6 +58,7 @@ namespace RandomAdditions
             FetchExplosion(BlockTypes.GSOMGunFixed_111, out exploder);
             _Explosions.Add(0, exploder);
         }
+        internal static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
         private static float FetchExplosion(BlockTypes BT, out Transform exploder)
         {
             try
@@ -73,7 +74,7 @@ namespace RandomAdditions
                             Projectile proj = FD.m_BulletPrefab.GetComponent<Projectile>();
                             if (proj)
                             {
-                                Transform transCase = (Transform)ProjBase.explode.GetValue(proj);
+                                Transform transCase = (Transform)explode.GetValue(proj);
                                 if (transCase)
                                 {
                                     exploder = transCase;
@@ -135,7 +136,7 @@ namespace RandomAdditions
         internal bool DonglesDirty = false;
 
         protected Dictionary<ModulePartWeaponBarrel, OffsetPosition> barrels = new Dictionary<ModulePartWeaponBarrel, OffsetPosition>();
-        private List<Transform> DisplayBarrels = new List<Transform>();
+        private readonly List<Transform> DisplayBarrels = new List<Transform>();
 
         public int maxBarrels = 8;
         public int barrelsFired = 0;
@@ -148,7 +149,7 @@ namespace RandomAdditions
 
         public int m_BarrelCount = 0;
 
-        protected List<ModulePartWeaponDongle> attached = new List<ModulePartWeaponDongle>();
+        protected HashSet<ModulePartWeaponDongle> attached = new HashSet<ModulePartWeaponDongle>();
         protected List<ModulePartWeaponPart> allDongles
         {
             get
@@ -163,7 +164,7 @@ namespace RandomAdditions
 
 
         public Dictionary<ManDamage.DamageType, WeaponTypeStats> DamageTypeDistrib = new Dictionary<ManDamage.DamageType, WeaponTypeStats>();
-        public ManDamage.DamageType DamageType = ManDamage.DamageType.Bullet;
+        public ManDamage.DamageType DamageType = (ManDamage.DamageType)1; // Ballistic
         public float BaseResponsivness = 8;
         public float BaseDamage = 25;
         public float BaseSpeed = 10;
@@ -290,7 +291,7 @@ namespace RandomAdditions
                     case ManDamage.DamageType.Electric:
                         blueVal += 1f * item.Damage;
                         break;
-                    case ManDamage.DamageType.Explosive:
+                    case (ManDamage.DamageType)3: // Blast
                         redVal += 1f * item.Damage;
                         break;
                     default:
@@ -336,7 +337,7 @@ namespace RandomAdditions
                 {
                     switch (item.SuggestType)
                     {
-                        case ManDamage.DamageType.Explosive:
+                        case (ManDamage.DamageType)3:// Blast
                             float damage = item.Damage * m_DamageMulti;
                             foreach (var explo in Explosions)
                             {
@@ -364,7 +365,7 @@ namespace RandomAdditions
                     float damage = item.Damage * m_DamageMulti;
                     switch (item.SuggestType)
                     {
-                        case ManDamage.DamageType.Bullet:
+                        case (ManDamage.DamageType)1: // Ballistic
                             knockback = damage / 2;
                             break;
                         case ManDamage.DamageType.Energy:
@@ -381,7 +382,7 @@ namespace RandomAdditions
                         case ManDamage.DamageType.Electric:
                             knockback = 0;
                             break;
-                        case ManDamage.DamageType.Explosive:
+                        case (ManDamage.DamageType)3: // Blast
                             knockback = 0;
                             foreach (var explo in Explosions)
                             {

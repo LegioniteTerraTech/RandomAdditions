@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System.Reflection;
+using RandomAdditions.Networking;
 
 namespace RandomAdditions
 {
@@ -81,7 +83,6 @@ namespace RandomAdditions
                 var UIMan = Singleton.Manager<ManUI>.inst;
                 var UIObj = UIMan.GetScreen(ManUI.ScreenType.BugReport).gameObject;
                 Text bugReport = (Text)errorGet.GetValue(__instance);
-                //UIObj.GetComponent<UIScreenBugReport>()
 
                 //ETC
                 //Text newError = (string)textGet.GetValue(bugReport);
@@ -94,8 +95,8 @@ namespace RandomAdditions
                 reportBox.Find("Description").gameObject.SetActive(false);
                 reportBox.Find("Submit").gameObject.SetActive(false);
                 reportBox.Find("Email").gameObject.SetActive(false);
-                //reportBox.Find("Description").gameObject.GetComponent<InputField>().
 
+                //reportBox.Find("Description").gameObject.GetComponent<InputField>().
                 //reportBox.Find(" Title").GetComponent<Text>().text = "<b>BUG REPORTER [MODDED!]</b>";
 
 #if STEAM
@@ -135,7 +136,7 @@ namespace RandomAdditions
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
 #if STEAM
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a modded game which the developers cannot manage!</b>  " +
-                        "\nTake note of all your official mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-official.";
+                        "\nTake note of all your mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-help or in Random Additions' Bug Reports thread.";
 #else
                     bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  " +
                         "\n<b>Make sure your name isn't in the Report below first,</b> then take note of all your mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial.";
@@ -153,7 +154,8 @@ namespace RandomAdditions
                     errorList.gameObject.SetActive(true);
                     //var errorText = errorList.gameObject.GetComponent<Text>();
                     var errorField = errorList.gameObject.GetComponent<InputField>();
-                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----\n  The log file is at: " + outputLogLocation + "\n<b>Error:</b> " + latestError;
+                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----\n  The log file is at: " + outputLogLocation + "\n<b>Multiplayer:</b> " + ManNetwork.IsNetworked + "  <b>Mods:</b> " + LogHandler.GetMods()
+                        + "\n--------------------  Stack Trace  --------------------\n<b>Error:</b> " + latestError;
                     var errorText = errorField.textComponent;
                     //errorText.alignByGeometry = true;
                     errorText.alignment = TextAnchor.UpperLeft; // causes it to go far out of the box
@@ -469,6 +471,7 @@ namespace RandomAdditions
         internal static class PlayerFreeCameraPatches
         {
             internal static Type target = typeof(PlayerFreeCamera);
+
             const float newMaxFreeCamRange = 95000;// 250
             const float newMPMaxFreeCamRange = 250;
 
@@ -508,8 +511,10 @@ namespace RandomAdditions
         }*/
         internal static class TileManagerPatches
         {
-            private const float maxDistFromOrigin = 80000;
             internal static Type target = typeof(TileManager);
+
+            private static bool removeCorruptedTest = true;
+            private const float maxDistFromOrigin = 80000;
             private static List<IntVector2> starTiles = null;
             private static Dictionary<IntVector2, WorldTile> exisTiles = null;
             static FieldInfo TilesNew = typeof(TileManager).GetField("m_TileCoordsToCreateWorking", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -519,36 +524,136 @@ namespace RandomAdditions
             /// </summary>
             private static void UpdateTileRequestStatesInStandardMode_Postfix(TileManager __instance)
             {
-                if (starTiles == null)
-                    starTiles = (List<IntVector2>)TilesNew.GetValue(__instance);
-                if (exisTiles == null)
-                    exisTiles = (Dictionary<IntVector2, WorldTile>)Tiles.GetValue(__instance);
-
-                foreach (var item in ManTileLoader.RequestedLoaded)
+                try
                 {
-                    Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
-                    if (pos.x > -maxDistFromOrigin && pos.x < maxDistFromOrigin &&
-                        pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
-                        pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
+                    if (starTiles == null)
                     {
-                        if (exisTiles.ContainsKey(item))
+                        DebugRandAddi.Log("ManTileLoader - Fetching tiles to create");
+                        starTiles = (List<IntVector2>)TilesNew.GetValue(__instance);
+                        DebugRandAddi.Log("ManTileLoader - Fetched tiles to create");
+                    }
+                    if (exisTiles == null)
+                    {
+                        DebugRandAddi.Log("ManTileLoader - Fetching tile lookup");
+                        exisTiles = (Dictionary<IntVector2, WorldTile>)Tiles.GetValue(__instance);
+                        DebugRandAddi.Log("ManTileLoader - Fetched tile lookup");
+                    }
+
+                    DebugRandAddi.Assert(ManTileLoader.RequestedLoaded == null, "ManTileLoader - RequestedLoaded IS NULL");
+                    int requests = ManTileLoader.RequestedLoaded.Count;
+                    for (int step = 0; step < requests;)
+                    {
+                        var item = ManTileLoader.RequestedLoaded[step];
+                        if (item != null)
                         {
-                            if (exisTiles.TryGetValue(item, out WorldTile WT))
+                            Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
+                            if (pos.x > -maxDistFromOrigin && pos.x < maxDistFromOrigin &&
+                                pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
+                                pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
                             {
-                                WT.m_RequestState = WorldTile.State.Loaded;
+                                if (exisTiles.ContainsKey(item))
+                                {
+                                    if (exisTiles.TryGetValue(item, out WorldTile WT))
+                                    {
+                                        if (WT != null)
+                                        {
+                                            //DebugRandAddi.Log("ManTileLoader - Loading tile at " + WT.Coord);
+                                            WT.m_RequestState = WorldTile.State.Loaded;
+                                        }
+                                        else
+                                            DebugRandAddi.Assert("ManTileLoader - Tile at " + item + " is NULL");
+                                    }
+                                }
+                                else
+                                {
+                                    if (!starTiles.Contains(item))
+                                    {
+                                        starTiles.Add(item);
+                                        DebugRandAddi.Assert("ManTileLoader - Force-loading Tile at " + item);
+                                    }
+                                }
                             }
+                            step++;
                         }
                         else
                         {
-                            if (!starTiles.Contains(item))
-                                starTiles.Add(item);
+                            DebugRandAddi.Assert("ManTileLoader - NULL TILE IN RequestedLoaded, TRASHING");
+                            ManTileLoader.RequestedLoaded.RemoveAt(step);
+                            requests--;
                         }
                     }
+                    if (removeCorruptedTest)
+                    {
+                        foreach (var item in new Dictionary<IntVector2, WorldTile>(exisTiles))
+                        {
+                            if (item.Key == null || item.Value == null || item.Value.patchesToPopulate == null
+                                || item.Value.SaveData == null)
+                            {
+                                DebugRandAddi.Assert(item.Key == null, "ManTileLoader - NULL TILE  Key in TileManager somehow!?");
+                                DebugRandAddi.Assert(item.Value == null, "ManTileLoader - NULL TILE  WorldTile in TileManager somehow? Removing...");
+                                DebugRandAddi.Assert(item.Value.patchesToPopulate == null,
+                                    "ManTileLoader - NULL TILE  patchesToPopulate in TileManager somehow? Removing...");
+                                DebugRandAddi.Assert(item.Value.SaveData == null,
+                                    "ManTileLoader - NULL TILE " + item.Key + "  SaveData in TileManager somehow? Removing...");
+                                exisTiles.Remove(item.Key);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    throw new Exception("ManTileLoader encountered an error - " + e);
                 }
             }
         }
 
+        internal static class NetPlayerPatches
+        {
+            internal static Type target = typeof(NetPlayer);
+            private static void OnStartClient_Postfix(NetPlayer __instance)
+            {
+                foreach (var item in ManModNetwork.hooks)
+                {
+                    ManNetwork.inst.SubscribeToClientMessage(__instance.netId, (TTMsgType)item.Key, new ManNetwork.MessageHandler(item.Value.OnClientReceive_Internal));
+                    DebugRandAddi.Log("Subscribed " + item.Value.ToString() + " to network under ID " + item.Key);
+                }
+                DebugRandAddi.Log("Subscribed " + ManModNetwork.hooks.Count + " hooks.");
+            }
+            private static void OnStartServer_Postfix(NetPlayer __instance)
+            {
+                if (!ManModNetwork.HostExists)
+                {
+                    DebugRandAddi.Log("Host started, hooked ManModNetwork update broadcasting to " + __instance.netId.ToString());
+                    ManModNetwork.Host = __instance.netId;
+                    ManModNetwork.HostExists = true;
+                }
+            }
+        }
 
+        internal static class UIDamageTypeDisplayPatches
+        {
+            internal static Type target = typeof(UIDamageTypeDisplay);
 
+            static FieldInfo type = typeof(UIDamageTypeDisplay).GetField("m_DisplayType", BindingFlags.NonPublic | BindingFlags.Instance);
+            static FieldInfo name = typeof(UIDamageTypeDisplay).GetField("m_NameText", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            private static void SetBlock_Postfix(UIDamageTypeDisplay __instance, ref BlockTypes blockType)
+            {
+                if ((int)type.GetValue(__instance) != 2)
+                    return;
+                var blockInst = ManSpawn.inst.GetBlockPrefab(blockType);
+                if (blockInst)
+                {
+                    var modDamageable = blockInst.GetComponent<ModuleReinforced>();
+                    if (modDamageable && !modDamageable.CustomDamagableName.NullOrEmpty())
+                    {
+                        __instance.Set(modDamageable.CustomDamagableIcon);
+                        var val = (TextMeshProUGUI)name.GetValue(__instance);
+                        if (val)
+                            val.text = modDamageable.CustomDamagableName;
+                    }
+                }
+            }
+        }
     }
 }

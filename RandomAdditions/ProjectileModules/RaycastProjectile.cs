@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class RaycastProjectile : RandomAdditions.RaycastProjectile { }
 namespace RandomAdditions
@@ -203,7 +204,6 @@ namespace RandomAdditions
 
         public override void Pool()
         {
-            PB.rbody = GetComponent<Rigidbody>();
             line = GetComponent<LineRenderer>();
             SmokeTrail ST = GetComponent<SmokeTrail>();
             if (FadeTime <= 0)

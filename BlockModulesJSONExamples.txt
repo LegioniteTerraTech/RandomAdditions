@@ -377,6 +377,29 @@
 
 -----------------------------------------------------------------------------------------------------
 
+    "ModuleStickyWheels": { // Stick to non-moving surfaces. Needs ModuleWheels.
+      "WheelStickyForce": 1000, // The downwards force applied in relation to the surface the wheel is contacting.  Wheels that swing out of position are unresolvable due to wheel multi-threading.
+      // High values my cause stuttering!
+      "WheelIdealCompression": 0.1,// [0 - 1] the percentage of the suspension that determines
+      //   when stickiness forces should be applied.  Increase this if the wheel is acting unstable.
+      //   Lower values than 0.1 may cause instability.
+      "PostWheelContactStickLossDelay": 0.4, // The extra time a wheel tries to apply stickiness even with
+      // no contact to the driving surface.
+      "DownwardsForce": 0,      // The force appied when ANY wheel on this block is contacting the ground.
+      // This requires a GameObject called _effectorDown which applies the force in the direction it is facing
+      //   at the position it is located on the block.
+    },
+
+-----------------------------------------------------------------------------------------------------
+
+    "ModuleBuoy": { // Make a block float in water.  Does not float on it's own.
+      "FloatForce": 1536,      // The full force to apply when the block is completely submerged.
+      "ForcesFixedToCOM": true,// Set to false if this is one of your biggest buoy blocks.
+      "CubeFloater": false,     // Use a lazier float algorithm for blocks that are exactly (X,X,X) 
+    },
+
+-----------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 
     // WIP - Work in Progress
@@ -395,6 +418,8 @@
 
     "ModuleMirage": {}, // PENDING - Tech digital mirror weapon - issues with model ripping
     "ModuleJumpDrive": {}, // PENDING - Tech teleporter that lets Techs teleport to other allied techs - No VFX (Visual effects)
+
+    
 
 -----------------------------------------------------------------------------------------------------
 
@@ -436,21 +461,6 @@ Can be placed anywhere BUT on the base GameObject Layer: Must be within at least
     "RACannonBarrel": {}, // Put this in a referenced _barrel GameObject and MAKE SURE you null that CannonBarrel!
     "CannonBarrel": null, // Disable the ModuleWeapon CannonBarrel to hand over control to RACannonBarrel.
     
------------------------------------------------------------------------------------------------------
-
-    "ModuleStickyWheels": { // Stick to non-moving surfaces. Needs ModuleWheels.
-      "WheelStickyForce": 1000, // The downwards force applied in relation to the surface the wheel is contacting.  Wheels that swing out of position are unresolvable due to wheel multi-threading.
-      // High values my cause stuttering!
-      "WheelIdealCompression": 0.1,// [0 - 1] the percentage of the suspension that determines
-      //   when stickiness forces should be applied.  Increase this if the wheel is acting unstable.
-      //   Lower values than 0.1 may cause instability.
-      "PostWheelContactStickLossDelay": 0.4, // The extra time a wheel tries to apply stickiness even with
-      // no contact to the driving surface.
-      "DownwardsForce": 0,      // The force appied when ANY wheel on this block is contacting the ground.
-      // This requires a GameObject called _effectorDown which applies the force in the direction it is facing
-      //   at the position it is located on the block.
-    },
-
 -----------------------------------------------------------------------------------------------------
 
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 
@@ -156,6 +157,29 @@ namespace RandomAdditions
                 ForceQuitScreen();
         }
 
+        public static string GetMods()
+        {
+            string modList = ManMods.inst.GetModsInCurrentSession();
+            int modGuessCount = modList.Count(x => x.Equals('\n'));
+            if (modGuessCount > 16)
+            {
+                return "[Too much to display] Count: " + modGuessCount;
+            }
+            string modsInSession = ManMods.inst.GetModsInCurrentSession().Replace("[", "");
+            bool junkWithin = true;
+            while (junkWithin)
+            {
+                int startIndex = modsInSession.IndexOf(":");
+                int endIndex = modsInSession.IndexOf("]");
+                if (startIndex != -1 && endIndex != -1)
+                {
+                    modsInSession = modsInSession.Replace(modsInSession.Substring(startIndex, endIndex - startIndex + 1), "");
+                }
+                else
+                    junkWithin = false;
+            }
+            return modsInSession.Replace(",", ", ");
+        }
         public string GetErrors()
         {
             if (!FiredBigDisplay)
@@ -170,22 +194,21 @@ namespace RandomAdditions
             }
             else 
             { 
-                char scanB = '0';
-                char scanA = '0';
-                char scanT = '0';
                 try
                 {
-                    string cleaned = "";
-                    foreach (char ch in logFilterNed)
+                    int countMax = logFilterNed.Length;
+                    string cleaned = logFilterNed;
+                    bool junkWithin = true;
+                    while (junkWithin)
                     {
-                        scanB = scanA;
-                        scanA = scanT;
-                        scanT = ch;
-                        cleaned += ch;
-                        if (scanB == '(' && scanA == 'a' && scanT == 't')
+                        int startIndex = cleaned.IndexOf("(at <");
+                        int endIndex = cleaned.IndexOf(">:0)");
+                        if (startIndex != -1 && endIndex != -1)
                         {
-                            cleaned += '\n';
+                            cleaned = cleaned.Replace(cleaned.Substring(startIndex, endIndex - startIndex + 4), "");
                         }
+                        else
+                            junkWithin = false;
                     }
                     return logFinal + cleaned;
                     //return logFinal.Substring(log4);

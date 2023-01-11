@@ -17,8 +17,10 @@ namespace RandomAdditions
     {
         [SSManagerInst]
         public static ManTileLoader inst;
+        [SSaveField]
+        public IntVector2[] TilesNeedLoadedNextLoad;
 
-        public static List<IntVector2> RequestedLoaded => inst ? inst.LoadedTileCoords : new List<IntVector2>();
+        public static List<IntVector2> RequestedLoaded => (inst && inst.LoadedTileCoords != null) ? inst.LoadedTileCoords : new List<IntVector2>();
         private static readonly Dictionary<IntVector2, float> TempLoaders = new Dictionary<IntVector2, float>();
         private static readonly List<IntVector2> FixedTileLoaders = new List<IntVector2>();
         private static readonly List<ITileLoader> DynamicTileLoaders = new List<ITileLoader>();
@@ -35,14 +37,12 @@ namespace RandomAdditions
                 return;
             inst = new GameObject("ManTileLoader").AddComponent<ManTileLoader>();
             GlobalClock.SlowUpdateEvent.Subscribe(UpdateTileLoading);
-            Singleton.Manager<ManGameMode>.inst.ModeStartEvent.Subscribe(OnWorldLoad);
             DebugRandAddi.Log("RandomAdditions: Created ManTileLoader.");
         }
         public static void DeInit()
         {
             if (!inst)
                 return;
-            Singleton.Manager<ManGameMode>.inst.ModeStartEvent.Unsubscribe(OnWorldLoad);
             GlobalClock.SlowUpdateEvent.Unsubscribe(UpdateTileLoading);
             Destroy(inst.gameObject);
             inst = null;
@@ -201,8 +201,9 @@ namespace RandomAdditions
             }
         }
 
-        public static void OnWorldLoad(Mode mode)
+        public static List<IntVector2> GetAllCenterTileLoadedTiles()
         {
+            List<IntVector2> tileLoaders = new List<IntVector2>();
             try
             {
                 List<IntVector2> tiles = Singleton.Manager<ManSaveGame>.inst.CurrentState.m_StoredTiles.Keys.ToList();
@@ -226,30 +227,60 @@ namespace RandomAdditions
                                     ModuleTileLoader MTL = prefab?.GetComponent<ModuleTileLoader>();
                                     if (MTL)
                                     {
-                                        //tileLoader = true;
-                                        TempLoadTile(tile);
-                                        //tileLoaderActive = true;
-                                        /*
-                                        if (MTL.AnchorOnly)
-                                        {
-                                            if (tech.m_TechData.CheckIsAnchored())
-                                            {
-                                                TempLoadTile(tile);
-                                                tileLoaderActive = true;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            TempLoadTile(tile);
-                                            tileLoaderActive = true;
-                                        }*/
+                                        tileLoaders.Add(tile);
                                     }
                                 }
-
                                 //DebugRandAddi.Log("Evaluating: " + tech.m_TechData.Name + "  TileLoader? " + tileLoader + " Active? " + tileLoaderActive);
                             }
                         }
                     }
+                }
+            }
+            catch { }
+            return tileLoaders;
+        }
+        public static void OnWorldSave()
+        {
+            try
+            {
+                List<IntVector2> loadTiles = GetAllCenterTileLoadedTiles();
+                if (loadTiles.Count > 0)
+                    inst.TilesNeedLoadedNextLoad = loadTiles.ToArray();
+            }
+            catch { }
+        }
+        public static void OnWorldFinishSave()
+        {
+            try
+            {
+                inst.TilesNeedLoadedNextLoad = null;
+            }
+            catch { }
+        }
+        public static void OnWorldLoad()
+        {
+            try
+            {
+                if (inst.TilesNeedLoadedNextLoad == null)
+                    return;
+                foreach (var tile in inst.TilesNeedLoadedNextLoad)
+                {
+                    TempLoadTile(tile);
+                    //tileLoaderActive = true;
+                    /*
+                    if (MTL.AnchorOnly)
+                    {
+                        if (tech.m_TechData.CheckIsAnchored())
+                        {
+                            TempLoadTile(tile);
+                            tileLoaderActive = true;
+                        }
+                    }
+                    else
+                    {
+                        TempLoadTile(tile);
+                        tileLoaderActive = true;
+                    }*/
                 }
             }
             catch { }

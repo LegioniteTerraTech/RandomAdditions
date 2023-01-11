@@ -64,6 +64,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
@@ -149,6 +153,10 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2484820102\NuterraSteam.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="WaterMod">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2757919307\WaterMod.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="TerraTechETCUtil">
       <HintPath>..\..\TTETCUtil\TerraTechETCUtil\TerraTechETCUtil\obj\Steam\TerraTechETCUtil.dll</HintPath>
     </Reference>
@@ -192,19 +200,31 @@
     <Compile Include="Anim\AnimetteScaler.cs" />
     <Compile Include="Anim\AnimetteController.cs" />
     <Compile Include="Anim\AnimetteMover.cs" />
+    <None Include="ManModGUI.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailEngine.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailDongle.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailSignal.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailConnectInfo.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailNodeType.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ManTrainPathing.cs" />
+    <Compile Include="Networking\ManModNetwork.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeaponPart.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeapon.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeaponGun.cs" />
     <Compile Include="MultiBlockModules\ModuleTechTether.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ManRails.cs" />
-    <Compile Include="MultiBlockModules\RailSystem\ModuleRailBogey.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailBogie.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\WeaponDongleStats.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailJunction.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailStation.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailSegment.cs" />
     <Compile Include="MultiBlockModules\RailSystem\TankLocomotive.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTrack.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTrackNode.cs" />
+    <Compile Include="Networking\NetworkHook.cs" />
     <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
     <Compile Include="ReliantBlockModules\ModuleStickyWheels.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleBuoy.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
     <Compile Include="StandaloneBlockModules\ModuleJumpDrive.cs" />
@@ -214,7 +234,7 @@
     <Compile Include="StandaloneBlockModules\ModuleMirage.cs" />
     <Compile Include="ReliantBlockModules\ModuleModeSwitch.cs" />
     <Compile Include="StandaloneBlockModules\ModuleOmniCore.cs" />
-    <Compile Include="MultiBlockModules\RailSystem\ModuleRailStation.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailPoint.cs" />
     <Compile Include="ReliantBlockModules\ModuleRepairAimer.cs" />
     <Compile Include="ReliantBlockModules\ModuleSimpleLegs.cs" />
     <Compile Include="StandaloneBlockModules\ModuleTileLoader.cs" />
@@ -243,7 +263,7 @@
     <Compile Include="ProjectileModules\ProxProjectile.cs" />
     <Compile Include="ProjectileModules\PulseProjectile.cs" />
     <Compile Include="ProjectileModules\RaycastProjectile.cs" />
-    <Compile Include="ProjectileModules\ProjBase.cs" />
+    <None Include="ProjectileModules\ProjBase.cs" />
     <Compile Include="ProjectileModules\TrailProjectile.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <None Include="GlobalChanges\CustomDamageType.cs" />
@@ -315,7 +335,12 @@ xcopy /S /Y /R "!e:~0,-1!" !modpath2!
 set modpath3="C:\Program Files (x86)\Steam\steamapps\common\TerraTech\LocalMods\Random Additions"
 
 if exist !modpath3! (
-if $(ConfigurationName) == Steam OR $(ConfigurationName) == SteamDev (
+if $(ConfigurationName) == Steam (
+echo Copying to SteamModLocalDirect
+set e=$(TargetDir)&gt;nul
+xcopy /S /Y /R "!e:~0,-1!" !modpath3!
+)
+if $(ConfigurationName) == SteamDev (
 echo Copying to SteamModLocalDirect
 set e=$(TargetDir)&gt;nul
 xcopy /S /Y /R "!e:~0,-1!" !modpath3!
@@ -324,7 +349,12 @@ xcopy /S /Y /R "!e:~0,-1!" !modpath3!
 set modpath4="C:\Program Files (x86)\Steam\steamapps\workshop\content\285920\2765334969"
 
 if exist !modpath4! (
-if $(ConfigurationName) == Steam OR $(ConfigurationName) == SteamDev (
+if $(ConfigurationName) == Steam (
+echo Copying to SteamModWorkshopDirect
+set e=$(TargetDir)&gt;nul
+xcopy /S /Y /R "!e:~0,-1!" !modpath4!
+)
+if $(ConfigurationName) == SteamDev (
 echo Copying to SteamModWorkshopDirect
 set e=$(TargetDir)&gt;nul
 xcopy /S /Y /R "!e:~0,-1!" !modpath4!

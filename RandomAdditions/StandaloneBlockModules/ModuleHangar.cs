@@ -5,6 +5,7 @@ using System.Text;
 using UnityEngine;
 using SafeSaves;
 using TerraTechETCUtil;
+using UnityEngine.Networking;
 
 public class ModuleHangar : RandomAdditions.ModuleHangar { };
 namespace RandomAdditions
@@ -20,7 +21,25 @@ namespace RandomAdditions
     [AutoSaveComponent]
     public class ModuleHangar : Module
     {
+        public class HangarCommand : MessageBase
+        {
+            public HangarCommand() { }
+            public HangarCommand(uint TechID, int BlockIndex, uint TechToDock, bool ChangeTarget)
+            {
+                this.TechID = TechID;
+                this.BlockIndex = BlockIndex;
+                this.TechToDock = TechToDock;
+                this.ChangeTarget = ChangeTarget;
+            }
+
+            public uint TechID;
+            public int BlockIndex;
+            public uint TechToDock;
+            public bool ChangeTarget;
+        }
+
         private const float DelayedUpdateDelay = 0.5f;
+        private static NetworkHook<HangarCommand> netHook = new NetworkHook<HangarCommand>(OnReceiveDockingRequest);
 
         internal Tank tank => block.tank;
         private bool isSaving = false;
@@ -64,8 +83,8 @@ namespace RandomAdditions
 
         private Tank LaunchAnimating;
         private Vector3 LaunchAnimatingPos;
-        private List<TankBlock> AbsorbAnimating = new List<TankBlock>();
-        private List<Vector3> AbsorbAnimatingPos = new List<Vector3>();
+        private readonly List<TankBlock> AbsorbAnimating = new List<TankBlock>();
+        private readonly List<Vector3> AbsorbAnimatingPos = new List<Vector3>();
         private float nextTime = 0;
         private float HangarReturnRequestDelay = 0;
 
@@ -91,7 +110,7 @@ namespace RandomAdditions
                                 {
                                     if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
                                     {
-                                        if (MH.AssignToDock(tech))
+                                        if (MH.RequestAssignToDock(tech))
                                             ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
                                         else
                                             ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
@@ -258,34 +277,41 @@ namespace RandomAdditions
                 nextTime = Time.time + DelayedUpdateDelay;
                 HangarExistTime++;
             }
-            if (!ManNetwork.IsNetworked)// || ManNetwork.IsHost)
+            if (!ManNetwork.IsNetworked || ManNetwork.IsHost)
             {
                 int fireTimes = AbsorbAnimating.Count;
                 for (int step = 0; step < fireTimes; step++)
                 {
                     TankBlock toManage = AbsorbAnimating.ElementAt(step);
-                    Vector3 toManagePos = AbsorbAnimatingPos.ElementAt(step);
-                    Vector3 fL = HangarInside.localPosition;
-                    toManagePos = ((fL - toManagePos) * Time.deltaTime * 3) + toManagePos;
-                    AbsorbAnimatingPos[step] = toManagePos;
-                    toManage.visible.centrePosition = transform.TransformPoint(toManagePos);
-                    Vector3 item = toManagePos;
-                    float distDiff = 1 / (HangarEntry.localPosition - HangarInside.localPosition).magnitude;
-                    float scaleMulti = 0.25f;
-                    if (toManage.GetComponent<TankBlockScaler>())
-                        scaleMulti = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
-                    float dynamicScaling = 1f - scaleMulti;
-                    toManage.trans.localScale = (Vector3.one * scaleMulti) + (Vector3.one * Mathf.Min(Mathf.Max(0, (fL - toManagePos).magnitude * distDiff * dynamicScaling), dynamicScaling));
-                    
-                    if (fL.x - 0.06f < item.x && item.x < fL.x + 0.06f && fL.y - 0.06f < item.y && item.y < fL.y + 0.06f && fL.z - 0.06f < item.z && item.z < fL.z + 0.06f)
+                    if (toManage.IsNotNull())
                     {
-                        AbsorbAnimating.RemoveAt(step);
+                        Vector3 toManagePos = AbsorbAnimatingPos.ElementAt(step);
+                        Vector3 fL = HangarInside.localPosition;
+                        toManagePos = ((fL - toManagePos) * Time.deltaTime * 3) + toManagePos;
+                        AbsorbAnimatingPos[step] = toManagePos;
+                        toManage.visible.centrePosition = transform.TransformPoint(toManagePos);
+                        Vector3 item = toManagePos;
+                        float distDiff = 1 / (HangarEntry.localPosition - HangarInside.localPosition).magnitude;
+                        float scaleMulti = 0.25f;
+                        if (toManage.GetComponent<TankBlockScaler>())
+                            scaleMulti = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
+                        float dynamicScaling = 1f - scaleMulti;
+                        toManage.trans.localScale = (Vector3.one * scaleMulti) + (Vector3.one * Mathf.Min(Mathf.Max(0, (fL - toManagePos).magnitude * distDiff * dynamicScaling), dynamicScaling));
+
+                        if (fL.x - 0.06f < item.x && item.x < fL.x + 0.06f && fL.y - 0.06f < item.y && item.y < fL.y + 0.06f && fL.z - 0.06f < item.z && item.z < fL.z + 0.06f)
+                        {
+                            AbsorbAnimating.RemoveAt(step);
+                            AbsorbAnimatingPos.RemoveAt(step);
+                            toManage.visible.SetInteractionTimeout(0);
+                            toManage.visible.ColliderSwapper.EnableCollision(true);
+                            ManLooseBlocks.inst.RequestDespawnBlock(toManage, DespawnReason.Host);
+                            step--;
+                            fireTimes--;
+                        }
+                    }
+                    else
+                    {
                         AbsorbAnimatingPos.RemoveAt(step);
-                        toManage.visible.SetInteractionTimeout(0);
-                        toManage.visible.ColliderSwapper.EnableCollision(true);
-                        ManLooseBlocks.inst.RequestDespawnBlock(toManage, DespawnReason.Host);
-                        step--;
-                        fireTimes--;
                     }
                 }
                 if (LaunchAnimating)
@@ -368,7 +394,10 @@ namespace RandomAdditions
                             TB.visible.ColliderSwapper.EnableCollision(true);
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                        DebugRandAddi.LogError("RandomAdditions: ModuleHangar WAS NOT ABLE TO FINALIZE DEPLOYMENT ANIMATION!");
+                    }
                     LaunchAnimating = null;
                 }
             }
@@ -407,17 +436,8 @@ namespace RandomAdditions
         }
 
 
-        private void LaunchTech(bool Disassemble = false)
+        private bool GetBestGarrisonedTech(out KeyValuePair<STechDetails, TechData> garrisonedTech)
         {
-            Vector3 ExitPosScene = HangarExit.position;
-            if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
-                return; // Cannot animate more than one or we will have clipping Techs in the end!!!
-            else if (ExitPosScene.y > HangarExit.position.y)
-                return; // Cannot fire into the ground
-            if (LaunchAnimating)
-                return; // Cannot animate more than one or we will have clipping Techs in the end!!!
-            KeyValuePair<STechDetails, TechData> garrisonedTech;
-
             bool canRepair = RepairStoredTechsRate > 0;
             bool canCharge = ChargeStoredTechsRate > 0;
             if (canRepair || canCharge)
@@ -446,32 +466,59 @@ namespace RandomAdditions
                         }
                     }
                 }
-                if (garrisonedTech.Value == null)
-                    return;
             }
             else
                 garrisonedTech = GarrisonTechs[0];
-
-
-            if (garrisonedTech.Value == null)
+            return garrisonedTech.Value != null;
+        }
+        private void LaunchTech(bool Disassemble = false)
+        {
+            if (ManNetwork.IsHost)
             {
-                DebugRandAddi.LogError("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash.");
-                GarrisonTechs.Remove(garrisonedTech);
-                return;
-            }
+                Vector3 ExitPosScene = HangarExit.position;
+                if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
+                    return; // Cannot fire into the ground 
+                else if (ExitPosScene.y > HangarExit.position.y)
+                    return; // Cannot fire into the ground
+                if (LaunchAnimating)
+                    return; // Cannot animate more than one or we will have clipping Techs in the end!!!
 
-            if (!Disassemble)
-            {
-                foreach (Visible Vis in ManVisible.inst.VisiblesTouchingRadius(HangarExit.position, MaxTechExtents, searchBit))
+                if (!GetBestGarrisonedTech(out KeyValuePair<STechDetails, TechData> garrisonedTech))
                 {
-                    if (Vis.ID != tank.visible.ID)
+                    DebugRandAddi.LogError("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash.");
+                    GarrisonTechs.Remove(garrisonedTech);
+                    return;
+                }
+
+                if (!Disassemble)
+                {
+                    foreach (Visible Vis in ManVisible.inst.VisiblesTouchingRadius(HangarExit.position, MaxTechExtents, searchBit))
                     {
-                        DebugRandAddi.Info("Hangar on " + tank.name + " ID: " + tank.visible.ID);
-                        DebugRandAddi.Info("Hangar blocked by " + Vis.name + " ID: " + Vis.ID);
-                        return;
+                        if (Vis.ID != tank.visible.ID)
+                        {
+                            DebugRandAddi.Info("Hangar on " + tank.name + " ID: " + tank.visible.ID);
+                            DebugRandAddi.Info("Hangar blocked by " + Vis.name + " ID: " + Vis.ID);
+                            return;
+                        }
                     }
                 }
+                try
+                {
+                    if (ManNetwork.IsNetworked)
+                        DoLaunchTechImmedeate(garrisonedTech, Disassemble);
+                    else
+                        DoLaunchTechWithAnimation(garrisonedTech, Disassemble);
+                }
+                catch (Exception e)
+                {
+                    LinkedTechs.Clear();
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash." + e);
+                }
+                GarrisonTechs.Remove(garrisonedTech);
             }
+        }
+        private void DoLaunchTechWithAnimation(KeyValuePair<STechDetails, TechData> garrisonedTech, bool Disassemble)
+        {
             ManSpawn.TankSpawnParams TSP = new ManSpawn.TankSpawnParams
             {
                 blockIDs = new int[0],
@@ -490,179 +537,211 @@ namespace RandomAdditions
                 rotation = HangarExit.rotation,
                 shouldExplodeDetachingBlocks = false,
             };
+            Tank newTech = ManSpawn.inst.SpawnTank(TSP, true);
+            if (!newTech)
+            {
+                if (Disassemble)
+                    DebugRandAddi.LogError("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
+                else
+                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Could not deploy Tech at this time.");
+                return;
+            }
             try
             {
-                Tank newTech = ManSpawn.inst.SpawnTank(TSP, true);
-                if (!newTech)
-                {
-                    if (Disassemble)
-                        DebugRandAddi.LogError("RandomAdditions: ModuleHangar - Could not deploy Tech on block alteration so tech was lost!");
-                    else
-                        DebugRandAddi.Log("RandomAdditions: ModuleHangar - Could not deploy Tech at this time.");
-                    return;
-                }
-                try
-                {
-                    if (newTech.Anchors)
-                        newTech.Anchors.UnanchorAll(false);
-                    LoadToTech(newTech, garrisonedTech.Key);
-                }
-                catch { }
-                if (Disassemble)
-                {
-                    newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false, false);
-                    newTech.blockman.Disintegrate();
-                    LinkedTechs.Remove(garrisonedTech.Key.ID);
-                    GarrisonTechs.Remove(garrisonedTech);
-                    return;
-                }
-                ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGCCab, block.centreOfMassWorld);
-                if (garrisonedTech.Key.ID != -1337)
-                {
-                    LinkedTechs.Remove(garrisonedTech.Key.ID);
-                    if (!isEjecting)
-                        LinkedTechs.Add(newTech.visible.ID);
-                }
-
-                // PREPARE TO ANIMATE!!!
-                newTech.enabled = false;
-                foreach (TankBlock TB in newTech.blockman.IterateBlocks())
-                {
-                    TB.visible.SetInteractionTimeout(4);
-                    TB.visible.ColliderSwapper.EnableCollision(false);
-                    HangarStoredVolume -= TB.filledCells.Length;
-                }
-                if (HangarStoredVolume < 0)
-                {
-                    DebugRandAddi.Log("RandomAdditions: ModuleHangar - Stored volume on Tech deployment left a negative value in HangarStoredVolume!  Assuming block changes and snapping to 0...");
-                    HangarStoredVolume = 0;
-                }
-                newTech.trans.localScale = Vector3.one / 4;
-                newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false);
-                LaunchAnimating = newTech;
-                LaunchAnimatingPos = HangarExit.localPosition;
+                if (newTech.Anchors)
+                    newTech.Anchors.UnanchorAll(false);
+                LoadToTech(newTech, garrisonedTech.Key);
             }
-            catch (Exception e)
+            catch { }
+            if (Disassemble)
             {
-                LinkedTechs.Clear();
-                DebugRandAddi.Log("RandomAdditions: ModuleHangar - SaveData corrupted!!!  Tech was erased to prevent crash." + e);
+                newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false, false);
+                newTech.blockman.Disintegrate();
+                LinkedTechs.Remove(garrisonedTech.Key.ID);
+                GarrisonTechs.Remove(garrisonedTech);
+                return;
             }
-            GarrisonTechs.Remove(garrisonedTech);
+            ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGCCab, block.centreOfMassWorld);
+            if (garrisonedTech.Key.ID != -1337)
+            {
+                LinkedTechs.Remove(garrisonedTech.Key.ID);
+                if (!isEjecting)
+                    LinkedTechs.Add(newTech.visible.ID);
+            }
+
+            // PREPARE TO ANIMATE!!!
+            newTech.enabled = false;
+            foreach (TankBlock TB in newTech.blockman.IterateBlocks())
+            {
+                TB.visible.SetInteractionTimeout(4);
+                TB.visible.ColliderSwapper.EnableCollision(false);
+                HangarStoredVolume -= TB.filledCells.Length;
+            }
+            if (HangarStoredVolume < 0)
+            {
+                DebugRandAddi.Log("RandomAdditions: ModuleHangar - Stored volume on Tech deployment left a negative value in HangarStoredVolume!  Assuming block changes and snapping to 0...");
+                HangarStoredVolume = 0;
+            }
+            newTech.trans.localScale = Vector3.one / 4;
+            newTech.visible.Teleport(HangarExit.position, HangarExit.rotation, false);
+            LaunchAnimating = newTech;
+            LaunchAnimatingPos = HangarExit.localPosition;
         }
+        private void DoLaunchTechImmedeate(KeyValuePair<STechDetails, TechData> garrisonedTech, bool Disassemble)
+        {
+            SpawnTechMessage STM = new SpawnTechMessage
+            {
+                m_CheatBypassInventory = false,
+                m_IsPopulation = false,
+                m_IsSpawnedByPlayer = false,
+                m_PlayerNetID = UnityEngine.Networking.NetworkInstanceId.Invalid,
+                m_PlayerWhoCalledSpawn = UnityEngine.Networking.NetworkInstanceId.Invalid,
+                m_TechData = garrisonedTech.Value,
+                m_Position = WorldPosition.FromScenePosition(HangarExit.position),
+                m_Rotation = HangarExit.rotation,
+                m_Team = tank.Team,
+            };
+            ManNetwork.inst.SendToServer(TTMsgType.SpawnTech, STM);
+
+        }
+
+
         private void StoreTech()
         {
             int error = 0;
             try
             {
-                if (TracBeam != null)
+                if (ManNetwork.IsHost)
                 {
-                    Vector3 ExitPosScene = HangarEntry.position;
-                    if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
+                    if (TracBeam != null)
                     {
-                        TracBeam.ReleaseTech();
-                        return; // Cannot drag tech into the ground
-                    }
-                    else if (ExitPosScene.y > HangarEntry.position.y)
-                    {
-                        TracBeam.ReleaseTech();
-                        return; // Cannot drag tech into the ground
-                    }
-                    else if (!TracBeam.IsInRange(TankWantsToDock))
-                    {
-                        TankWantsToDock = null;
-                        TracBeam.ReleaseTech();
-                        return;
-                    }
-                    else
-                    {
-                        TracBeam.SetTargetWorld(HangarEntry.position);
-                        TracBeam.GrabTech(TankWantsToDock, false);
-                    }
-                }
-                error++;
-                if (!CanDock(TankWantsToDock))
-                {
-                    TankWantsToDock = null;
-                    if (TracBeam)
-                        TracBeam.ReleaseTech();
-                    return;
-                }
-                error++;
-                if (TankWantsToDock == Singleton.playerTank)
-                {
-                    ManTechs.inst.RequestSetPlayerTank(tank);
-                }
-                error++;
-                if ((HangarEntry.position - TankWantsToDock.boundsCentreWorld).magnitude <= MaxDockingRadius)
-                {
-                    TechData TD = new TechData();
-                    error++;
-                    TD.SaveTech(TankWantsToDock, false, true);
-                    error++;
-                    if (TD != null)
-                    {
-                        long TechHP = 0;
-                        long TechHPMax = 0;
-                        long TechBatt = 0;
-                        long TechBattMax = 0;
-                        foreach (TankBlock TB in TankWantsToDock.blockman.IterateBlocks())
+                        Vector3 ExitPosScene = HangarEntry.position;
+                        if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
                         {
-                            var dmg = TB.GetComponent<Damageable>();
-                            if (dmg)
-                            {
-                                TechHPMax += Mathf.CeilToInt(dmg.MaxHealth);
-                                TechHP += Mathf.CeilToInt(dmg.Health);
-                            }
-                            HangarStoredVolume += TB.filledCells.Length;
+                            TracBeam.ReleaseTech();
+                            return; // Cannot drag tech into the ground
                         }
-                        foreach (ModuleEnergyStore MES in TankWantsToDock.blockman.IterateBlockComponents<ModuleEnergyStore>())
+                        else if (ExitPosScene.y > HangarEntry.position.y)
                         {
-                            if (MES.m_EnergyType == EnergyRegulator.EnergyType.Electric)
-                            {
-                                TechBattMax += Mathf.CeilToInt(MES.m_Capacity);
-                                TechBatt += Mathf.CeilToInt(MES.CurrentAmount);
-                            }
+                            TracBeam.ReleaseTech();
+                            return; // Cannot drag tech into the ground
                         }
-                        STechDetails TechD = new STechDetails {
-                            HealthDamage = TechHPMax - TechHP,
-                            EnergyCapacity = TechBattMax,
-                            EnergyCurrent = TechBatt,
-                            HangarExistTime = HangarExistTime,
-                        };
-
-                        if (LinkedTechs.Remove(TankWantsToDock.visible.ID))
+                        else if (!TracBeam.IsInRange(TankWantsToDock))
                         {
-                            TechD.ID = TankWantsToDock.visible.ID;
+                            TankWantsToDock = null;
+                            TracBeam.ReleaseTech();
+                            return;
                         }
                         else
-                            TechD.ID = -1337;
-                        try
                         {
-                            TechD.ExtSerial = TankWantsToDock.GetSerialization();
-                            TankWantsToDock.SetSerialization(null);
+                            TracBeam.SetTargetWorld(HangarEntry.position);
+                            TracBeam.GrabTech(TankWantsToDock, false);
                         }
-                        catch { }
-
-                        GarrisonTechs.Add(new KeyValuePair<STechDetails, TechData>(TechD, TD));
-
-                        foreach (TankBlock TB in TankWantsToDock.blockman.IterateBlocks())
-                        {
-                            TB.visible.SetInteractionTimeout(4);
-                            TB.visible.ColliderSwapper.EnableCollision(false);
-                            AbsorbAnimating.Add(TB);
-                            AbsorbAnimatingPos.Add(transform.InverseTransformPoint(TB.visible.centrePosition));
-                        }
+                    }
+                    error++;
+                    if (!CanDock(TankWantsToDock))
+                    {
+                        TankWantsToDock = null;
                         if (TracBeam)
                             TracBeam.ReleaseTech();
-                        TankWantsToDock.blockman.Disintegrate(false);
-                        TankWantsToDock = null;
-                        ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGCFabricator, block.centreOfMassWorld);
-                        if (HangarReturnRequestDelay <= 0)
-                            ReturnLinkedTechsToHangar();
+                        return;
+                    }
+                    error++;
+                    if (TankWantsToDock == Singleton.playerTank)
+                    {
+                        ManTechs.inst.RequestSetPlayerTank(tank);
+                    }
+                    error++;
+                    if ((HangarEntry.position - TankWantsToDock.boundsCentreWorld).magnitude <= MaxDockingRadius)
+                    {
+                        TechData TD = new TechData();
+                        error++;
+                        TD.SaveTech(TankWantsToDock, false, true);
+                        error++;
+                        if (TD != null)
+                        {
+                            long TechHP = 0;
+                            long TechHPMax = 0;
+                            long TechBatt = 0;
+                            long TechBattMax = 0;
+                            foreach (TankBlock TB in TankWantsToDock.blockman.IterateBlocks())
+                            {
+                                var dmg = TB.GetComponent<Damageable>();
+                                if (dmg)
+                                {
+                                    TechHPMax += Mathf.CeilToInt(dmg.MaxHealth);
+                                    TechHP += Mathf.CeilToInt(dmg.Health);
+                                }
+                                HangarStoredVolume += TB.filledCells.Length;
+                            }
+                            foreach (ModuleEnergyStore MES in TankWantsToDock.blockman.IterateBlockComponents<ModuleEnergyStore>())
+                            {
+                                if (MES.m_EnergyType == EnergyRegulator.EnergyType.Electric)
+                                {
+                                    TechBattMax += Mathf.CeilToInt(MES.m_Capacity);
+                                    TechBatt += Mathf.CeilToInt(MES.CurrentAmount);
+                                }
+                            }
+                            STechDetails TechD = new STechDetails
+                            {
+                                HealthDamage = TechHPMax - TechHP,
+                                EnergyCapacity = TechBattMax,
+                                EnergyCurrent = TechBatt,
+                                HangarExistTime = HangarExistTime,
+                            };
+
+                            if (LinkedTechs.Remove(TankWantsToDock.visible.ID))
+                            {
+                                TechD.ID = TankWantsToDock.visible.ID;
+                            }
+                            else
+                                TechD.ID = -1337;
+                            try
+                            {
+                                TechD.ExtSerial = TankWantsToDock.GetSerialization();
+                                TankWantsToDock.SetSerialization(null);
+                            }
+                            catch { }
+
+                            GarrisonTechs.Add(new KeyValuePair<STechDetails, TechData>(TechD, TD));
+
+                            if (ManNetwork.IsNetworked)
+                                DoStoreTechImmedeate(TankWantsToDock);
+                            else
+                                DoStoreTechWithAnimation(TankWantsToDock);
+
+                                TankWantsToDock = null;
+                            ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGCFabricator, block.centreOfMassWorld);
+                            if (HangarReturnRequestDelay <= 0)
+                                ReturnLinkedTechsToHangar();
+                        }
                     }
                 }
             }
             catch { DebugRandAddi.Log("Error level " + error); }
+        }
+        private void DoStoreTechWithAnimation(Tank tech)
+        {
+            foreach (TankBlock TB in TankWantsToDock.blockman.IterateBlocks())
+            {
+                TB.visible.SetInteractionTimeout(4);
+                TB.visible.ColliderSwapper.EnableCollision(false);
+                AbsorbAnimating.Add(TB);
+                AbsorbAnimatingPos.Add(transform.InverseTransformPoint(TB.visible.centrePosition));
+            }
+            if (TracBeam)
+                TracBeam.ReleaseTech();
+            TankWantsToDock.blockman.Disintegrate(false);
+        }
+        private void DoStoreTechImmedeate(Tank tech)
+        {
+            TrackedVisible TV = ManVisible.inst.GetTrackedVisibleByHostID(tech.netTech.HostID);
+            ManNetwork.inst.SendToServer(TTMsgType.UnspawnTech, new UnspawnTechMessage
+            {
+                m_CheatBypassInventory = true,
+                m_HostID = TV.HostID,
+            }
+            );
         }
 
 
@@ -767,21 +846,20 @@ namespace RandomAdditions
         /// Send a request to the docking station to dock
         /// </summary>
         /// <param name="tech">The tech to store</param>
-        public bool AssignToDock(Tank tech, bool ChangeTarget = true)
+        public bool RequestAssignToDock(Tank tech, bool ChangeTarget = true)
         {
-            if (TracBeam)
+            if (ManNetwork.IsNetworked)
             {
-                if (!LinkedTechs.Contains(tech.visible.ID))
-                    LinkedTechs.Add(tech.visible.ID);
-                if (RequestDocking(tech, ChangeTarget))
+                if (netHook.CanBroadcast() && tank?.netTech && tech?.netTech)
                 {
-                    return true;
+                    netHook.TryBroadcastToAll(new HangarCommand(tank.netTech.netId.Value, block.GetBlockIndex(), tech.netTech.netId.Value, ChangeTarget));
                 }
-                LinkedTechs.Remove(tech.visible.ID);
-                return false;
+                return true;
             }
             else
-                return RequestDocking(tech, ChangeTarget);
+            {
+                return DoAssignToDock(tech, ChangeTarget);
+            }
         }
         internal void RequestDockingPlayer(TankBlock block, int num)
         {
@@ -794,14 +872,49 @@ namespace RandomAdditions
             {
                 if (block == this.block)
                 {
-                    if (AssignToDock(Singleton.playerTank, true))
+                    if (RequestAssignToDock(Singleton.playerTank, true))
                         ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
                     else
                         ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
                 }
             }
         }
-        private bool RequestDocking(Tank tech, bool ChangeTarget = true)
+        private static void OnReceiveDockingRequest(MessageBase MB)
+        {
+            HangarCommand command = (HangarCommand)MB;
+            NetTech NT = ManNetTechs.inst.FindTech(command.TechID);
+            NetTech target = ManNetTechs.inst.FindTech(command.TechToDock);
+            if (NT && NT.tech && target && target.tech)
+            {
+                TankBlock TB = NT.tech.blockman.GetBlockWithIndex(command.BlockIndex);
+                if (TB)
+                {
+                    ModuleHangar MH = TB.GetComponent<ModuleHangar>();
+                    if (MH)
+                    {
+                        MH.DoAssignToDock(target.tech, command.ChangeTarget);
+                    }
+                }
+            }
+            // Else we cannot store it!
+        }
+        public bool DoAssignToDock(Tank tech, bool ChangeTarget = true)
+        {
+            if (TracBeam)
+            {
+                if (!LinkedTechs.Contains(tech.visible.ID))
+                    LinkedTechs.Add(tech.visible.ID);
+                if (TryDocking(tech, ChangeTarget))
+                {
+                    return true;
+                }
+                LinkedTechs.Remove(tech.visible.ID);
+                return false;
+            }
+            else
+                return TryDocking(tech, ChangeTarget);
+        }
+        private bool TryDocking(Tank tech, bool ChangeTarget = true)
         {
             if (CanDock(tech, ChangeTarget, true))
             {

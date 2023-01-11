@@ -71,7 +71,7 @@ namespace RandomAdditions
             }
             if (currentTank.IsNotNull())
             {
-                var randTank = RandomTank.Ensure(currentTank);
+                var randTank = RandomTank.Insure(currentTank);
                 if (randTank.DisplayTimeTank)
                 {
                     if (!isCurrentlyOpen)
@@ -92,7 +92,7 @@ namespace RandomAdditions
                 currentTime = Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay;
                 if (currentTank.IsNotNull())
                 {
-                    var randTank = RandomTank.Ensure(currentTank);
+                    var randTank = RandomTank.Insure(currentTank);
                     if (randTank.DisplayTimeTank)
                     {
                         if (!isCurrentlyOpen)

@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using TerraTechETCUtil;
 
 public class GravitateProjectile : RandomAdditions.GravitateProjectile { };
 namespace RandomAdditions

@@ -41,6 +41,7 @@ namespace RandomAdditions
         {
             if (Audio != null)
             {
+                
                 List<AudioProvider> APA = (List<AudioProvider>)addSFX.GetValue(Audio);
                 Dictionary<TechAudio.SFXType, AudioProvider> APA2 = (Dictionary<TechAudio.SFXType, AudioProvider>)addSFX2.GetValue(Audio);
                 if (APA != null)

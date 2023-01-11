@@ -583,6 +583,7 @@ namespace RandomAdditions
             toManage.SetGrabTimeout(2);//disable grabbing of it
             toManage.SetItemCollectionTimeout(2);//disable more
             toManage.SetInteractionTimeout(2);// disable ALL
+            toManage.damageable.SetInvulnerable(true, true);// No want these being recycled with no colliders
             toManage.ColliderSwapper.EnableCollision(false);
             if ((bool)toManage.pickup)
             {
@@ -632,6 +633,7 @@ namespace RandomAdditions
                 toManage.SetGrabTimeout(1);//disable grabbing of it
                 toManage.SetItemCollectionTimeout(1);//disable more
                 toManage.SetInteractionTimeout(1);// disable ALL
+                toManage.damageable.SetInvulnerable(true, true);// No want these being recycled with no colliders
                 ReleaseTargetNode.Add(stack);
                 ReleaseAnimating.Add(toManage);
                 ReleaseAnimatingPos.Add(transform.InverseTransformPoint(toManage.centrePosition));
@@ -824,34 +826,46 @@ namespace RandomAdditions
             for (int step = 0; step < fireTimes; step++)
             {
                 Visible toManage = AbsorbAnimating.ElementAt(step);
-                Vector3 toManagePos = AbsorbAnimatingPos.ElementAt(step);
-                Vector3 fL = siloSpawn.localPosition;
-                toManagePos = ((fL - toManagePos) / 8) + toManagePos;
-                AbsorbAnimatingPos[step] = toManagePos;
-                toManage.centrePosition = transform.TransformPoint(toManagePos);
-                Vector3 item = toManagePos;
-                if (UseShrinkAnim)
+                if (toManage.IsNotNull())
                 {
-                    if (toManage.GetComponent<TankBlockScaler>())
-                        toManage.trans.localScale = ((Vector3.one * 0.1f) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.9f, 0.9f))) * toManage.GetComponent<TankBlockScaler>().AimedDownscale;
+                    Vector3 toManagePos = AbsorbAnimatingPos.ElementAt(step);
+                    Vector3 fL = siloSpawn.localPosition;
+                    toManagePos = ((fL - toManagePos) / 8) + toManagePos;
+                    AbsorbAnimatingPos[step] = toManagePos;
+                    toManage.centrePosition = transform.TransformPoint(toManagePos);
+                    Vector3 item = toManagePos;
+                    if (UseShrinkAnim)
+                    {
+                        if (toManage.GetComponent<TankBlockScaler>())
+                            toManage.trans.localScale = ((Vector3.one * 0.1f) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.9f, 0.9f))) * toManage.GetComponent<TankBlockScaler>().AimedDownscale;
+                        else
+                            toManage.trans.localScale = (Vector3.one * 0.1f) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.9f, 0.9f));
+                        if (fL.x - 0.01f < item.x && item.x < fL.x + 0.01f && fL.y - 0.01f < item.y && item.y < fL.y + 0.01f && fL.z - 0.01f < item.z && item.z < fL.z + 0.01f)
+                        {
+                            AbsorbAnimating.RemoveAt(step);
+                            AbsorbAnimatingPos.RemoveAt(step);
+                            toManage.ColliderSwapper.EnableCollision(true);
+                            toManage.damageable.SetInvulnerable(false, false);
+                            toManage.RemoveFromGame();
+                            step--;
+                            fireTimes--;
+                        }
+                    }
                     else
-                        toManage.trans.localScale = (Vector3.one * 0.1f) + (Vector3.one * Mathf.Min((fL - toManagePos).magnitude * 0.9f, 0.9f));
-                    if (fL.x - 0.01f < item.x && item.x < fL.x + 0.01f && fL.y - 0.01f < item.y && item.y < fL.y + 0.01f && fL.z - 0.01f < item.z && item.z < fL.z + 0.01f)
                     {
                         AbsorbAnimating.RemoveAt(step);
                         AbsorbAnimatingPos.RemoveAt(step);
                         toManage.ColliderSwapper.EnableCollision(true);
+                        toManage.damageable.SetInvulnerable(false, false);
                         toManage.RemoveFromGame();
                         step--;
                         fireTimes--;
                     }
                 }
                 else
-                {
+                {   // Somehow it was destroyed!  Oh well let's hope it was not in an illegal state when it did...
                     AbsorbAnimating.RemoveAt(step);
                     AbsorbAnimatingPos.RemoveAt(step);
-                    toManage.ColliderSwapper.EnableCollision(true);
-                    toManage.RemoveFromGame();
                     step--;
                     fireTimes--;
                 }
@@ -861,11 +875,11 @@ namespace RandomAdditions
             for (int step = 0; step < fireTimes2; step++)
             {
                 Visible toManage = ReleaseAnimating.ElementAt(step);
-                float scaler = 1;
-                if (toManage.GetComponent<TankBlockScaler>())
-                    scaler = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
                 if (toManage.IsNotNull())
                 {
+                    float scaler = 1;
+                    if (toManage.GetComponent<TankBlockScaler>())
+                        scaler = toManage.GetComponent<TankBlockScaler>().AimedDownscale;
 
                     if (ImmedeateOutput)
                     {
@@ -875,6 +889,7 @@ namespace RandomAdditions
                             {
                                 toManage.trans.localScale = Vector3.one * scaler;
                                 toManage.ColliderSwapper.EnableCollision(true);
+                                toManage.damageable.SetInvulnerable(false, false);
                                 ReleaseAnimating.RemoveAt(step);
                                 step--;
                                 fireTimes2--;
@@ -887,6 +902,7 @@ namespace RandomAdditions
                         {
                             toManage.trans.localScale = Vector3.one * scaler;
                             toManage.ColliderSwapper.EnableCollision(true);
+                            toManage.damageable.SetInvulnerable(false, false);
                             ReleaseAnimating.RemoveAt(step);
                             step--;
                             fireTimes2--;
@@ -914,6 +930,7 @@ namespace RandomAdditions
                                     toManage.block.InitRigidbody();
                                 else
                                     toManage.pickup.InitRigidbody();
+                                toManage.damageable.SetInvulnerable(false, false);
                                 toManage.ColliderSwapper.EnableCollision(true);
                                 toManage.SetGrabTimeout(0);
                                 toManage.SetItemCollectionTimeout(0);
@@ -932,6 +949,7 @@ namespace RandomAdditions
                                 toManage.block.InitRigidbody();
                             else
                                 toManage.pickup.InitRigidbody();
+                            toManage.damageable.SetInvulnerable(false, false);
                             toManage.ColliderSwapper.EnableCollision(true);
                             toManage.SetGrabTimeout(0);
                             toManage.SetItemCollectionTimeout(0);
@@ -942,7 +960,7 @@ namespace RandomAdditions
                     }
                 }
                 else
-                {
+                {   // Somehow it was destroyed!  Oh well let's hope it was not in an illegal state when it did...
                     if (ImmedeateOutput)
                     {
                         ReleaseAnimating.RemoveAt(step);

@@ -243,22 +243,6 @@ namespace RandomAdditions
                 {
                     HoldVisible(step);
                 }
-                /*
-                int fireTimes = theHolder.NumStacks;
-                for (int step = 0; step < fireTimes; step++)
-                {
-                    ModuleItemHolder.Stack stak = theHolder.GetStack(step);
-                    int itemLevel = stak.items.Count;
-                    for (int stepLev = 0; stepLev < itemLevel; stepLev++)
-                    {
-                        Visible vis = stak.items.ElementAt(stepLev);
-
-                        Vector3 posSet = GetLocalizedPosition(vis.centrePosition, vis, stak, stepLev);
-                        Quaternion rotSet = Quaternion.AngleAxis(Time.deltaTime * 72f, theHolder.UpDir) * vis.trans.rotation;
-
-                        vis.trans.SetPositionAndRotationIfChanged(posSet, rotSet);
-                    }
-                }*/
             }
         }
     }

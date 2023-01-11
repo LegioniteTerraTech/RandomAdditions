@@ -45,6 +45,8 @@ namespace RandomAdditions
         public bool DeployInFlight = false;
         public float ShotCooldown = 1.0f;
 
+        public bool UseCasing = false;
+
         private WeaponRound SplitPayload;
         private BulletCasing SplitCasing;
 
@@ -101,11 +103,11 @@ namespace RandomAdditions
                 if (velocityHandler < 0.1)
                     velocityHandler = 0.1f;
                 Vector3 tankVeloCancel;
-                if (PB.shooter.rbody)
+                if (PB.shooter?.rbody)
                     tankVeloCancel = PB.shooter.rbody.velocity;
                 else
                     tankVeloCancel = Vector3.zero;
-                //tankVeloCancel += inst.rbody.velocity;
+
                 Vector3 fireVelo = direct.forward + ((PB.project.rbody.velocity - tankVeloCancel) / velocityHandler);
 
 

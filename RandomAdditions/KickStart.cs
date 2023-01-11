@@ -12,6 +12,7 @@ using ModHelper;
 #endif
 using Nuterra.NativeOptions;
 using RandomAdditions.RailSystem;
+using RandomAdditions.PhysicsTethers;
 
 
 namespace RandomAdditions
@@ -57,6 +58,7 @@ namespace RandomAdditions
         public static KeyCode HangarButton = KeyCode.H;
         public static int _hangarButton = (int)HangarButton;
 
+        // EVENTS
 
         public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
@@ -85,9 +87,12 @@ namespace RandomAdditions
             get
             {
                 float outValue = -75;
-#if !STEAM
-                try { outValue = GetWaterHeight(); } catch { }
-#endif
+                try
+                {
+                    if (isWaterModPresent)
+                        outValue = WaterMod.QPatch.WaterHeight + 0.25f;
+                }
+                catch { }
                 return outValue;
             }
         }
@@ -202,7 +207,7 @@ namespace RandomAdditions
             }
             try
             {
-                SafeSaves.ManSafeSaves.RegisterSaveSystem(Assembly.GetExecutingAssembly());
+                SafeSaves.ManSafeSaves.RegisterSaveSystem(Assembly.GetExecutingAssembly(), OnSaveManagers, OnLoadManagers);
             }
             catch (Exception e)
             {
@@ -229,6 +234,7 @@ namespace RandomAdditions
 
         public static void MainOfficialInit()
         {
+            //SafeSaves.DebugSafeSaves.LogAll = true;
             //Where the fun begins
 #if STEAM
             DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
@@ -395,6 +401,27 @@ namespace RandomAdditions
 #endif
         }
 #endif
+        public static void OnSaveManagers(bool Doing)
+        {
+            if (Doing)
+            {
+                ManTileLoader.OnWorldSave();
+                ManRails.PrepareForSaving();
+            }
+            else
+            {
+                ManRails.FinishedSaving();
+                ManTileLoader.OnWorldFinishSave();
+            }
+        }
+        public static void OnLoadManagers(bool Doing)
+        {
+            if (!Doing)
+            {
+                ManTileLoader.OnWorldLoad();
+                ManRails.FinishedLoading();
+            }
+        }
 
         public static bool LookForMod(string name)
         {
@@ -431,6 +458,37 @@ namespace RandomAdditions
                 {
                     DebugRandAddi.Log(item2.Key + " | " + item2.Value);
                 }
+            }
+        }
+
+        public static void LookIntoModContents(ModContainer MC)
+        {
+            try
+            {
+                DebugRandAddi.Log("----- CHECKING IN " + MC.ModID + " -----");
+                FieldInfo FI = typeof(ModContainer).GetField("m_AssetLookup", BindingFlags.NonPublic | BindingFlags.Instance);
+                Dictionary<string, ModdedAsset> content = (Dictionary<string, ModdedAsset>)FI.GetValue(MC);
+                if (content != null)
+                {
+                    DebugRandAddi.Log("----- GETTING ALL CONTENT KEYS -----");
+                    foreach (var item in content)
+                    {
+                        DebugRandAddi.Log(item.Key);
+                    }
+                }
+                if (MC.Contents.m_AdditionalAssets != null)
+                {
+                    DebugRandAddi.Log("----- GETTING ALL EXTRA CONTENT KEYS -----");
+                    foreach (var item in MC.Contents.m_AdditionalAssets)
+                    {
+                        DebugRandAddi.Log(item.name);
+                    }
+                }
+                DebugRandAddi.Log("-------- END --------");
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log(e);
             }
         }
 
@@ -665,6 +723,43 @@ namespace RandomAdditions
             }
             return closest;
         }
+
+        /// <summary>
+        /// Make sure the Mod AssetBundle is loaded first!
+        /// </summary>
+        public static Mesh GetMeshFromModAssetBundle(ModContainer MC, string nameNoExt)
+        {
+            Mesh mesh = null;
+            UnityEngine.Object obj = MC.Contents.m_AdditionalAssets.Find(delegate (UnityEngine.Object cand)
+            { return cand.name.Equals(nameNoExt); });
+            if (obj is Mesh mesh1)
+                mesh = mesh1;
+            else if (obj is GameObject objGO)
+                mesh = objGO.GetComponentInChildren<MeshFilter>().sharedMesh;
+            DebugRandAddi.Assert(mesh == null, nameNoExt + ".obj could not be found!");
+            return mesh;
+        }
+        /// <summary>
+        /// Make sure the Mod AssetBundle is loaded first!
+        /// </summary>
+        public static Texture2D GetTextureFromModAssetBundle(ModContainer MC, string nameNoExt)
+        {
+            Texture2D tex = null;
+            UnityEngine.Object obj = MC.Contents.m_AdditionalAssets.Find(delegate (UnityEngine.Object cand)
+            { return cand.name.Equals(nameNoExt); });
+            if (obj is Texture2D tex1)
+                tex = tex1;
+            else if (obj is GameObject objGO)
+                tex = (Texture2D)objGO.GetComponentInChildren<MeshRenderer>().sharedMaterial.mainTexture;
+            DebugRandAddi.Assert(tex == null, nameNoExt + ".png could not be found!");
+            return tex;
+        }
+        public static Material GetMaterialFromBaseGame(string MaterialName)
+        {
+            var res = (Material[])Resources.FindObjectsOfTypeAll(typeof(Material));
+            Material mat = res.ToList().Find(delegate (Material cand) { return cand.name.Equals(MaterialName); });
+            return mat;
+        }
     }
 
     public class KickStartOptions
@@ -830,27 +925,20 @@ namespace RandomAdditions
 
     internal static class ExtraExtensions
     {
-        /// <summary>
-        /// For block attachment updates when Tank is set to a valid reference
-        /// </summary>
-        public static void SubToBlockAttachConnected(this TankBlock TB, Action attachEvent, Action detachEvent)
-        {
-            if (attachEvent != null)
-                TB.AttachEvent.Subscribe(attachEvent);
-            if (detachEvent != null)
-                TB.DetachEvent.Subscribe(detachEvent);
-        }
-        /// <summary>
-        /// For block attachment updates when Tank is set to a valid reference
-        /// </summary>
-        public static void UnSubToBlockAttachConnected(this TankBlock TB, Action attachEvent, Action detachEvent)
-        {
-            if (attachEvent != null)
-                TB.AttachEvent.Unsubscribe(attachEvent);
-            if (detachEvent != null)
-                TB.DetachEvent.Unsubscribe(detachEvent);
-        }
 
+        public static int GetBlockIndex(this TankBlock block)
+        {
+            if (block == null || block.tank == null)
+                return -1;
+            int index = 0;
+            foreach (var item in block.tank.blockman.IterateBlocks())
+            {
+                if (item == block)
+                    return index;
+                index++;
+            }
+            return -1;
+        }
 
         public static T[] GetComponentsLowestFirst<T>(this GameObject GO) where T : MonoBehaviour
         {

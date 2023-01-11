@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using TerraTechETCUtil;
 
 public class KeepSeekingProjectile : RandomAdditions.KeepSeekingProjectile { };
 namespace RandomAdditions

@@ -61,10 +61,10 @@ namespace RandomAdditions
             if (wheelInst == null)
             {
                 wheelInst = (List<ManWheels.Wheel>)wheelList.GetValue(wheels);
+                /*
                 if (wheelInst != null)
-                {
                     DebugRandAddi.Log("wheels (present) " + wheelInst.Count);
-                }
+                */
             }
             else
             {
@@ -108,7 +108,7 @@ namespace RandomAdditions
                             }
                             else
                             {
-                                DebugRandAddi.Log("compression " + item.Key.Compression);
+                                //DebugRandAddi.Log("compression " + item.Key.Compression);
                                 if (item.Key.Compression <= WheelIdealCompression)
                                 {
                                     float StickyCompressionForce;

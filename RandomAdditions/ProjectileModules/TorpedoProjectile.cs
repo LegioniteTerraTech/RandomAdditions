@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using TerraTechETCUtil;
 
 public class TorpedoProjectile : RandomAdditions.TorpedoProjectile { };
 namespace RandomAdditions
@@ -27,6 +28,7 @@ namespace RandomAdditions
         private Vector3 addedThrustDirection;
         private Transform thisTrans;
         private bool runAnim = false;
+        private bool runParticles = false;
         private ParticleSystem ps;
         private Spinner spin;
         private AnimetteController anim;
@@ -54,12 +56,13 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " does not have any previous effectors or thrust transforms!  Defaulting to the center of the projectile!  \nAdd a \"_subProp\" to your projectile's JSON!");
                 }
                 spin = GetComponent<Spinner>();
-                anim = FetchAnimette("_subProp", AnimCondition.TorpedoProjectile);
+                anim = KickStart.FetchAnimette(transform, "_subProp", AnimCondition.TorpedoProjectile);
             }
         }
         public override void Fire(FireData fireData)
         {
             killThrust = false;
+            SetAnimation(true);
         }
         public void KillSubmergedThrust()
         {
@@ -69,52 +72,66 @@ namespace RandomAdditions
         {
             if (KickStart.isWaterModPresent)// don't fire if water mod is not present
             {
-                if (KickStart.WaterHeight > gameObject.transform.position.y)
+                if (gameObject.transform.position.y <= KickStart.WaterHeight)
                 {
                     isSubmerged = true;
                     if (ThrustUntilProjectileDeath || !killThrust)
                     {
                         //DebugRandAddi.Log("RandomAdditions: Projectile " + gameObject.name + " is thrusting submerged!");
                         PB.rbody.AddForceAtPosition(thisTrans.TransformDirection(addedThrustDirection.normalized * SubmergedThrust), thisTrans.TransformPoint(addedThrustPosition));
-                        runAnim = false;
+                        SetParticles(true);
                     }
-                    else if (ps && ps.isPlaying)
-                        ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                    else
+                    {
+                        SetAnimation(false);
+                        SetParticles(false);
+                    }
                 }
                 else
                 {
                     isSubmerged = false;
-                    if (ps && ps.isPlaying)
-                        ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                    SetParticles(false);
                 }
             }
         }
 
-        public override void SlowUpdate()
+        private void SetAnimation(bool run)
         {
-            if (runAnim)
+            if (run != runAnim)
             {
-                if (ps)
+                runAnim = run;
+                if (run)
                 {
-                    if (!ps.isPlaying)
+                    if (spin)
+                        spin.SetAutoSpin(true);
+                    if (anim)
+                        anim.Run();
+                }
+                else
+                {
+                    if (spin)
+                        spin.SetAutoSpin(false);
+                    if (anim)
+                        anim.Stop();
+                }
+            }
+        }
+
+        private void SetParticles(bool run)
+        {
+            if (run != runParticles)
+            {
+                runParticles = run;
+                if (run)
+                {
+                    if (ps && !ps.isPlaying)
                         ps.Play(false);
                 }
-                if (spin)
-                    spin.SetAutoSpin(true);
-                if (anim)
-                    anim.Run();
-            }
-            else
-            {
-                if (ps)
+                else
                 {
-                    if (ps.isPlaying)
+                    if (ps && ps.isPlaying)
                         ps.Stop(false, ParticleSystemStopBehavior.StopEmitting);
                 }
-                if (spin)
-                    spin.SetAutoSpin(false);
-                if (anim)
-                    anim.Stop();
             }
         }
     }

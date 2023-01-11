@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Reflection;
+using TerraTechETCUtil;
 
 public class LanceProjectile : RandomAdditions.LanceProjectile { };
 namespace RandomAdditions

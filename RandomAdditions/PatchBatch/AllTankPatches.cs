@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using System.Reflection;
+using RandomAdditions.RailSystem;
 
 namespace RandomAdditions
 {
@@ -37,6 +38,23 @@ namespace RandomAdditions
                 if (TD)
                 {
                     __result = TD.GetPosDistract(__result);
+                }
+            }
+        }
+        internal static class TechAudioPatches
+        {
+            internal static Type target = typeof(TechAudio);
+            /// <summary>
+            /// PatchTankToAllowLocoEngine
+            /// </summary>
+            private static void GetWheelParams_Postfix(TechAudio __instance, ref TechAudio.UpdateAudioCache cache)
+            {
+                var train = __instance.GetComponent<TankLocomotive>();
+                if (train && train.BogieMaxDriveForce > 0)
+                {
+                    cache.wheelsTotalNum += train.BogieCount;
+                    cache.wheelsGroundedNum += train.EngineBlockCount;
+                    cache.wheelsGroundedPerType[(int)TechAudio.WheelTypes.MetalWheel] += train.ActiveBogieCount;
                 }
             }
         }

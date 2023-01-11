@@ -20,7 +20,13 @@ namespace RandomAdditions
         private bool isLoading = false;
         public int MaxTileLoadingDiameter = 1; // Only supports up to diamater of 5 for performance's sake
 
-        public static RandomTank Ensure(Tank tank)
+        // Water floating
+        private bool buoysDirty = false;
+        private readonly List<ModuleBuoy> buoys = new List<ModuleBuoy>();
+        private readonly List<Vector3> localCells = new List<Vector3>();
+        private float lowestPoint = 0;
+
+        public static RandomTank Insure(Tank tank)
         {
             var rt = tank.GetComponent<RandomTank>();
             if (!rt)
@@ -35,6 +41,7 @@ namespace RandomAdditions
             tank = gameObject.GetComponent<Tank>();
             GlobalClock.tanks.Add(this);
             tank.AnchorEvent.Subscribe(OnAnchor);
+            enabled = true;
         }
 
         public void OnAnchor(ModuleAnchor anchor, bool anchored, bool force)
@@ -47,14 +54,14 @@ namespace RandomAdditions
             DisplayTimeTank = false;
         }
 
-        public static void HandleAddition(Tank tank, ModuleTileLoader loader)
+        public static void AddTileLoader(Tank tank, ModuleTileLoader loader)
         {
             if (tank.IsNull())
             {
                 DebugRandAddi.Log("RandomAdditions: RandomTank(HandleAddition) - TANK IS NULL");
                 return;
             }
-            var dis = Ensure(tank);
+            var dis = Insure(tank);
             if (!dis.loaders.Contains(loader))
             {
                 dis.loaders.Add(loader);
@@ -63,7 +70,7 @@ namespace RandomAdditions
             else
                 DebugRandAddi.Log("RandomAdditions: RandomTank - ModuleTileLoader of " + tank.name + " was already added to " + tank.name + " but an add request was given?!?");
         }
-        public static void HandleRemoval(Tank tank, ModuleTileLoader loader)
+        public static void RemoveTileLoader(Tank tank, ModuleTileLoader loader)
         {
             if (tank.IsNull())
             {
@@ -71,12 +78,87 @@ namespace RandomAdditions
                 return;
             }
 
-            var dis = Ensure(tank);
+            var dis = Insure(tank);
 
             if (dis.loaders.Remove(loader))
                 dis.ReevaluateLoadingDiameter();
         }
 
+
+
+        public static void AddBuoy(Tank tech, ModuleBuoy buoy)
+        {
+            RandomTank RT = Insure(tech);
+            if (RT.buoys.Contains(buoy))
+                DebugRandAddi.Assert("Buoy was ALREADY present in RandomTank");
+            else
+                RT.buoys.Add(buoy);
+            RT.buoysDirty = true;
+        }
+        public static void RemoveBuoy(Tank tech, ModuleBuoy buoy)
+        {
+            RandomTank RT = Insure(tech);
+            if (!RT.buoys.Remove(buoy))
+                DebugRandAddi.Assert("Buoy was not present in RandomTank and was not removed");
+            RT.buoysDirty = true;
+        }
+
+        public void ReCalcBuoyencyThresholds()
+        {
+            localCells.Clear();
+            float furthest = 0;
+            foreach (var item in buoys)
+            {
+                item.GetCellsLocal(localCells);
+                float dist = (item.lowestPossiblePoint * item.lowestPossiblePoint) + item.transform.localPosition.sqrMagnitude;
+                if (dist > furthest)
+                {
+                    furthest = dist;
+                }
+            }
+            lowestPoint = Mathf.Sqrt(furthest) + 0.866f;
+            //DebugRandAddi.Log("Recalced BuoyencyThresholds");
+        }
+
+        
+        public void FixedUpdate()
+        {
+            if (buoysDirty)
+            {
+                ReCalcBuoyencyThresholds();
+                buoysDirty = false;
+            }
+            if (buoys.Count > 0)
+                ApplyFloatForces();
+        }
+
+        private List<ModuleBuoy> floatingBuoys = new List<ModuleBuoy>();
+        public void ApplyFloatForces()
+        {
+            if (KickStart.isWaterModPresent && tank.rbody)
+            {
+                float upwardForceStrength = 0;
+                Vector3 forceCenter = Vector3.zero;
+
+                floatingBuoys.Clear();
+                foreach (var item in buoys)
+                {
+                    if (item.ShouldFloat())
+                        floatingBuoys.Add(item);
+                }
+                foreach (var item in floatingBuoys)
+                {
+                    item.GetFloatForceWorld(out Vector3 posWorld, out float addForce);
+                    forceCenter += posWorld;
+                    upwardForceStrength += addForce;
+                }
+                if (floatingBuoys.Count > 0)
+                    tank.rbody.AddForceAtPosition(Vector3.up * upwardForceStrength, forceCenter / floatingBuoys.Count, ForceMode.Force);
+            }
+        }
+
+
+        // TileLoaders
         public void ReevaluateLoadingDiameter()
         {
             MaxTileLoadingDiameter = 0;
@@ -111,13 +193,17 @@ namespace RandomAdditions
             }
         }
 
+        public IntVector2 GetCenterTile()
+        { 
+            return WorldPosition.FromScenePosition(tank.visible.centrePosition).TileCoord;
+        }
         public List<IntVector2> GetActiveTiles()
         {
             if (!tank || !ManSpawn.IsPlayerTeam(tank.Team))
                 return new List<IntVector2>();
 
             List<IntVector2> tiles;
-            IntVector2 centerTile = WorldPosition.FromScenePosition(tank.visible.centrePosition).TileCoord;
+            IntVector2 centerTile = GetCenterTile();
             int radCentered;
             Vector2 posTechCentre;
             Vector2 posTileCentre;

@@ -18,7 +18,7 @@ namespace RandomAdditions
             /// </summary>
             private static bool UpdateFloat_Prefix(ModuleItemHolderBeam __instance, ref Visible item)
             {
-                var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
+                var ModuleCheck = __instance.gameObject?.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
                 {
                     if (item.rbody != null)
@@ -74,7 +74,7 @@ namespace RandomAdditions
             /// </summary>
             private static bool OnTechAnchored_Prefix(ModuleItemHolderBeam __instance)
             {
-                var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
+                var ModuleCheck = __instance.gameObject?.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
                 {
                     //DebugRandAddi.Log("RandomAdditions: Overwrote trac beams to remain on");
@@ -89,7 +89,7 @@ namespace RandomAdditions
             /// </summary>
             private static bool SetPositionsInStack_Prefix(ModuleItemHolderBeam __instance)
             {
-                var ModuleCheck = __instance.gameObject.GetComponent<ModuleItemFixedHolderBeam>();
+                var ModuleCheck = __instance.gameObject?.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
                 {
                     //__instance.
@@ -442,6 +442,25 @@ namespace RandomAdditions
                             }
                             ModuleCheck.WasSearched = true;
                         }
+                    }
+                }
+            }
+
+        }
+
+        internal static class ModuleTechControllerPatches
+        {
+            internal static Type target = typeof(ModuleTechController);
+
+            [HarmonyPriority(-9999)]
+            private static void ExecuteControl_Postfix(ModuleTechController __instance, ref bool __result)
+            {
+                var TankCheck = __instance.block.tank.GetComponent<RailSystem.TankLocomotive>();
+                if (TankCheck != null)
+                {
+                    if (TankCheck.TakeControl())
+                    {
+                        __result = true;
                     }
                 }
             }

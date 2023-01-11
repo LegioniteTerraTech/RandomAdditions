@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class ModulePartWeaponGun : RandomAdditions.ModulePartWeaponGun { }
 public class DynamicProjectile : RandomAdditions.DynamicProjectile { }

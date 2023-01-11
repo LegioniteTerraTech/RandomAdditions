@@ -147,7 +147,7 @@ namespace RandomAdditions
             {   // Load a little HUD window with the time
                 if (tank.IsNotNull())
                 {
-                    RandomTank.Ensure(tank).DisplayTimeTank = true;
+                    RandomTank.Insure(tank).DisplayTimeTank = true;
                 }
             }
             /*

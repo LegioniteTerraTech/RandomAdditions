@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
@@ -29,7 +30,7 @@ namespace RandomAdditions
 
         public override void Pool()
         {
-            anim = FetchAnimette("_ImpactAnim", AnimCondition.ProxProjectile);
+            anim = KickStart.FetchAnimette(transform, "_ImpactAnim", AnimCondition.ProxProjectile);
             ProximityRangeSq = ProximityRange * ProximityRange;
         }
         public override void Fire(FireData fireData)
@@ -72,16 +73,24 @@ namespace RandomAdditions
 
         public void UpdateProximity()
         {
-            Target = PB.shooter.Weapons.GetManualTarget();
-            if (!Target)
+            if (PB.shooter)
             {
-                Target = PB.shooter.Vision.GetFirstVisibleTechIsEnemy(PB.shooter.Team);
-            }
+                Target = PB.shooter.Weapons.GetManualTarget();
+                if (!Target)
+                {
+                    Target = PB.shooter.Vision.GetFirstVisibleTechIsEnemy(PB.shooter.Team);
+                }
 
-            if (Target && Target.isActive && 
-                (Target.centrePosition - PB.transform.position).sqrMagnitude <= ProximityRangeSq)
+                if (Target && Target.isActive &&
+                    (Target.centrePosition - PB.transform.position).sqrMagnitude <= ProximityRangeSq)
+                {
+                    TargetInRange();
+                }
+            }
+            else
             {
-                TargetInRange();
+                PB.ExplodeNoRecycle();
+                Recycle();
             }
         }
         public void TargetInRange()

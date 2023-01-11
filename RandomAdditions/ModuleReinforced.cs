@@ -8,6 +8,9 @@ namespace RandomAdditions
     {
         /* Throw this within your JSONBLOCK
         "RandomAdditions.ModuleReinforced":{ // Add a special resistance to your block
+            "CustomDamagableName": "Blast Plating", // The name of the damagable to display in various info in-game
+            "CustomDamagableIcon": 0,          // DamageableType icon to use
+
             // The way damage is handled:
             // Normal applied damage value -> AoE Damage Multiplier -> Custom Damage Multiplier
             "DoDamagableSwitch": false, // Should we switch the DamageableType of this block?
@@ -30,6 +33,8 @@ namespace RandomAdditions
             //--------------------------------
         },
         */
+        public string CustomDamagableName = null;
+        public ManDamage.DamageableType CustomDamagableIcon = ManDamage.DamageableType.Standard;
 
         public bool DoDamagableSwitch = false;
         public ManDamage.DamageableType TypeToSwitch = ManDamage.DamageableType.Standard;
@@ -82,13 +87,13 @@ namespace RandomAdditions
                     case ManDamage.DamageType.Standard:
                         newDMG.ApplyDamageMultiplier(Standard);
                         break;
-                    case ManDamage.DamageType.Bullet:
+                    case (ManDamage.DamageType)1:
                         newDMG.ApplyDamageMultiplier(Bullet);
                         break;
                     case ManDamage.DamageType.Energy:
                         newDMG.ApplyDamageMultiplier(Energy);
                         break;
-                    case ManDamage.DamageType.Explosive:
+                    case (ManDamage.DamageType)3:// Blast
                         newDMG.ApplyDamageMultiplier(Explosive);
                         break;
                     case ManDamage.DamageType.Impact:
