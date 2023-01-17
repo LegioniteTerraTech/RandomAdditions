@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
-using RandomAdditions.RailSystem;
+using UnityEngine.EventSystems;
 
 namespace RandomAdditions
 {
@@ -16,43 +16,22 @@ namespace RandomAdditions
     {
         public const int layerPrioritySpacing = 1000;
 
+        public static Event<int, UIMiniMapElement> MiniMapElementSelectEvent = new Event<int, UIMiniMapElement>();
+
         private static MinimapExtended instWorld;
         private static MinimapExtended instMini;
 
         private UIMiniMapDisplay targInst;
+        public bool WorldMap { get; private set; } = false;
         private Dictionary<int, UIMiniMapLayer> LayersIndexed = new Dictionary<int, UIMiniMapLayer>();
         private HashSet<int> LayersIndexedAdded = new HashSet<int>();
+
 
         private static Dictionary<int, Type> LayersIndexedCached = new Dictionary<int, Type>();
 
         private static FieldInfo layers = typeof(UIMiniMapDisplay).GetField("m_ContentLayers", BindingFlags.NonPublic | BindingFlags.Instance);
-        public static void Init()
+        public static void DeInitAll()
         {
-            return;
-            var targInst = ManHUD.inst.GetHudElement(ManHUD.HUDElementType.WorldMap)?.GetComponent<UIMiniMapDisplay>();
-            if (targInst != null)
-            {
-                instWorld = targInst.gameObject.AddComponent<MinimapExtended>();
-                instWorld.InitInst(targInst);
-                DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + instWorld.gameObject.name);
-            }
-            else
-                DebugRandAddi.Assert("MinimapExtended COULD NOT INITATE as it could not find UIMiniMapDisplay(World)!");
-
-            targInst = ManHUD.inst.GetHudElement(ManHUD.HUDElementType.Radar)?.GetComponent<UIMiniMapDisplay>();
-            if (targInst != null)
-            {
-                instMini = targInst.gameObject.AddComponent<MinimapExtended>();
-                instMini.InitInst(targInst);
-                DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + instMini.gameObject.name);
-            }
-            else
-                DebugRandAddi.Assert("MinimapExtended COULD NOT INITATE as it could not find UIMiniMapDisplay(Mini)!");
-        }
-        private UIMiniMapLayerTrain trainInst;
-        public static void DeInit()
-        {
-            return;
             if (instWorld)
             {
                 instWorld.DeInitInst();
@@ -77,33 +56,47 @@ namespace RandomAdditions
             }
             int PriorityStepper = 0;
 
-            foreach (var item in (UIMiniMapLayer[])layers.GetValue(targInst))
+            foreach (var item in GetMapLayers())
             {
                 LayersIndexed.Add(PriorityStepper, item);
                 PriorityStepper += layerPrioritySpacing;
-                /*
-                if (item is UIMiniMapLayerTech techs)
-                {
-                    trainInst = techs.gameObject.AddComponent<UIMiniMapLayerTrain>();
-                }*/
             }
-            /*
-            if (trainInst != null)
+            if (target.gameObject.name.GetHashCode() == "MapDisplay".GetHashCode())
             {
-                AddMinimapLayer_Internal(trainInst, 601);
-                trainInst.InsureInit(targInst, trainInst.GetComponent<RectTransform>());
-            }*/
-
-            enabled = false;
+                WorldMap = true;
+                target.PointerDownEvent.Subscribe(OnClick);
+                instWorld = this;
+                DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + target.gameObject.name + " in mode World");
+            }
+            else
+            {
+                WorldMap = false;
+                instMini = this;
+                DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + target.gameObject.name + " in mode Mini");
+            }
+            UpdateAll();
         }
         private void DeInitInst()
         {
-            trainInst.PurgeAllIcons();
-            RemoveMinimapLayer_Internal(trainInst, 601);
-            Destroy(trainInst);
+            if (WorldMap)
+                targInst.PointerDownEvent.Unsubscribe(OnClick);
             targInst = null;
             LayersIndexed.Clear();
             Destroy(this);
+        }
+        public void OnClick(PointerEventData PED)
+        {
+            if (gameObject.activeInHierarchy && PED.hovered.Count > 0)
+            {
+                var list = PED.hovered.FindAll(x => x != null && x.GetComponent<UIMiniMapElement>()).Select(x => x.GetComponent<UIMiniMapElement>());
+                if (list.Any())
+                    MiniMapElementSelectEvent.Send((int)PED.button, list.First());
+            }
+        }
+
+        public UIMiniMapLayer[] GetMapLayers()
+        {
+            return (UIMiniMapLayer[])layers.GetValue(targInst);
         }
 
         public static bool AddMinimapLayer(Type layerToAdd, int priority)
@@ -144,11 +137,11 @@ namespace RandomAdditions
             }
         }
 
-        public bool AddMinimapLayer_Internal(Type layerToAdd, int priority)
+        private bool AddMinimapLayer_Internal(Type layerToAdd, int priority)
         {
-            var layer =(UIMiniMapLayer)gameObject.AddComponent(layerToAdd);
+            var layer = (UIMiniMapLayer)gameObject.AddComponent(layerToAdd);
             layer.Init(targInst);
-            DebugRandAddi.Log("MinimapExtended: Added minimap layer " + layerToAdd.GetType().FullName + " to priority level " + priority +
+            DebugRandAddi.Log("MinimapExtended: Added minimap layer " + layerToAdd.FullName + " to priority level " + priority +
                 " successfully.");
             LayersIndexed.Add(priority, layer);
             LayersIndexedAdded.Add(priority);
@@ -161,6 +154,7 @@ namespace RandomAdditions
             {
                 RemoveMinimapLayer_Internal(item);
             }
+            UpdateThis();
         }
         private void RemoveMinimapLayer_Internal(int priority)
         {
@@ -170,7 +164,6 @@ namespace RandomAdditions
                 LayersIndexedAdded.Remove(priority);
                 Destroy(other);
                 LayersIndexed.Remove(priority);
-                UpdateThis();
             }
         }
         public void RemoveMinimapLayer_Internal(UIMiniMapLayer layerToRemove, int priority)

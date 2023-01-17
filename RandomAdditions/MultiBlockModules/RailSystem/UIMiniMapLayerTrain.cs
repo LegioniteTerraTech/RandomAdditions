@@ -8,20 +8,41 @@ namespace RandomAdditions.RailSystem
 {
     public class UIMiniMapLayerTrain : UIMiniMapLayer
 	{
+		private static List<UIMiniMapLayerTrain> layersManaged = new List<UIMiniMapLayerTrain>();
+
 		private Dictionary<RailType, IconPool> iconCache = new Dictionary<RailType, IconPool>();
+		private MinimapExtended ext;
 		private bool WorldMap = false;
+		private bool init = false;
 
 
-		public void InsureInit(UIMiniMapDisplay disp, RectTransform rectT)
+		private void InsureInit()
 		{
-			Init(disp);
-			m_RectTrans = rectT;
-			if (disp.gameObject.name.GetHashCode() == "MapDisplay".GetHashCode())
-				WorldMap = true;
+			if (!init)
+			{
+				init = true;
+				layersManaged.Add(this);
+				ext = m_MapDisplay.GetComponent<MinimapExtended>();
+				if (ext.WorldMap)
+					WorldMap = true;
+				foreach (var item in ext.GetMapLayers())
+				{
+					if (item is UIMiniMapLayerTech t)
+						m_RectTrans = t.GetComponent<RectTransform>();
+				}
+			}
+		}
+		public static void RemoveAllPre()
+		{
+            foreach (var item in new List<UIMiniMapLayerTrain>(layersManaged))
+            {
+				item.PurgeAllIcons();
+            }
 		}
 
 		public override void UpdateLayer()
 		{
+			InsureInit();
 			if (Singleton.playerTank)
 				UpdateTrainRoutes();
 		}
@@ -247,7 +268,9 @@ namespace RandomAdditions.RailSystem
 			{
                 while(elementsUnused.Count > 0)
                 {
-					elementsUnused.Pop().Recycle(false);
+					var ele = elementsUnused.Pop();
+					ele.RectTrans.SetParent(null);
+					ele.Recycle(false);
                 }
 			}
 			internal void DestroyAll()

@@ -290,8 +290,6 @@ namespace RandomAdditions
             ModHelpers.Initiate();
             GUIClock.Initiate();
             ManTileLoader.Initiate();
-            //ManRails.Init();
-            MinimapExtended.Init();
         }
 
 #if STEAM
@@ -326,7 +324,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
             }
-            MinimapExtended.DeInit();
+            MinimapExtended.DeInitAll();
             ManRails.DeInit();
             ManTileLoader.DeInit();
             GUIClock.DeInit();

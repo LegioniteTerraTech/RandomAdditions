@@ -141,14 +141,7 @@ namespace RandomAdditions.RailSystem
                 return;
             DebugRandAddi.Assert("RandomAdditions: InitExperimental - ManRails \n " +
                 "A block needed to use ManRails (Tony Rails) and it has been loaded into the memory as a result.");
-            Init();
-            LateInit();
-            inst.enabled = true;
-        }
-        public static void Init()
-        {
-            if (inst)
-                return;
+
             inst = Instantiate(new GameObject("ManRails"), null).AddComponent<ManRails>();
             ManWorldTreadmill.inst.AddListener(inst);
             AllActiveStations = new List<ModuleRailPoint>();
@@ -161,8 +154,11 @@ namespace RandomAdditions.RailSystem
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(SemiLastFixedUpdate), -99);
             MassPatcherRA.harmonyInst.MassPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
             MinimapExtended.AddMinimapLayer(typeof(UIMiniMapLayerTrain), 601);
+            MinimapExtended.MiniMapElementSelectEvent.Subscribe(inst.OnWorldMapElementSelect);
             DebugRandAddi.Log("RandomAdditions: Init ManRails");
-            inst.enabled = false;
+
+            LateInit();
+            inst.enabled = true;
         }
         public static void LateInit()
         {
@@ -194,6 +190,7 @@ namespace RandomAdditions.RailSystem
             if (!inst)
                 return;
             DebugRandAddi.Log("RandomAdditions: De-Init ManRails");
+            UIMiniMapLayerTrain.RemoveAllPre();
             MinimapExtended.RemoveMinimapLayer(typeof(UIMiniMapLayerTrain), 601);
             MassPatcherRA.harmonyInst.MassUnPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
             inst.StopAllCoroutines();
@@ -336,6 +333,37 @@ namespace RandomAdditions.RailSystem
             foreach (var item in ManagedTracks)
             {
                 item.OnWorldMovePost();
+            }
+        }
+        public void OnWorldMapElementSelect(int button, UIMiniMapElement element)
+        {
+            if (button == 1 && Singleton.playerTank && element.TrackedVis != null && element.TrackedVis.TeamID == Singleton.playerTank.Team)
+            {
+                var techMap = element.transform.parent.GetComponent<UIMiniMapLayerTech>();
+                if (techMap)
+                {
+                    if (SelectedNode != null && GetAllSplits().Contains(SelectedNode))
+                    {
+                        Visible targVis = element.TrackedVis.visible;
+                        if (targVis?.tank)
+                        {
+                            //DebugRandAddi.Log("OnClick 3");
+                            var point = targVis.GetComponent<ModuleRailPoint>();
+                            if (point && hoveringOver == point && point.Node != SelectedNode && point.CanReach(SelectedNode))
+                            {
+                                if (IsTurnPossibleTwoSide(SelectedNode, point.Node))
+                                {
+                                    point.block.visible.EnableOutlineGlow(true, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                                    point.ConnectToOther(SelectedNode, true);
+                                    DebugRandAddi.Log("OnWorldMapElementSelect - Connect");
+                                    ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimGSODeliCannonMob);
+                                }
+                                else
+                                    ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.StuntFailed);
+                            }
+                        }
+                    }
+                }
             }
         }
 

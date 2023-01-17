@@ -334,7 +334,6 @@ namespace RandomAdditions
                         return;
                     var instWorld = __instance.gameObject.AddComponent<MinimapExtended>();
                     instWorld.InitInst(__instance);
-                    DebugRandAddi.Assert("MinimapExtended Init MinimapExtended for " + __instance.gameObject.name);
                 }
             }
 
