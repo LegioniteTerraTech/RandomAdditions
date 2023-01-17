@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using UnityEngine;
-using SafeSaves;
+﻿using SafeSaves;
 using RandomAdditions.RailSystem;
 
 public class ModuleRailJunction : RandomAdditions.ModuleRailJunction { };

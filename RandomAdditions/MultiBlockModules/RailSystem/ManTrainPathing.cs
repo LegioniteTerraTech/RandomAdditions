@@ -162,7 +162,7 @@ namespace RandomAdditions.RailSystem
             private readonly HashSet<TankLocomotive> FinishedSearches;
             private List<KeyValuePair<TankLocomotive, TrainPathRequest>> FinishedRequests;
 
-            public TankLocomotive train;
+            public TankLocomotive train; 
             private TrainPathRequest trainPather;
             private int attempts;
 

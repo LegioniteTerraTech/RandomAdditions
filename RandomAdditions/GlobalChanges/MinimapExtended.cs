@@ -21,6 +21,9 @@ namespace RandomAdditions
 
         private UIMiniMapDisplay targInst;
         private Dictionary<int, UIMiniMapLayer> LayersIndexed = new Dictionary<int, UIMiniMapLayer>();
+        private HashSet<int> LayersIndexedAdded = new HashSet<int>();
+
+        private static Dictionary<int, Type> LayersIndexedCached = new Dictionary<int, Type>();
 
         private static FieldInfo layers = typeof(UIMiniMapDisplay).GetField("m_ContentLayers", BindingFlags.NonPublic | BindingFlags.Instance);
         public static void Init()
@@ -73,54 +76,111 @@ namespace RandomAdditions
                 return;
             }
             int PriorityStepper = 0;
+
             foreach (var item in (UIMiniMapLayer[])layers.GetValue(targInst))
             {
                 LayersIndexed.Add(PriorityStepper, item);
                 PriorityStepper += layerPrioritySpacing;
+                /*
                 if (item is UIMiniMapLayerTech techs)
                 {
                     trainInst = techs.gameObject.AddComponent<UIMiniMapLayerTrain>();
-                }
+                }*/
             }
+            /*
             if (trainInst != null)
             {
-                AddMinimapLayer(trainInst, 601);
+                AddMinimapLayer_Internal(trainInst, 601);
                 trainInst.InsureInit(targInst, trainInst.GetComponent<RectTransform>());
-            }
+            }*/
 
             enabled = false;
         }
         private void DeInitInst()
         {
             trainInst.PurgeAllIcons();
-            RemoveMinimapLayer(trainInst, 601);
+            RemoveMinimapLayer_Internal(trainInst, 601);
             Destroy(trainInst);
             targInst = null;
             LayersIndexed.Clear();
             Destroy(this);
         }
 
-        public bool AddMinimapLayer(UIMiniMapLayer layerToAdd, int priority)
+        public static bool AddMinimapLayer(Type layerToAdd, int priority)
         {
-            if (LayersIndexed.TryGetValue(priority, out UIMiniMapLayer other))
+            if (LayersIndexedCached.TryGetValue(priority, out Type other))
             {
                 DebugRandAddi.Assert("MinimapExtended: The minimap layer " + layerToAdd.GetType().FullName + " could not be added as there was already "
                     + "a layer taking the priority level " + priority + " of type " + other.GetType().FullName);
                 return false;
             }
-            layerToAdd.Init(targInst);
+            LayersIndexedCached.Add(priority, layerToAdd);
+            UpdateAll();
+            return true;
+        }
+        public static void RemoveMinimapLayer(Type layerToRemove, int priority)
+        {
+            if (LayersIndexedCached.TryGetValue(priority, out Type other) && other == layerToRemove)
+            {
+                DebugRandAddi.Log("MinimapExtended: Removed minimap layer " + layerToRemove.GetType().FullName + " from priority level " + priority +
+                    " successfully.");
+                LayersIndexedCached.Remove(priority);
+                UpdateAll();
+            }
+        }
+
+        public static void UpdateAll()
+        {
+            if (instMini)
+                instMini.RemoveMinimapLayersAdded();
+            if (instWorld)
+                instWorld.RemoveMinimapLayersAdded();
+            foreach (var item in LayersIndexedCached)
+            {
+                if (instMini)
+                    instMini.AddMinimapLayer_Internal(item.Value, item.Key);
+                if (instWorld)
+                    instWorld.AddMinimapLayer_Internal(item.Value, item.Key);
+            }
+        }
+
+        public bool AddMinimapLayer_Internal(Type layerToAdd, int priority)
+        {
+            var layer =(UIMiniMapLayer)gameObject.AddComponent(layerToAdd);
+            layer.Init(targInst);
             DebugRandAddi.Log("MinimapExtended: Added minimap layer " + layerToAdd.GetType().FullName + " to priority level " + priority +
                 " successfully.");
-            LayersIndexed.Add(priority, layerToAdd);
+            LayersIndexed.Add(priority, layer);
+            LayersIndexedAdded.Add(priority);
             UpdateThis();
             return true;
         }
-        public void RemoveMinimapLayer(UIMiniMapLayer layerToRemove, int priority)
+        private void RemoveMinimapLayersAdded()
+        {
+            foreach (var item in new HashSet<int>(LayersIndexedAdded))
+            {
+                RemoveMinimapLayer_Internal(item);
+            }
+        }
+        private void RemoveMinimapLayer_Internal(int priority)
+        {
+            if (LayersIndexed.TryGetValue(priority, out UIMiniMapLayer other))
+            {
+                DebugRandAddi.Log("MinimapExtended: Removed minimap layer priority level " + priority + " successfully.");
+                LayersIndexedAdded.Remove(priority);
+                Destroy(other);
+                LayersIndexed.Remove(priority);
+                UpdateThis();
+            }
+        }
+        public void RemoveMinimapLayer_Internal(UIMiniMapLayer layerToRemove, int priority)
         {
             if (LayersIndexed.TryGetValue(priority, out UIMiniMapLayer other) && other == layerToRemove)
             {
                 DebugRandAddi.Log("MinimapExtended: Removed minimap layer " + layerToRemove.GetType().FullName + " from priority level " + priority +
                     " successfully.");
+                LayersIndexedAdded.Remove(priority);
+                Destroy(other);
                 LayersIndexed.Remove(priority);
                 UpdateThis();
             }

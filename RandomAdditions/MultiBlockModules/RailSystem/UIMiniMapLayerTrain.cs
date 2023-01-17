@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
-using RandomAdditions.RailSystem;
 
 namespace RandomAdditions.RailSystem
 {
@@ -108,42 +106,6 @@ namespace RandomAdditions.RailSystem
 			}
 		}
 
-		/*
-		private UIMiniMapElement PlaceIcon(ManRadar.IconType iconType, Vector3 iconPos)
-		{
-			UIMiniMapElement iconFromCache = this.GetIconFromCache(iconType);
-			if (iconFromCache.Icon != null && iconFromCache.RectTrans != null)
-			{
-				iconFromCache.Icon.color = iconColour;
-				iconFromCache.RectTrans.localPosition = iconPos;
-				if (Singleton.Manager<ManRadar>.inst.CheckIconRotates(iconType, onMap))
-				{
-					float num = iconPos.normalized.Dot(Vector3.up);
-					float num2 = iconPos.normalized.Dot(Vector3.right);
-					num = Mathf.Acos(num) * 57.29578f;
-					if (num2 >= 0f)
-					{
-						num = -num;
-					}
-					iconFromCache.RectTrans.localRotation = Quaternion.Euler(0f, 0f, num);
-				}
-				else
-				{
-					iconFromCache.RectTrans.localRotation = Quaternion.Inverse(this.m_RectTrans.rotation);
-				}
-				UIMiniMapLayerTech.TooltipConfig tooltipConfig = iconTooltip;
-				if (tooltipConfig.enabled)
-				{
-					iconFromCache.EnableTooltip(iconTooltip.text, iconTooltip.mode);
-				}
-				else
-				{
-					iconFromCache.DisableTooltip();
-				}
-			}
-			return iconFromCache;
-		}*/
-
 		private Dictionary<RailType, UIMiniMapElement> prefabs = null;
 		private UIMiniMapElement SpawnTrackIconFromCache(RailType type, Vector2 pos, float length, float rotation)
 		{
@@ -165,7 +127,7 @@ namespace RandomAdditions.RailSystem
                     case RailType.BeamRail:
 						prefab.Icon.color = new Color(0.1f, 0.1f, 1f, 1);
 						break;
-                    case RailType.Underground:
+                    case RailType.Revolver:
                         break;
                     case RailType.InclinedElevator:
                         break;

@@ -226,6 +226,7 @@
     <Compile Include="MultiBlockModules\RailSystem\RailTrack.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTrackNode.cs" />
     <Compile Include="Networking\NetworkHook.cs" />
+    <Compile Include="PatchBatch\ManRailsPatches.cs" />
     <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
     <Compile Include="ReliantBlockModules\ModuleItemGiver.cs" />
     <Compile Include="ReliantBlockModules\ModuleStickyWheels.cs" />

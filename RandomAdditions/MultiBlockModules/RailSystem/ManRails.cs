@@ -2,29 +2,35 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using SafeSaves;
+using TerraTechETCUtil;
 
 namespace RandomAdditions.RailSystem
 {
     public enum RailType
     {
         // All trains (except RR) accept any blocks in the game. Props and even normal wheels will work.
-        //    Anchoring will disable the train.
+        //    Anchoring will disable the train.  These are just ideas and may or may not become a part of the mod.
         //--------------------------------------------------------------------------------------------------
         LandGauge2, // Venture One-Set-Bogie        - Extremely fast train with low capacity.  Banking turns.
                     //    Bogey has APs top.  Extremely difficult to de-rail.
-        LandGauge3, // GSO / Hawkeye Two-Set-Bogie  - Middle-ground with everything.  Flat turns.  Bogie has APs top
+        LandGauge3, // GSO / Hawkeye Two-Set-Bogie  - Middle-ground with everything.  Low turns.  Bogie has APs top
                     //    Cheap or well armored bogies effective for combat.
-        LandGauge4, // GeoCorp Three-Set-Bogie      - Slow with massive weight capacity.  Flat turns.  Bogie has APs top
+        LandGauge4, // GeoCorp Three-Set-Bogie      - Slow with massive weight capacity.  Low turns.  Bogie has APs top
                     //    5x5 top area presented by track width presents high stability.
         BeamRail,   // Better Future Halo Bogie     - Rides an elevated beam rail determined by station positioning.
-                    //    Bogie has APs top and bottom.  Keeps at least 8 blocks off the ground
-        Underground,// ??? RR Vacuum Tube Loop      - Ignores terrain and makes tunnels. Can be submerged in terrain.
+                    //    Bogie has APs top and bottom.  Keeps at least 12 blocks off the ground.
+        Revolver,   // RR Rotating Ring Bogie       - Can rotate along it's line based on the rotation of the rail nodes and the
+                    //                                  ring's own rotation.
                     //    Limited in customization. Very weak to attacks.
                     //    (needs new camera and interface things, probably the last one)
-        InclinedElevator//  ???  - Has extremely high torque and breaking capacity, but low top speed.  Can be completely vertical.
+        InclinedElevator,//  ???  - Has extremely high torque and breaking capacity, but low top speed.  Can be completely vertical.
+        Spines,     // Legion Spine Crawler         - Transfers Centipede Trains by lending them over to other Spine Guides.
+                    //    Does not work with couplers.
+                    //    Can attack with a devastating high-knockback whip attack but will prioritize trains over attacking.
+                    //    The ONLY track system with limited linking range since Spine Guides can only reach so far.
+                    //    Spine Crawlers operate just like normal walker legs on terrain.
     }
     public enum RailSpace : byte
     {
@@ -92,6 +98,7 @@ namespace RandomAdditions.RailSystem
         private const int MaxCommandDistance = 9001;//500;
 
 
+        public static bool IsInit => inst != null;
         [SSManagerInst]
         public static ManRails inst;
         [SSaveField]
@@ -127,6 +134,7 @@ namespace RandomAdditions.RailSystem
         internal static RailTrackNode LastPlaced = null;
         internal static ModuleRailPoint LastPlacedRecentCache = null;
 
+
         public static void InitExperimental()
         {
             if (inst)
@@ -151,6 +159,8 @@ namespace RandomAdditions.RailSystem
             ManGameMode.inst.ModeFinishedEvent.Subscribe(OnModeEnd);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(SemiFirstFixedUpdate), 99);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(SemiLastFixedUpdate), -99);
+            MassPatcherRA.harmonyInst.MassPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
+            MinimapExtended.AddMinimapLayer(typeof(UIMiniMapLayerTrain), 601);
             DebugRandAddi.Log("RandomAdditions: Init ManRails");
             inst.enabled = false;
         }
@@ -184,6 +194,8 @@ namespace RandomAdditions.RailSystem
             if (!inst)
                 return;
             DebugRandAddi.Log("RandomAdditions: De-Init ManRails");
+            MinimapExtended.RemoveMinimapLayer(typeof(UIMiniMapLayerTrain), 601);
+            MassPatcherRA.harmonyInst.MassUnPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
             inst.StopAllCoroutines();
             ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(SemiLastFixedUpdate));
             ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(SemiFirstFixedUpdate));
