@@ -12,7 +12,7 @@ namespace RandomAdditions.Networking
      */
     internal class ManModNetwork
     {
-        internal static UnityEngine.Networking.NetworkInstanceId Host;
+        internal static NetworkInstanceId Host;
         internal static bool HostExists = false;
 
         const int NetworkHooksStart = 6590;
@@ -86,6 +86,9 @@ namespace RandomAdditions.Networking
             return ManModNetwork.Send(this, message);
         }
 
+        /// <summary>
+        /// NetworkHook<T> is the correct hook format! DO NOT USE THIS ONE
+        /// </summary>
         internal virtual void OnClientReceive_Internal(NetworkMessage netMsg)
         {
             throw new NotImplementedException("You used NetworkHook which is incorrect.  NetworkHook<T> is the correct hook format!");

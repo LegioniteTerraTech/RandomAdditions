@@ -322,6 +322,24 @@ namespace RandomAdditions
 
         }
 
+        internal static class UIMiniMapDisplayPatches
+        {
+            internal static Type target = typeof(UIMiniMapDisplay);
+            // Allow train tracks on UI
+            internal static void Show_Postfix(UIMiniMapDisplay __instance)
+            {
+                if ((bool)__instance)
+                {
+                    if (__instance.GetComponent<MinimapExtended>())
+                        return;
+                    var instWorld = __instance.gameObject.AddComponent<MinimapExtended>();
+                    instWorld.InitInst(__instance);
+                    DebugRandAddi.Assert("MinimapExtended Init MinimapExtended for " + __instance.gameObject.name);
+                }
+            }
+
+        }
+
 
         internal static class ObjectSpawnerPatches
         {

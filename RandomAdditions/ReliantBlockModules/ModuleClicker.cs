@@ -7,10 +7,12 @@ using SafeSaves;
 using UnityEngine;
 using TerraTechETCUtil;
 
-public class ModuleClicker : RandomAdditions.ModuleClicker { };
 
 namespace RandomAdditions
 {
+    /// <summary>
+    /// Obsolete - use AnimetteManager instead
+    /// </summary>
     [AutoSaveComponent]
     public class ModuleClicker : ExtModule
     {

@@ -13,13 +13,13 @@ namespace RandomAdditions.RailSystem
     /// </summary>
     internal class RailSegment : MonoBehaviour
     {
-        protected const int segmentPoolInitSize = 6;
-        protected const int crossPoolInitSize = 32;
+        public const int segmentPoolInitSize = 6;
+        public const int crossPoolInitSize = 32;
 
-        protected const int segmentSafePoolSize = 64;
+        public const int segmentSafePoolSize = 64;
 
         private static bool showDebug = false;
-        public static List<RailSegment> ALLSegments = new List<RailSegment>();
+        public static HashSet<RailSegment> ALLSegments = new HashSet<RailSegment>();
 
 
         public bool isValidThisFrame;
@@ -114,7 +114,7 @@ namespace RandomAdditions.RailSystem
                 this.startUp = startUp;
             if (!endUp.ApproxZero())
                 this.endUp = endUp;
-            RecalcSegmentGeometry();
+            RecalcSegmentShape();
             UpdateSegmentVisuals();
             DebugRandAddi.Info("Placed track");
         }
@@ -137,7 +137,7 @@ namespace RandomAdditions.RailSystem
         {
             if (Track.Space != RailSpace.Local)
             {
-                RecalcSegmentGeometry();
+                RecalcSegmentShape();
                 UpdateSegmentVisuals();
             }
         }
@@ -227,7 +227,7 @@ namespace RandomAdditions.RailSystem
             }
 
         }
-        private void RecalcSegmentGeometry()
+        private void RecalcSegmentShape()
         {
             RailTypeStats RSS = ManRails.railTypeStats[Type];
             segPointsLocal = new Vector3[Track.RailResolution + 2]; // two additional due to track overlap issues
@@ -601,7 +601,17 @@ namespace RandomAdditions.RailSystem
             pos += BogeyPosLocal.z;
             posPercent = pos / AlongTrackDist;
         }
-
+        public void TryApproximateBogieToTrackFast(ModuleRailBogie MRB, Transform bogey, out Vector3 BogeyPosLocal,
+           ref float pos, ref float posPercent)
+        {
+            BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
+            pos += BogeyPosLocal.z;
+            posPercent = pos / AlongTrackDist;
+            bogey.position = EvaluateSegmentAtPositionFast(posPercent);
+            BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
+            pos += BogeyPosLocal.z;
+            posPercent = pos / AlongTrackDist;
+        }
 
         public Vector3 GetClosestPointOnSegment(Vector3 scenePos, out float percentPos)
         {
@@ -656,13 +666,13 @@ namespace RandomAdditions.RailSystem
             if (mesh == null)
             {
                 DebugRandAddi.Assert(ModelNameNoExt + "Unable to make track cross visual");
-                return;
+                //return;
             }
             Material mat = KickStart.GetMaterialFromBaseGame(MaterialName);
             if (mat == null)
             {
                 DebugRandAddi.Assert(MaterialName + " could not be found!  unable to load track cross visual texture");
-                return;
+                //return;
             }
 
             GameObject prefab = new GameObject(Name);

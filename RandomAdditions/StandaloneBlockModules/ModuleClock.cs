@@ -42,7 +42,7 @@ namespace RandomAdditions
 
         public override void OnAttach()
         {
-            GlobalClock.clocks.Add(this);
+            GlobalClock.ClockManager.AddClock(this);
             if (ControlTime)
             {
                 block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
@@ -59,7 +59,9 @@ namespace RandomAdditions
 
         public override void OnDetach()
         {
-            GlobalClock.clocks.Remove(this);
+            GlobalClock.ClockManager.RemoveClock(this);
+            if (tank.PlayerFocused)
+                GlobalClock.SetByGUI = true;
             if (ControlTime)
             {
                 block.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));

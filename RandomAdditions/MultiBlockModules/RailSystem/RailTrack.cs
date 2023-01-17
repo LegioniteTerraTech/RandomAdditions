@@ -58,14 +58,14 @@ namespace RandomAdditions.RailSystem
         /// <summary>
         /// DO NOT CALL THIS DIRECTLY - Use ManRails.SpawnRailTrack instead!
         /// </summary>
-        internal RailTrack(RailConnectInfo lowValSide, RailConnectInfo highValSide, bool ForceLoad, bool fake)
+        internal RailTrack(RailConnectInfo lowValSide, RailConnectInfo highValSide, bool ForceLoad, bool fake, int railRes)
         {
             DebugRandAddi.Assert(lowValSide.HostNode.SystemType != highValSide.HostNode.SystemType, "RailTrack.Constructor - Mismatch in RailType");
             Type = lowValSide.HostNode.SystemType;
             IsNodeTrack = false;
             StartConnection = lowValSide;
             EndConnection = highValSide;
-            RailResolution = fake ? ManRails.FakeRailResolution : ManRails.RailResolution;
+            RailResolution = railRes;
             Removing = false;
             Fake = fake;
             railPoints = new List<Vector3>();
@@ -185,8 +185,8 @@ namespace RandomAdditions.RailSystem
             {
                 DebugRandAddi.Info("RandomAdditions: RemoveBogey");
             }
-            //else
-            //    DebugRandAddi.Assert("RandomAdditions: RemoveBogey - The ModuleRailwayBogey to remove does not exist in this RailNetwork");
+            else
+                DebugRandAddi.Assert("RandomAdditions: RemoveBogey - The ModuleRailwayBogey to remove does not exist in this RailNetwork");
         }
 
 
@@ -265,6 +265,29 @@ namespace RandomAdditions.RailSystem
         {
             return StartNode.NodeID == NodeID || EndNode.NodeID == NodeID;
         }
+
+        internal Vector3[] GetRailSegmentPositionsWorld()
+        {
+            if (Parent != null)
+            {
+                Vector3[] points = new Vector3[railPoints.Count - 1];
+                for (int step = 0; step < railPoints.Count - 1; step++)
+                {
+                    points[step] = WorldPosition.FromScenePosition(Parent.TransformPoint((railPoints[step] + railPoints[step + 1]) / 2)).GameWorldPosition;
+                }
+                return points;
+            }
+            else
+            {
+                Vector3[] points = new Vector3[railPoints.Count - 1];
+                for (int step = 0; step < railPoints.Count - 1; step++)
+                {
+                    points[step] = WorldPosition.FromScenePosition((railPoints[step] + railPoints[step + 1]) / 2).GameWorldPosition;
+                }
+                return points;
+            }
+        }
+
         internal Vector3 GetRailSegmentPosition(int railIndex)
         {
             if (Parent != null)
@@ -275,7 +298,7 @@ namespace RandomAdditions.RailSystem
         {
             if (Parent != null)
             {
-                Vector3[] points = new Vector3[railPoints.Count];
+                Vector3[] points = new Vector3[railPoints.Count - 1];
                 for (int step = 0; step < railPoints.Count - 1; step++)
                 {
                     points[step] = Parent.TransformPoint((railPoints[step] + railPoints[step + 1]) / 2);
@@ -284,7 +307,7 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                Vector3[] points = new Vector3[railPoints.Count];
+                Vector3[] points = new Vector3[railPoints.Count - 1];
                 for (int step = 0; step < railPoints.Count - 1; step++)
                 {
                     points[step] = (railPoints[step] + railPoints[step + 1]) / 2;
@@ -480,7 +503,7 @@ namespace RandomAdditions.RailSystem
                 DebugRandAddi.DrawDirIndicator(railPoints[step], railFwds[step] * 4, Color.green, 3);
             }*/
         }
-        internal void UpdateExistingIfNeeded()
+        internal void UpdateExistingShapeIfNeeded()
         {
             if (Space == RailSpace.Local)
             {
@@ -508,11 +531,29 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-        internal void OnWorldMove(IntVector3 move)
+        internal void OnWorldMovePre(IntVector3 move)
         {
-            for (int step = 0; step < railPoints.Count; step++)
+            if (Space != RailSpace.Local)
             {
-                railPoints[step] += move;
+                for (int step = 0; step < railPoints.Count; step++)
+                {
+                    railPoints[step] += move;
+                }
+                foreach (var rail in ActiveSegments)
+                {
+                    rail.Value.startPoint = move + rail.Value.startPoint;
+                    rail.Value.OnSegmentDynamicShift();
+                }
+            }
+        }
+        internal void OnWorldMovePost()
+        {
+            if (Space != RailSpace.Local)
+            {
+                foreach (var rail in ActiveSegments)
+                {
+                    rail.Value.OnSegmentDynamicShift();
+                }
             }
         }
 
@@ -650,6 +691,7 @@ namespace RandomAdditions.RailSystem
                                 MRB.Track = RN2;
                                 MRB.Track.CHK_Index(curSegIndex);
                                 MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                                ManRails.UpdateAllSignals = true;
                                 //DebugRandAddi.Log("RandomAdditions: relay reversed: " + reversed + ", pos: " + MRB.FixedPositionOnRail + ", railIndex " + curSegIndex);
                                 if (reversed)
                                 {
@@ -699,6 +741,7 @@ namespace RandomAdditions.RailSystem
                                 MRB.Track = RN2;
                                 MRB.Track.CHK_Index(curSegIndex);
                                 MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                                ManRails.UpdateAllSignals = true;
                                 //DebugRandAddi.Log("RandomAdditions: (B) relay reversed: " + reversed + ", pos: " + MRB.FixedPositionOnRail + ", railIndex " + curSegIndex);
                                 if (reversed)
                                 {
@@ -819,7 +862,7 @@ namespace RandomAdditions.RailSystem
 
         internal bool BogiesAheadPrecise(float rootBlockDistForwardsOnRail, ModuleRailBogie MRB)
         {
-            if (Vector3.Dot(MRB.CurrentSegment.EvaluateForwards(MRB), MRB.engine.GetForwards()) < 0)
+            if (Vector3.Dot(MRB.CurrentSegment.EvaluateForwards(MRB), MRB.engine.GetTankDriveForwardsInRelationToMaster()) < 0)
                 rootBlockDistForwardsOnRail = -rootBlockDistForwardsOnRail;
 
             if (IsOtherTrainBogeyAhead(rootBlockDistForwardsOnRail >= 0, MRB))
@@ -1138,7 +1181,7 @@ namespace RandomAdditions.RailSystem
         }
         internal RailSegment InsureSegment(int railIndex)
         {
-            if (EndOfLine(railIndex) != 0)
+            if (EndOfTrack(railIndex) != 0)
                 throw new IndexOutOfRangeException("Rail index " + railIndex + " is out of range of [0 - " + (railLength - 1) + "]");
 
             if (Removing)
@@ -1186,7 +1229,7 @@ namespace RandomAdditions.RailSystem
                 Vector3 turn = Vector3.zero;
                 int turnIndex;
                 bool nodeTrack;
-                if (EndOfLine(rPos) == -1 && StartNode != null && StartNode.ConnectionType == RailNodeType.Straight &&
+                if (EndOfTrack(rPos) == -1 && StartNode != null && StartNode.ConnectionType == RailNodeType.Straight &&
                     StartNode.RelayBestAngle(turn, out turnIndex))
                 {
                     var info = StartNode.GetConnectionByTrack(this, out nodeTrack);
@@ -1221,7 +1264,7 @@ namespace RandomAdditions.RailSystem
                     }
                 }
 
-                if (EndOfLine(nRPos) == 1 && EndNode != null && EndNode.ConnectionType == RailNodeType.Straight &&
+                if (EndOfTrack(nRPos) == 1 && EndNode != null && EndNode.ConnectionType == RailNodeType.Straight &&
                     EndNode.RelayBestAngle(turn, out turnIndex))
                 {
                     var info = EndNode.GetConnectionByTrack(this, out nodeTrack);
@@ -1295,7 +1338,7 @@ namespace RandomAdditions.RailSystem
         private void DetachAllBogies()
         {
             //DebugRandAddi.Log("RandomAdditions: RemoveAllBogeys");
-            foreach (var item in ActiveBogeys)
+            foreach (var item in new HashSet<ModuleRailBogie>(ActiveBogeys))
             {
                 if (item != null)
                     item.DetachBogey();
@@ -1305,12 +1348,12 @@ namespace RandomAdditions.RailSystem
 
         public void CHK_Index(int railIndex)
         {
-            if (EndOfLine(railIndex) != 0)
+            if (EndOfTrack(railIndex) != 0)
                 throw new IndexOutOfRangeException("CHK_Index - railIndex is out of bounds " + railIndex + " vs [0-" + (railLength - 1) + "]");
         }
         public int R_Index(int railIndex)
         {
-            if (EndOfLine(railIndex) != 0)
+            if (EndOfTrack(railIndex) != 0)
                 return SnapToNetwork(railIndex);
             return (int)Mathf.Repeat(railIndex, railLength);
         }
@@ -1324,7 +1367,7 @@ namespace RandomAdditions.RailSystem
             RailTrack curTrack = MRB.Track;
             if (MRB == null)
                 throw new NullReferenceException("RailTrack.GetNextTrackIfNeeded expects a valid MRB(ModuleRailBogie) instance but found \"null\" instead");
-            switch (curTrack.EndOfLine(railIndex))
+            switch (curTrack.EndOfTrack(railIndex))
             {
                 case -1: // behind start
                     if (curTrack.StartNode != null)
@@ -1413,7 +1456,7 @@ namespace RandomAdditions.RailSystem
         {
             int turnIndex;
             bool nodeTrack;
-            switch (EndOfLine(railIndex))
+            switch (EndOfTrack(railIndex))
             {
                 case -1: // behind start
                     if (StartNode != null)
@@ -1489,7 +1532,7 @@ namespace RandomAdditions.RailSystem
         {
             Vector3 turn = Vector3.zero;
             int index;
-            switch (EndOfLine(railIndex))
+            switch (EndOfTrack(railIndex))
             {
                 case -1: // behind start
                     StartNode.RelayBestAngle(turn, out index);
@@ -1517,7 +1560,7 @@ namespace RandomAdditions.RailSystem
         /// </summary>
         /// <param name="railIndex"></param>
         /// <returns></returns>
-        public int EndOfLine(int railIndex)
+        public int EndOfTrack(int railIndex)
         {
             if (railIndex >= railLength)
                 return 1;

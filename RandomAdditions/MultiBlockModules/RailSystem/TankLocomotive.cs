@@ -19,10 +19,10 @@ namespace RandomAdditions.RailSystem
         BKDYield,
         BKDFullSpeed,
     }
-    public class TankLocomotive : MonoBehaviour
+    public class TankLocomotive : MonoBehaviour, IWorldTreadmill
     {
-        public static bool AllowAutopilotToOverridePlayer = true;
-        public static bool DebugMode = true;
+        public static bool AllowAutopilotToOverridePlayer => ManNetwork.IsHost;
+        public static bool DebugMode = false;
         public static bool FirstInit = false;
 
         private static float TrainCollisionMinimumWorldSpeed = Globals.inst.impactDamageSpeedThreshold;
@@ -50,6 +50,8 @@ namespace RandomAdditions.RailSystem
 
         public const float CurveAngleSlowRestrictThreshold = 27.5f;
         public const float CurveSlowRestrictedSpeed = 20.0f;
+
+        private const float TrainRollDampenerMultiplier = 6.75f;
 
 
         internal Tank tank;
@@ -90,7 +92,7 @@ namespace RandomAdditions.RailSystem
 
         public bool TrainOnRails => bogiesOnRails.Count > 0;
         public bool IsDriving => !drive.ApproxZero();
-        public bool AutopilotActive => Autopilot;
+        public bool AutopilotActive => GetMaster().Autopilot;
 
         private bool lastWasOnRails = false;
         private bool lastFireState = false;
@@ -100,6 +102,7 @@ namespace RandomAdditions.RailSystem
 
         private bool Autopilot = false;
         private ModuleRailBogie leadingBogie = null;
+        private ModuleRailBogie rearBogie = null;
         private bool TrainDriveForwards = true;
         private TrainDriveState TrainDriveOverride = TrainDriveState.None;
         private float TrainDriveOverrideThrottle = 0;
@@ -107,6 +110,13 @@ namespace RandomAdditions.RailSystem
         /// True on success
         /// </summary>
         public Event<TrainArrivalStatus> AutopilotFinishedEvent = new Event<TrainArrivalStatus>();
+
+
+        public bool ShouldLoadTiles()
+        {
+            return ActiveBogieCount > 0;
+        }
+
 
         private static TankLocomotive CreateTrain(Tank tank)
         {
@@ -123,10 +133,13 @@ namespace RandomAdditions.RailSystem
                 ManTethers.ConnectionTethersUpdate.Subscribe(TechsCoupled);
                 FirstInit = true;
             }
+            RandomTank.Insure(tank).ReevaluateLoadingDiameter();
+            ManWorldTreadmill.inst.AddListener(train);
             return train;
         }
         private void DestroyTrain()
         {
+            ManWorldTreadmill.inst.RemoveListener(this);
             MasterCar = null;
             MasterUnRegisterAllConnectedLocomotives();
             FinishPathing(TrainArrivalStatus.Destroyed);
@@ -139,6 +152,7 @@ namespace RandomAdditions.RailSystem
             if (lastWasOnRails)
                 tank.airSpeedDragFactor = 0.001f;
             Destroy(this);
+            RandomTank.Insure(tank).ReevaluateLoadingDiameter();
         }
         public static void HandleAddition(Tank tank, ModuleRailEngine engine)
         {
@@ -390,6 +404,10 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+        public void OnMoveWorldOrigin(IntVector3 move)
+        {
+            lastPos += move;
+        }
 
         public bool TankPartOfTrain(Tank main)
         {
@@ -438,9 +456,8 @@ namespace RandomAdditions.RailSystem
         }
 
 
-        private Vector3 drive;
-        private Vector3 turn;
-        private Vector3 throttle;
+        internal Vector3 drive { get; private set; }
+        internal Vector3 turn { get; private set; }
         public TrainBlockIterator<TankBlock> IterateBlocksOnTrain()
         {
             return new TrainBlockIterator<TankBlock>(this);
@@ -460,6 +477,17 @@ namespace RandomAdditions.RailSystem
                     allBogies.AddRange(loco.BogieBlocks);
             }
             return allBogies;
+        }
+        public List<ModuleRailBogie> MasterGetAllOrderedBogies()
+        {
+            if (LocomotiveCarsOrdered.Count > 0)
+            {
+                var list = LocomotiveCarsOrdered.SelectMany(x => x.AllActiveBogies).ToList();
+                if (list.Count > 0)
+                    return list;
+            }
+            DebugRandAddi.Assert("LocomotiveCarsOrdered does not have any bogies!  Returning MasterGetAllInterconnectedBogies() instead");
+            return MasterGetAllInterconnectedBogies();
         }
 
         public ModuleRailBogie MasterTryGetLeadingBogieOnTrain(bool Backwards = false)
@@ -691,10 +719,7 @@ namespace RandomAdditions.RailSystem
             Autopilot = true;
             TrainDriveForwards = forwardsPathing;
             RegisterAllLinkedLocomotives();
-            if (forwardsPathing)
-                MasterGetFrontBogie();
-            else
-                MasterGetRearBogie();
+            MasterGetFrontAndBackBogie();
             lastFailTime = 0;
         }
         internal void FinishPathing(TrainArrivalStatus status)
@@ -717,6 +742,7 @@ namespace RandomAdditions.RailSystem
                 }
             }
             leadingBogie = null;
+            rearBogie = null;
             foreach (var item in MasterGetAllInterconnectedBogies())
             {
                 item.PathingPlan.Clear();
@@ -757,9 +783,8 @@ namespace RandomAdditions.RailSystem
 
         private void DriveCommand(TankControl.ControlState controlState)
         {
-            drive = controlState.InputMovement;
+            drive = Vector3.ClampMagnitude(controlState.InputMovement + controlState.Throttle, 1);
             turn = controlState.InputRotation;
-            throttle = controlState.Throttle;
             lastFireState = controlState.Fire;
             foreach (var item in BogieBlocks)
             {
@@ -772,7 +797,7 @@ namespace RandomAdditions.RailSystem
 
             foreach (var item in BogieBlocks)
             {
-                item.DriveCommand(controlState);
+                item.DriveCommand(this);
             }
         }
 
@@ -795,11 +820,17 @@ namespace RandomAdditions.RailSystem
             }
             if (TrainDriveForwards)
             {
-                if (leadingBogie)
-                { 
-                    if (leadingBogie.Track.BogiesAheadPrecise(foresight, leadingBogie))
+                if (leadingBogie && leadingBogie.Track?.StartNode?.Point)
+                {
+                    ModuleRailPoint MRP = leadingBogie.Track.StartNode.Point;
+                    if (MRP.MultipleTrainsInStretch && leadingBogie.Track.BogiesAheadPrecise(foresight, leadingBogie))
                     {
                         MasterSetTrainDriveOverride(TrainDriveState.Obstruction);
+                        return;
+                    }
+                    else if (MRP.Warned && leadingBogie.Track.BogiesAheadPrecise(foresight, leadingBogie))
+                    {
+                        MasterSetTrainDriveOverride(TrainDriveState.FWDYield);
                         return;
                     }
                     else if (leadingBogie.Track.NodeIsAtAnyEnd(leadingBogie.DestNodeID))
@@ -812,14 +843,20 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                if (leadingBogie)
+                if (rearBogie && rearBogie.Track?.StartNode?.Point)
                 {
-                    if (leadingBogie.Track.BogiesAheadPrecise(foresight, leadingBogie))
+                    ModuleRailPoint MRP = rearBogie.Track.StartNode.Point;
+                    if (MRP.MultipleTrainsInStretch && rearBogie.Track.BogiesAheadPrecise(foresight, rearBogie))
                     {
                         MasterSetTrainDriveOverride(TrainDriveState.Obstruction);
                         return;
                     }
-                    else if (leadingBogie.Track.NodeIsAtAnyEnd(leadingBogie.DestNodeID))
+                    else if (MRP.Warned && rearBogie.Track.BogiesAheadPrecise(foresight, rearBogie))
+                    {
+                        MasterSetTrainDriveOverride(TrainDriveState.BKDYield);
+                        return;
+                    }
+                    else if (rearBogie.Track.NodeIsAtAnyEnd(rearBogie.DestNodeID))
                     {
                         MasterSetTrainDriveOverride(TrainDriveState.BKDYield);
                         return;
@@ -961,6 +998,7 @@ namespace RandomAdditions.RailSystem
             }
             LocomotiveCarsOrdered = LocomotiveCarsOrdered.SkipWhile(x => x.CarNumber == -1).ToList();
             DebugRandAddi.Log("TankLocomotive: Registered " + LocomotiveCars.Count + " cars");
+            ManRails.UpdateAllSignals = true;
         }
 
         public void UnRegisterAllConnectedLocomotives()
@@ -974,6 +1012,7 @@ namespace RandomAdditions.RailSystem
             {
                 ResetLocomotiveCar(item);
             }
+            ManRails.UpdateAllSignals = true;
         }
         private void MasterUnRegisterLocomotiveCar(Tank removed)
         {
@@ -1046,26 +1085,23 @@ namespace RandomAdditions.RailSystem
                 item.ShowBogieMotors(hasEngie);
             }
         }
-        internal void MasterGetFrontBogie()
+        internal void MasterGetFrontAndBackBogie()
         {
             leadingBogie = TryGetLeadingBogie(false);
             if (!leadingBogie)
             {
-                DebugRandAddi.Assert("GetFrontBogie could not fetch front bogie.  Returning first in MasterGetAllInterconnectedBogies() instead");
-                leadingBogie = MasterGetAllInterconnectedBogies().First();
+                DebugRandAddi.Assert("MasterGetFrontAndBackBogie could not fetch front bogie.  Returning first in MasterGetAllOrderedBogies() instead");
+                leadingBogie = MasterGetAllOrderedBogies().First();
                 if (DebugMode)
                     ManTrainPathing.TrainStatusPopup("[F]", WorldPosition.FromScenePosition(leadingBogie.block.centreOfMassWorld));
             }
-        }
-        internal void MasterGetRearBogie()
-        {
-            leadingBogie = TryGetLeadingBogie(true);
-            if (!leadingBogie)
+            rearBogie = TryGetLeadingBogie(true);
+            if (!rearBogie)
             {
-                DebugRandAddi.Assert("GetRearBogie could not fetch rear bogie.  Returning first in MasterGetAllInterconnectedBogies() instead");
-                leadingBogie = MasterGetAllInterconnectedBogies().First();
+                DebugRandAddi.Assert("MasterGetFrontAndBackBogie could not fetch rear bogie.  Returning last in MasterGetAllOrderedBogies() instead");
+                rearBogie = MasterGetAllOrderedBogies().Last();
                 if (DebugMode)
-                    ManTrainPathing.TrainStatusPopup("[R]", WorldPosition.FromScenePosition(leadingBogie.block.centreOfMassWorld));
+                    ManTrainPathing.TrainStatusPopup("[F]", WorldPosition.FromScenePosition(leadingBogie.block.centreOfMassWorld));
             }
         }
         public void MasterSetTrainDriveOverride(TrainDriveState toSet)
@@ -1193,7 +1229,7 @@ namespace RandomAdditions.RailSystem
                 m_Fire = MasterCar.tank.control.FireControl,
                 m_InputMovement = Corrected * MasterCar.drive,
                 m_InputRotation = MasterCar.turn,
-                m_ThrottleValues = Corrected * MasterCar.throttle,
+                m_ThrottleValues = Vector3.zero,
             };
         }
         private void ForceForwards(float ForwardsPercent)
@@ -1233,7 +1269,7 @@ namespace RandomAdditions.RailSystem
             tankAlignDampener = 0;
             tankAlignLimit = 0;
 
-            if (!ManPauseGame.inst.IsPaused && tank.rbody && !tank.beam.IsActive)
+            if (tank.rbody && !tank.beam.IsActive)
             {
                 // Update bogeys in relation to rail
 
@@ -1261,14 +1297,15 @@ namespace RandomAdditions.RailSystem
                     movementDampening /= ActiveBogieCount;
                     tankAlignLimit /= ActiveBogieCount;
                 }
-                return;
             }
-            foreach (var item in BogieBlocks)
+            else
             {
-                if (item.Track != null)
+                foreach (var item in BogieBlocks)
                 {
-                    item.Track.RemoveBogey(item);
-                    item.DetachBogey();
+                    if (item.Track != null)
+                    {
+                        item.DetachBogey();
+                    }
                 }
             }
         }
@@ -1333,7 +1370,7 @@ namespace RandomAdditions.RailSystem
         }
         internal void SemiLastFixedUpdate()
         {
-            if (!ManPauseGame.inst.IsPaused && tank.rbody && !tank.beam.IsActive)
+            if (tank.rbody && !tank.beam.IsActive)
             {
                 if (TrainOnRails)
                 {
@@ -1412,6 +1449,7 @@ namespace RandomAdditions.RailSystem
                 {
                     tank.airSpeedDragFactor = 0.001f;
                 }
+                RandomTank.Insure(tank).ReevaluateLoadingDiameter();
                 lastWasOnRails = TrainOnRails;
             }
         }
@@ -1483,6 +1521,7 @@ namespace RandomAdditions.RailSystem
             {
                 TrainPartsDirty = false;
                 UpdateEngines();
+                RandomTank.Insure(tank).ReevaluateLoadingDiameter();
             }
             if (!ManPauseGame.inst.IsPaused)
             {
@@ -1537,7 +1576,13 @@ namespace RandomAdditions.RailSystem
 
             Vector3 InertiaDampen = Vector3.zero;
             if (!localAngleVelo.Approximately(Vector3.zero, 0.1f))
-                InertiaDampen = Vector3.ClampMagnitude(-localRotInertia, tankAlignDampener);
+            {
+                InertiaDampen = new Vector3(
+                    Mathf.Clamp(-localRotInertia.x, -tankAlignDampener, tankAlignDampener),
+                    Mathf.Clamp(-localRotInertia.y, -tankAlignDampener, tankAlignDampener),
+                    Mathf.Clamp(-localRotInertia.z, -tankAlignDampener * TrainRollDampenerMultiplier, tankAlignDampener * TrainRollDampenerMultiplier)
+                    );
+            }
             else
             {
                 if (CurRotat.Approximately(Vector3.zero))

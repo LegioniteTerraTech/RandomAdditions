@@ -155,6 +155,7 @@ namespace RandomAdditions.RailSystem
         public class TrainCallRequest
         {
             private readonly float startTime;
+            private readonly int requestTeam;
             public readonly RailTrackNode target;
             private readonly ManRails.RailTrackIterator trainSearcher;
             private readonly Action<TankLocomotive> finishedEvent;
@@ -168,6 +169,14 @@ namespace RandomAdditions.RailSystem
             public TrainCallRequest(RailTrackNode Target, Action<TankLocomotive> OnFinished)
             {
                 startTime = Time.time;
+                try
+                {
+                    requestTeam = target.Team;
+                }
+                catch 
+                {
+                    requestTeam = ManPlayer.inst.PlayerTeam;
+                }
                 target = Target;
                 train = null;
                 trainPather = default;
@@ -182,7 +191,7 @@ namespace RandomAdditions.RailSystem
             {
                 return x != null && x.Exists() && x.ActiveBogeys.Count() > 0 &&
                 x.ActiveBogeys.ToList().Find(delegate (ModuleRailBogie cand) {
-                    if (!cand || !cand.engine)
+                    if (!cand || !cand.engine || cand.engine.tank.Team != requestTeam)
                         return false;
                     TankLocomotive master = cand.engine.GetMaster();
                     return master.CanCall() && !FinishedSearches.Contains(master); 
@@ -277,7 +286,6 @@ namespace RandomAdditions.RailSystem
                     }
                     DebugRandAddi.Log("\nTrain " + train.name + " can't find path at " + (Time.time - startTime) + " seconds\n");
                     FinishedSearches.Add(train);
-                    finishedEvent.Invoke(null);
                     train = null;   // Can't pathfind back fully
                     return ConcludeIfNeeded();
                 }

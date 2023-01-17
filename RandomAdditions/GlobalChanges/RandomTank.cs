@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using RandomAdditions.RailSystem;
 
 namespace RandomAdditions
 {
@@ -168,7 +169,7 @@ namespace RandomAdditions
                     && !(item.AnchorOnly && !tank.IsAnchored))
                     MaxTileLoadingDiameter = item.MaxTileLoadingDiameter;
             }
-            if (tank.PlayerFocused)
+            if (tank.PlayerFocused || (GetComponent<TankLocomotive>() && GetComponent<TankLocomotive>().ShouldLoadTiles()))
             {
                 MaxTileLoadingDiameter = 2;
                 TileLoadingToggle(true);

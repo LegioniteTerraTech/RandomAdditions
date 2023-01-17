@@ -26,6 +26,7 @@ namespace RandomAdditions.RailSystem
         public readonly RailNodeType ConnectionType;
         public readonly RailSpace Space = RailSpace.World;
         public readonly bool Stopper = false;
+        public readonly int Team = ManPlayer.inst.PlayerTeam;
 
         private RailConnectInfo[] LinkedTracks;
         public ModuleRailPoint Point 
@@ -58,6 +59,7 @@ namespace RandomAdditions.RailSystem
             _point = null;
             NodeID = decode.NodeID;
             SystemType = decode.Type;
+            Team = decode.Team;
             Space = decode.Space;
             Stopper = decode.Stop;
             MaxConnectionCount = decode.MaxConnectionCount;
@@ -71,7 +73,7 @@ namespace RandomAdditions.RailSystem
             LinkForwards = decode.LinkForwards;
             NodeIDConnections = decode.NodeIDConnections;
             ConnectionType = MaxConnectionCount > 2 ? RailNodeType.Junction : RailNodeType.Straight;
-            Reconstruct();
+            ReconstructShape();
             LinkedTracks[0] = new RailConnectInfo(this, 0);
             for (int step = 1; step < LinkedTracks.Length; step++)
             {
@@ -85,6 +87,7 @@ namespace RandomAdditions.RailSystem
             this.NodeID = NodeID;
             SystemType = Station.RailSystemType;
             Space = Station.RailSystemSpace;
+            Team = Station.block.tank.Team;
             Stopper = Station.CreateTrackStop;
             DebugRandAddi.Log("New RailTrackNode from " + Station.name + " (" + SystemType.ToString() + " | " + Space.ToString() + " | Stopper - " + Stopper + ")");
             int MaxConnections = 2;
@@ -93,7 +96,7 @@ namespace RandomAdditions.RailSystem
             MaxConnectionCount = MaxConnections;
             LinkedTracks = new RailConnectInfo[MaxConnectionCount];
             ConnectionType = MaxConnectionCount > 2 ? RailNodeType.Junction : RailNodeType.Straight;
-            Reconstruct();
+            ReconstructShape();
             LinkedTracks[0] = new RailConnectInfo(this, 0);
             for (int step = 1; step < LinkedTracks.Length; step++)
             {
@@ -110,6 +113,7 @@ namespace RandomAdditions.RailSystem
             NodeID = -1;
             SystemType = Station.RailSystemType;
             Space = Station.RailSystemSpace;
+            Team = ManPlayer.inst.PlayerTeam;
             Stopper = Station.CreateTrackStop;
             DebugRandAddi.Log("New FAKE RailTrackNode from " + Station.name + " (" + SystemType.ToString() + " | " + Space.ToString() + " | Stopper - " + Stopper + ")");
             int MaxConnections = 2;
@@ -117,7 +121,7 @@ namespace RandomAdditions.RailSystem
                 MaxConnections = Station.LinkHubs.Count;
             LinkedTracks = new RailConnectInfo[MaxConnections];
             ConnectionType = MaxConnectionCount > 2 ? RailNodeType.Junction : RailNodeType.Straight;
-            Reconstruct();
+            ReconstructShape();
             LinkedTracks[0] = new RailConnectInfo(this, 0);
             for (int step = 1; step < LinkedTracks.Length; step++)
             {
@@ -136,11 +140,11 @@ namespace RandomAdditions.RailSystem
                 _ = Point;
                 DebugRandAddi.Assert(!Point, "RailTrackNode.OnStationLoaded() was called from a ModuleRailPoint that does not exist!");
                 DisconnectNodeTracks();
-                Reconstruct();
+                ReconstructShape();
                 ConnectAllNodeTracks();
             }
         }
-        public void Reconstruct()
+        public void ReconstructShape()
         {
             if (Point == null)
                 return;
@@ -228,43 +232,118 @@ namespace RandomAdditions.RailSystem
             }
             return vecs;
         }
-
-        public void UpdateAllTracks()
+        public int GetBestLinkInDirection(Vector3 posScene)
         {
-            Reconstruct();
+            Vector3 toOtherStat = (posScene - LinkCenters[0].ScenePosition).normalized;
+            //Vector3 worldVec;
+            if (MaxConnectionCount == 2)
+            {
+                Vector3 hubF = LinkForwards[0];
+                if (Vector3.Dot(toOtherStat, hubF) >= 0)
+                {   // Front
+                    //worldVec = hubF;
+                    return 0;
+                }
+                else
+                {   // Back
+                    //worldVec = -hubF;
+                    return 1;
+                }
+                //DebugRandAddi.Info("RandomAdditions: GetDirectionVector - Got " + worldVec.x + ", " + worldVec.y + ", " + worldVec.z);
+            }
+            else
+            {
+                List<KeyValuePair<float, int>> sorted = new List<KeyValuePair<float, int>>();
+                for (int step = 0; step < LinkForwards.Length; step++)
+                {
+                    Vector3 hubConnection = GetLinkForward(step);
+                    sorted.Add(new KeyValuePair<float, int>(Vector3.Dot(toOtherStat, hubConnection), step));
+                }
+                return sorted.OrderByDescending(x => x.Key).First().Value;
+            }
+        }
+
+        public void AdjustAllTracksShape()
+        {
+            ReconstructShape();
             if (NodeTracks != null)
             {
                 for (int step = 0; step < NodeTracks.Length; step++)
                 {
-                    NodeTracks[step].UpdateExistingIfNeeded();
+                    NodeTracks[step].UpdateExistingShapeIfNeeded();
                 }
             }
             for (int step = 0; step < LinkedTracks.Length; step++)
             {
                 if (LinkedTracks[step].LinkTrack != null)
-                    LinkedTracks[step].LinkTrack.UpdateExistingIfNeeded();
+                    LinkedTracks[step].LinkTrack.UpdateExistingShapeIfNeeded();
             }
         }
-        public void UpdateNodeTracks()
+        public void UpdateNodeTracksShape()
         {
-            Reconstruct();
+            ReconstructShape();
             if (NodeTracks != null)
             {
                 for (int step = 0; step < NodeTracks.Length; step++)
                 {
-                    NodeTracks[step].UpdateExistingIfNeeded();
+                    NodeTracks[step].UpdateExistingShapeIfNeeded();
                 }
             }
         }
 
+
+        public bool TwoTrainsOnJoiningTracks()
+        {
+            TankLocomotive train = null;
+            for (int step = 0; step < LinkedTracks.Length; step++)
+            {
+                if (LinkedTracks[step].NodeTrack != null && LinkedTracks[step].NodeTrack.ActiveBogeys.Count > 0)
+                {
+                    foreach (var item in LinkedTracks[step].NodeTrack.ActiveBogeys)
+                    {
+                        if (item != null)
+                        {
+                            var trainNew = item.engine.GetMaster();
+                            if (train == null)
+                                train = trainNew;
+                            else if (train != trainNew)
+                                return true;
+                        }
+                    }
+                }
+                if (LinkedTracks[step].LinkTrack != null && LinkedTracks[step].LinkTrack.ActiveBogeys.Count > 0)
+                {
+                    foreach (var item in LinkedTracks[step].LinkTrack.ActiveBogeys)
+                    {
+                        if (item != null)
+                        {
+                            var trainNew = item.engine.GetMaster();
+                            if (train == null)
+                                train = trainNew;
+                            else if (train != trainNew)
+                                return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
 
         public bool TrainOnConnectedTracks(TankLocomotive train = null)
         {
             if (train)
             {
                 TankLocomotive trainMain = train.GetMaster();
-                for (int step = 0; step < LinkForwards.Length; step++)
+                for (int step = 0; step < LinkedTracks.Length; step++)
                 {
+                    if (LinkedTracks[step].NodeTrack != null && LinkedTracks[step].NodeTrack.ActiveBogeys.Count > 0)
+                    {
+                        foreach (var item in LinkedTracks[step].NodeTrack.ActiveBogeys)
+                        {
+                            if (item.engine.GetMaster() == trainMain)
+                                return true;
+                        }
+                    }
                     if (LinkedTracks[step].LinkTrack != null && LinkedTracks[step].LinkTrack.ActiveBogeys.Count > 0)
                     {
                         foreach (var item in LinkedTracks[step].LinkTrack.ActiveBogeys)
@@ -277,14 +356,95 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                for (int step = 0; step < LinkForwards.Length; step++)
+                for (int step = 0; step < LinkedTracks.Length; step++)
                 {
+                    if (LinkedTracks[step].NodeTrack != null && LinkedTracks[step].NodeTrack.ActiveBogeys.Count > 0)
+                        return true;
                     if (LinkedTracks[step].LinkTrack != null && LinkedTracks[step].LinkTrack.ActiveBogeys.Count > 0)
                         return true;
                 }
             }
             return false;
         }
+
+        public TankLocomotive GetTrainOnConnectedTracks(TankLocomotive train)
+        {
+            if (train)
+            {
+                for (int step = 0; step < LinkedTracks.Length; step++)
+                {
+                    if (LinkedTracks[step].NodeTrack != null && LinkedTracks[step].NodeTrack.ActiveBogeys.Count > 0)
+                    {
+                        foreach (var item in LinkedTracks[step].NodeTrack.ActiveBogeys)
+                        {
+                            if (item != null)
+                            {
+                                var trainNew = item.engine.GetMaster();
+                                if (train != trainNew)
+                                    return trainNew;
+                            }
+                        }
+                    }
+                    if (LinkedTracks[step].LinkTrack != null && LinkedTracks[step].LinkTrack.ActiveBogeys.Count > 0)
+                    {
+                        foreach (var item in LinkedTracks[step].LinkTrack.ActiveBogeys)
+                        {
+                            if (item != null)
+                            {
+                                var trainNew = item.engine.GetMaster();
+                                if (train != trainNew)
+                                    return trainNew;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int step = 0; step < LinkedTracks.Length; step++)
+                {
+                    if (LinkedTracks[step].NodeTrack != null && LinkedTracks[step].NodeTrack.ActiveBogeys.Count > 0)
+                        return LinkedTracks[step].NodeTrack.ActiveBogeys.First().engine.GetMaster();
+                    if (LinkedTracks[step].LinkTrack != null && LinkedTracks[step].LinkTrack.ActiveBogeys.Count > 0)
+                        return LinkedTracks[step].LinkTrack.ActiveBogeys.First().engine.GetMaster();
+                }
+            }
+            return null;
+        }
+
+        public void GetTrainsOnConnectedTracks(HashSet<TankLocomotive> hash)
+        {
+            hash.Clear();
+            for (int step = 0; step < LinkedTracks.Length; step++)
+            {
+                if (LinkedTracks[step].NodeTrack != null && LinkedTracks[step].NodeTrack.ActiveBogeys.Count > 0)
+                {
+                    foreach (var item in LinkedTracks[step].NodeTrack.ActiveBogeys)
+                    {
+                        if (item != null)
+                        {
+                            var trainNew = item.engine.GetMaster();
+                            if (!hash.Contains(trainNew))
+                                hash.Add(trainNew);
+                        }
+                    }
+                }
+                if (LinkedTracks[step].LinkTrack != null && LinkedTracks[step].LinkTrack.ActiveBogeys.Count > 0)
+                {
+                    foreach (var item in LinkedTracks[step].LinkTrack.ActiveBogeys)
+                    {
+                        if (item != null)
+                        {
+                            var trainNew = item.engine.GetMaster();
+                            if (!hash.Contains(trainNew))
+                                hash.Add(trainNew);
+                        }
+                    }
+                }
+            }
+        }
+
+
 
         public List<RailTrack> CollectAllTrackRoutesBreadthSearch(Func<RailTrack, bool> query = null)
         {
@@ -311,6 +471,11 @@ namespace RandomAdditions.RailSystem
         {
             return seg.SystemType == SystemType && GetAllFreeLinks().Count > 0;
         }
+        public bool CanConnectFreeLink(RailTrackNode seg)
+        {
+            return seg.SystemType == SystemType && GetAllFreeLinks().Count > 0 && 
+                LinkedTracks[GetBestLinkInDirection(seg.LinkCenters[0].ScenePosition)].LinkTrack == null;
+        }
         /// <summary>
         /// Connects this node to the low value side of a new track, and the other node to the high-value side of that track
         /// </summary>
@@ -321,7 +486,7 @@ namespace RandomAdditions.RailSystem
             this.GetDirectionHub(seg, out RailConnectInfo hubThis);
             seg.GetDirectionHub(this, out RailConnectInfo hubThat);
 
-            if (!(ignoreIfConnectedAlready && hubThis.LinkTrack != null))
+            if (ignoreIfConnectedAlready || hubThis.LinkTrack == null)
             {
                 RailTrack track = ManRails.SpawnLinkRailTrack(hubThis, hubThat, forceLoad);
                 this.ConnectThisSide(track, true, hubThis.Index);
@@ -388,36 +553,7 @@ namespace RandomAdditions.RailSystem
 
         internal void GetDirectionHub(RailTrackNode otherSide, out RailConnectInfo info)
         {
-            Vector3 toOtherStat = (otherSide.LinkCenters[0].ScenePosition - LinkCenters[0].ScenePosition).normalized;
-            //Vector3 worldVec;
-            if (MaxConnectionCount == 2)
-            {
-                Vector3 hubF = LinkForwards[0];
-                if (Vector3.Dot(toOtherStat, hubF) >= 0)
-                {   // Front
-                    //worldVec = hubF;
-                    info = LinkedTracks[0];
-                }
-                else
-                {   // Back
-                    //worldVec = -hubF;
-                    info = LinkedTracks[1];
-                }
-                //DebugRandAddi.Info("RandomAdditions: GetDirectionVector - Got " + worldVec.x + ", " + worldVec.y + ", " + worldVec.z);
-            }
-            else
-            {
-                List<KeyValuePair<float, int>> sorted = new List<KeyValuePair<float, int>>();
-                for (int step = 0; step < LinkForwards.Length; step++)
-                {
-                    Vector3 hubConnection = GetLinkForward(step);
-                    sorted.Add(new KeyValuePair<float, int>(Vector3.Dot(toOtherStat, hubConnection), step));
-                }
-                int finalNum = sorted.OrderByDescending(x => x.Key).First().Value;
-                //worldVec = LinkForwards[finalNum];
-                info = LinkedTracks[finalNum];
-                //DebugRandAddi.Info("RandomAdditions: GetDirectionVector - Got " + worldVec.x + ", " + worldVec.y + ", " + worldVec.z);
-            }
+            info = LinkedTracks[GetBestLinkInDirection(otherSide.LinkCenters[0].ScenePosition)];
         }
 
         private void ConnectThisSide(RailTrack track, bool lowTrackSide, int hubNum)
@@ -850,6 +986,7 @@ namespace RandomAdditions.RailSystem
         public int NodeID = 0;
         public RailType Type = RailType.LandGauge2;
         public RailSpace Space = RailSpace.World;
+        public int Team = ManPlayer.inst.PlayerTeam;
         public bool Stop = false;
         public int MaxConnectionCount = 0;
         public WorldPosition[] LinkCenters;
@@ -867,6 +1004,7 @@ namespace RandomAdditions.RailSystem
             NodeID = node.NodeID;
             Type = node.SystemType;
             Space = node.Space;
+            Team = node.Team;
             Stop = node.Stopper;
             MaxConnectionCount = node.MaxConnectionCount;
             LinkCenters = node.LinkCenters;

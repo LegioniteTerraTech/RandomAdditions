@@ -33,6 +33,7 @@ namespace RandomAdditions
         TileLoader,
         WeaponSwitch,
         Tether,
+        Rails,
 
         // Projectiles
         TorpedoProjectile,
@@ -79,7 +80,8 @@ namespace RandomAdditions
         private bool digits = false;
         private int MaxNum = 0;
 
-        protected float currentTime = 0;
+        public float CurrentTime { get; private set; } = 0;
+        public bool IsReversing => Speed < 0;
 
         protected override void Pool()
         {
@@ -137,6 +139,8 @@ namespace RandomAdditions
             else
                 LogHandler.ThrowWarning("AnimetteController in " + gameObject.name + " expects an Animette in hierachy, but there is none!");
             fetched = true;
+            if (Condition == AnimCondition.ManagerManaged)
+                enabled = false;
         }
 
         public override void OnAttach()
@@ -226,33 +230,26 @@ namespace RandomAdditions
 
         public void Update()
         {
-            if (Condition == AnimCondition.ManagerManaged)
-            {   // Should not be running without Manager Commands.
-                enabled = false;
-            }
-            else
+            CurrentTime += Time.deltaTime * Speed;
+            if (CurrentTime < 0 || CurrentTime > 1)
             {
-                currentTime += Time.deltaTime * Speed;
-                if (currentTime < 0 || currentTime > 1)
+                if (returning)
                 {
-                    if (returning)
-                    {
-                        Rebound();
-                        returning = false;
-                    }
-                    else if (Repeating)
-                    {
-                        Rebound();
-                    }
-                    else
-                    {
-                        Stop();
-                    }
+                    Rebound();
+                    returning = false;
                 }
-                foreach (var item in lin)
+                else if (Repeating)
                 {
-                    item.UpdateThis(currentTime);
+                    Rebound();
                 }
+                else
+                {
+                    Stop();
+                }
+            }
+            foreach (var item in lin)
+            {
+                item.UpdateThis(CurrentTime);
             }
         }
 
@@ -261,16 +258,16 @@ namespace RandomAdditions
             switch (Way)
             {
                 case AnimLoopWay.Trip:
-                    SetState(Mathf.PingPong(currentTime, 1));
+                    SetState(Mathf.PingPong(CurrentTime, 1));
                     Speed = -Speed;
                     //DebugRandAddi.Log("ANIMATION REBOUND " + currentTime + "  sped " + Speed);
                     break;
                 case AnimLoopWay.OneWayRepeat:
-                    SetState(Mathf.Repeat(currentTime, 1));
+                    SetState(Mathf.Repeat(CurrentTime, 1));
                     //DebugRandAddi.Log("ANIMATION REPEAT " + currentTime + "  sped " + Speed);
                     break;
                 default:
-                    SetState(Mathf.PingPong(currentTime, 1));
+                    SetState(Mathf.PingPong(CurrentTime, 1));
                     Speed = -Speed;
                     //DebugRandAddi.Log("ANIMATION REBOUND " + currentTime + "  sped " + Speed);
                     break;
@@ -283,7 +280,7 @@ namespace RandomAdditions
                 SetState(DefaultPosition);
             else
             {
-                SetState(Mathf.Clamp01(currentTime));
+                SetState(Mathf.Clamp01(CurrentTime));
             }
             returning = false;
             Repeating = false;
@@ -293,7 +290,7 @@ namespace RandomAdditions
 
         public void SetState(float number)
         {
-            currentTime = number;
+            CurrentTime = number;
             if (digits)
             {
                 DisplayOnDigits(Mathf.RoundToInt(MaxNum * number), Mathf.RoundToInt(100 * number));
@@ -302,7 +299,7 @@ namespace RandomAdditions
             {
                 foreach (var item in lin)
                 {
-                    item.UpdateThis(currentTime);
+                    item.UpdateThis(CurrentTime);
                 }
             }
         }

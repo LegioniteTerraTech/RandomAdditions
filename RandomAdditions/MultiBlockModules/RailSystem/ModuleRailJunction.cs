@@ -17,6 +17,7 @@ namespace RandomAdditions
     {
         protected override void Pool()
         {
+            ManRails.InitExperimental();
             enabled = true;
             GetSignal();
             GetTrackHubs();

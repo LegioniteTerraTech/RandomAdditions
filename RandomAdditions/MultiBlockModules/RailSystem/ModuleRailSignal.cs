@@ -15,14 +15,18 @@ namespace RandomAdditions
     [AutoSaveComponent]
     public class ModuleRailSignal : ModuleRailPoint
     {
+        public bool StopWhenWarn = false; // Enable this for HIGH-SPEED lines like Venture's Wheesh Rails
+
         private Transform RailLightRedTrans;
         private Light RailLightRed;
         private Transform RailLightWarnTrans;
         private Light RailLightWarn;
         private Transform RailLightGreenTrans;
         private Light RailLightGreen;
+        private Transform semaphore;
         protected override void Pool()
         {
+            ManRails.InitExperimental();
             enabled = true;
             GetSignal();
             GetTrackHubs();
@@ -35,25 +39,21 @@ namespace RandomAdditions
         }
         protected void GetSignal()
         {
-            try
-            {
-                RailLightRedTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalOn");
-                if (RailLightRedTrans)
-                    RailLightRed = RailLightRedTrans.GetComponent<Light>();
-                RailLightWarnTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalWarn");
-                if (RailLightWarnTrans)
-                    RailLightWarn = RailLightWarnTrans.GetComponent<Light>();
-                RailLightGreenTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalOff");
-                if (RailLightGreenTrans)
-                    RailLightGreen = RailLightGreenTrans.GetComponent<Light>();
-            }
-            catch { }
+            RailLightRedTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalOn");
+            if (RailLightRedTrans)
+                RailLightRed = RailLightRedTrans.GetComponent<Light>();
+            RailLightWarnTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalWarn");
+            if (RailLightWarnTrans)
+                RailLightWarn = RailLightWarnTrans.GetComponent<Light>();
+            RailLightGreenTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalOff");
+            if (RailLightGreenTrans)
+                RailLightGreen = RailLightGreenTrans.GetComponent<Light>();
+            semaphore = KickStart.HeavyObjectSearch(transform, "_semaphore");
         }
 
         public List<ModuleRailSignal> GetOtherSignals()
         {
             List<ModuleRailSignal> points = new List<ModuleRailSignal>();
-            TrainInStretch = false;
             if (Node != null)
             {
                 RailTrackNode RTN = Node;
@@ -67,11 +67,28 @@ namespace RandomAdditions
             return points;
         }
 
-        private int pastLightStatus = 0;
+        private int pastLightStatus = -1;
+        private float curAngle = 0;
+        private float aimedAngle = 0;
+        public void Update()
+        {
+            if (curAngle != aimedAngle && semaphore)
+            {
+                if (curAngle.Approximately(aimedAngle, 0.05f))
+                    curAngle = aimedAngle;
+                else
+                    curAngle = Mathf.LerpAngle(curAngle, aimedAngle, Time.deltaTime * 2);
+                semaphore.localEulerAngles = semaphore.localEulerAngles.SetX(curAngle);
+            }
+        }
         protected override void PostUpdate(int lightStatus)
         {
+
+            if (StopWhenWarn && lightStatus == 1)
+                lightStatus = 2;
             if (pastLightStatus != lightStatus)
             {
+                //DebugRandAddi.Assert("PostUpdate");
                 pastLightStatus = lightStatus;
                 switch (lightStatus)
                 {
@@ -94,6 +111,7 @@ namespace RandomAdditions
                             if (RailLightGreen)
                                 RailLightGreen.enabled = false;
                         }
+                        aimedAngle = 0;
                         break;
                     case 1:
                         if (RailLightRedTrans)
@@ -114,6 +132,7 @@ namespace RandomAdditions
                             if (RailLightGreen)
                                 RailLightGreen.enabled = false;
                         }
+                        aimedAngle = 45;
                         break;
                     case 0:
                         if (RailLightRedTrans)
@@ -134,6 +153,7 @@ namespace RandomAdditions
                             if (RailLightGreen)
                                 RailLightGreen.enabled = true;
                         }
+                        aimedAngle = 45;
                         break;
                 }
             }

@@ -12,8 +12,8 @@ namespace RandomAdditions
         public static bool LockTime = false;
         public static int SavedTime = 0;// The Hour to keep the world set to 
         internal static int LastHour = 0;     // Last Hour 
-        public static readonly List<ModuleClock> clocks = new List<ModuleClock>();
-        public static readonly List<RandomTank> tanks = new List<RandomTank>();
+        private static readonly HashSet<ModuleClock> clocks = new HashSet<ModuleClock>();
+        public static readonly HashSet<RandomTank> tanks = new HashSet<RandomTank>();
 
         public static bool TimeControllerPresent = false;// Is the time locked to a master block?
         public static EventNoParams SlowUpdateEvent = new EventNoParams();
@@ -46,6 +46,16 @@ namespace RandomAdditions
                 inst = null;
                 DebugRandAddi.Log("RandomAdditions: DeInit GlobalClock.");
             }
+
+            public static void AddClock(ModuleClock clock)
+            {
+                clocks.Add(clock);
+            }
+            public static void RemoveClock(ModuleClock clock)
+            {
+                clocks.Remove(clock);
+            }
+
 
 
             public void PlayerTechUpdate(Tank Tech, bool set)

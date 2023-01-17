@@ -57,6 +57,15 @@ namespace RandomAdditions
                     cache.wheelsGroundedPerType[(int)TechAudio.WheelTypes.MetalWheel] += train.ActiveBogieCount;
                 }
             }
+
+            private static FieldInfo dr = typeof(TechAudio).GetField("m_Drive", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static FieldInfo tr = typeof(TechAudio).GetField("m_Turn", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static bool OnControlInput_Prefix(TechAudio __instance, ref TankControl.ControlState data)
+            {
+                dr.SetValue(__instance, (data.InputMovement + data.Throttle).magnitude);
+                tr.SetValue(__instance, data.InputRotation.magnitude);
+                return false;
+            }
         }
     }
 }

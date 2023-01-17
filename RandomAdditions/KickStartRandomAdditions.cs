@@ -40,7 +40,7 @@ namespace RandomAdditions
                 oInst = this;
 
             KickStart.MainOfficialInit();
-            ManRails.LateInit();
+            //ManRails.LateInit();
             isInit = true;
         }
         public override void DeInit()

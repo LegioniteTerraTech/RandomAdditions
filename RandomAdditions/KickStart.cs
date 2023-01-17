@@ -290,7 +290,8 @@ namespace RandomAdditions
             ModHelpers.Initiate();
             GUIClock.Initiate();
             ManTileLoader.Initiate();
-            ManRails.Init();
+            //ManRails.Init();
+            MinimapExtended.Init();
         }
 
 #if STEAM
@@ -325,6 +326,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
             }
+            MinimapExtended.DeInit();
             ManRails.DeInit();
             ManTileLoader.DeInit();
             GUIClock.DeInit();
@@ -681,7 +683,7 @@ namespace RandomAdditions
                 {
                     posDist = posCase;
                     closest = item;
-                    percentPos = (float)step / points.Count();
+                    percentPos = (float)step / points.Length;
                 }
                 step++;
             }
