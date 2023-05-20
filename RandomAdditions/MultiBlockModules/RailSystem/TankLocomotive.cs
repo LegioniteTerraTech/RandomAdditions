@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Networking;
 using RandomAdditions.PhysicsTethers;
 
 namespace RandomAdditions.RailSystem
@@ -18,9 +19,13 @@ namespace RandomAdditions.RailSystem
     }
     public class TankLocomotive : MonoBehaviour, IWorldTreadmill
     {
+
+        public const float DampenZMovementSpeed = 1.35f;
         public static bool AllowAutopilotToOverridePlayer => ManNetwork.IsHost;
         public static bool DebugMode = false;
         public static bool FirstInit = false;
+        public const float defaultSpeedDrag = 0.001f;
+        public const float trainSpeedDrag = 0.00001f;
 
         private static float TrainCollisionMinimumWorldSpeed = Globals.inst.impactDamageSpeedThreshold;
         private const float TrainCollisionMinimumDifference = 4;
@@ -48,7 +53,9 @@ namespace RandomAdditions.RailSystem
         public const float CurveAngleSlowRestrictThreshold = 27.5f;
         public const float CurveSlowRestrictedSpeed = 20.0f;
 
-        private const float TrainRollDampenerMultiplier = 6.75f;
+        private const float TrainRollDampenerMultiplier = 2.75f;
+        private const float TrainNonPrimarySidewaysSpringRedistributedPercent = 0.65f;
+        private const float TrainUprightMultiplier = 4f;
 
 
         internal Tank tank;
@@ -56,7 +63,7 @@ namespace RandomAdditions.RailSystem
         private float movementDampening = 0;
         private float tankAlignForce = 0;
         private float tankAlignDampener = 0;
-        private float tankAlignLimit = 0;
+        private float tankUprightAccelerationLimit = 0;
 
         private bool TrainPartsDirty = false;
         public float BogieForceAcceleration { get; private set; } = 1;
@@ -122,7 +129,7 @@ namespace RandomAdditions.RailSystem
             train.MasterCar = null;
             tank.CollisionEvent.Subscribe(train.HandleCollision);
             tank.control.driveControlEvent.Subscribe(train.DriveCommand);
-            ManRails.AllRailTechs.Add(train);
+            ManRails.AllTrainTechs.Add(train);
             train.enabled = true;
             if (!FirstInit)
             {
@@ -132,25 +139,35 @@ namespace RandomAdditions.RailSystem
             }
             RandomTank.Insure(tank).ReevaluateLoadingDiameter();
             ManWorldTreadmill.inst.AddListener(train);
+            if (tank.GetComponent<TankRailsLocal>())
+            {
+                tank.GetComponent<TankRailsLocal>().train = train;
+            }
             return train;
         }
         private void DestroyTrain()
         {
+            if (tank.GetComponent<TankRailsLocal>())
+            {
+                tank.GetComponent<TankRailsLocal>().train = null;
+            }
             ManWorldTreadmill.inst.RemoveListener(this);
             MasterCar = null;
             MasterUnRegisterAllConnectedLocomotives();
             FinishPathing(TrainArrivalStatus.Destroyed);
             tank.control.driveControlEvent.Unsubscribe(DriveCommand);
             tank.CollisionEvent.Unsubscribe(HandleCollision);
-            ManRails.AllRailTechs.Remove(this);
-            if (ManRails.AllRailTechs.Count == 0)
+            if (lastWasOnRails)
+                tank.airSpeedDragFactor = defaultSpeedDrag;
+            ManRails.AllTrainTechs.Remove(this);
+            if (ManRails.AllTrainTechs.Count == 0)
             {
             }
-            if (lastWasOnRails)
-                tank.airSpeedDragFactor = 0.001f;
             Destroy(this);
             RandomTank.Insure(tank).ReevaluateLoadingDiameter();
         }
+
+
         public static void HandleAddition(Tank tank, ModuleRailEngine engine)
         {
             if (tank.IsNull())
@@ -195,6 +212,7 @@ namespace RandomAdditions.RailSystem
                 train.DestroyTrain();
             }
         }
+
         public static void HandleAddition(Tank tank, ModuleRailBogie bogey)
         {
             if (tank.IsNull())
@@ -240,6 +258,7 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+
         public static bool WithinBox(Vector3 vec, float extents)
         {
             return vec.x >= -extents && vec.x <= extents && vec.y >= -extents && vec.y <= extents && vec.z >= -extents && vec.z <= extents;
@@ -265,93 +284,116 @@ namespace RandomAdditions.RailSystem
             {
                 other = collide.a;
             }
-            if ((collide.a.tank == null && collide.a.block == null) || (collide.b.tank == null && collide.b.block == null))
+            switch (whack)
             {
-                if (ManNetwork.IsHost && other.visible?.rbody && !WithinBox(collide.impulse, TrainCollisionMinimumDifference))
-                {
-                    if (Vector3.Dot(collide.normal, collide.impulse) >= 0)
-                        impulse = -collide.impulse;
-                    else
-                        impulse = collide.impulse;
-                    float forceVal = impulse.magnitude * TrainCollisionForceMultiplier;
-                    Vector3 pushVector = impulse.normalized.SetY(0.35f).normalized * forceVal;
-                    other.visible.rbody.AddForceAtPosition(pushVector, collide.point, ForceMode.Impulse);
-                }
-            }
-            else
-            {
-                if (!WithinBox(collide.impulse, TrainCollisionMinimumDifference))
-                {
-                    if (Vector3.Dot(collide.normal, collide.impulse) >= 0)
-                        impulse = -collide.impulse;
-                    else
-                        impulse = collide.impulse;
-
-                    if (other.tank)
+                case Tank.CollisionInfo.Event.Enter:
+                    if ((collide.a.tank == null && collide.a.block == null) || (collide.b.tank == null && collide.b.block == null))
                     {
-                        if (other.tank.rbody == null)
-                        {   // Deal more damage against anchored structures in the way
-                            if (ManNetwork.IsHost && collide.DealImpactDamage && other.tank.IsEnemy(tank.Team))
-                            {
-                                float colDamage = TrainCollisionDamagePerMassUnit * tank.rbody.mass;
-                                ManDamage.inst.DealImpactDamage(other.visible.damageable,
-                                    colDamage, tank.visible, tank, collide.point, collide.normal);
-                                if (colDamage >= TrainCollisionDamageMinimumSpread)
-                                {
-                                    other.block.ForeachConnectedBlock(HandleCollisionRelay);
-                                    float spreadDamage = (colDamage * TrainCollisionDamageSpreadMultiplier) / toAffect.Count;
-                                    foreach (var item in toAffect)
-                                    {
-                                        ManDamage.inst.DealImpactDamage(item.visible.damageable,
-                                            spreadDamage, tank.visible, tank, collide.point, collide.normal);
-                                    }
-                                    toAffect.Clear();
-                                }
-                            }
-                            return;
+                        if (ManNetwork.IsHost && other.visible?.rbody && !WithinBox(collide.impulse, TrainCollisionMinimumDifference))
+                        {
+                            if (Vector3.Dot(collide.normal, collide.impulse) >= 0)
+                                impulse = -collide.impulse;
+                            else
+                                impulse = collide.impulse;
+                            float forceVal = impulse.magnitude * TrainCollisionForceMultiplier;
+                            Vector3 pushVector = impulse.normalized.SetY(0.35f).normalized * forceVal;
+                            other.visible.rbody.AddForceAtPosition(pushVector, collide.point, ForceMode.Impulse);
                         }
-                        else
-                        {   // Launch mobile Techs out of the way!
-                            if (!GetMaster().LocomotiveCars.TryGetValue(other.tank, out _))
+                    }
+                    else
+                    {
+                        if (!WithinBox(collide.impulse, TrainCollisionMinimumDifference))
+                        {
+                            if (Vector3.Dot(collide.normal, collide.impulse) >= 0)
+                                impulse = -collide.impulse;
+                            else
+                                impulse = collide.impulse;
+
+                            if (other.tank)
                             {
-                                var loco = other.tank.GetComponent<TankLocomotive>();
-                                if (loco)
-                                {   // Train Collision - Derail!
-                                    float forceVal = impulse.magnitude * TrainOnTrainForceMultiplier;
-                                    Vector3 pushVector = impulse.normalized * forceVal;
-                                    if (ManNetwork.IsHost)
-                                        other.tank.ApplyForceOverTime(pushVector, collide.point, TrainOnTrainForceDuration);
-                                    tank.ApplyForceOverTime(-pushVector, collide.point, TrainOnTrainForceDuration);
-                                }
-                                else if (other.tank.blockman.blockCount == 1)
-                                {   // Passenger Tech?
-                                    Vector3 speedDifference = tank.rbody.velocity - other.tank.rbody.velocity;
-                                    if (ManNetwork.IsHost)
-                                        other.tank.rbody.AddForceAtPosition(speedDifference, other.tank.CenterOfMass, ForceMode.VelocityChange);
+                                if (other.tank.rbody == null)
+                                {   // Deal more damage against anchored structures in the way
+                                    if (ManNetwork.IsHost && collide.DealImpactDamage && other.tank.IsEnemy(tank.Team))
+                                    {
+                                        float colDamage = TrainCollisionDamagePerMassUnit * tank.rbody.mass;
+                                        ManDamage.inst.DealImpactDamage(other.visible.damageable,
+                                            colDamage, tank.visible, tank, collide.point, collide.normal);
+                                        if (colDamage >= TrainCollisionDamageMinimumSpread)
+                                        {
+                                            other.block.ForeachConnectedBlock(HandleCollisionRelay);
+                                            float spreadDamage = (colDamage * TrainCollisionDamageSpreadMultiplier) / toAffect.Count;
+                                            foreach (var item in toAffect)
+                                            {
+                                                ManDamage.inst.DealImpactDamage(item.visible.damageable,
+                                                    spreadDamage, tank.visible, tank, collide.point, collide.normal);
+                                            }
+                                            toAffect.Clear();
+                                        }
+                                    }
+                                    return;
                                 }
                                 else
-                                {   // Any other mobile Tech
+                                {   // Launch mobile Techs out of the way!
+                                    if (!GetMaster().LocomotiveCars.ContainsKey(other.tank) && !other.tank.GetComponent<TankRailsLocal>())
+                                    {
+                                        var loco = other.tank.GetComponent<TankLocomotive>();
+                                        if (loco)
+                                        {   // Train Collision - Derail!
+                                            float forceVal = impulse.magnitude * TrainOnTrainForceMultiplier;
+                                            Vector3 pushVector = impulse.normalized * forceVal;
+                                            if (ManNetwork.IsHost && lastCenterSpeed > TrainCollisionMinimumDifference)
+                                                other.tank.ApplyForceOverTime(pushVector, collide.point, TrainOnTrainForceDuration);
+                                            tank.ApplyForceOverTime(-pushVector, collide.point, TrainOnTrainForceDuration);
+                                        }
+                                        else if (other.tank.blockman.blockCount == 1)
+                                        {   // Passenger Tech?
+                                            if (ManNetwork.IsHost)
+                                            {
+                                                Vector3 speedDifference = tank.rbody.velocity - other.tank.rbody.velocity;
+                                                other.tank.rbody.AddForceAtPosition(speedDifference, other.tank.CenterOfMass, ForceMode.VelocityChange);
+                                            }
+                                        }
+                                        else
+                                        {   // Any other mobile Tech
+                                            float forceVal = impulse.magnitude * TrainCollisionForceMultiplier;
+                                            Vector3 pushVector = impulse.normalized.SetY(0.35f).normalized * forceVal;
+                                            if (ManNetwork.IsHost && lastCenterSpeed > TrainCollisionMinimumDifference)
+                                                other.tank.ApplyForceOverTime(pushVector, collide.point, TrainCollisionForceDuration);
+                                            tank.rbody.AddForceAtPosition(-impulse * TrainCollisionForceRecoveryPercent, collide.point);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (other.block.rbody != null)
+                                {
                                     float forceVal = impulse.magnitude * TrainCollisionForceMultiplier;
                                     Vector3 pushVector = impulse.normalized.SetY(0.35f).normalized * forceVal;
-                                    if (ManNetwork.IsHost)
-                                        other.tank.ApplyForceOverTime(pushVector, collide.point, TrainCollisionForceDuration);
+                                    if (ManNetwork.IsHost && lastCenterSpeed > TrainCollisionMinimumDifference)
+                                        other.block.rbody.AddForceAtPosition(pushVector, collide.point, ForceMode.Impulse);
                                     tank.rbody.AddForceAtPosition(-impulse * TrainCollisionForceRecoveryPercent, collide.point);
                                 }
                             }
                         }
                     }
-                    else
+                    break;
+                case Tank.CollisionInfo.Event.Stay:
+                    // On hold for now
+                    if (other.tank && other.tank.rbody && other.tank.GetComponent<TankRailsLocal>())
                     {
-                        if (other.block.rbody != null)
+                        if (ManNetwork.IsHost)
                         {
-                            float forceVal = impulse.magnitude * TrainCollisionForceMultiplier;
-                            Vector3 pushVector = impulse.normalized.SetY(0.35f).normalized * forceVal;
-                            if (ManNetwork.IsHost)
-                                other.block.rbody.AddForceAtPosition(pushVector, collide.point, ForceMode.Impulse);
-                            tank.rbody.AddForceAtPosition(-impulse * TrainCollisionForceRecoveryPercent, collide.point);
+                            if (Vector3.Dot(collide.normal, collide.impulse) >= 0)
+                                impulse = -collide.impulse;
+                            else
+                                impulse = collide.impulse;
+                            other.visible.rbody.AddForceAtPosition(impulse, collide.point, ForceMode.Impulse);
                         }
                     }
-                }
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -412,7 +454,7 @@ namespace RandomAdditions.RailSystem
         }
         private bool TankPartOfTrainMaster(Tank main)
         {
-            return tank == main || LocomotiveCars.TryGetValue(main, out _);
+            return tank == main || LocomotiveCars.ContainsKey(main);
         }
 
 
@@ -435,26 +477,29 @@ namespace RandomAdditions.RailSystem
         {
             return cab.forward;
         }
-        public bool HasEngine()
+        public bool MasterHasEngine()
         {
             TankLocomotive master = GetMaster();
             if (master.BogieMaxDriveForce > 0)
                 return true;
             foreach (var item in master.LocomotiveCars.Keys)
             {
-                if (item.GetComponent<TankLocomotive>() && item.GetComponent<TankLocomotive>().BogieMaxDriveForce > 0)
+                if (item.GetComponent<TankLocomotive>() && item.GetComponent<TankLocomotive>().HasOwnEngine)
                     return true;
             }
             return false;
         }
+        public bool HasOwnEngine => BogieMaxDriveForce > 0;
         public bool CanCall()
         {
-            return !Autopilot && (AllowAutopilotToOverridePlayer || !tank.PlayerFocused) && HasEngine();
+            return !Autopilot && (AllowAutopilotToOverridePlayer || !tank.PlayerFocused) && HasOwnEngine;
         }
 
 
         internal Vector3 drive { get; private set; }
         internal Vector3 turn { get; private set; }
+        internal float DriveSignal = 0;
+        internal int SpeedSignal = 0;
         public TrainBlockIterator<TankBlock> IterateBlocksOnTrain()
         {
             return new TrainBlockIterator<TankBlock>(this);
@@ -780,17 +825,14 @@ namespace RandomAdditions.RailSystem
 
         private void DriveCommand(TankControl.ControlState controlState)
         {
-            drive = Vector3.ClampMagnitude(controlState.InputMovement + controlState.Throttle, 1);
+            if (DriveSignal.Approximately(0))
+                drive = Vector3.ClampMagnitude(controlState.InputMovement + controlState.Throttle, 1);
+            else
+                drive = new Vector3(0, 0, DriveSignal);
             turn = controlState.InputRotation;
             lastFireState = controlState.Fire;
-            foreach (var item in BogieBlocks)
-            {
-                if (item.IsPathing)
-                {
-                    PathingControl();
-                    break;
-                }
-            }
+            if (AutopilotActive)
+                PathingControl();
 
             foreach (var item in BogieBlocks)
             {
@@ -800,9 +842,8 @@ namespace RandomAdditions.RailSystem
 
         private void PathingControl()
         {
-            float fwd = tank.GetForwardSpeed();
-            float foresight = (TrainPathfindingSpacingDistance * Mathf.Sign(fwd)) + fwd;
-            if (Mathf.Abs(fwd) < TrainPathingFailSpeed)
+            float foresight = (TrainPathfindingSpacingDistance * Mathf.Sign(lastForwardSpeed)) + lastForwardSpeed;
+            if (Mathf.Abs(lastForwardSpeed) < TrainPathingFailSpeed)
             {
                 lastFailTime += Time.deltaTime;
                 if (lastFailTime > TrainPathingFailTime)
@@ -820,7 +861,7 @@ namespace RandomAdditions.RailSystem
                 if (leadingBogie && leadingBogie.Track?.StartNode?.Point)
                 {
                     ModuleRailPoint MRP = leadingBogie.Track.StartNode.Point;
-                    if (MRP.MultipleTrainsInStretch && leadingBogie.Track.BogiesAheadPrecise(foresight, leadingBogie))
+                    if (MRP.StopTrains && leadingBogie.Track.BogiesAheadPrecise(foresight, leadingBogie))
                     {
                         MasterSetTrainDriveOverride(TrainDriveState.Obstruction);
                         return;
@@ -843,7 +884,7 @@ namespace RandomAdditions.RailSystem
                 if (rearBogie && rearBogie.Track?.StartNode?.Point)
                 {
                     ModuleRailPoint MRP = rearBogie.Track.StartNode.Point;
-                    if (MRP.MultipleTrainsInStretch && rearBogie.Track.BogiesAheadPrecise(foresight, rearBogie))
+                    if (MRP.StopTrains && rearBogie.Track.BogiesAheadPrecise(foresight, rearBogie))
                     {
                         MasterSetTrainDriveOverride(TrainDriveState.Obstruction);
                         return;
@@ -865,7 +906,6 @@ namespace RandomAdditions.RailSystem
 
 
 
-        private bool AutoSetMaster = false;
         private TankLocomotive MasterCar { 
             get
             {
@@ -933,7 +973,7 @@ namespace RandomAdditions.RailSystem
                 carBest.MasterRegisterLocomotives(sortedCars);
                 return;
             }
-            carBest = sortedCars.Find(x => x.HasEngine());
+            carBest = sortedCars.Find(x => x.HasOwnEngine);
             if (carBest)
             {
                 DebugRandAddi.Info("TankLocomotive: SortAndRegisterLocomotivesInfo selected first engine-powered locomotive " + carBest.tank.name);
@@ -958,7 +998,6 @@ namespace RandomAdditions.RailSystem
             LocomotiveCars.Clear();
             foreach (var loco in toProcess)
             {
-                loco.AutoSetMaster = true;
                 LocomotiveCarsOrdered.Add(loco);
                 LocomotiveCars.Add(loco.tank, loco.CarNumber);
                 if (loco != this)
@@ -1028,16 +1067,16 @@ namespace RandomAdditions.RailSystem
                     loco.MasterCar = null;
                     loco.CarNumber = -1;
                     loco.FromMasterDrive = Quaternion.identity;
-                    loco.AutoSetMaster = false;
                     loco.LocomotiveCars.Clear();
                     loco.LocomotiveCarsOrdered.Clear();
                 }
             }
         }
 
-
-        private void UpdateEngines()
+        private readonly HashSet<ModuleRailBogie> CentralBogies = new HashSet<ModuleRailBogie>();
+        private void SyncEnginesAndBogies()
         {
+            CentralBogies.Clear();
             if (BogieCount == 0 || EngineBlockCount == 0)
             {
                 TankHasBrakes = false;
@@ -1076,10 +1115,25 @@ namespace RandomAdditions.RailSystem
                 BogieMaxDriveVelocity = 1;
             if (BogieMaxDriveForce < 1)
                 BogieMaxDriveForce = 1;
+            _ = tank.boundsCentreWorld;
+            using (var IE = BogieBlocks.OrderBy(x => (x.tank.boundsCentreWorldNoCheck - x.BogieCenter.position).sqrMagnitude).GetEnumerator())
+            {
+                if (BogieBlocks.Count % 2 == 0)
+                {
+                    CentralBogies.Add(IE.Current);
+                    IE.MoveNext();
+                    CentralBogies.Add(IE.Current);
+                }
+                else
+                {
+                    CentralBogies.Add(IE.Current);
+                }
+            }
             bool hasEngie = BogieMaxDriveForce > 0;
             foreach (var item in BogieBlocks)
             {
                 item.ShowBogieMotors(hasEngie);
+                item.IsCenterBogie = CentralBogies.Contains(item);
             }
         }
         internal void MasterGetFrontAndBackBogie()
@@ -1259,12 +1313,12 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-        internal void SemiFirstFixedUpdate()
+        internal void FirstFixedUpdate()
         {
             movementDampening = 0;
             tankAlignForce = 0;
             tankAlignDampener = 0;
-            tankAlignLimit = 0;
+            tankUprightAccelerationLimit = 0;
 
             if (tank.rbody && !tank.beam.IsActive)
             {
@@ -1272,27 +1326,59 @@ namespace RandomAdditions.RailSystem
 
                 bogiesOnRails.Clear();
                 uprightSuggestion = Vector3.zero;
-                Vector3 trainCabUp = tank.rootBlockTrans.InverseTransformVector(Vector3.up).SetZ(0).normalized;
                 foreach (var item in BogieBlocks)
                 {
-                    if (item.PreFixedUpdate(trainCabUp))
+                    if (item.PreFixedUpdate())
                     {
                         bogiesOnRails.Add(item);
                         movementDampening += item.BogeyKineticStiffPercent;
                         tankAlignForce += item.BogieAlignmentForce;
                         tankAlignDampener += item.BogieAlignmentDampener;
-                        tankAlignLimit += item.BogieAlignmentMaxRotation;
+                        tankUprightAccelerationLimit += item.BogieAlignmentMaxRotation;
                         uprightSuggestion += item.bogiePhysicsNormal;
                     }
                 }
                 if (uprightSuggestion == Vector3.zero)
                     uprightSuggestion = Vector3.up;
                 else
-                    uprightSuggestion /= ActiveBogieCount;
+                    uprightSuggestion = uprightSuggestion.normalized;
                 if (bogiesOnRails.Count > 0)
                 {
                     movementDampening /= ActiveBogieCount;
-                    tankAlignLimit /= ActiveBogieCount;
+                    tankUprightAccelerationLimit /= ActiveBogieCount;
+
+                    float addedSuspensionForceUnused = 0;
+                    foreach (var item in bogiesOnRails)
+                    {
+                        if (CentralBogies.Contains(item))
+                        {
+                            item.IsCenterBogie = true;
+                            item.bogieSidewaySpringForceCalc = item.SidewaysSpringForce;
+                        }
+                        else
+                        {
+                            item.IsCenterBogie = false;
+                            float subtractedForce = TrainNonPrimarySidewaysSpringRedistributedPercent
+                                * item.SidewaysSpringForce;
+                            addedSuspensionForceUnused += subtractedForce;
+                            item.bogieSidewaySpringForceCalc = item.SidewaysSpringForce - subtractedForce;
+                        }
+                    }
+                    if (bogiesOnRails.Count % 2 == 0)
+                    {
+                        addedSuspensionForceUnused /= 2;
+                        foreach (var item in CentralBogies)
+                        {
+                            item.bogieSidewaySpringForceCalc += addedSuspensionForceUnused;
+                        }
+                    }
+                    else
+                    {
+                        if (CentralBogies.First() != null)
+                            CentralBogies.First().bogieSidewaySpringForceCalc += addedSuspensionForceUnused;
+                        else
+                            DebugRandAddi.Log("no CentralBogies!");
+                    }
                 }
             }
             else
@@ -1301,7 +1387,7 @@ namespace RandomAdditions.RailSystem
                 {
                     if (item.Track != null)
                     {
-                        item.DetachBogey();
+                        item.DerailBogey();
                     }
                 }
             }
@@ -1371,8 +1457,6 @@ namespace RandomAdditions.RailSystem
             {
                 if (TrainOnRails)
                 {
-                    tank.wheelGrounded = true;
-                    tank.grounded = true;
                     if (BogieBlocks.Count == 1)
                     {   // Align with forwards facing
                         SingleBogeyFixedUpdateAlignment();
@@ -1382,14 +1466,14 @@ namespace RandomAdditions.RailSystem
                         MultiBogeyFixedUpdateAlignment();
                     }
                 }
-
                 // Apply rail-binding physics
                 Vector3 moveVeloWorld = (tank.boundsCentreWorldNoCheck - lastPos) / Time.fixedDeltaTime;
                 float invMass = 1 / tank.rbody.mass;
                 lastPos = tank.boundsCentreWorldNoCheck;
 
                 bool brakesApplied;
-                if (!drive.ApproxZero())
+                bool driveStopped = drive.ApproxZero();
+                if (!driveStopped)
                 {
                     if (Vector3.Dot(drive.normalized, (tank.rootBlockTrans.InverseTransformDirection(moveVeloWorld) + (drive * TrainMinReverseVelocityBrakesOnly)).normalized) > 0)
                     {
@@ -1420,6 +1504,12 @@ namespace RandomAdditions.RailSystem
                 {
                     item.PostFixedUpdate(moveVeloWorld, invMass, brakesApplied);
                 }
+            }
+        }
+        internal void LastFixedUpdate()
+        {
+            if (tank.rbody && !tank.beam.IsActive)
+            {
                 foreach (var item in BogieBlocks)
                 {
                     item.PostPostFixedUpdate();
@@ -1427,24 +1517,44 @@ namespace RandomAdditions.RailSystem
 
                 if (TrainOnRails)
                 {
+                    tank.wheelGrounded = true;
+                    tank.grounded = true;
+
+                    bool driveStopped = drive.ApproxZero();
                     // Dampen the movement to stabilize it
                     Vector3 force = tank.rbody.velocity;
                     /*
                     force.x = force.x * Mathf.Abs(force.x);
                     force.y = force.y * Mathf.Abs(force.y);
                     force.z = force.z * Mathf.Abs(force.z);*/
-                    tank.rbody.AddForce(force * -movementDampening, ForceMode.Acceleration);
+                    if (driveStopped && ActiveBogieCount > 0 && Mathf.Abs(lastForwardSpeed) > DampenZMovementSpeed)
+                    {
+                        force.Scale(Vector3.one / ActiveBogieCount);
+                        Vector3 addForce = Vector3.zero;
+                        foreach (var item in AllActiveBogies)
+                        {
+                            var forceLocal = item.BogieVisual.InverseTransformVector(force);
+                            forceLocal.x *= movementDampening;
+                            forceLocal.y *= movementDampening;
+                            forceLocal.z = 0.8f * Mathf.Min(item.BrakingForce, Mathf.Abs(forceLocal.z)) * Mathf.Sign(forceLocal.z);
+                            addForce += item.BogieVisual.TransformVector(forceLocal);
+                        }
+                        tank.rbody.AddForce(-addForce, ForceMode.Acceleration);
+                    }
+                    else
+                        tank.rbody.AddForce(force * -movementDampening, ForceMode.Acceleration);
+
                 }
             }
             if (lastWasOnRails != TrainOnRails)
             {
                 if (TrainOnRails)
                 {
-                    tank.airSpeedDragFactor = 0.0000001f;
+                    tank.airSpeedDragFactor = trainSpeedDrag;
                 }
                 else
                 {
-                    tank.airSpeedDragFactor = 0.001f;
+                    tank.airSpeedDragFactor = defaultSpeedDrag;
                 }
                 RandomTank.Insure(tank).ReevaluateLoadingDiameter();
                 lastWasOnRails = TrainOnRails;
@@ -1455,7 +1565,7 @@ namespace RandomAdditions.RailSystem
         {
             ModuleRailBogie MRB = BogieBlocks.First();
             Vector3 forwardsAim;
-            if (Vector3.Dot(MRB.BogieRemote.forward, tank.rootBlockTrans.forward) > 0)
+            if (Vector3.Dot(MRB.BogieRemote.forward, cab.forward) > 0)
             {
                 forwardsAim = MRB.BogieRemote.forward;
             }
@@ -1464,29 +1574,29 @@ namespace RandomAdditions.RailSystem
                 forwardsAim = -MRB.BogieRemote.forward;
             }
             Vector3 turnVal = Quaternion.LookRotation(
-                tank.rootBlockTrans.InverseTransformDirection(forwardsAim.normalized),
-                tank.rootBlockTrans.InverseTransformDirection(uprightSuggestion)).eulerAngles;
+                cab.InverseTransformDirection(forwardsAim.normalized),
+                cab.InverseTransformDirection(uprightSuggestion)).eulerAngles;
 
             //Convert turnVal to runnable format
             if (turnVal.x > 180)
-                turnVal.x = -((turnVal.x - 360) / 180);
+                turnVal.x = -((turnVal.x - 360) * Mathf.Deg2Rad);
             else
-                turnVal.x = -(turnVal.x / 180);
+                turnVal.x = -(turnVal.x * Mathf.Deg2Rad);
             if (turnVal.z > 180)
-                turnVal.z = -((turnVal.z - 360) / 180);
+                turnVal.z = -((turnVal.z - 360) * Mathf.Deg2Rad);
             else
-                turnVal.z = -(turnVal.z / 180);
+                turnVal.z = -(turnVal.z * Mathf.Deg2Rad);
             if (turnVal.y > 180)
-                turnVal.y = Mathf.Clamp(-((turnVal.y - 360) / 60), -1, 1);
+                turnVal.y = -((turnVal.y - 360) * Mathf.Deg2Rad);
             else
-                turnVal.y = Mathf.Clamp(-(turnVal.y / 60), -1, 1);
+                turnVal.y = -(turnVal.y * Mathf.Deg2Rad);
 
             // Turn it in
             PHYRotateAxis(turnVal);
         }
         private void MultiBogeyFixedUpdateAlignment()
         {
-            Vector3 forwardsAim = tank.rootBlockTrans.forward;
+            Vector3 forwardsAim = cab.forward;
             Vector3 turnVal = Quaternion.LookRotation(
                 cab.InverseTransformDirection(forwardsAim.normalized),
                 cab.InverseTransformDirection(uprightSuggestion)).eulerAngles;
@@ -1512,20 +1622,26 @@ namespace RandomAdditions.RailSystem
             PHYRotateAxis(turnVal);
         }
 
+        internal Vector3 trainCabUpWorld = Vector3.up;
         private void Update()
         {
+            if (!ManNetwork.IsHost)
+                return;
             if (TrainPartsDirty)
             {
                 TrainPartsDirty = false;
-                UpdateEngines();
+                SyncEnginesAndBogies();
                 RandomTank.Insure(tank).ReevaluateLoadingDiameter();
             }
             if (!ManPauseGame.inst.IsPaused)
             {
+                int DriveSignalIn = 0;
+                int signal;
                 if (tank.rbody && !tank.beam.IsActive)
                 {
                     lastCenterSpeed = tank.rbody.velocity.magnitude;
                     lastForwardSpeed = tank.rootBlockTrans.InverseTransformVector(tank.rbody.velocity).z;
+                    trainCabUpWorld = tank.rootBlockTrans.up;
                     foreach (var item in BogieBlocks)
                     {
                         item.UpdateVisualsAndAttachCheck();
@@ -1535,14 +1651,18 @@ namespace RandomAdditions.RailSystem
                         float velo = Mathf.Clamp01(lastCenterSpeed / BogieMaxDriveVelocity);
                         foreach (var item in EngineBlocks)
                         {
-                            item.EngineUpdate(velo);
+                            signal = item.EngineUpdate(velo);
+                            if (DriveSignalIn < signal)
+                                DriveSignalIn = signal;
                         }
                     }
                     else
                     {
                         foreach (var item in EngineBlocks)
                         {
-                            item.EngineUpdate(0);
+                            signal = item.EngineUpdate(0);
+                            if (DriveSignalIn < signal)
+                                DriveSignalIn = signal;
                         }
                     }
                 }
@@ -1554,54 +1674,72 @@ namespace RandomAdditions.RailSystem
                     }
                     foreach (var item in EngineBlocks)
                     {
-                        item.EngineUpdate(0);
+                        signal = item.EngineUpdate(0);
+                        if (DriveSignalIn < signal)
+                            DriveSignalIn = signal;
                     }
+                    lastForwardSpeed = 0;
                 }
+                DriveSignal = CircuitExt.Float1FromAnalogSignal(DriveSignalIn);
+                SpeedSignal = CircuitExt.AnalogSignalFromFloat1(Mathf.Clamp(lastForwardSpeed / BogieMaxDriveVelocity, -1, 1));
             }
         }
 
 
 
-        private Vector3 CurRotat = Vector3.zero;
+        //private static float alignConst = Mathf.Deg2Rad * 90;
         private void PHYRotateAxis(Vector3 commandCab)
         {
             Vector3 IT = tank.rbody.inertiaTensor;
-            Vector3 localAngleVelo = cab.InverseTransformVector(tank.rbody.angularVelocity);
-            Vector3 localRotInertia = Vector3.Scale(cab.InverseTransformVector(tank.rbody.angularVelocity), IT) / Time.fixedDeltaTime;
+            Vector3 localAngleVelo = cab.InverseTransformVector(tank.rbody.angularVelocity); // radians per sec
 
-            CurRotat = commandCab * -tankAlignForce;
+            Vector3 localUprightingForce = commandCab * -tankAlignForce;
 
-            Vector3 InertiaDampen = Vector3.zero;
             if (!localAngleVelo.Approximately(Vector3.zero, 0.1f))
             {
-                InertiaDampen = new Vector3(
-                    Mathf.Clamp(-localRotInertia.x, -tankAlignDampener, tankAlignDampener),
-                    Mathf.Clamp(-localRotInertia.y, -tankAlignDampener, tankAlignDampener),
-                    Mathf.Clamp(-localRotInertia.z, -tankAlignDampener * TrainRollDampenerMultiplier, tankAlignDampener * TrainRollDampenerMultiplier)
-                    );
+                Vector3 localDampenForce;
+                Vector3 localCounterRotForce = -Vector3.Scale(localAngleVelo, IT);
+                Vector3 rawInertiaDampen = localCounterRotForce;
+
+                float tankAlignDampenerZ = tankAlignDampener * TrainRollDampenerMultiplier;
+                localDampenForce = new Vector3(
+                    Mathf.Clamp(rawInertiaDampen.x, -tankAlignDampener, tankAlignDampener),
+                    Mathf.Clamp(rawInertiaDampen.y, -tankAlignDampener, tankAlignDampener),
+                    Mathf.Clamp(rawInertiaDampen.z, -tankAlignDampenerZ, tankAlignDampenerZ)
+                    ); // InertiaDampen
+                localUprightingForce += localDampenForce;
             }
             else
             {
-                if (CurRotat.Approximately(Vector3.zero))
+                if (localUprightingForce.Approximately(Vector3.zero, 0.1f))
                 {
                     tank.rbody.angularVelocity = Vector3.zero;  // FREEZE
                     return;
                 }
             }
-            if (!CurRotat.Approximately(Vector3.zero))
+
+            if (!localUprightingForce.Approximately(Vector3.zero, 0.1f))
             {
-                Vector3 curRotAccel = Vector3.Scale(CurRotat, new Vector3(1 / IT.x, 1 / IT.y, 1 / IT.z));
-                curRotAccel.x = Mathf.Abs(curRotAccel.x);
-                curRotAccel.y = Mathf.Abs(curRotAccel.y);
-                curRotAccel.z = Mathf.Abs(curRotAccel.z);
-                if (curRotAccel.x > tankAlignLimit)
-                    CurRotat.x *= tankAlignLimit / curRotAccel.x;
-                if (curRotAccel.y > tankAlignLimit)
-                    CurRotat.y *= tankAlignLimit / curRotAccel.y;
-                if (curRotAccel.z > tankAlignLimit)
-                    CurRotat.z *= tankAlignLimit / curRotAccel.z;
+                Vector3 uprightAccel = Vector3.zero;
+                uprightAccel.x = Mathf.Abs(localUprightingForce.x / IT.x);
+                uprightAccel.y = Mathf.Abs(localUprightingForce.y / IT.y);
+                uprightAccel.z = Mathf.Abs(localUprightingForce.z / IT.z);
+                if (uprightAccel.x > tankUprightAccelerationLimit)
+                    localUprightingForce.x *= tankUprightAccelerationLimit / uprightAccel.x;
+                if (uprightAccel.y > tankUprightAccelerationLimit)
+                    localUprightingForce.y *= tankUprightAccelerationLimit / uprightAccel.y;
+                if (uprightAccel.z > tankUprightAccelerationLimit)
+                    localUprightingForce.z *= tankUprightAccelerationLimit / uprightAccel.z;
+                Vector3 forceNeededToReachUp = Vector3.zero;
+                forceNeededToReachUp.x = Mathf.Abs(commandCab.x * IT.x);
+                forceNeededToReachUp.y = Mathf.Abs(commandCab.y * IT.y);
+                forceNeededToReachUp.z = Mathf.Abs(commandCab.z * IT.z);
+                forceNeededToReachUp *= tank.rbody.mass / Time.fixedDeltaTime;
+                localUprightingForce.x = Mathf.Clamp(localUprightingForce.x, -forceNeededToReachUp.x, forceNeededToReachUp.x);
+                localUprightingForce.y = Mathf.Clamp(localUprightingForce.y, -forceNeededToReachUp.y, forceNeededToReachUp.y);
+                localUprightingForce.z = Mathf.Clamp(localUprightingForce.z, -forceNeededToReachUp.z, forceNeededToReachUp.z);
             }
-            tank.rbody.AddTorque(cab.TransformVector(CurRotat + InertiaDampen));
+            tank.rbody.AddTorque(cab.TransformVector(localUprightingForce), ForceMode.Force);
         }
 
         public struct TrainBlockIterator<T> : IEnumerator<T> where T : MonoBehaviour

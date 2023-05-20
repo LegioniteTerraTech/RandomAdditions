@@ -12,8 +12,8 @@ namespace RandomAdditions
         public static bool LockTime = false;
         public static int SavedTime = 0;// The Hour to keep the world set to 
         internal static int LastHour = 0;     // Last Hour 
-        private static readonly HashSet<ModuleClock> clocks = new HashSet<ModuleClock>();
-        public static readonly HashSet<RandomTank> tanks = new HashSet<RandomTank>();
+        private static HashSet<ModuleClock> clocks = new HashSet<ModuleClock>();
+        public static HashSet<RandomTank> tanks = new HashSet<RandomTank>();
 
         public static bool TimeControllerPresent = false;// Is the time locked to a master block?
         public static EventNoParams SlowUpdateEvent = new EventNoParams();
@@ -32,7 +32,6 @@ namespace RandomAdditions
                 inst = new GameObject("GlobalClockGeneral").AddComponent<ClockManager>();
                 clocks.Clear();
                 tanks.Clear();
-                ManTechs.inst.PlayerTankChangedEvent.Subscribe(inst.PlayerTechUpdate);
                 DebugRandAddi.Log("RandomAdditions: Created GlobalClock.");
                 inst.gameObject.SetActive(true);
                 inst.enabled = true;
@@ -41,7 +40,6 @@ namespace RandomAdditions
             {
                 if (!inst)
                     return;
-                ManTechs.inst.PlayerTankChangedEvent.Unsubscribe(inst.PlayerTechUpdate);
                 Destroy(inst.gameObject);
                 inst = null;
                 DebugRandAddi.Log("RandomAdditions: DeInit GlobalClock.");
@@ -57,10 +55,10 @@ namespace RandomAdditions
             }
 
 
-
-            public void PlayerTechUpdate(Tank Tech, bool set)
+            private static Tank prevPlayerTank = null;
+            public void PlayerTechUpdate()
             {
-                if (Tech)
+                if (prevPlayerTank != Singleton.playerTank)
                 {
                     foreach (var item in ManTechs.inst.IterateTechs())
                     {
@@ -156,6 +154,9 @@ namespace RandomAdditions
             private float SlowUpdate = 0;
             public void Update()
             {
+                PlayerTechUpdate();
+                ModHelpers.UpdateThis();
+                ModuleUIButtons.UpdateThis();
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                 {
                     DebugRandAddi.Info("RandomAdditions: Time Changed!");
@@ -166,6 +167,7 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Time Changed by Player!");
                     GetTimeSetClocks();
                 }
+                TankBlockScaler.UpdateAll();
                 if (SlowUpdate < Time.time)
                 {
                     SlowUpdate = Time.time + SlowUpdateTime;

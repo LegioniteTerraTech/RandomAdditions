@@ -12,20 +12,25 @@ namespace RandomAdditions
         internal static class ModuleItemHolderBeamPatches
         {
             internal static Type target = typeof(ModuleItemHolderBeam);
+
+            private static FieldInfo lockGet = typeof(ModuleItemHolderBeam).GetField("m_HeldPhysicsItems", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static FieldInfo scaleGet = typeof(ModuleItemHolderBeam).GetField("m_ScaleChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+
             //Allow disabling of physics on mobile bases
             /// <summary>
             /// PatchModuleItemHolderBeamForStatic
             /// </summary>
             private static bool UpdateFloat_Prefix(ModuleItemHolderBeam __instance, ref Visible item)
             {
-                var ModuleCheck = __instance.gameObject?.GetComponent<ModuleItemFixedHolderBeam>();
+                if (__instance == null || item == null)
+                    return true;
+                var ModuleCheck = __instance.GetComponent<ModuleItemFixedHolderBeam>();
                 if (ModuleCheck != null)
                 {
                     if (item.rbody != null)
                     {
-                        FieldInfo lockGet = typeof(ModuleItemHolderBeam).GetField("m_HeldPhysicsItems", BindingFlags.NonPublic | BindingFlags.Instance);
                         HashSet<Visible> m_HeldPhysicsItems = (HashSet<Visible>)lockGet.GetValue(__instance);
-                        if ((bool)item.pickup)
+                        if ((bool)item.pickup && m_HeldPhysicsItems != null)
                         {
                             item.pickup.ClearRigidBody(true);
                             m_HeldPhysicsItems.Remove(item);
@@ -43,7 +48,6 @@ namespace RandomAdditions
                         }
                         //DebugRandAddi.Log("RandomAdditions: Overwrote trac beams to remain on");
                     }
-                    FieldInfo scaleGet = typeof(ModuleItemHolderBeam).GetField("m_ScaleChanged", BindingFlags.NonPublic | BindingFlags.Instance);
                     bool m_ScaleChanged = (bool)scaleGet.GetValue(__instance);
 
                     if (m_ScaleChanged)
@@ -118,6 +122,8 @@ namespace RandomAdditions
             /// RunModuleBoosterBurner</summary>
             private static void OnFixedUpdate_Prefix(BoosterJet __instance)
             {
+                if (__instance == null)
+                    return;
                 var ModuleCheck = __instance.gameObject.GetComponent<BurnerJet>();
                 if (ModuleCheck != null)
                 {
@@ -443,6 +449,20 @@ namespace RandomAdditions
                             ModuleCheck.WasSearched = true;
                         }
                     }
+                }
+            }
+
+        }
+        internal static class ModuleScoopPatches
+        {
+            internal static Type target = typeof(ModuleScoop);
+            // Allow scoops to be more useful
+            private static void OnAttached_Postfix(ModuleScoop __instance)
+            {
+                var ModuleCheck = __instance.GetComponent<ModuleScoopExt>();
+                if (ModuleCheck == null)
+                {
+                    ModuleScoopExt.Init(__instance);
                 }
             }
 

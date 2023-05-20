@@ -34,7 +34,7 @@ namespace RandomAdditions
         {
             if (DownwardsForce > 0)
             {
-                wheelsDownwards = KickStart.HeavyObjectSearch(transform, "_effectorDown");
+                wheelsDownwards = KickStart.HeavyTransformSearch(transform, "_effectorDown");
                 if (wheelsDownwards == null)
                     LogHandler.ThrowWarning("RandomAdditions: ModuleStickyWheels with a DownwardsForce value greater than 0 NEEDS a GameObject of name \"_effectorDown\". \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + block.name);
             }
@@ -44,27 +44,50 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("RandomAdditions: ModuleStickyWheels NEEDS ModuleWheels to operate correctly. \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + block.name);
             }
             enabled = false;
+            OnInit();
         }
         public override void OnAttach()
         {
             rootTrans = tank.rootBlockTrans;
+            stickyWheels.Add(this);
             enabled = true;
         }
         public override void OnDetach()
         {
+            stickyWheels.Remove(this);
             enabled = false;
             rootTrans = null;
         }
 
-        private void FixedUpdate()
+        private static HashSet<ModuleStickyWheels> stickyWheels = null;
+
+        private static void OnInit()
+        {
+            if (stickyWheels != null)
+                return;
+            stickyWheels = new HashSet<ModuleStickyWheels>();
+            ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(OnFixedUpdate), 98);
+        }
+        private static void OnFixedUpdate()
+        {
+            foreach (var item in stickyWheels)
+            {
+                item.OnPreFixedUpdate();
+            }
+            foreach (var item in stickyWheels)
+            {
+                item.OnPostFixedUpdate();
+            }
+
+        }
+
+        private void OnPreFixedUpdate()
         {
             if (wheelInst == null)
             {
                 wheelInst = (List<ManWheels.Wheel>)wheelList.GetValue(wheels);
-                /*
-                if (wheelInst != null)
-                    DebugRandAddi.Log("wheels (present) " + wheelInst.Count);
-                */
+                if (wheelInst == null)
+                    DebugRandAddi.Assert("ModuleStickyWheels: wheels COULD NOT BE FETCHED - " + block.name);
             }
             else
             {
@@ -94,40 +117,46 @@ namespace RandomAdditions
                             }
                         }
                     }
-                    if (wheelsSurface.Count > 0)
+                }
+            }
+        }
+        private void OnPostFixedUpdate()
+        {
+            if (rbody && !tank.beam.IsActive)
+            {
+                if (wheelsSurface.Count > 0)
+                {
+                    if (wheelsDownwards)
+                        rbody.AddForceAtPosition(wheelsDownwards.forward * DownwardsForce, wheelsDownwards.position
+                            , ForceMode.Force);
+                    float StickForce = -WheelStickyForce;
+                    foreach (var item in wheelsSurface)
                     {
-                        if (wheelsDownwards)
-                            rbody.AddForceAtPosition(wheelsDownwards.forward * DownwardsForce, wheelsDownwards.position
-                                , ForceMode.Force);
-                        float StickForce = -WheelStickyForce;
-                        foreach (var item in wheelsSurface)
+                        if (item.Value.lastContactTime < Time.time)
                         {
-                            if (item.Value.lastContactTime < Time.time)
+                            wheelsRelease.Add(item.Key);
+                        }
+                        else
+                        {
+                            //DebugRandAddi.Log("compression " + item.Key.Compression);
+                            if (item.Key.Compression <= WheelIdealCompression)
                             {
-                                wheelsRelease.Add(item.Key);
+                                float StickyCompressionForce;
+                                if (WheelIdealCompression == 0)
+                                    StickyCompressionForce = 1 - item.Key.Compression;
+                                else
+                                    StickyCompressionForce = 1 - (item.Key.Compression / WheelIdealCompression);
+                                rbody.AddForceAtPosition(item.Value.lastContactVectorWorld * StickForce * StickyCompressionForce
+                                    , transform.TransformPoint(item.Value.lastContactPointLocal), ForceMode.Force);
                             }
-                            else
-                            {
-                                //DebugRandAddi.Log("compression " + item.Key.Compression);
-                                if (item.Key.Compression <= WheelIdealCompression)
-                                {
-                                    float StickyCompressionForce;
-                                    if (WheelIdealCompression == 0)
-                                        StickyCompressionForce = 1 - item.Key.Compression;
-                                    else
-                                        StickyCompressionForce = 1 - (item.Key.Compression / WheelIdealCompression);
-                                    rbody.AddForceAtPosition(item.Value.lastContactVectorWorld * StickForce * StickyCompressionForce
-                                        , transform.TransformPoint(item.Value.lastContactPointLocal), ForceMode.Force);
-                                }
 
-                            }
                         }
-                        foreach (var item in wheelsRelease)
-                        {
-                            wheelsSurface.Remove(item);
-                        }
-                        wheelsRelease.Clear();
                     }
+                    foreach (var item in wheelsRelease)
+                    {
+                        wheelsSurface.Remove(item);
+                    }
+                    wheelsRelease.Clear();
                 }
             }
         }

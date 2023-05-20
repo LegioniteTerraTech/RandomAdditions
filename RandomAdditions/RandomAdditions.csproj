@@ -49,6 +49,14 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Ionic.Zlib">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Ionic.Zlib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="LocalCorpAudioExt">
       <HintPath>..\..\..\..\Desktop\Advanced AI\Assets\Mods\Random Additions\LocalCorpAudioExt.dll</HintPath>
     </Reference>
@@ -201,8 +209,15 @@
     <Compile Include="Anim\AnimetteScaler.cs" />
     <Compile Include="Anim\AnimetteController.cs" />
     <Compile Include="Anim\AnimetteMover.cs" />
-    <None Include="ManModGUI.cs" />
-    <Compile Include="GlobalChanges\MinimapExtended.cs" />
+    <Compile Include="CircuitExt.cs" />
+    <Compile Include="CraftingExt.cs" />
+    <Compile Include="GeneralComponents\AOEField.cs" />
+    <Compile Include="GlobalChanges\ManPhysicsExt.cs" />
+    <Compile Include="GlobalChanges\MinimapExt.cs" />
+    <Compile Include="GlobalChanges\Pyromanic.cs" />
+    <Compile Include="GlobalChanges\ITankCompAuto.cs" />
+    <Compile Include="GlobalChanges\IngameQuit.cs" />
+    <Compile Include="GlobalChanges\UnstableHook.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailEngine.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailPowerLine.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailPowerReceiver.cs" />
@@ -210,6 +225,7 @@
     <Compile Include="MultiBlockModules\RailSystem\RailConnectInfo.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailNodeType.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ManTrainPathing.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\TankRailsLocal.cs" />
     <Compile Include="MultiBlockModules\RailSystem\UIMiniMapLayerTrain.cs" />
     <Compile Include="Networking\ManModNetwork.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeaponPart.cs" />
@@ -226,10 +242,16 @@
     <Compile Include="MultiBlockModules\RailSystem\RailTrack.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTrackNode.cs" />
     <Compile Include="Networking\NetworkHook.cs" />
+    <Compile Include="PatchBatch\CircuitPatches.cs" />
     <Compile Include="PatchBatch\ManRailsPatches.cs" />
+    <Compile Include="ReliantBlockModules\BlockScannerTarg.cs" />
+    <Compile Include="ReliantBlockModules\ModuleCircuitExt.cs" />
+    <Compile Include="ReliantBlockModules\ModuleCircuit_Scanner.cs" />
+    <Compile Include="ReliantBlockModules\ModuleCircuit_RadioSystem.cs" />
     <Compile Include="ReliantBlockModules\ModuleCustomShop.cs" />
     <Compile Include="ReliantBlockModules\ModuleItemGiver.cs" />
     <Compile Include="ReliantBlockModules\ModuleStickyWheels.cs" />
+    <Compile Include="ReliantBlockModules\ModuleUIButtons.cs" />
     <Compile Include="StandaloneBlockModules\ModuleBuoy.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
@@ -237,6 +259,8 @@
     <Compile Include="ReliantBlockModules\ModuleLoneMove.cs" />
     <Compile Include="ReliantBlockModules\ChildModuleWeapon.cs" />
     <Compile Include="ReliantBlockModules\ModuleClicker.cs" />
+    <Compile Include="StandaloneBlockModules\ModulePhysics_LockRotor.cs" />
+    <Compile Include="StandaloneBlockModules\ModulePhysics_Maglock.cs" />
     <Compile Include="StandaloneBlockModules\ModuleMirage.cs" />
     <Compile Include="ReliantBlockModules\ModuleModeSwitch.cs" />
     <Compile Include="StandaloneBlockModules\ModuleOmniCore.cs" />
@@ -246,6 +270,7 @@
     <Compile Include="StandaloneBlockModules\ModuleTileLoader.cs" />
     <Compile Include="ReliantBlockModules\ModuleTractorBeam.cs" />
     <Compile Include="ReliantBlockModules\ModuleTrajectory.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleUproot.cs" />
     <Compile Include="StandaloneBlockModules\ModuleUsageHint.cs" />
     <Compile Include="DebugRandAddi.cs" />
     <Compile Include="Anim\AnimetteRotator.cs" />

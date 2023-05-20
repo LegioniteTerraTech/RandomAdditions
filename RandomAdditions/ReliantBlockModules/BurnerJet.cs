@@ -39,6 +39,7 @@ namespace RandomAdditions
         // If this lags too much, let me know and I can cheapen the calculations.
         private const int DamageDelayCount = 20;
 
+        private TankBlock block;
         private BoosterJet Jet;
         private Transform Effector;
         private List<TankBlock> InArea = new List<TankBlock>();
@@ -56,28 +57,29 @@ namespace RandomAdditions
         {
             isSetup = true;
             Jet = jet;
+            block = jet.GetComponentInParents<TankBlock>(true);
             try
             {
                 Effector = (Transform)effectoor.GetValue(Jet);
             }
-            catch { }
+            catch (Exception e) { DebugRandAddi.Assert("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + block.name); }
             if (DamagePerSecond < 0)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + block.name);
             }
             if (Radius < 0.001f)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + block.name);
                 Radius = 0.001f;
             }
             if (RadiusStretchMultiplier < 0.001f)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + block.name);
                 RadiusStretchMultiplier = 0.001f;
             }
             if (RadiusFalloff + 0.5f > Radius)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + gameObject.transform.parent.GetComponent<TankBlock>().name);
+                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + block.name);
                 CalcBoost = (Radius - 0.5f) / Radius;
             }
             else
@@ -86,12 +88,14 @@ namespace RandomAdditions
         }
         private void TryDealDamage()
         {
+            if (block.tank == null)
+                return;
             Vector3 worldPosBurnCenter = (Effector.forward * (Radius * RadiusStretchMultiplier * CurrentStrength)) + Effector.position;
             //Effector.forward
             //DebugRandAddi.Log("RandomAdditions: BURRRRRRRRRRRRRRRNING");
             float radSq = Radius * Radius;
             InArea.Clear();
-            Tank attacking = transform.root.GetComponent<Tank>();
+            Tank attacking = block.tank;
             foreach (Visible viss in Singleton.Manager<ManVisible>.inst.VisiblesTouchingRadius(worldPosBurnCenter, Radius * RadiusStretchMultiplier, new Bitfield<ObjectTypes>()))
             {
                 if ((bool)viss.block)
@@ -115,7 +119,7 @@ namespace RandomAdditions
                             float MultiplyCalc = (DistanceThreshold * (1 - CalcBoost)) + CalcBoost;
                             if (UseDamage)
                             {
-                                var dmg = viss.block.GetComponent<Damageable>();
+                                var dmg = viss.damageable;
                                 if (dmg)
                                 {
                                     if (!ManNetwork.IsNetworked || ManNetwork.IsHost)
@@ -151,7 +155,7 @@ namespace RandomAdditions
                     {
                         try
                         {
-                            var dmg = viss.block.GetComponent<Damageable>();
+                            var dmg = viss.damageable;
                             if (dmg)
                             {
                                 Singleton.Manager<ManDamage>.inst.DealDamage(dmg, DamagePerSecond 

@@ -7,12 +7,17 @@ namespace RandomAdditions
 {
     /// <summary>
     /// Rail engines provide torque to wheels as well as brakes
+    /// Dispensing (Indexes): 
+    ///   0 - Current train speed (SignedAnalog)
+    /// Receiving (Indexes): 
+    ///   0 - Train Z-Throttle (SignedAnalog)
     /// </summary>
-    public class ModuleRailEngine : ExtModule
+    public class ModuleRailEngine : ExtModule, ICircuitDispensor
     {
         internal TankLocomotive engine;
         private Spinner[] spinners;
         private ParticleSystem[] particles;
+        public int DriveSignal { get; private set; }  = 0;
 
 
         // Physics
@@ -30,6 +35,10 @@ namespace RandomAdditions
         public float MinParticleScale = 0.1f;
         public float MaxParticleScale = 1f;
 
+        // Logic
+        public int EngineDriveAPIndex = 0;
+        private bool LogicConnected = false;
+
         protected override void Pool()
         {
             ManRails.InitExperimental();
@@ -44,7 +53,7 @@ namespace RandomAdditions
             catch { }
             try
             {
-                particles = KickStart.HeavyObjectSearch(transform, "_particles").GetComponentsInChildren<ParticleSystem>();
+                particles = KickStart.HeavyTransformSearch(transform, "_particles").GetComponentsInChildren<ParticleSystem>();
                 foreach (var item in particles)
                 {
                     var m = item.main;
@@ -60,6 +69,14 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             //DebugRandAddi.Log("OnAttach - ModuleRailEngine");
+            if (CircuitExt.LogicEnabled)
+            {
+                if (block.CircuitNode?.Receiver)
+                {
+                    LogicConnected = true;
+                    block.CircuitNode.Receiver.FrameChargeChangedEvent.Subscribe(OnRecCharge);
+                }
+            }
             TankLocomotive.HandleAddition(tank, this);
             if (particles != null)
             {
@@ -83,11 +100,50 @@ namespace RandomAdditions
                 }
             }
             TankLocomotive.HandleRemoval(tank, this);
+            if (LogicConnected)
+                block.CircuitNode.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRecCharge);
+            LogicConnected = false;
+        }
+
+        public void OnRecCharge(Circuits.Charge charge)
+        {
+            //DebugRandAddi.Log("OnRecCharge " + charge);
+            try
+            {
+                int val;
+                if (charge.AllChargeAPsAndCharges.TryGetValue(block.attachPoints[EngineDriveAPIndex], out val) && val > 0)
+                {
+                    DriveSignal = val;
+                    return;
+                }
+            }
+            catch { }
+            DriveSignal = 0;
+        }
+        public int GetDispensableCharge()
+        {
+            if (CircuitExt.LogicEnabled)
+                return engine.SpeedSignal;
+            return 0;
+        }
+
+        /// <summary>
+        /// Directional!
+        /// </summary>
+        public int GetDispensableCharge(Vector3 APOut)
+        {
+            if (CircuitExt.LogicEnabled)
+                return engine.SpeedSignal;
+            return 0;
         }
 
 
-        internal void EngineUpdate(float percentSpeed)
+        /// <summary>
+        /// Returns the signal for the engine
+        /// </summary>
+        internal int EngineUpdate(float percentSpeed)
         {
+
             if (percentSpeed < 0.01f)
             {   // Idle
                 if (spinners != null)
@@ -135,6 +191,7 @@ namespace RandomAdditions
                     }
                 }
             }
+            return DriveSignal;
         }
     }
 }

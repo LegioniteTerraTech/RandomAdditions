@@ -97,6 +97,25 @@ namespace RandomAdditions
         public int SavedCount = 0;
         public bool WasSearched = false;
 
+        public int GetSavedCount { 
+            get {
+                if (StoresBlocksInsteadOfChunks)
+                {
+                    try
+                    {
+                        if (GetBlockType != BlockTypes.GSOAIController_111)
+                            return GetInventoryBlockCount(GetBlockType);
+                    }
+                    catch { }
+                    return 0;
+                }
+                else
+                {
+                    return SavedCount;
+                }
+            } 
+        }
+
 
         private TankBlock TankBlock;
         private ModuleItemStore itemStore;
@@ -225,7 +244,7 @@ namespace RandomAdditions
             if (itemStore.IsNull())
             {
                 //DebugRandAddi.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly. \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + TankBlock.name);
+                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.\n  Cause of error - Block " + TankBlock.name);
             }
             if (MaxCapacity <= 0)
             {
@@ -567,6 +586,33 @@ namespace RandomAdditions
                 }
             }
         }
+        private int GetInventoryBlockCount(BlockTypes blockType)
+        {
+            bool isMP = Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer();
+            if (isMP)
+            {
+                if (block.tank?.netTech?.NetPlayer?.Inventory)
+                {
+                    NetInventory NI = block.tank.netTech.NetPlayer.Inventory;
+                    if (NI.IsAvailableToLocalPlayer(blockType))
+                    {
+                        return NI.GetQuantity(blockType);
+                    }
+                }
+            }
+            else
+            {
+                if (Singleton.Manager<ManPlayer>.inst.PlayerInventory != null)
+                {
+                    SingleplayerInventory SI = (SingleplayerInventory)Singleton.Manager<ManPlayer>.inst.PlayerInventory;
+                    if (SI.IsAvailableToLocalPlayer(blockType))
+                    {
+                        return SI.GetQuantity(blockType);
+                    }
+                }
+            }
+            return 0;
+        }
 
 
         // "Animations"
@@ -580,9 +626,9 @@ namespace RandomAdditions
             catch { }
 
             toManage.SetHolder(null, true);//DROP IT NOW!!!
-            toManage.SetGrabTimeout(2);//disable grabbing of it
-            toManage.SetItemCollectionTimeout(2);//disable more
-            toManage.SetInteractionTimeout(2);// disable ALL
+            toManage.SetLockTimout(Visible.LockTimerTypes.Grabbable, 2);//disable grabbing of it
+            toManage.SetLockTimout(Visible.LockTimerTypes.ItemCollection, 2);//disable more
+            toManage.SetLockTimout(Visible.LockTimerTypes.Interactible, 2);// disable ALL
             toManage.damageable.SetInvulnerable(true, true);// No want these being recycled with no colliders
             toManage.ColliderSwapper.EnableCollision(false);
             if ((bool)toManage.pickup)
@@ -630,9 +676,9 @@ namespace RandomAdditions
                 }
                 stack.Take(toManage);
                 //toManage.SetHolder(null, true);
-                toManage.SetGrabTimeout(1);//disable grabbing of it
-                toManage.SetItemCollectionTimeout(1);//disable more
-                toManage.SetInteractionTimeout(1);// disable ALL
+                toManage.SetLockTimout(Visible.LockTimerTypes.Grabbable, 1);//disable grabbing of it
+                toManage.SetLockTimout(Visible.LockTimerTypes.ItemCollection, 1);//disable more
+                toManage.SetLockTimout(Visible.LockTimerTypes.Interactible, 1);// disable ALL
                 toManage.damageable.SetInvulnerable(true, true);// No want these being recycled with no colliders
                 ReleaseTargetNode.Add(stack);
                 ReleaseAnimating.Add(toManage);
@@ -932,9 +978,9 @@ namespace RandomAdditions
                                     toManage.pickup.InitRigidbody();
                                 toManage.damageable.SetInvulnerable(false, false);
                                 toManage.ColliderSwapper.EnableCollision(true);
-                                toManage.SetGrabTimeout(0);
-                                toManage.SetItemCollectionTimeout(0);
-                                toManage.SetInteractionTimeout(0);
+                                toManage.SetLockTimout(Visible.LockTimerTypes.Grabbable, 0);//disable grabbing of it
+                                toManage.SetLockTimout(Visible.LockTimerTypes.ItemCollection, 0);//disable more
+                                toManage.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                                 step--;
                                 fireTimes2--;
                             }
@@ -951,9 +997,9 @@ namespace RandomAdditions
                                 toManage.pickup.InitRigidbody();
                             toManage.damageable.SetInvulnerable(false, false);
                             toManage.ColliderSwapper.EnableCollision(true);
-                            toManage.SetGrabTimeout(0);
-                            toManage.SetItemCollectionTimeout(0);
-                            toManage.SetInteractionTimeout(0);
+                            toManage.SetLockTimout(Visible.LockTimerTypes.Grabbable, 0);//disable grabbing of it
+                            toManage.SetLockTimout(Visible.LockTimerTypes.ItemCollection, 0);//disable more
+                            toManage.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                             step--;
                             fireTimes2--;
                         }
@@ -1010,9 +1056,9 @@ namespace RandomAdditions
                 else
                     toManage.pickup.InitRigidbody();
                 toManage.ColliderSwapper.EnableCollision(true);
-                toManage.SetGrabTimeout(0);
-                toManage.SetItemCollectionTimeout(0);
-                toManage.SetInteractionTimeout(0);
+                toManage.SetLockTimout(Visible.LockTimerTypes.Grabbable, 0);//disable grabbing of it
+                toManage.SetLockTimout(Visible.LockTimerTypes.ItemCollection, 0);//disable more
+                toManage.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
             }
             AbsorbAnimating.Clear();
             AbsorbAnimatingPos.Clear();

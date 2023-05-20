@@ -26,7 +26,8 @@ namespace RandomAdditions
         "RandomAdditions.SpiltProjectile":{ 
             "SpawnAmount": 4,               // How many of these SplitPayloads to spawn - Max 100
             "UseSeeking": false,            // Enable Seeking for the SplitPayload
-
+    
+            "DeployOnExpire: true,          // Deploy on timed death
             "DeployOnExplode": true,        // Deploy on explosion
             "DeployOnEveryExplode": false,  // Deploy each time this explodes
 
@@ -39,6 +40,7 @@ namespace RandomAdditions
         public int SpawnAmount = 4;
         public bool UseSeeking = false;
 
+        public bool DeployOnExpire = true;
         public bool DeployOnExplode = true;
         public bool DeployOnEveryExplode = false;
 
@@ -56,6 +58,11 @@ namespace RandomAdditions
         private float Timer = 0;
 
         private static FieldInfo weapon = typeof(Projectile).GetField("m_Weapon", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        public override void PrePool(Projectile proj)
+        {
+
+        }
 
         public override void Fire(FireData fireData)
         {
@@ -87,7 +94,11 @@ namespace RandomAdditions
 
         public void Explode()
         {
-            if ((Fired && !DeployOnEveryExplode) || !DeployOnExplode)
+            Explode_Internal(false);
+        }
+        public void Explode_Internal(bool targetImpact)
+        {
+            if ((Fired && !DeployOnEveryExplode) || !DeployOnExplode || (!DeployOnExpire && !targetImpact))
                 return;
             Fired = true;
             Deploy();

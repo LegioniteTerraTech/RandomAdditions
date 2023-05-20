@@ -1,18 +1,30 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
 using TerraTechETCUtil;
 using SafeSaves;
+using RandomAdditions;
 
 namespace RandomAdditions.RailSystem
 {
     // Used to keep "trains" on the rails, might come in 2024, we'll see
     //  Connects to other segments in the world, loading the tiles if needed
+
+    /// <summary>
+    /// ModuleCircuitNode is responsible for sending and reciving signals.
+    /// Dispensing (Indexes): 
+    ///   0 - Train in stretch
+    /// Receiving (Indexes): 
+    ///   0 - Call Train
+    ///   1 - Stop Train
+    /// </summary>
     [AutoSaveComponent]
-    public class ModuleRailPoint : ExtModule
+    public class ModuleRailPoint : ExtModule, ICircuitDispensor
     {
+
         internal RailTrackNode Node = null;
         [SSaveField] // Must be Public!
         public int NodeID = -1;
@@ -25,9 +37,9 @@ namespace RandomAdditions.RailSystem
         public RailType RailSystemType = RailType.BeamRail;
         public RailSpace RailSystemSpace = RailSpace.World;
         public bool AllowTrainCalling = true;
-        public int[] LocalTechConnectionAPs;
+        public int[] LocalTechConnectionAPs = null;
 
-
+        public TankRailsLocal rails;
         public bool CreateTrackStop => SingleLinkHub;
 
         public List<Transform> LinkHubs = new List<Transform>();
@@ -37,10 +49,13 @@ namespace RandomAdditions.RailSystem
 
         private static Dictionary<ModuleRailPoint, List<int>> lastCachedConnections = new Dictionary<ModuleRailPoint, List<int>>();
 
-        // Audio
-        public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
-        public TechAudio.SFXType m_ConnectSFXType = TechAudio.SFXType.Anchored;
-        public TechAudio.SFXType SFXType => m_ConnectSFXType;
+
+        // Logic
+        public int[] TrainCallAPIndexes = new int[0];
+        public int[] TrainStopAPIndexes = new int[0];
+        private bool LogicConnected = false;
+
+        protected ModuleUIButtons buttonGUI;
 
         protected override void Pool()
         {
@@ -53,7 +68,101 @@ namespace RandomAdditions.RailSystem
                 LogHandler.ThrowWarning("RandomAdditions: ModuleRailPoint cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
+            if (TrainCallAPIndexes != null && TrainCallAPIndexes.Length == 0)
+                TrainCallAPIndexes = null;
+            if (TrainStopAPIndexes != null && TrainStopAPIndexes.Length == 0)
+                TrainStopAPIndexes = null;
+            InsureGUI();
         }
+
+        public void InsureGUI()
+        {
+            if (buttonGUI == null)
+            {
+                buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Rail Guide", false);
+                buttonGUI.AddElement("Connect", RequestConnect, null);
+                if (AllowTrainCalling)
+                    buttonGUI.AddElement(RequestTrainStatus, RequestTrain, GetIconCall);
+                buttonGUI.AddElement("Disconnect", RequestDisconnect, null);
+                buttonGUI.AddElement(OneWayStatus, RequestOneWay, GetIconOneWay);
+            }
+        }
+
+        public void ShowGUI()
+        {
+            DebugRandAddi.Log("ShowGUI() - " + Time.time);
+            InsureGUI();
+            buttonGUI.Show();
+        }
+        public void HideGUI()
+        {
+            if (buttonGUI != null)
+                buttonGUI.Hide();
+        }
+        public float RequestConnect(float unused)
+        {
+            ManRails.SetSelectedNode(this);
+            HideGUI();
+            return 0;
+        }
+
+        public float RequestDisconnect(float unused)
+        {
+            DisconnectLinked(true, true);
+            HideGUI();
+            return 0;
+        }
+
+        public string OneWayStatus()
+        {
+            if (Node == null)
+                return "No Node";
+            else if (Node.OneWay)
+                return "One Way On";
+            else
+                return "One Way Off";
+        }
+        public float RequestOneWay(float val)
+        {
+            if (Node != null)
+            {
+                Node.OneWay = !Node.OneWay;
+            }
+            return 0;
+        }
+        public Sprite GetIconOneWay()
+        {
+            if (Node == null)
+                return null;
+            ModContainer MC = ManMods.inst.FindMod("Random Additions");
+            if (Node.OneWay)
+                return UIHelpersExt.GetIconFromBundle(MC, "GUI_OneWay");
+            return UIHelpersExt.GetIconFromBundle(MC, "GUI_TwoWay");
+        }
+
+        private string RequestTrainStatus()
+        {
+            if (Calling)
+                return "Calling...";
+            else if (trainEnRoute)
+                return "Train Pathing";
+            else
+                return "Call Train";
+        }
+        public float RequestTrain(float unused)
+        {
+            TryCallTrain();
+            HideGUI();
+            return 0;
+        }
+        public Sprite GetIconCall()
+        {
+            if (Calling || trainEnRoute != null)
+                return UIHelpersExt.GetGUIIcon("ICON_PAUSE");
+            ModContainer MC = ManMods.inst.FindMod("Random Additions");
+            return UIHelpersExt.GetIconFromBundle(MC, "GUI_Call");
+        }
+
 
         protected void GetTrackHubs()
         {
@@ -65,9 +174,9 @@ namespace RandomAdditions.RailSystem
                 {
                     Transform trans;
                     if (num == 1)
-                        trans = KickStart.HeavyObjectSearch(transform, "_trackHub");
+                        trans = KickStart.HeavyTransformSearch(transform, "_trackHub");
                     else
-                        trans = KickStart.HeavyObjectSearch(transform, "_trackHub" + num);
+                        trans = KickStart.HeavyTransformSearch(transform, "_trackHub" + num);
                     if (trans)
                     {
                         num++;
@@ -91,20 +200,32 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-
         public override void OnAttach()
         {
+            InsureGUI();
             //DebugRandAddi.Log("OnAttach");
+            if (CircuitExt.LogicEnabled)
+            {
+                if (block.CircuitNode?.Receiver)
+                {
+                    LogicConnected = true;
+                    block.CircuitNode?.Receiver.FrameChargeChangedEvent.Subscribe(OnRecCharge);
+                }
+            }
             tank.Anchors.AnchorEvent.Subscribe(OnAnchor);
             enabled = true;
             ManRails.AddStation(this);
             block.serializeEvent.Subscribe(OnSaveSerialization);
             block.serializeTextEvent.Subscribe(OnTechSnapSerialization);
+            TankRailsLocal.stat.HandleAddition(this);
             Invoke("CheckAvailability", 0.01f);
+            if (ManSpawn.inst.IsTechSpawning)
+                ManRails.LastPlacedRecentCache = null;
         }
         public override void OnDetach()
         {
             //DebugRandAddi.Log("OnDetach");
+            TankRailsLocal.stat.HandleRemoval(this);
             block.serializeTextEvent.Unsubscribe(OnTechSnapSerialization);
             block.serializeEvent.Unsubscribe(OnSaveSerialization);
             ManRails.RemoveStation(this);
@@ -112,6 +233,9 @@ namespace RandomAdditions.RailSystem
             CancelInvoke("CheckAvailability");
             SetAvailability(false, false);
             tank.Anchors.AnchorEvent.Unsubscribe(OnAnchor);
+            if (LogicConnected)
+                block.CircuitNode.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRecCharge);
+            LogicConnected = false;
         }
 
         public void OnAnchor(bool anchored, bool ignore2)
@@ -124,31 +248,125 @@ namespace RandomAdditions.RailSystem
             Invoke("CheckAvailability", 0.01f);
         }
 
-
-        internal void InsureConnectByAPs()
+        private const float CallSignalQuickSignalTime = 0.75f;
+        private float CallSignalLastCall = 0;
+        public void OnRecCharge(Circuits.Charge charge)
         {
-            if (LocalTechConnectionAPs != null)
+            //DebugRandAddi.Log("OnRecCharge " + charge);
+            try
             {
-                for (int step = 0; step < LocalTechConnectionAPs.Length; step++)
+                int val;
+                bool trainCall = false;
+                if (TrainCallAPIndexes != null)
                 {
-                    var blockN = block.ConnectedBlocksByAP[LocalTechConnectionAPs[step]];
-                    if (blockN)
+                    foreach (var item in TrainCallAPIndexes)
                     {
-                        var connectOther = blockN.GetComponent<ModuleRailPoint>();
-                        if (connectOther)
-                            ConnectToOther(connectOther.Node, false);
+                        if (charge.AllChargeAPsAndCharges.TryGetValue(block.attachPoints[item], out val) && val > 0)
+                            trainCall = true;
+                    }
+                }
+                if (trainCall)
+                {
+                    if (!Calling && trainEnRoute == null)
+                    {
+                        CallSignalLastCall = Time.time + CallSignalQuickSignalTime;
+                        TryCallTrain(true);
+                    }
+                }
+                else
+                {
+                    if (Time.time > CallSignalLastCall)
+                        CancelTrainCall();
+                }
+                HaltSignal = false;
+                if (TrainStopAPIndexes != null)
+                {
+                    foreach (var item in TrainStopAPIndexes)
+                    {
+                        if (charge.AllChargeAPsAndCharges.TryGetValue(block.attachPoints[item], out val) && val > 0)
+                            HaltSignal = true;
                     }
                 }
             }
+            catch { }
+        }
+        
+
+        /// <summary>
+        /// Directional!
+        /// </summary>
+        public int GetDispensableCharge(Vector3 APOut)
+        {
+            if (CircuitExt.LogicEnabled)
+                return TrainsInStretch.Count;
+            return 0;
+        }
+
+
+        internal void InsureConnectByAPs()
+        {
+            if (!ManNetwork.IsHost)
+                return;
+            bool didConnect = false;
+            for (int step = 0; step < LocalTechConnectionAPs.Length; step++)
+            {
+                var blockN = block.ConnectedBlocksByAP[LocalTechConnectionAPs[step]];
+                if (blockN)
+                {
+                    var Other = blockN.GetComponent<ModuleRailPoint>();
+                    if (Other && Other.Node != null && ManRails.IsTurnPossibleTwoSide(Node, Other.Node))
+                    {
+                        DebugRandAddi.Log("InsureConnectByAPs() - ModuleRailPoint connect " + block.name);
+                        if (Other.RailSystemType == RailSystemType &&
+                            Node.GetLinkedTrack(Node.GetBestLinkInDirection(Other.Node.GetLinkCenter(0).ScenePosition)) == null &&
+                            Other.Node.GetLinkedTrack(Other.Node.GetBestLinkInDirection(Node.GetLinkCenter(0).ScenePosition)) == null)
+                        {
+                            Node.DoConnect(Other.Node, true, false);
+                            didConnect = true;
+                        }
+                        else
+                        {
+                            // DebugRandAddi.Assert(name + " Connect failed");
+                        }
+                    }
+                }
+            }
+            if (!didConnect)
+                DebugRandAddi.Assert(name + " Connect failed");
+        }
+        public void ReconstructNode(List<Transform> newHubs)
+        {
+            SetAvailability(false, false);
+            LinkHubs = newHubs;
+            SetAvailability(tank, tank && tank.IsAnchored && tank.Anchors.Fixed);
+            if (Node != null && LocalTechConnectionAPs != null)
+            {
+                InsureConnectByAPs();
+                Node.AdjustAllTracksShape();
+            }
+            PostUpdate(0);
+            ManRails.UpdateAllSignals = true;
         }
 
         public void CheckAvailability()
         {
             SetAvailability(tank, tank && tank.IsAnchored && tank.Anchors.Fixed);
-            InsureConnectByAPs();
+            if (Node != null)
+            {
+                if (LocalTechConnectionAPs != null)
+                {
+                    InsureConnectByAPs();
+                    Node.AdjustAllTracksShape();
+                }
+                else if (RailSystemSpace == RailSpace.Local)
+                {
+                    Node.AdjustAllTracksShape();
+                }
+            }
+
             if (ManRails.LastPlacedRecentCache == this)
             {
-                if (ManRails.LastPlaced != null && ManRails.LastPlaced.Exists() && CanConnect(ManRails.LastPlaced))
+                if (ManRails.LastPlaced != null && ManRails.LastPlaced.Registered() && CanConnect(ManRails.LastPlaced))
                 {
                     DebugRandAddi.Log("LastPlaced LINKING");
                     ConnectToOther(ManRails.LastPlaced, false);
@@ -162,25 +380,26 @@ namespace RandomAdditions.RailSystem
         }
         private void CacheConnectionsForMove()
         {
-            if (Node == null || !Node.Exists())
+            if (Node == null || !Node.Registered())
                 return;
-            List<int> connections = new List<int>();
+            if (!lastCachedConnections.TryGetValue(this, out List<int> list))
+            {
+                list = new List<int>();
+                lastCachedConnections.Add(this, list);
+            }
             foreach (var item in Node.GetALLConnections())
             {
                 if (item.LinkTrack != null && item.LinkTrack.Exists())
                 {
-                    RailTrackNode other = item.GetOtherSideNode(Node);
-                    if (other != null && other.Exists())
-                        connections.Add(other.NodeID);
+                    RailTrackNode other = item.GetOtherSideNode();
+                    if (other != null && other.Registered())
+                        list.Add(other.NodeID);
                 }
             }
-            if (lastCachedConnections.TryGetValue(this, out _))
-                lastCachedConnections.Remove(this);
-            lastCachedConnections.Add(this, connections);
         }
         private void TryReloadConnectionsAfterMove()
         {
-            if (Node == null || !Node.Exists())
+            if (Node == null || !Node.Registered())
                 return;
             DebugRandAddi.Log("TryReloadConnectionsAfterMove LINKING");
             if (lastCachedConnections.TryGetValue(this, out var list))
@@ -189,7 +408,7 @@ namespace RandomAdditions.RailSystem
                 foreach (var item in list)
                 {
                     if (ManRails.AllRailNodes.TryGetValue(item, out var node))
-                        ConnectToOther(node, true);
+                        ConnectToOther(node, false);
                 }
             }
         }
@@ -211,7 +430,7 @@ namespace RandomAdditions.RailSystem
                     if (ManRails.LastPlacedRecentCache == this || tank.PlayerFocused)
                         TryReloadConnectionsAfterMove();
                 }
-                if (Node != null && AnchoredStatic && Node.GetAllConnectedLinks().Count == 0 && TryReloadCachedLocalTracks())
+                if (Node != null && AnchoredStatic && Node.HasConnectedLink() && TryReloadCachedLocalTracks())
                 {
                     Invoke("PushRailUpdate", 0.25f);
                 }
@@ -239,7 +458,7 @@ namespace RandomAdditions.RailSystem
             if (Node != null)
             {
                 if (!Anchored && !ManSaveGame.Storing)
-                    DisconnectLinked(false);
+                    DisconnectLinked(false, false);
 
                 bool dynamicValid = !Anchored && Attached && RailSystemSpace != RailSpace.Local;
                 if (dynamicValid != wasDynamic)
@@ -255,7 +474,7 @@ namespace RandomAdditions.RailSystem
                 {
                     if (!ManSaveGame.Storing)
                     {
-                        DisconnectLinked(false);
+                        DisconnectLinked(false, false);
                         if (SingleLinkHub)
                         {
                             if (ManRails.IsRailSplitNotConnected(Node))
@@ -293,19 +512,20 @@ namespace RandomAdditions.RailSystem
                 List<RailTrackNode> nodes = new List<RailTrackNode>();
                 foreach (var item in Node.GetAllConnectedLinks())
                 {
-                    nodes.Add(Node.GetConnection(item).GetOtherSideNode(Node));
+                    nodes.Add(item.GetOtherSideNode());
                 }
-                Node.DisconnectAllLinkTracks();
+                Node.DoDisconnectAllLinkTracks();
                 Node.UpdateNodeTracksShape();
                 foreach (var item in nodes)
                 {
-                    Node.Connect(item, false, false);
+                    Node.TryConnect(item, false, false);
                 }
             }
         }
 
 
-        public bool ThisIsConnected(ModuleRailPoint otherStation)
+
+        public bool ThisIsConnectedTo(ModuleRailPoint otherStation)
         {
             return Node.IsConnected(otherStation.Node);
         }
@@ -315,50 +535,77 @@ namespace RandomAdditions.RailSystem
         {
             //DebugRandAddi.Log("CanReach " + (bool)tank + " " + tank.Anchors.Fixed + " " + (Node != null) + " "
             //    + (Node.NumConnected() != AllowedConnectionCount));
-            return tank && tank.Anchors.Fixed && Node != null && otherNode != null &&
-                Node.CanReach(otherNode) && otherNode.CanReach(Node) &&
-                (Node.Space != RailSpace.Local || otherNode.Space == RailSpace.Local);
+            return tank && (tank.Anchors.Fixed || RailSystemSpace == RailSpace.Local) && Node != null && otherNode != null && 
+                Node.CanReach(otherNode);
         }
         internal bool CanConnect(RailTrackNode otherNode)
         {
             //DebugRandAddi.Log("CanConnect " + (bool)tank + " " + tank.Anchors.Fixed + " " + (Node != null) + " "
             //    + (Node.NumConnected() != AllowedConnectionCount));
-            return tank && tank.Anchors.Fixed && Node != null && otherNode != null && 
-                Node.CanConnect(otherNode) && otherNode.CanConnect(Node) &&
-                (Node.Space == RailSpace.Local || otherNode.Space == RailSpace.Local);
+            return tank && (tank.Anchors.Fixed || RailSystemSpace == RailSpace.Local) && Node != null && otherNode != null && 
+                Node.CanConnect(otherNode);
         }
-        internal void ConnectToOther(RailTrackNode Other, bool forced)
+        internal bool ConnectToOther(RailTrackNode Other, bool reconnect)
         {
             if (Other == Node)
             {
-                DebugRandAddi.Assert("ModuleRailStation attempted to connect to itself");
-                return;
+                DebugRandAddi.Assert("ModuleRailPoint attempted to connect to itself");
+                return false;
             }
-            DebugRandAddi.Log("ModuleRailStation connect " + block.name);
-            if (forced)
+            if (reconnect)
             {
+                DebugRandAddi.Info("ModuleRailPoint Reconnect " + block.name);
                 if (Node.CanReach(Other))
-                    Node.Connect(Other, false, true);
+                {
+                    PlaySound(true);
+                    Node.TryConnect(Other, false, true);
+                    return true;
+                }
                 else
                     DebugRandAddi.Assert(name + " Connect failed");
             }
             else
             {
-                if (Node.CanConnectFreeLink(Other))
-                    Node.Connect(Other, false, true);
+                DebugRandAddi.Info("ModuleRailPoint Connect " + block.name);
+                if (Node.CanConnectFreeLinks(Other))
+                {
+                    PlaySound(true);
+                    Node.TryConnect(Other, false, true);
+                    return true;
+                }
                 else
                     DebugRandAddi.Assert(name + " Connect failed");
             }
+            return false;
         }
 
-        public virtual void DisconnectLinked(bool playSFX = false)
+        internal void ForceConnectToOther(RailTrackNode Other)
+        {
+            if (Other == Node)
+            {
+                DebugRandAddi.Assert("ModuleRailPoint attempted to connect to itself");
+                return;
+            }
+            Node.TryConnect(Other, false, true);
+        }
+
+        private void PlaySound(bool attached)
+        {
+            try
+            {
+                ModulePhysicsExt.anc.Invoke(tank.TechAudio, new object[2] { attached, false });
+            }
+            catch { }
+        }
+        public virtual void DisconnectLinked(bool Request, bool playSFX)
         {
             if (Node != null)
             {
                 //DebugRandAddi.Assert("ModuleRailPoint- DisconnectAll " + block.name);
-                Node.DisconnectAllLinkTracks();
+                Node.TryDisconnectAllLinkTracks(Request);
                 if (playSFX)
-                    ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateUnlock);
+                    PlaySound(false);
+                    //ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateUnlock);
             }
         }
 
@@ -388,62 +635,100 @@ namespace RandomAdditions.RailSystem
             if (Node != null)
                 Node.GetTrainsOnConnectedTracks(set);
         }
-        public List<ModuleRailPoint> GetOtherPoints()
+        public void GetOtherPoints(List<ModuleRailPoint> cache)
         {
-            List<ModuleRailPoint> points = new List<ModuleRailPoint>();
             if (Node != null)
             {
                 RailTrackNode RTN = Node;
                 foreach (var item in RTN.GetAllConnectedLinks())
                 {
-                    RailTrackNode RTNO = RTN.GetConnection(item).GetOtherSideNode(RTN);
+                    RailTrackNode RTNO = item.GetOtherSideNode();
                     if (RTNO != RTN && RTNO.Point != null && RTNO.Point != this)
-                        points.Add(RTNO.Point);
+                        cache.Add(RTNO.Point);
                 }
             }
-            return points;
         }
 
 
+        private bool Calling = false;
         private TankLocomotive trainEnRoute = null;
 
 
-        public void TryCallTrain()
+        public void TryCallTrain(bool logicCalled = false)
+        {
+            if (trainEnRoute && !logicCalled)
+            {
+                CancelTrainCall();
+            }
+            else
+            {
+                if (TrainsInStretch.Count > 1)
+                {
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Station Blocked", 
+                            "There's too many trains nearby! \nLink the trains or cars together or move them out of the way", 
+                            "Station");
+                        //ManTrainPathing.TrainStatusPopup("Station Blocked", WorldPosition.FromScenePosition(transform.position + Vector3.up));
+                    }
+                }
+                else if (!Calling)
+                {
+                    DebugRandAddi.Log("\nStation \"" + block.tank.name + "\" requesting nearest train on network");
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Craft);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Calling...", "Calling train to this station.", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Calling...", WorldPosition.FromScenePosition(transform.position + Vector3.up));
+                    }
+                    ManTrainPathing.QueueFindNearestTrainInRailNetworkAsync(Node, OnTrainFound);
+                    Calling = true;
+                }
+            }
+        }
+        public void CancelTrainCall()
         {
             if (trainEnRoute)
             {
                 trainEnRoute.FinishPathing(TrainArrivalStatus.Cancelled);
                 trainEnRoute = null;
             }
-            else
-            {
-                DebugRandAddi.Log("\nStation \"" + block.tank.name + "\" requesting nearest train on network");
-                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Craft);
-                ManTrainPathing.TrainStatusPopup("Calling...", WorldPosition.FromScenePosition(transform.position + Vector3.up));
-                ManTrainPathing.QueueFindNearestTrainInRailNetworkAsync(Node, OnTrainFound);
-            }
         }
 
         private float timeCase = 0;
+        private static InfoOverlay overlay;
+        private static InfoOverlay overlayTrain;
         public void OnTrainFound(TankLocomotive engine)
         {
+            buttonGUI.OnElementChanged();
+            Calling = false;
             if (this == null || !engine)
             {
-                ManTrainPathing.TrainStatusPopup("No Trains!", WorldPosition.FromScenePosition(transform.position));
+                if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                {
+                    UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Call Failed", "There's no available trains", "Station");
+                    //ManTrainPathing.TrainStatusPopup("No Trains!", WorldPosition.FromScenePosition(transform.position));
+                }
                 return; // Can't call to an unloaded station! 
             }
             engine = engine.GetMaster();
             DebugRandAddi.Log("\nTrain " + engine.name + " is riding to station");
             engine.AutopilotFinishedEvent.Subscribe(OnTrainDrivingEnd);
             ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AIFollow);
-            ManTrainPathing.TrainStatusPopup("Called!", WorldPosition.FromScenePosition(engine.tank.boundsCentreWorld));
-            ManTrainPathing.TrainStatusPopup(engine.name + " - OMW", WorldPosition.FromScenePosition(transform.position));
+            if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+            {
+                UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Called " + engine.name, "Train is in-route to this station", "Station");
+                UIHelpersExt.GUIWarningPopup(engine.tank, ref overlayTrain, "Train: " + engine.name, "Called to station " + block.tank.name, "Train");
+                //ManTrainPathing.TrainStatusPopup("Called!", WorldPosition.FromScenePosition(engine.tank.boundsCentreWorld));
+                //ManTrainPathing.TrainStatusPopup(engine.name + " - OMW", WorldPosition.FromScenePosition(transform.position));
+            }
             timeCase = Time.time;
             trainEnRoute = engine;
         }
 
         public void OnTrainDrivingEnd(TrainArrivalStatus success)
         {
+            buttonGUI.OnElementChanged();
             if (this == null)
             {
                 DebugRandAddi.Assert("\nModuleRailStation - STATION IS NULL");
@@ -454,38 +739,70 @@ namespace RandomAdditions.RailSystem
             {
                 case TrainArrivalStatus.Arrived:
                     DebugRandAddi.Log("\nTrain arrived at station at " + (Time.time - timeCase) + " seconds");
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.EarnXP);
-                    ManTrainPathing.TrainStatusPopup("Train Arrived", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.EarnXP);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Train Arrived", "Train has reached destination", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Train Arrived", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.Cancelled:
                     DebugRandAddi.Assert("Train trip cancelled at " + (Time.time - timeCase) + " seconds");
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                    ManTrainPathing.TrainStatusPopup("Cancelled", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Call Cancelled", "Cancelled train call to station", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Cancelled", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.NoPath:
                     DebugRandAddi.Assert("Train could not find path to station at " + (Time.time - timeCase) + " seconds");
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
-                    ManTrainPathing.TrainStatusPopup("Train Stopped", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Pathing Failed", "No way for the train to reach the station", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Train Stopped", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.Derailed:
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
-                    ManTrainPathing.TrainStatusPopup("Train Derailed", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Train Derailed", "Train bogie was derailed from tracks", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Train Derailed", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.Destroyed:
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
-                    ManTrainPathing.TrainStatusPopup("Train Exploded", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Train Exploded", "Train blew up\nArrival Time: never", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Train Exploded", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.TrackSabotaged:
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
-                    ManTrainPathing.TrainStatusPopup("Tracks Damaged", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Rails Damaged", "Train tracks were changed or destroyed", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Tracks Damaged", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.TrainBlockingPath:
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
-                    ManTrainPathing.TrainStatusPopup("Trains Stuck", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Train Jammed", "Train might be blocked by other train", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Trains Stuck", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 case TrainArrivalStatus.PlayerHyjacked:
-                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
-                    ManTrainPathing.TrainStatusPopup("Player Interrupted", WorldPosition.FromScenePosition(transform.position));
+                    if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                    {
+                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Player Controlled", "Train was taken by a player which Autopilot cannot control", "Station");
+                        //ManTrainPathing.TrainStatusPopup("Player Interrupted", WorldPosition.FromScenePosition(transform.position));
+                    }
                     break;
                 default:
                     DebugRandAddi.Assert("\nModuleRailStation - Invalid TrainArrivalStatus " + success);
@@ -493,20 +810,27 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+        public bool StopTrains => HaltSignal || MultipleTrainsInStretch;
         public HashSet<TankLocomotive> TrainsInStretch { get; private set; } = new HashSet<TankLocomotive>();
         public bool Warned { get; private set; } = false;
-        public bool MultipleTrainsInStretch { get; private set; } = false; 
+
+        private bool HaltSignal = false;
+        private bool MultipleTrainsInStretch = false; 
+
         internal void PreUpdatePointTrainCheck()
         {
             Warned = false;
             GetCloseTrains(TrainsInStretch);
         }
+        private static List<ModuleRailPoint> checkCache = new List<ModuleRailPoint>();
         internal void UpdatePointTrainCheck()
         {
             if (TrainsInStretch.Count > 0)
             {
                 MultipleTrainsInStretch = TrainsInStretch.Count > 1;
-                foreach (var item in GetOtherPoints())
+                checkCache.Clear();
+                GetOtherPoints(checkCache);
+                foreach (var item in checkCache)
                 {
                     if (!item.Warned)
                     {
@@ -565,7 +889,7 @@ namespace RandomAdditions.RailSystem
             List<int> nodeIDs = new List<int>();
             foreach (var item in Node.GetAllConnectedLinks())
             {
-                nodeIDs.Add(Node.GetConnection(item).GetOtherSideNode(Node).NodeID);
+                nodeIDs.Add(item.GetOtherSideNode().NodeID);
             }
             if (nodeIDs.Count == 0)
                 return null;
@@ -618,6 +942,7 @@ namespace RandomAdditions.RailSystem
                 {
                     if (Node != null)
                     {
+                        SaveSerialization(true, spec);
                         LocalNodeConnections = GetNodeIDConnections();
                         CacheLocalTracks();
                         SerialDataMRP railData = new SerialDataMRP { locNodeCon = LocalNodeConnections };
@@ -637,17 +962,24 @@ namespace RandomAdditions.RailSystem
                         LocalNodeConnections = railData.locNodeCon;
                         TryReloadCachedLocalTracks();
                     }
+                    SaveSerialization(false, spec);
 
                 }
             }
             catch { }
         }
-
-        public void OnTechSnapSerialization(bool Saving, TankPreset.BlockSpec spec)
+        protected virtual void SaveSerialization(bool Saving, TankPreset.BlockSpec spec)
         {
+        }
+
+        public void OnTechSnapSerialization(bool Saving, TankPreset.BlockSpec spec, bool tankPresent)
+        {
+            if (!tankPresent)
+                return;
             //DebugRandAddi.Log("ModuleRailPoint: OnTechSnapSerialization saving: " + Saving);
             if (Saving)
             {
+                TechSnapSerialization(true, spec);
                 CacheLocalTracks();
                 if (LocalNodeConnections != null && LocalNodeConnections.Length > 0)
                 {
@@ -695,8 +1027,13 @@ namespace RandomAdditions.RailSystem
                         DebugRandAddi.Log("OnTextSerialization - Load nodes " + LocalNodeConnections.Length);
                         ManRails.QueueReEstablishLocalLinks(this);
                     }
+                    TechSnapSerialization(false, spec);
                 }
             }
+        }
+
+        protected virtual void TechSnapSerialization(bool Saving, TankPreset.BlockSpec spec)
+        { 
         }
 
     }

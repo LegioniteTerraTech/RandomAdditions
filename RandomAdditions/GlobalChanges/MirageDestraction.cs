@@ -1168,10 +1168,10 @@ namespace RandomAdditions
                 seeking = seek;
                 MA = MAin;
 
-                bulletTrans = KickStart.HeavyObjectSearch(transform, "_bulletSpawn_MCOPY");
+                bulletTrans = KickStart.HeavyTransformSearch(transform, "_bulletSpawn_MCOPY");
                 if (!bulletTrans)
                 {
-                    bulletTrans = KickStart.HeavyObjectSearch(transform, "_spawnBullet_MCOPY");
+                    bulletTrans = KickStart.HeavyTransformSearch(transform, "_spawnBullet_MCOPY");
                     if (!bulletTrans)
                     {
                         bulletTrans = transform;

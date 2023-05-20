@@ -45,12 +45,12 @@ namespace RandomAdditions.AI
             public void OnAttach()
             {
                 TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-                TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec, bool>(OnSerializeText));
             }
             public void OnDetach()
             {
                 TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-                TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec, bool>(OnSerializeText));
             }
 
             [Serializable]
@@ -85,6 +85,12 @@ namespace RandomAdditions.AI
                     }
                     catch { }
                 }
+            }
+
+            private void OnSerializeText(bool saving, TankPreset.BlockSpec blockSpec, bool tankPresent)
+            {
+                if (tankPresent)
+                    OnSerialize(saving, blockSpec);
             }
         }
     }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using TerraTechETCUtil;
 
 namespace RandomAdditions.RailSystem
 {
@@ -12,13 +13,29 @@ namespace RandomAdditions.RailSystem
     /// </summary>
     internal class RailSegment : MonoBehaviour
     {
-        public const int segmentPoolInitSize = 6;
+        public const int segmentPoolInitSize = 8;
         public const int crossPoolInitSize = 32;
 
         public const int segmentSafePoolSize = 64;
+        public const float segmentPhysicsMaxTime = 4;
 
         private static bool showDebug = false;
         public static HashSet<RailSegment> ALLSegments = new HashSet<RailSegment>();
+        public static Dictionary<RailSegment, float> PhysicsSegments = new Dictionary<RailSegment, float>();
+
+        internal static void UpdateAllPhysicsSegments()
+        {
+            for (int step = 0; step < PhysicsSegments.Count(); )
+            {
+                var ele = PhysicsSegments.ElementAt(step);
+                if (ele.Value < Time.deltaTime)
+                {
+                    ele.Key.RemoveSegmentPhysicsEnd(ele.Key.transform.TransformPoint(ele.Key.SegmentCenter));
+                }
+                else
+                    step++;
+            }
+        }
 
 
         public bool isValidThisFrame;
@@ -31,7 +48,7 @@ namespace RandomAdditions.RailSystem
 
         public Vector3 SegmentCenter
         {
-            get { return (startPoint + endPoint + EvaluateSegmentAtPositionFast(0.5f)) / 3; }
+            get { return (startPoint + endPoint + EvaluateSegmentAtPositionFastWorld(0.5f)) / 3; }
         }
 
         /// <summary> In WORLD Space </summary>
@@ -85,18 +102,25 @@ namespace RandomAdditions.RailSystem
 
         public static RailSegment PlaceSegment(RailTrack track, int railIndex, Vector3 start, Vector3 startFacing, Vector3 end, Vector3 endFacing)
         {
-            RailSegment RS = ManRails.prefabTracks[track.Type].Spawn(null, start, Quaternion.identity).GetComponent<RailSegment>();
-            RS.Track = track;
+            RailSegment RS;
             if (track == null)
                 throw new NullReferenceException("RailSegment track cannot be null");
+            if (track.Space == RailSpace.Local && track.Parent != null)
+            {
+                RS = ManRails.prefabTracks[track.Type].Spawn(track.Parent, start, Quaternion.identity).GetComponent<RailSegment>();
+                RS.transform.localRotation = Quaternion.identity;
+                RS.transform.localPosition = Vector3.zero;
+                DebugRandAddi.Log("PlaceSegment: Placed segment attached to " + RS.gameObject.transform.parent.gameObject.name);
+            }
+            else
+                RS = ManRails.prefabTracks[track.Type].Spawn(null, start, Quaternion.identity).GetComponent<RailSegment>();
+            RS.Track = track;
             RS.SegIndex = railIndex;
             RS.startVector = startFacing;
             RS.endPoint = end;
             RS.endVector = endFacing;
-            if (track.Space == RailSpace.Local)
-                RS.gameObject.transform.SetParent(track.Parent);
             RS.gameObject.SetActive(true);
-            DebugRandAddi.Info("Init track at " + RS.startPoint + ", heading " + RS.startVector + ", end heading " + RS.endVector);
+            DebugRandAddi.Info("Init segment at " + RS.startPoint + ", heading " + RS.startVector + ", end heading " + RS.endVector);
             ALLSegments.Add(RS);
             if (ALLSegments.Count > segmentSafePoolSize)
                 DebugRandAddi.Log("PlaceSegment: " + ALLSegments.Count + " over segmentSafePoolSize of " + segmentSafePoolSize);
@@ -117,57 +141,81 @@ namespace RandomAdditions.RailSystem
             UpdateSegmentVisuals();
             DebugRandAddi.Info("Placed track");
         }
-        public void RemoveSegment()
+        public void RemoveSegment(bool phyRemove)
         {
             //DebugRandAddi.Assert("RemoveSegment");
             isValidThisFrame = false;
             gameObject.transform.SetParent(null);
-            OnRemoveSegment();
+            if (!OnRemoveSegment(phyRemove) || !phyRemove)
+            {
+                if (!ALLSegments.Remove(this))
+                    DebugRandAddi.FatalError("Rail segment pool corrupted - Unable to clean up tracks!");
+                transform.Recycle(false);
+            }
+            else
+            {
+                gameObject.layer = Globals.inst.layerTank;
+                var center = transform.InverseTransformPoint(SegmentCenter);
+                var RB = gameObject.AddComponent<Rigidbody>();
+                RB.centerOfMass = center;
+                RB.mass = AlongTrackDist * 2;
+                RB.angularDrag = AlongTrackDist * 0.25f;
+                RB.drag = AlongTrackDist * 0.1f;
+                RB.inertiaTensor = Vector3.one * 0.5f;
+                RB.useGravity = true;
+                RB.isKinematic = false;
+                var SC = gameObject.AddComponent<SphereCollider>();
+                SC.radius = 0.5f;
+                SC.center = center;
+                SC.enabled = true;
+                SC.sharedMaterial = ModuleRailBogie.frictionless;
+                RB.WakeUp();
+                RB.velocity = Vector3.zero;
+                RB.angularVelocity = Vector3.zero;
+                RB.AddForce((UnityEngine.Random.insideUnitSphere + Vector3.up) * 3.0f, ForceMode.VelocityChange);
+                RB.AddTorque(UnityEngine.Random.insideUnitSphere * 2.5f, ForceMode.VelocityChange);
+                PhysicsSegments.Add(this, Time.time + segmentPhysicsMaxTime);
+            }
+        }
+        public void OnCollisionEnter(Collision c)
+        {
+            if (PhysicsSegments.ContainsKey(this))
+                RemoveSegmentPhysicsEnd(c.GetContact(0).point);
+        }
+        private void RemoveSegmentPhysicsEnd(Vector3 hitPos)
+        {
+            OnRemoveSegmentPostPhysics(hitPos);
+            Destroy(gameObject.GetComponent<SphereCollider>());
+            Destroy(gameObject.GetComponent<Rigidbody>());
+            PhysicsSegments.Remove(this);
             if (!ALLSegments.Remove(this))
                 DebugRandAddi.FatalError("Rail segment pool corrupted - Unable to clean up tracks!");
             transform.Recycle(false);
         }
-        protected virtual void OnRemoveSegment()
+        /// <summary>
+        /// Return false if this can't use physics
+        /// </summary>
+        /// <param name="usePhysics"></param>
+        protected virtual bool OnRemoveSegment(bool usePhysics)
+        {
+            return false;
+        }
+        protected virtual void OnRemoveSegmentPostPhysics(Vector3 explodePoint)
         {
         }
 
 
         public void OnSegmentDynamicShift()
         {
-            if (Track.Space != RailSpace.Local)
-            {
-                RecalcSegmentShape();
-                UpdateSegmentVisuals();
-            }
+            RecalcSegmentShape();
+            UpdateSegmentVisuals();
         }
 
 
-        protected Vector3 EvaluateSegmentAtPositionFast(float percentRailPos)
+        protected Vector3 EvaluateSegmentAtPositionFastWorld(float percentRailPos)
         {
-            int RailRezIndexes = segPointsLocal.Length - 3;
-            float lerp = Mathf.Repeat(Mathf.Abs(percentRailPos) * RailRezIndexes, 1);
-            int index = Mathf.FloorToInt(percentRailPos * RailRezIndexes) + 1;
-            int endIndex = RailRezIndexes + 1;
-            if (index > endIndex)
-            {   // index is now used for excess
-                index -= endIndex + 1;
-                Vector3 ext = segPointsLocal[endIndex + 1] - segPointsLocal[endIndex];
-                ext *= index + lerp;
-
-                return transform.TransformPoint(ext + segPointsLocal[endIndex + 1]);
-            }
-            else if (index < 0 || (index == 0 && percentRailPos < 0))
-            {
-                index = Mathf.Abs(index) - 1;
-                Vector3 ext = segPointsLocal[0] - segPointsLocal[1];
-                ext *= index + lerp;
-
-                return transform.TransformPoint(ext + segPointsLocal[0]);
-            }
-            float lerpInv = 1 - lerp;
-            return transform.TransformPoint((segPointsLocal[index] * lerpInv) + (segPointsLocal[index + 1] * lerp));
+            return transform.TransformPoint(EvaluateSegmentAtPositionFastLocal(percentRailPos));
         }
-
 
         protected Vector3 EvaluateSegmentAtPositionFastLocal(float percentRailPos)
         {
@@ -193,7 +241,12 @@ namespace RandomAdditions.RailSystem
             return (segPointsLocal[index] * lerpInv) + (segPointsLocal[index + 1] * lerp);
         }
 
-        protected Vector3 EvaluateSegmentUprightAtPositionFast(float percentRailPos)
+
+        protected Vector3 EvaluateSegmentUprightAtPositionFastWorld(float percentRailPos)
+        {
+            return transform.TransformVector(EvaluateSegmentUprightAtPositionFastLocal(percentRailPos));
+        }
+        protected Vector3 EvaluateSegmentUprightAtPositionFastLocal(float percentRailPos)
         {
             if (segPointsUpright == null)
                 return Vector3.up;
@@ -211,7 +264,7 @@ namespace RandomAdditions.RailSystem
                 lerp = 0;
             }
             float lerpInv = 1 - lerp;
-            return transform.TransformVector((segPointsUpright[index] * lerpInv) + (segPointsUpright[index + 1] * lerp));
+            return (segPointsUpright[index] * lerpInv) + (segPointsUpright[index + 1] * lerp);
         }
 
 
@@ -233,20 +286,20 @@ namespace RandomAdditions.RailSystem
             for (int step = 0; step < segPointsLocal.Length; step++)
             {
                 float posWeight = (float)(step - 1) / Track.RailResolution;
-                Vector3 Point = transform.InverseTransformPoint(EvaluateSegmentAtPositionSlow(posWeight));
-                segPointsLocal[step] = Point;
+                segPointsLocal[step] = transform.InverseTransformPoint(EvaluateSegmentAtPositionSlowWorld(posWeight));
             }
+            // Now get the banking angles
+            segPointsUpright = new Vector3[Track.RailResolution + 2]; // two additional due to track overlap issues
+            segPointsUpright[0] = startUp;
 
-            if (RSS.bankLevel != 0 && (startPoint - endPoint).sqrMagnitude >= ManRails.RailMinStretchForBankingSqr)
-            {   // Now get the banking angles
-                segPointsUpright = new Vector3[Track.RailResolution + 2]; // two additional due to track overlap issues
-                segPointsUpright[0] = startUp;
-
+            if (Space != RailSpace.Local && RSS.bankLevel != 0 && (startPoint - endPoint).sqrMagnitude >= ManRails.RailMinStretchForBankingSqr)
+            {
                 float halfWidthHeightModifier = RSS.railCrossHalfWidth / 3;
                 float[] angleForce = new float[segPointsUpright.Length];
 
                 angleForce[0] = Mathf.Sin(Vector3.Angle(startUp, Vector3.up) / 57.296f) * halfWidthHeightModifier;
                 angleForce[segPointsUpright.Length - 1] = Mathf.Sin(Vector3.Angle(endUp, Vector3.up) / 57.296f) * halfWidthHeightModifier;
+
 
                 for (int step = 1; step < segPointsUpright.Length - 1; step++)
                 {
@@ -260,7 +313,7 @@ namespace RandomAdditions.RailSystem
                     if (RSS.minBankAngle > angleAbs)
                         angleForce[step] = 0;
                     else
-                        angleForce[step] = Mathf.Sin(angleAbs / 57.296f) * halfWidthHeightModifier;
+                        angleForce[step] = Mathf.Abs(Mathf.Sin(angleAbs / 57.296f) * halfWidthHeightModifier);
                 }
                 segPointsUpright[segPointsUpright.Length - 1] = endUp;
 
@@ -284,7 +337,19 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                segPointsUpright = null; // Unneeded
+                segPointsUpright[segPointsUpright.Length - 1] = endUp;
+                // Smooth them out
+                for (int attempts = 0; attempts < ManRails.RailAngleSmoothingAttempts; attempts++)
+                {
+                    for (int step = 1; step < segPointsUpright.Length - 1; step++)
+                    {
+                        segPointsUpright[step] = (segPointsUpright[step - 1] + segPointsUpright[step + 1]) / 2;
+                    }
+                    for (int step = segPointsUpright.Length - 2; step > 1; step--)
+                    {
+                        segPointsUpright[step] = (segPointsUpright[step - 1] + segPointsUpright[step + 1]) / 2;
+                    }
+                }
             }
 
             // Try remove dips
@@ -341,6 +406,7 @@ namespace RandomAdditions.RailSystem
                 AlongTrackDist += mag;
                 prevPoint = Point;
             }
+            DebugRandAddi.Info("RailSegment length is " + AlongTrackDist + " | space " + Space);
 
             TurnAngle = Vector3.Angle(startVector, -endVector) / Mathf.Clamp(AlongTrackDist / 10, 0.5f, 16);
 
@@ -399,65 +465,62 @@ namespace RandomAdditions.RailSystem
             ManWorld.inst.GetTerrainHeight(endPoint, out float Height2);
             return (startPoint.SetY(Height) - endPoint.SetY(Height2)).magnitude;
         }
-        protected Vector3 EvaluateSegmentAtPositionSlow(float percentRailPos)
+        protected Vector3 EvaluateSegmentAtPositionSlowWorld(float percentRailPos)
         {
-            return EvaluateSegmentAtPositionSlow(Type, startVector, endVector, GetDirectDistance(startPoint, endPoint), startPoint, endPoint, percentRailPos, Space);
+            return EvaluateSegmentAtPositionSlowWorld(Type, startVector, endVector, GetDirectDistance(startPoint, endPoint), startPoint, endPoint, percentRailPos, Space);
         }
 
 
-        public static Vector3 EvaluateSegmentAtPositionOneSideSlow(RailType type, Vector3 startVector, Vector3 startPoint,
+        public static Vector3 EvaluateSegmentAtPositionOneSideSlowWorld(RailType type, Vector3 startVector, Vector3 startPoint,
             float betweenPointsDist, Vector3 endPoint, float percentRailPos, RailSpace space)
         {
             float invPosWegt = 1 - percentRailPos;
             Vector3 startWeight = (startVector * betweenPointsDist * ManRails.SmoothFalloff(percentRailPos) * ManRails.RailStartingAlignment) + startPoint;
             Vector3 Pos = (startWeight * invPosWegt) + (endPoint * percentRailPos);
-            switch (space)
-            {
-                case RailSpace.Local:
-                    return Pos;
-                default:
-                    ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Pos, out float HeightTerrain);
-                    if (space == RailSpace.World || HeightTerrain > Pos.y)
-                        return Pos.SetY(HeightTerrain + ManRails.railTypeStats[type].railMiniHeight);
-                    return Pos;
-            }
+            AdjustHeightIfNeeded(type, space, ref Pos);
+            return Pos;
         }
-        private static Vector3 EvaluateSegmentAtPositionSlow(RailType type, Vector3 startVector, Vector3 endVector, float betweenPointsDist,
+        private static Vector3 EvaluateSegmentAtPositionSlowWorld(RailType type, Vector3 startVector, Vector3 endVector, float betweenPointsDist,
             Vector3 startPoint, Vector3 endPoint, float percentRailPos, RailSpace space)
         {
-            /*
-            float invPosWegt = 1 - percentRailPos;
-            Vector3 startWeight = (startVector * betweenPointsDist * SmoothFalloff(percentRailPos) * RailStartingAlignment) + startPoint;
-            Vector3 endWeight = (endVector * betweenPointsDist * SmoothFalloff(invPosWegt) * RailStartingAlignment) + endPoint;
-            Vector3 Pos = (startWeight * invPosWegt) + (endWeight * percentRailPos);
-            */
             float mag = betweenPointsDist * ManRails.RailStartingAlignment;
             Vector3 Pos = ManRails.BezierCalcs(startVector * mag, endVector * mag, startPoint, endPoint, percentRailPos);
+            AdjustHeightIfNeeded(type, space, ref Pos);
+            return Pos;
+        }
+        public static void AdjustHeightIfNeeded(RailType type, RailSpace space, ref Vector3 Pos)
+        {
+            float Height;
             switch (space)
             {
                 case RailSpace.Local:
-                    return Pos;
-                default:
-                    ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Pos, out float HeightTerrain);
-                    if (space == RailSpace.World || HeightTerrain > Pos.y)
-                        return Pos.SetY(HeightTerrain + ManRails.railTypeStats[type].railMiniHeight);
-                    return Pos;
+                    return;
+                case RailSpace.LocalUnstable:
+                case RailSpace.WorldFloat:
+                    ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Pos, out Height);
+                    if (Height > Pos.y)
+                        Pos.y = Height + ManRails.railTypeStats[type].railMiniHeight;
+                    return;
+                default: // World
+                    ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Pos, out Height);
+                    Pos.y = Height + ManRails.railTypeStats[type].railMiniHeight;
+                    return;
             }
         }
 
-        public static Vector3 EvaluateSegmentOrientationAtPositionSlow(int RailResolution, RailType type, Vector3 startVector, Vector3 endVector, float betweenPointsDist,
+        public static Vector3 EvaluateSegmentOrientationAtPositionSlowWorld(int RailResolution, RailType type, Vector3 startVector, Vector3 endVector, float betweenPointsDist,
             Vector3 startPoint, Vector3 endPoint, float percentRailPos, RailSpace space, bool AddBankOffset, out Vector3 Up)
         {
             var RSS = ManRails.railTypeStats[type];
-            Vector3 pointMid = EvaluateSegmentAtPositionSlow(type, startVector, endVector, betweenPointsDist, startPoint,
+            Vector3 pointMid = EvaluateSegmentAtPositionSlowWorld(type, startVector, endVector, betweenPointsDist, startPoint,
                 endPoint, percentRailPos, space);
 
             if (RSS.bankLevel != 0)
             {
                 float deltaPos = 0.99f / RailResolution;
-                Vector3 pointPrev = EvaluateSegmentAtPositionSlow(type, startVector, endVector, betweenPointsDist, startPoint,
+                Vector3 pointPrev = EvaluateSegmentAtPositionSlowWorld(type, startVector, endVector, betweenPointsDist, startPoint,
                     endPoint, percentRailPos - deltaPos, space);
-                Vector3 pointNext = EvaluateSegmentAtPositionSlow(type, startVector, endVector, betweenPointsDist, startPoint,
+                Vector3 pointNext = EvaluateSegmentAtPositionSlowWorld(type, startVector, endVector, betweenPointsDist, startPoint,
                     endPoint, percentRailPos + deltaPos, space);
 
                 Vector3 forwardsVec = (pointPrev - pointNext).normalized;
@@ -474,17 +537,17 @@ namespace RandomAdditions.RailSystem
 
             return pointMid;
         }
-        public static Vector3 EvaluateSegmentOrientationAtPositionSlow(int RailResolution, RailType type, Vector3 startVector, Vector3 endVector, float betweenPointsDist,
+        public static Vector3 EvaluateSegmentOrientationAtPositionSlowWorld(int RailResolution, RailType type, Vector3 startVector, Vector3 endVector, float betweenPointsDist,
             Vector3 startPoint, Vector3 endPoint, float percentRailPos, RailSpace space, bool AddBankOffset, out Vector3 Forward, out Vector3 Up)
         {
             var RSS = ManRails.railTypeStats[type];
-            Vector3 pointMid = EvaluateSegmentAtPositionSlow(type, startVector, endVector, betweenPointsDist, startPoint,
+            Vector3 pointMid = EvaluateSegmentAtPositionSlowWorld(type, startVector, endVector, betweenPointsDist, startPoint,
                 endPoint, percentRailPos, space);
 
             float deltaPos = 0.99f / RailResolution;
-            Vector3 pointPrev = EvaluateSegmentAtPositionSlow(type, startVector, endVector, betweenPointsDist, startPoint,
+            Vector3 pointPrev = EvaluateSegmentAtPositionSlowWorld(type, startVector, endVector, betweenPointsDist, startPoint,
                 endPoint, percentRailPos - deltaPos, space);
-            Vector3 pointNext = EvaluateSegmentAtPositionSlow(type, startVector, endVector, betweenPointsDist, startPoint,
+            Vector3 pointNext = EvaluateSegmentAtPositionSlowWorld(type, startVector, endVector, betweenPointsDist, startPoint,
                 endPoint, percentRailPos + deltaPos, space);
 
             Forward = (pointNext - pointPrev).normalized;
@@ -519,17 +582,17 @@ namespace RandomAdditions.RailSystem
         public Vector3 UpdateBogeyPositioning(ModuleRailBogie MRB, Transform bogey)
         {
             float posPercent = MRB.FixedPositionOnRail / AlongTrackDist;
-            bogey.position = EvaluateSegmentAtPositionFast(posPercent);
+            bogey.position = EvaluateSegmentAtPositionFastWorld(posPercent);
             Vector3 p2;
             if (posPercent <= 0.96f)
             {
-                p2 = EvaluateSegmentAtPositionFast(posPercent + 0.04f);
-                bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFast(posPercent));
+                p2 = EvaluateSegmentAtPositionFastWorld(posPercent + 0.04f);
+                bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             else
             {
-                p2 = EvaluateSegmentAtPositionFast(posPercent - 0.04f);
-                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFast(posPercent));
+                p2 = EvaluateSegmentAtPositionFastWorld(posPercent - 0.04f);
+                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             return bogey.rotation * Vector3.up;
         }
@@ -550,39 +613,51 @@ namespace RandomAdditions.RailSystem
             {
                 if (posPercent > bogieForwards)
                 {   // On track
-                    Vector3 posB = EvaluateSegmentAtPositionFast(posPercent - bogieForwards);
-                    p2 = EvaluateSegmentAtPositionFast(posPercent + bogieForwards);
+                    Vector3 posB = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
+                    p2 = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
                     bogey.position = (posB + p2) / 2;
-                    bogey.rotation = Quaternion.LookRotation((p2 - posB).normalized, EvaluateSegmentUprightAtPositionFast(posPercent));
+                    bogey.rotation = Quaternion.LookRotation((p2 - posB).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
                     eject = false;
                 }
                 else
                 {   // Overshoot low end
-                    p2 = EvaluateSegmentAtPositionFast(posPercent + bogieForwards);
-                    bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFast(posPercent));
+                    p2 = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
+                    bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
                     eject = !Track.SegExists(SegIndex, -1);
+                    /*
+                    if (eject)
+                    {
+                        DebugRandAddi.Log("UpdateBogeyPositioningPrecise() - Low end eject due to previous seg not existing " + (SegIndex - 1));
+                        GetSegmentInformation();
+                    }*/
                 }
             }
             else
             {   // Overshoot high end
-                p2 = EvaluateSegmentAtPositionFast(posPercent - bogieForwards);
-                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFast(posPercent));
+                p2 = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
+                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
                 eject = !Track.SegExists(SegIndex, 1);
+                /*
+                if (eject)
+                {
+                    DebugRandAddi.Log("UpdateBogeyPositioningPrecise() - High end eject due to next seg not existing " + (SegIndex + 1));
+                    GetSegmentInformation();
+                }*/
             }
             return pos;
         }
 
         public void AlignBogieToTrack(Transform bogey, float bogieForwards, float posPercent, out Vector3 position)
         {
-            bogey.position = EvaluateSegmentAtPositionFast(posPercent);
+            bogey.position = EvaluateSegmentAtPositionFastWorld(posPercent);
             if (posPercent > 1 - bogieForwards)
             {
-                position = EvaluateSegmentAtPositionFast(posPercent - bogieForwards);
+                position = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
                 bogey.rotation = Quaternion.LookRotation(-(position - bogey.position).normalized, Vector3.up);
             }
             else
             {
-                position = EvaluateSegmentAtPositionFast(posPercent + bogieForwards);
+                position = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
                 bogey.rotation = Quaternion.LookRotation((position - bogey.position).normalized, Vector3.up);
             }
         }
@@ -594,7 +669,7 @@ namespace RandomAdditions.RailSystem
                 BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
                 pos += BogeyPosLocal.z;
                 posPercent = pos / AlongTrackDist;
-                bogey.position = EvaluateSegmentAtPositionFast(posPercent);
+                bogey.position = EvaluateSegmentAtPositionFastWorld(posPercent);
             }
             BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
             pos += BogeyPosLocal.z;
@@ -606,7 +681,7 @@ namespace RandomAdditions.RailSystem
             BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
             pos += BogeyPosLocal.z;
             posPercent = pos / AlongTrackDist;
-            bogey.position = EvaluateSegmentAtPositionFast(posPercent);
+            bogey.position = EvaluateSegmentAtPositionFastWorld(posPercent);
             BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
             pos += BogeyPosLocal.z;
             posPercent = pos / AlongTrackDist;
@@ -617,6 +692,12 @@ namespace RandomAdditions.RailSystem
             return KickStart.GetClosestPoint(GetSegmentPointsWorld(), scenePos, out percentPos);
         }
 
+        public void GetSegmentInformation()
+        {
+            Track.GetTrackInformation();
+            DebugRandAddi.Log("GetSegmentInformation() - Segment SegIndex " + SegIndex + "\n  Rough Track Length: " + AlongTrackDist +
+                "\n  Turn Angle: " + TurnAngle);
+        }
     }
 
 
@@ -627,27 +708,28 @@ namespace RandomAdditions.RailSystem
         private List<Transform> railCrosses = new List<Transform>();
         private List<Transform> railIrons = new List<Transform>();
 
+
         public static void Init()
         {
             ModContainer MC = ManMods.inst.FindMod("Random Additions");
-            KickStart.LookIntoModContents(MC);
+            ResourcesHelper.LookIntoModContents(MC);
 
             DebugRandAddi.Log("Making Tracks (Land) prefabs...");
-            ManRails.railTypeStats.Add(RailType.LandGauge2, new RailTypeStats(8,
-                ManRails.RailFloorOffset, 0.35f, 0.85f, 1.0f, 0.75f, new Vector2(0.06f, 0.94f), 8f, 4.25f, 22.5f));
+            ManRails.railTypeStats.Add(RailType.LandGauge2, new RailTypeStats(2 ,8,
+                ManRails.RailFloorOffset, 0.35f, 0.85f, 1.0f, 0.75f, new Vector2(0.06f, 0.94f), 8f, 4.25f, 22.5f, 4));
             AssembleSegmentInstance(MC, RailType.LandGauge2, "VEN_Gauge2", "VEN_Gauge2_RailCross_Instance", "VEN_Main");
 
-            ManRails.railTypeStats.Add(RailType.LandGauge3, new RailTypeStats(7,
-                ManRails.RailFloorOffset, 0.5f, 1.25f, 1.5f, 1f, new Vector2(0.35f, 0.935f), 2f, 1.75f, 11.25f));
+            ManRails.railTypeStats.Add(RailType.LandGauge3, new RailTypeStats(3, 7,
+                ManRails.RailFloorOffset, 0.5f, 1.25f, 1.5f, 1f, new Vector2(0.35f, 0.935f), 2f, 1.75f, 11.25f, 2));
             AssembleSegmentInstance(MC, RailType.LandGauge3, "GSO_Gauge3", "GSO_Gauge3_RailCross_Instance", "GSO_Main");
 
-            ManRails.railTypeStats.Add(RailType.LandGauge4, new RailTypeStats(5.5f,
-                ManRails.RailFloorOffset, 0.75f, 1.5f, 2.0f, 1.25f, new Vector2(0.27f, 0.92f), 4f, 1.75f, 11.25f));
+            ManRails.railTypeStats.Add(RailType.LandGauge4, new RailTypeStats(4, 5.5f,
+                ManRails.RailFloorOffset, 0.75f, 1.5f, 2.0f, 1.25f, new Vector2(0.27f, 0.92f), 4f, 1.75f, 11.25f, 3));
             AssembleSegmentInstance(MC, RailType.LandGauge4, "GC_Gauge4", "GC_Gauge4_RailCross_Instance", "GC_Main");
 
-            ManRails.railTypeStats.Add(RailType.InclinedElevator, new RailTypeStats(3,
-                ManRails.RailFloorOffset, 12, 1.25f, 1.5f, 1f, new Vector2(0.35f, 0.935f), 0, 0, 0));
-            AssembleSegmentInstance(MC, RailType.InclinedElevator, "Inclined_Elevator", "GSO_Gauge3_RailCross_Instance", "GSO_Main");
+            ManRails.railTypeStats.Add(RailType.Funicular, new RailTypeStats(2.5f, 3,
+                ManRails.RailFloorOffset, 12, 1.25f, 1.5f, 1f, new Vector2(0.35f, 0.935f), 0, 0, 0, 6));
+            AssembleSegmentInstance(MC, RailType.Funicular, "SJ_Funicular", "GSO_Gauge3_RailCross_Instance", "GSO_Main");
         }
         private static void AssembleSegmentInstance(ModContainer MC, RailType Type, string Name, string ModelNameNoExt, string MaterialName)
         {
@@ -661,13 +743,13 @@ namespace RandomAdditions.RailSystem
             GO.SetActive(false);
 
             DebugRandAddi.Log("Making Track Cross for " + Name);
-            Mesh mesh = KickStart.GetMeshFromModAssetBundle(MC, ModelNameNoExt);
+            Mesh mesh = ResourcesHelper.GetMeshFromModAssetBundle(MC, ModelNameNoExt);
             if (mesh == null)
             {
                 DebugRandAddi.Assert(ModelNameNoExt + "Unable to make track cross visual");
                 //return;
             }
-            Material mat = KickStart.GetMaterialFromBaseGame(MaterialName);
+            Material mat = ResourcesHelper.GetMaterialFromBaseGame(MaterialName);
             if (mat == null)
             {
                 DebugRandAddi.Assert(MaterialName + " could not be found!  unable to load track cross visual texture");
@@ -685,55 +767,131 @@ namespace RandomAdditions.RailSystem
             prefab.SetActive(false);
         }
 
-        protected override void OnRemoveSegment()
+        protected override bool OnRemoveSegment(bool usePhysics)
         {
+            if (!usePhysics)
+                ClearAllSegmentDetails();
+            return true;
+        }
+        protected override void OnRemoveSegmentPostPhysics(Vector3 explodePoint)
+        {
+            if (AlongTrackDist > 4)
+            {
+                for (float Dist = 0; Dist <= AlongTrackDist; Dist += 4)
+                {
+                    ManMods.inst.m_DefaultBlockExplosion.Spawn(null, EvaluateSegmentAtPositionFastWorld(Dist / AlongTrackDist));
+                }
+                ManSFX.inst.PlayExplosionSFX(explodePoint, ManSFX.ExplosionType.Blocks, ManSFX.ExplosionSize.Large, FactionSubTypes.GSO);
+            }
+            else
+            {
+                ManMods.inst.m_DefaultBlockExplosion.Spawn(null, SegmentCenter);
+                ManSFX.inst.PlayExplosionSFX(explodePoint, ManSFX.ExplosionType.Blocks, ManSFX.ExplosionSize.Medium, FactionSubTypes.GSO);
+            }
             ClearAllSegmentDetails();
         }
         protected override void UpdateSegmentVisuals()
         {
             //DebugRandAddi.Log("UpdateTrackVisual");
             ClearAllSegmentDetails();
-            if (railCrossPrefabs.TryGetValue(Type, out Transform prefab))
+            if (Track.ShowRailTies)
+            {
+                if (railCrossPrefabs.TryGetValue(Type, out Transform prefab))
+                {
+                    RailTypeStats RSS = ManRails.railTypeStats[Type];
+                    List<Vector3> leftIronPoints = new List<Vector3>();
+                    List<Vector3> rightIronPoints = new List<Vector3>();
+                    List<Vector3> foundationPoints = new List<Vector3>();
+                    Vector3 crossVec = Vector3.left * RSS.railCrossHalfWidth;
+                    Vector3 posPrev = EvaluateSegmentAtPositionFastLocal(0);
+                    Vector3 pos = EvaluateSegmentAtPositionFastLocal(0.01f);
+                    Vector3 upright;
+                    Quaternion quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(0));
+                    Vector3 ironOffset = quat * crossVec;
+                    Vector3 extender = (posPrev - pos).normalized * 0.05f;
+                    leftIronPoints.Add(posPrev + ironOffset + extender);
+                    rightIronPoints.Add(posPrev - ironOffset + extender);
+                    foundationPoints.Add(posPrev + extender);
+                    //CreateRailCross(prefab, pos, quat);
+
+                    DebugRandAddi.Info("UpdateSegmentVisuals - RailSegment length is " + AlongTrackDist + " | space " + Space);
+
+                    for (float dist = RSS.railCrossLength; dist < AlongTrackDist - RSS.railCrossLength; dist += RSS.railCrossLength)
+                    {
+                        float posWeight = (float)dist / AlongTrackDist;
+                        posPrev = EvaluateSegmentAtPositionFastLocal(posWeight - 0.01f);
+                        pos = EvaluateSegmentAtPositionFastLocal(posWeight + 0.01f);
+                        upright = EvaluateSegmentUprightAtPositionFastLocal(posWeight);
+                        quat = Quaternion.LookRotation(pos - posPrev, upright);
+                        ironOffset = quat * crossVec;
+                        leftIronPoints.Add(pos + ironOffset);
+                        rightIronPoints.Add(pos - ironOffset);
+                        foundationPoints.Add(pos);
+                        CreateTrackCross(prefab, pos, quat);
+                    }
+                    posPrev = EvaluateSegmentAtPositionFastLocal(0.99f);
+                    pos = EvaluateSegmentAtPositionFastLocal(1);
+                    quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(1));
+                    ironOffset = quat * crossVec;
+                    extender = (pos - posPrev).normalized * 0.05f;
+                    leftIronPoints.Add(pos + ironOffset + extender);
+                    rightIronPoints.Add(pos - ironOffset + extender);
+                    foundationPoints.Add(pos + extender);
+
+                    CreateTrackIronGameObject("leftIron", leftIronPoints.ToArray(), false);
+                    CreateTrackIronGameObject("rightIron", rightIronPoints.ToArray(), true);
+                    if (Track.Space == RailSpace.World)
+                        CreateTrackFoundationGameObject("foundation", foundationPoints.ToArray());
+                }
+                else
+                    DebugRandAddi.Assert("UpdateTrackVisual could not get prefab for " + Type.ToString());
+            }
+            else
             {
                 RailTypeStats RSS = ManRails.railTypeStats[Type];
                 List<Vector3> leftIronPoints = new List<Vector3>();
                 List<Vector3> rightIronPoints = new List<Vector3>();
+                List<Vector3> foundationPoints = new List<Vector3>();
                 Vector3 crossVec = Vector3.left * RSS.railCrossHalfWidth;
                 Vector3 posPrev = EvaluateSegmentAtPositionFastLocal(0);
                 Vector3 pos = EvaluateSegmentAtPositionFastLocal(0.01f);
                 Vector3 upright;
-                Quaternion quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFast(0));
+                Quaternion quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(0));
                 Vector3 ironOffset = quat * crossVec;
                 Vector3 extender = (posPrev - pos).normalized * 0.05f;
                 leftIronPoints.Add(posPrev + ironOffset + extender);
                 rightIronPoints.Add(posPrev - ironOffset + extender);
+                foundationPoints.Add(posPrev + extender);
                 //CreateRailCross(prefab, pos, quat);
+
+                DebugRandAddi.Info("UpdateSegmentVisuals - RailSegment length is " + AlongTrackDist + " | space " + Space);
 
                 for (float dist = RSS.railCrossLength; dist < AlongTrackDist - RSS.railCrossLength; dist += RSS.railCrossLength)
                 {
                     float posWeight = (float)dist / AlongTrackDist;
                     posPrev = EvaluateSegmentAtPositionFastLocal(posWeight - 0.01f);
                     pos = EvaluateSegmentAtPositionFastLocal(posWeight + 0.01f);
-                    upright = EvaluateSegmentUprightAtPositionFast(posWeight);
+                    upright = EvaluateSegmentUprightAtPositionFastLocal(posWeight);
                     quat = Quaternion.LookRotation(pos - posPrev, upright);
                     ironOffset = quat * crossVec;
                     leftIronPoints.Add(pos + ironOffset);
                     rightIronPoints.Add(pos - ironOffset);
-                    CreateTrackCross(prefab, pos, quat);
+                    foundationPoints.Add(pos);
                 }
                 posPrev = EvaluateSegmentAtPositionFastLocal(0.99f);
                 pos = EvaluateSegmentAtPositionFastLocal(1);
-                quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFast(1));
+                quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(1));
                 ironOffset = quat * crossVec;
                 extender = (pos - posPrev).normalized * 0.05f;
                 leftIronPoints.Add(pos + ironOffset + extender);
                 rightIronPoints.Add(pos - ironOffset + extender);
+                foundationPoints.Add(pos + extender);
 
                 CreateTrackIronGameObject("leftIron", leftIronPoints.ToArray(), false);
                 CreateTrackIronGameObject("rightIron", rightIronPoints.ToArray(), true);
+                if (Track.Space == RailSpace.World)
+                    CreateTrackFoundationGameObject("foundation", foundationPoints.ToArray());
             }
-            else
-                DebugRandAddi.Assert("UpdateTrackVisual could not get prefab for " + Type.ToString());
         }
 
 
@@ -775,9 +933,59 @@ namespace RandomAdditions.RailSystem
             MR.sharedMaterial = res.ToList().Find(delegate (Material cand) { return cand.name.Equals("GSO_Main"); });
             railIrons.Add(railTrans);
         }
+
+
+        private static Vector3[] frameStart = new Vector3[frameVertices];
+        private static Vector3[] frameEnd = new Vector3[frameVertices];
+        // 12 frameSection vertices
+        private static Vector3[] frameSection = new Vector3[frameVertices * 2];
+        // Set up the end triangles
+        private static readonly int[] frameEndIndexes = new int[]
+                {   // (Fan Method)
+                    0,1,2,
+                    0,2,3,
+                    0,3,4,
+                    0,4,5,
+                };
+        private const int frameEndIndexCount = 6;
+        // 12 frameSection vertices
+        private static readonly int[] frameSectionIndexes = new int[]
+                {
+                    12,1,0,  1,12,13,
+                    14,3,2,  3,14,15,
+                    16,5,4,  5,16,17,
+                    18,7,6,  7,18,19,
+                    20,9,8,  9,20,21,
+                    22,11,10,  11,22,23,
+                };
+        private const int frameSectionIndexCount = 12;
+
+        private static readonly Vector3[] frameEndNormals = new Vector3[frameVertices] {
+                    new Vector3(0, 0, 1),
+                    new Vector3(0, 0, 1),
+                    new Vector3(0, 0, 1),
+                    new Vector3(0, 0, 1),
+                    new Vector3(0, 0, 1),
+                    new Vector3(0, 0, 1),
+                };  // FORWARDS FACING
+                    // 12 frameSection vertices
+        private static readonly Vector3[] frameSectionNormals = new Vector3[frameVertices * 2] {
+                    new Vector3(0, -1, 0),
+                    new Vector3(0, -1, 0),
+                    new Vector3(1, 0, 0),
+                    new Vector3(1, 0, 0),
+                    new Vector3(1, 1, 0).normalized,
+                    new Vector3(1, 1, 0).normalized,
+                    new Vector3(0, 1, 0),
+                    new Vector3(0, 1, 0),
+                    new Vector3(-1, 1, 0).normalized,
+                    new Vector3(-1, 1, 0).normalized,
+                    new Vector3(-1, 0, 0),
+                    new Vector3(-1, 0, 0),
+                };
+
         private void CreateTrackIronMesh(MeshFilter MF, Vector3[] localPoints, bool invertAngling)
         {
-            int localPointsCount = localPoints.Length;
             // VERTICES
             DebugRandAddi.Info("Creating Track Iron...");
             //DebugRandAddi.Log("Making Vertices...");
@@ -796,47 +1004,121 @@ namespace RandomAdditions.RailSystem
             float TLSide = heightL - bevel;
             float TRSide = heightR - bevel;
 
-            Vector3[] frameStart = new Vector3[frameVertices] {
-                    new Vector3(-widthHalf, bottom, 0),
-                    new Vector3(widthHalf, bottom, 0),
-                    new Vector3(widthHalf, TRSide, 0),
-                    new Vector3(LowSide, heightR, 0),
-                    new Vector3(-LowSide, heightL, 0),
-                    new Vector3(-widthHalf, TLSide, 0),
-                };
-            Vector3[] frameEnd = new Vector3[frameVertices] {
-                    new Vector3(-widthHalf, bottom, 0),
-                    new Vector3(widthHalf, bottom, 0),
-                    new Vector3(widthHalf, TLSide, 0),
-                    new Vector3(LowSide, heightL, 0),
-                    new Vector3(-LowSide, heightR, 0),
-                    new Vector3(-widthHalf, TRSide, 0),
-                };
+            frameStart[0] = new Vector3(-widthHalf, bottom, 0);
+            frameStart[1] = new Vector3(widthHalf, bottom, 0);
+            frameStart[2] = new Vector3(widthHalf, TRSide, 0);
+            frameStart[3] = new Vector3(LowSide, heightR, 0);
+            frameStart[4] = new Vector3(-LowSide, heightL, 0);
+            frameStart[5] = new Vector3(-widthHalf, TLSide, 0);
+
+            frameEnd[0] = new Vector3(-widthHalf, bottom, 0);
+            frameEnd[1] = new Vector3(widthHalf, bottom, 0);
+            frameEnd[2] = new Vector3(widthHalf, TLSide, 0);
+            frameEnd[3] = new Vector3(LowSide, heightL, 0);
+            frameEnd[4] = new Vector3(-LowSide, heightR, 0);
+            frameEnd[5] = new Vector3(-widthHalf, TRSide, 0);
+
             // 12 frameSection vertices
-            Vector3[] frameSection = new Vector3[frameVertices * 2] {
-                    new Vector3(-widthHalf, bottom, 0),
-                    new Vector3(widthHalf, bottom, 0),
-                    new Vector3(widthHalf, bottom, 0),
-                    new Vector3(widthHalf, TRSide, 0),
-                    new Vector3(widthHalf, TRSide, 0),
-                    new Vector3(LowSide, heightR, 0),
-                    new Vector3(LowSide, heightR, 0),
-                    new Vector3(-LowSide, heightL, 0),
-                    new Vector3(-LowSide, heightL, 0),
-                    new Vector3(-widthHalf, TLSide, 0),
-                    new Vector3(-widthHalf, TLSide, 0),
-                    new Vector3(-widthHalf, bottom, 0),
-                };
+            frameSection[0] = new Vector3(-widthHalf, bottom, 0);
+            frameSection[1] = new Vector3(widthHalf, bottom, 0);
+            frameSection[2] = new Vector3(widthHalf, bottom, 0);
+            frameSection[3] = new Vector3(widthHalf, TRSide, 0);
+            frameSection[4] = new Vector3(widthHalf, TRSide, 0);
+            frameSection[5] = new Vector3(LowSide, heightR, 0);
+            frameSection[6] = new Vector3(LowSide, heightR, 0);
+            frameSection[7] = new Vector3(-LowSide, heightL, 0);
+            frameSection[8] = new Vector3(-LowSide, heightL, 0);
+            frameSection[9] = new Vector3(-widthHalf, TLSide, 0);
+            frameSection[10] = new Vector3(-widthHalf, TLSide, 0);
+            frameSection[11] = new Vector3(-widthHalf, bottom, 0);
+
+            CreateElongatedPrismFromSpecs(MF, localPoints);
+        }
+        
+        private void CreateTrackFoundationGameObject(string name, Vector3[] localPoints)
+        {
+            GameObject Rail = Instantiate(new GameObject(name), transform);
+            Transform railTrans = Rail.transform;
+            railTrans.localPosition = Vector3.zero;
+            railTrans.localRotation = Quaternion.identity;
+            railTrans.localScale = Vector3.one;
+
+            var MF = Rail.AddComponent<MeshFilter>();
+            CreateTrackFoundationMesh(MF, localPoints);
+            var MR = Rail.AddComponent<MeshRenderer>();
+            var res = (Material[])Resources.FindObjectsOfTypeAll(typeof(Material));
+            MR.sharedMaterial = res.ToList().Find(delegate (Material cand) { return cand.name.Equals("GSO_Main"); });
+            railIrons.Add(railTrans);
+        }
+        private void CreateTrackFoundationMesh(MeshFilter MF, Vector3[] localPoints)
+        {
+            int localPointsCount = localPoints.Length;
+            // VERTICES
+            DebugRandAddi.Info("Creating Track Foundation...");
+            //DebugRandAddi.Log("Making Vertices...");
+            float scale = ManRails.railTypeStats[Type].RailGauge;
+            float bevel = 0.325f * scale;
+            float widthHalf = 1.2f * scale;
+            float height = -0.15f * scale;
+            float bottom = -2.5f * scale;
+
+            float LowSide = widthHalf - bevel;
+            float TSide = height - bevel;
+
+            frameStart[0] = new Vector3(-widthHalf, bottom, 0);
+            frameStart[1] = new Vector3(widthHalf, bottom, 0);
+            frameStart[2] = new Vector3(widthHalf, TSide, 0);
+            frameStart[3] = new Vector3(LowSide, height, 0);
+            frameStart[4] = new Vector3(-LowSide, height, 0);
+            frameStart[5] = new Vector3(-widthHalf, TSide, 0);
+
+            frameEnd[0] = new Vector3(-widthHalf, bottom, 0);
+            frameEnd[1] = new Vector3(widthHalf, bottom, 0);
+            frameEnd[2] = new Vector3(widthHalf, TSide, 0);
+            frameEnd[3] = new Vector3(LowSide, height, 0);
+            frameEnd[4] = new Vector3(-LowSide, height, 0);
+            frameEnd[5] = new Vector3(-widthHalf, TSide, 0);
+
+            // 12 frameSection vertices
+            frameSection[0] = new Vector3(-widthHalf, bottom, 0);
+            frameSection[1] = new Vector3(widthHalf, bottom, 0);
+            frameSection[2] = new Vector3(widthHalf, bottom, 0);
+            frameSection[3] = new Vector3(widthHalf, TSide, 0);
+            frameSection[4] = new Vector3(widthHalf, TSide, 0);
+            frameSection[5] = new Vector3(LowSide, height, 0);
+            frameSection[6] = new Vector3(LowSide, height, 0);
+            frameSection[7] = new Vector3(-LowSide, height, 0);
+            frameSection[8] = new Vector3(-LowSide, height, 0);
+            frameSection[9] = new Vector3(-widthHalf, TSide, 0);
+            frameSection[10] = new Vector3(-widthHalf, TSide, 0);
+            frameSection[11] = new Vector3(-widthHalf, bottom, 0);
+
+            CreateElongatedPrismFromSpecs(MF, localPoints);
+        }
+
+        /// <summary>
+        /// set frameStart, frameEnd, and frameSection entirely before use!!!
+        /// </summary>
+        /// <param name="MF"></param>
+        /// <param name="localPoints"></param>
+        private void CreateElongatedPrismFromSpecs(MeshFilter MF, Vector3[] localPoints)
+        {
+            int localPointsCount = localPoints.Length;
+
             // Set up the starting vertices
             Quaternion quat = Quaternion.LookRotation((localPoints[0] - localPoints[1]).normalized, Vector3.up);
-            List<Vector3> vertices = new List<Vector3>(localPointsCount * frameVertices);
+            Vector3[] verts = new Vector3[frameStart.Length + (frameSection.Length * localPointsCount)
+                + frameEnd.Length];
+            int posStep = 0;
             for (int step = 0; step < frameStart.Length; step++)
             {
-                vertices.Add(localPoints[0] + (quat * frameStart[step]));
+                verts[posStep] = localPoints[0] + (quat * frameStart[step]);
+                posStep++;
             }
             for (int step2 = 0; step2 < frameSection.Length; step2++)
             {
-                vertices.Add(localPoints[0] + (quat * frameSection[step2]));
+                verts[posStep] = localPoints[0] + (quat * frameSection[step2]);
+                posStep++;
             }
 
             // Set up the middle vertices
@@ -845,107 +1127,72 @@ namespace RandomAdditions.RailSystem
                 quat = Quaternion.LookRotation((localPoints[step - 1] - localPoints[step + 1]).normalized, Vector3.up);
                 for (int step2 = 0; step2 < frameSection.Length; step2++)
                 {
-                    vertices.Add(localPoints[step] + (quat * frameSection[step2]));
+                    verts[posStep] = localPoints[step] + (quat * frameSection[step2]);
+                    posStep++;
                 }
             }
             // Set up the end vertices
             quat = Quaternion.LookRotation((localPoints[localPointsCount - 2] - localPoints[localPointsCount - 1]).normalized, Vector3.up);
             for (int step2 = 0; step2 < frameSection.Length; step2++)
             {
-                vertices.Add(localPoints[localPointsCount - 1] + (quat * frameSection[step2]));
+                verts[posStep] = localPoints[localPointsCount - 1] + (quat * frameSection[step2]);
+                posStep++;
             }
             quat = Quaternion.LookRotation((localPoints[localPointsCount - 1] - localPoints[localPointsCount - 2]).normalized, Vector3.up);
             for (int step = 0; step < frameEnd.Length; step++)
             {
-                vertices.Add(localPoints[localPointsCount - 1] + (quat * frameEnd[step]));
+                verts[posStep] = localPoints[localPointsCount - 1] + (quat * frameEnd[step]);
+                posStep++;
             }
 
             // Push the vertices!
             Mesh iron = new Mesh();
             MF.mesh = iron;
-            iron.vertices = vertices.ToArray();
+            iron.vertices = verts;
             //DebugRandAddi.Log("Set " + vertices.Count + " Vertices.");
 
 
             // TRIANGLES
             //DebugRandAddi.Log("Making Triangles...");
-            // Set up the end triangles
-            List<int> frameEndIndexes = new List<int>
-                {   // (Fan Method)
-                    0,1,2,
-                    0,2,3,
-                    0,3,4,
-                    0,4,5,
-                };
-            int frameEndIndexCount = 6;
-            // 12 frameSection vertices
-            List<int> frameSectionIndexes = new List<int>
-                {
-                    12,1,0,  1,12,13,
-                    14,3,2,  3,14,15,
-                    16,5,4,  5,16,17,
-                    18,7,6,  7,18,19,
-                    20,9,8,  9,20,21,
-                    22,11,10,  11,22,23,
-                };
-            int frameSectionIndexCount = 12;
-
-            List<int> vertIndices = new List<int>();
+            int[] vertIndices = new int[frameEndIndexes.Length + (frameSectionIndexes.Length * localPointsCount)
+                + frameEndIndexes.Length];
             // Set up start indices
-            for (int step2 = 0; step2 < frameEndIndexes.Count; step2++)
+            posStep = 0;
+            for (int step2 = 0; step2 < frameEndIndexes.Length; step2++)
             {
-                vertIndices.Add(frameEndIndexes[step2]);
+                vertIndices[posStep] = frameEndIndexes[step2];
+                posStep++;
             }
             int indiceIndexPos = frameEndIndexCount;
 
             // Set up middle indices
             for (int step = 0; step < localPointsCount - 2; step++)
             {
-                for (int step2 = 0; step2 < frameSectionIndexes.Count; step2++)
+                for (int step2 = 0; step2 < frameSectionIndexes.Length; step2++)
                 {
-                    vertIndices.Add(frameSectionIndexes[step2] + indiceIndexPos);
+                    vertIndices[posStep] = frameSectionIndexes[step2] + indiceIndexPos;
+                    posStep++;
                 }
                 indiceIndexPos += frameSectionIndexCount;
             }
             indiceIndexPos += frameSectionIndexCount;
             // Set up end indices
-            for (int step2 = 0; step2 < frameEndIndexes.Count; step2++)
+            for (int step2 = 0; step2 < frameEndIndexes.Length; step2++)
             {
-                vertIndices.Add(frameEndIndexes[step2] + indiceIndexPos);
+                vertIndices[posStep] = frameEndIndexes[step2] + indiceIndexPos;
+                posStep++;
             }
 
             // Push Triangles
-            iron.triangles = vertIndices.ToArray();
+            iron.triangles = vertIndices;
             //DebugRandAddi.Log("Highest index is " + (5 + indiceIndexPos));
             //DebugRandAddi.Log("Set " + vertIndices.Count + " points for Triangles.");
 
 
             // NORMALS!
             //DebugRandAddi.Log("Making Normals...");
-            List<Vector3> Normals = new List<Vector3>();
-            Vector3[] frameEndNormals = new Vector3[frameVertices] {
-                    new Vector3(0, 0, 1),
-                    new Vector3(0, 0, 1),
-                    new Vector3(0, 0, 1),
-                    new Vector3(0, 0, 1),
-                    new Vector3(0, 0, 1),
-                    new Vector3(0, 0, 1),
-                };  // FORWARDS FACING
-                    // 12 frameSection vertices
-            Vector3[] frameSectionNormals = new Vector3[frameVertices * 2] {
-                    new Vector3(0, -1, 0),
-                    new Vector3(0, -1, 0),
-                    new Vector3(1, 0, 0),
-                    new Vector3(1, 0, 0),
-                    new Vector3(1, 1, 0).normalized,
-                    new Vector3(1, 1, 0).normalized,
-                    new Vector3(0, 1, 0),
-                    new Vector3(0, 1, 0),
-                    new Vector3(-1, 1, 0).normalized,
-                    new Vector3(-1, 1, 0).normalized,
-                    new Vector3(-1, 0, 0),
-                    new Vector3(-1, 0, 0),
-                };
+            List<Vector3> Normals = new List<Vector3>(frameEndNormals.Length + (frameSectionNormals.Length * localPointsCount)
+                 + frameEndNormals.Length);
             // Set up starting normals
             quat = Quaternion.LookRotation((localPoints[0] - localPoints[1]).normalized, Vector3.up);
             for (int step = 0; step < frameEndNormals.Length; step++)
@@ -988,23 +1235,12 @@ namespace RandomAdditions.RailSystem
             Vector2 refUVSpot1 = ManRails.railTypeStats[Type].texturePositioning;
             Vector2 refUVSpot2 = new Vector2(refUVSpot1.x + 0.01f, refUVSpot1.y);
             Vector2 refUVSpot3 = new Vector2(refUVSpot1.x + 0.01f, refUVSpot1.y - 0.01f);
-            List<Vector2> UVs = new List<Vector2>();
-            int stepper = 0;
-            for (int step = 0; step < vertices.Count; step++)
+            List<Vector2> UVs = new List<Vector2>(verts.Length);
+            for (int step = 0; step < verts.Length / 3; step++)
             {
-                switch (stepper)
-                {
-                    case 0:
-                        UVs.Add(refUVSpot1);
-                        break;
-                    case 1:
-                        UVs.Add(refUVSpot2);
-                        break;
-                    case 2:
-                        UVs.Add(refUVSpot3);
-                        break;
-                }
-                stepper = (int)Mathf.Repeat(stepper + 1, 3);
+                UVs.Add(refUVSpot1);
+                UVs.Add(refUVSpot2);
+                UVs.Add(refUVSpot3);
             }
             iron.SetUVs(0, UVs);
             //DebugRandAddi.Log("Set " + UVs.Count + " UV points.");
@@ -1024,8 +1260,32 @@ namespace RandomAdditions.RailSystem
             RS.BaseInit();
             Transform Trans = RS.transform;
 
-            ManRails.railTypeStats.Add(RailType.BeamRail, new RailTypeStats(10, railBeamMinimumHeight, 2.5f,
-                2f, 1.0f, 1f, new Vector2(0.06f, 0.94f), 16f, 12.5f, 45f));
+            /*
+            if (RS.line == null)
+            {
+                DebugRandAddi.Log("MATERIALS");
+                foreach (var item in FindObjectsOfType<Material>())
+                {
+                    try
+                    {
+                        DebugRandAddi.Log(" - " + item.name);
+                    }
+                    catch { }
+                }
+                LineRenderer LR = GO.AddComponent<LineRenderer>();
+                LR.material = new Material(Shader.Find("Sprites/Default"));
+                LR.positionCount = 2;
+                LR.endWidth = 0.6f;
+                LR.startWidth = 0.6f;
+                LR.startColor = new Color(1, 1, 1, 1);
+                LR.endColor = new Color(1, 1, 1, 1);
+                LR.numCapVertices = 8;
+                LR.useWorldSpace = false;
+                RS.line = LR;
+            }*/
+
+            ManRails.railTypeStats.Add(RailType.BeamRail, new RailTypeStats(3, 10, railBeamMinimumHeight, 2.5f,
+                2f, 1.0f, 1f, new Vector2(0.06f, 0.94f), 16f, 12.5f, 45f, 4));
             DebugRandAddi.Log("Making Tracks (Beam Rail) pool...");
             Trans.CreatePool(segmentPoolInitSize);
             ManRails.prefabTracks[RailType.BeamRail] = Trans;
@@ -1040,6 +1300,5 @@ namespace RandomAdditions.RailSystem
         {
             line.enabled = true;
         }
-
     }
 }

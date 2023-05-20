@@ -194,7 +194,7 @@ namespace RandomAdditions
                             Initiate();
                         playerSelected = this;
                         openTime = 1.35f;
-                        MoveMenuToCursor(true);
+                        UIHelpersExt.ClampMenuToScreen(ref HotWindow, true);
                         GUIWindow.SetActive(true);
                     }
                 }
@@ -293,8 +293,6 @@ namespace RandomAdditions
         private static GameObject GUIWindow;
         private static Rect HotWindow = new Rect(0, 0, 350, 260);   // the "window"
         private const int GUIClikMenuID = 8036;
-        private static float xMenu = 0;
-        private static float yMenu = 0;
         internal class GUIDisplayClickUI : MonoBehaviour
         {
             private void Update()
@@ -304,7 +302,7 @@ namespace RandomAdditions
             }
             private void OnGUI()
             {
-                if (KickStart.IsIngame && playerSelected?.block?.tank && (openTime > 0 || MouseIsOverSubMenu()))
+                if (KickStart.IsIngame && playerSelected?.block?.tank && (openTime > 0 || UIHelpersExt.MouseIsOverSubMenu(HotWindow)))
                 {
                     Tank playerTank = playerSelected.block.tank;
                     HotWindow = GUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "<b>Block Menu</b>");
@@ -319,7 +317,6 @@ namespace RandomAdditions
         private static Vector2 scrolll = new Vector2(0, 0);
         private static float scrolllSize = 50;
         private const int ButtonWidth = 300;
-        private const int MaxCountWidth = 1;
         private const int MaxWindowHeight = 500;
         private static void GUIHandler(int ID)
         {
@@ -393,34 +390,6 @@ namespace RandomAdditions
             GUIWindow.SetActive(false);
             playerSelected = null;
         }
-        public static bool MouseIsOverSubMenu()
-        {
-            Vector3 Mous = Input.mousePosition;
-            Mous.y = Display.main.renderingHeight - Mous.y;
-            float xMenuMin = HotWindow.x;
-            float xMenuMax = HotWindow.x + HotWindow.width;
-            float yMenuMin = HotWindow.y;
-            float yMenuMax = HotWindow.y + HotWindow.height;
-            //DebugRandAddi.Log(Mous + " | " + xMenuMin + " | " + xMenuMax + " | " + yMenuMin + " | " + yMenuMax);
-            if (Mous.x > xMenuMin && Mous.x < xMenuMax && Mous.y > yMenuMin && Mous.y < yMenuMax)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        public static void MoveMenuToCursor(bool centerOnMouse)
-        {
-            if (centerOnMouse)
-            {
-                Vector3 Mous = Input.mousePosition;
-                xMenu = Mous.x - (HotWindow.width / 2);
-                yMenu = Display.main.renderingHeight - Mous.y - 90;
-            }
-            xMenu = Mathf.Clamp(xMenu, 0, Display.main.renderingWidth - HotWindow.width);
-            yMenu = Mathf.Clamp(yMenu, 0, Display.main.renderingHeight - HotWindow.height);
-            HotWindow.x = xMenu;
-            HotWindow.y = yMenu;
-        }
+        
     }
 }

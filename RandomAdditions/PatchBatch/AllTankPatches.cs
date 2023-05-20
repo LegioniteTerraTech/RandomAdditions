@@ -22,6 +22,11 @@ namespace RandomAdditions
                 var ModuleAdd2 = __instance.gameObject.AddComponent<RandomTank>();
                 ModuleAdd2.Initiate();
             }
+
+            private static void NotifyDamage_Postfix(Tank __instance, ref ManDamage.DamageInfo info, ref TankBlock blockDamaged)
+            {
+                RandomTank.Insure(__instance).OnDamaged(info, blockDamaged);
+            }
         }
 
         internal static class TankControlPatches

@@ -183,7 +183,7 @@ namespace RandomAdditions
         }
         protected override void PostBarrelSetup(Transform barrelTrans)
         {
-            barrelTrans.GetComponentInChildren<PartCannonBarrel>().Setup(false);
+            barrelTrans.GetComponentInChildren<PartCannonBarrel>(true).Setup(false);
         }
 
         private void UpdateSpool()
@@ -300,7 +300,7 @@ namespace RandomAdditions
                     audioTickData.isNoteOn = doSpool;
                     audioTickData.adsrTime01 = 1;//doSpool ? 1 : 0;
                     TechAudio.AudioTickData value = audioTickData;
-                    OnAudioTickUpdate.Send(value, null);
+                    OnAudioTickUpdate.Send(value, FMODEvent.FMODParams.empty);
                     barrelsFired = 0;
                 }
             }
@@ -804,12 +804,12 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("PartCannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
 
             trans = transform;
-            var smokeTrans = KickStart.HeavyObjectSearch(trans, "_smoke");
+            var smokeTrans = KickStart.HeavyTransformSearch(trans, "_smoke");
             if (smokeTrans)
             {
                 PS = smokeTrans.GetComponentsInChildren<ParticleSystem>();
             }
-            beamWeap = GetComponentInChildren<BeamWeapon>();
+            beamWeap = GetComponentInChildren<BeamWeapon>(true);
             flash = trans.GetComponentsInChildren<MuzzleFlash>(true).FirstOrDefault();
             inited = true;
         }

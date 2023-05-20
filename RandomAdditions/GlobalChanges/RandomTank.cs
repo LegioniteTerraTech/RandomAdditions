@@ -21,11 +21,9 @@ namespace RandomAdditions
         private bool isLoading = false;
         public int MaxTileLoadingDiameter = 1; // Only supports up to diamater of 5 for performance's sake
 
-        // Water floating
-        private bool buoysDirty = false;
-        private readonly List<ModuleBuoy> buoys = new List<ModuleBuoy>();
-        private readonly List<Vector3> localCells = new List<Vector3>();
-        private float lowestPoint = 0;
+        // Health
+        public bool Damaged => damagedBlocks.Count > 0;
+        private HashSet<TankBlock> damagedBlocks = new HashSet<TankBlock>();
 
         public static RandomTank Insure(Tank tank)
         {
@@ -42,7 +40,40 @@ namespace RandomAdditions
             tank = gameObject.GetComponent<Tank>();
             GlobalClock.tanks.Add(this);
             tank.AnchorEvent.Subscribe(OnAnchor);
+            tank.DetachEvent.Subscribe(OnDetach);
             enabled = true;
+        }
+
+        public void OnDamaged(ManDamage.DamageInfo dmg, TankBlock damagedBlock)
+        {
+            if (dmg.Damage > 0)
+            {
+                damagedBlocks.Add(damagedBlock);
+            }
+        }
+        public void OnDetach(TankBlock damagedBlock, Tank tank)
+        {
+            if (damagedBlocks.Contains(damagedBlock))
+                damagedBlocks.Remove(damagedBlock);
+        }
+
+        public void GetDamagedBlocks(List<TankBlock> toAddTo)
+        {
+            if (Damaged)
+            {
+                int stepper = 0;
+                while (damagedBlocks.Count > stepper)
+                {
+                    var caseB = damagedBlocks.ElementAt(stepper);
+                    if (caseB != null && caseB.tank == tank && caseB.visible.isActive && !caseB.visible.damageable.IsAtFullHealth)
+                    {
+                        toAddTo.Add(caseB);
+                        stepper++;
+                    }
+                    else
+                        damagedBlocks.Remove(caseB);
+                }
+            }
         }
 
         public void OnAnchor(ModuleAnchor anchor, bool anchored, bool force)
@@ -85,80 +116,6 @@ namespace RandomAdditions
                 dis.ReevaluateLoadingDiameter();
         }
 
-
-
-        public static void AddBuoy(Tank tech, ModuleBuoy buoy)
-        {
-            RandomTank RT = Insure(tech);
-            if (RT.buoys.Contains(buoy))
-                DebugRandAddi.Assert("Buoy was ALREADY present in RandomTank");
-            else
-                RT.buoys.Add(buoy);
-            RT.buoysDirty = true;
-        }
-        public static void RemoveBuoy(Tank tech, ModuleBuoy buoy)
-        {
-            RandomTank RT = Insure(tech);
-            if (!RT.buoys.Remove(buoy))
-                DebugRandAddi.Assert("Buoy was not present in RandomTank and was not removed");
-            RT.buoysDirty = true;
-        }
-
-        public void ReCalcBuoyencyThresholds()
-        {
-            localCells.Clear();
-            float furthest = 0;
-            foreach (var item in buoys)
-            {
-                item.GetCellsLocal(localCells);
-                float dist = (item.lowestPossiblePoint * item.lowestPossiblePoint) + item.transform.localPosition.sqrMagnitude;
-                if (dist > furthest)
-                {
-                    furthest = dist;
-                }
-            }
-            lowestPoint = Mathf.Sqrt(furthest) + 0.866f;
-            //DebugRandAddi.Log("Recalced BuoyencyThresholds");
-        }
-
-        
-        public void FixedUpdate()
-        {
-            if (buoysDirty)
-            {
-                ReCalcBuoyencyThresholds();
-                buoysDirty = false;
-            }
-            if (buoys.Count > 0)
-                ApplyFloatForces();
-        }
-
-        private List<ModuleBuoy> floatingBuoys = new List<ModuleBuoy>();
-        public void ApplyFloatForces()
-        {
-            if (KickStart.isWaterModPresent && tank.rbody)
-            {
-                float upwardForceStrength = 0;
-                Vector3 forceCenter = Vector3.zero;
-
-                floatingBuoys.Clear();
-                foreach (var item in buoys)
-                {
-                    if (item.ShouldFloat())
-                        floatingBuoys.Add(item);
-                }
-                foreach (var item in floatingBuoys)
-                {
-                    item.GetFloatForceWorld(out Vector3 posWorld, out float addForce);
-                    forceCenter += posWorld;
-                    upwardForceStrength += addForce;
-                }
-                if (floatingBuoys.Count > 0)
-                    tank.rbody.AddForceAtPosition(Vector3.up * upwardForceStrength, forceCenter / floatingBuoys.Count, ForceMode.Force);
-            }
-        }
-
-
         // TileLoaders
         public void ReevaluateLoadingDiameter()
         {
@@ -195,159 +152,16 @@ namespace RandomAdditions
         }
 
         public IntVector2 GetCenterTile()
-        { 
-            return WorldPosition.FromScenePosition(tank.visible.centrePosition).TileCoord;
+        {
+            return tank.visible.tileCache.tile.Coord;
         }
-        public List<IntVector2> GetActiveTiles()
+        public void GetActiveTiles(List<IntVector2> cache)
         {
             if (!tank || !ManSpawn.IsPlayerTeam(tank.Team))
-                return new List<IntVector2>();
-
-            List<IntVector2> tiles;
-            IntVector2 centerTile = GetCenterTile();
-            int radCentered;
-            Vector2 posTechCentre;
-            Vector2 posTileCentre;
-            switch (MaxTileLoadingDiameter)
-            {
-                case 0:
-                    return new List<IntVector2>();
-                case 1:
-                    tiles = new List<IntVector2> { centerTile };
-                    break;
-                case 2:
-                    posTechCentre = tank.boundsCentreWorld.ToVector2XZ();
-                    posTileCentre = ManWorld.inst.TileManager.CalcTileOriginScene(centerTile).ToVector2XZ();
-                    if (posTechCentre.x > posTileCentre.x)
-                    {
-                        if (posTechCentre.y > posTileCentre.y)
-                        {
-                            tiles = new List<IntVector2> { centerTile,
-                            centerTile + new IntVector2(1,0),
-                            centerTile + new IntVector2(1,1),
-                            centerTile + new IntVector2(0,1),
-                            };
-                        }
-                        else
-                        {
-                            tiles = new List<IntVector2> { centerTile,
-                            centerTile + new IntVector2(1,0),
-                            centerTile + new IntVector2(1,-1),
-                            centerTile + new IntVector2(0,-1),
-                            };
-                        }
-                    }
-                    else
-                    {
-                        if (posTechCentre.y > posTileCentre.y)
-                        {
-                            tiles = new List<IntVector2> { centerTile,
-                            centerTile + new IntVector2(-1,0),
-                            centerTile + new IntVector2(-1,1),
-                            centerTile + new IntVector2(0,1),
-                            };
-                        }
-                        else
-                        {
-                            tiles = new List<IntVector2> { centerTile,
-                            centerTile + new IntVector2(-1,0),
-                            centerTile + new IntVector2(-1,-1),
-                            centerTile + new IntVector2(0,-1),
-                            };
-                        }
-                    }
-                    break;
-                case 3:
-                    tiles = new List<IntVector2>();
-                    radCentered = 1;
-                    for (int step = -radCentered; step <= radCentered; step++)
-                    {
-                        for (int step2 = -radCentered; step2 <= radCentered; step2++)
-                        {
-                            tiles.Add(centerTile + new IntVector2(step, step2));
-                        }
-                    }
-                    break;
-                case 4:
-                    tiles = new List<IntVector2>();
-                    radCentered = 1;
-                    for (int step = -radCentered; step <= radCentered; step++)
-                    {
-                        for (int step2 = -radCentered; step2 <= radCentered; step2++)
-                        {
-                            tiles.Add(centerTile + new IntVector2(step, step2));
-                        }
-                    }
-                    posTechCentre = tank.boundsCentreWorld.ToVector2XZ();
-                    posTileCentre = ManWorld.inst.TileManager.CalcTileOriginScene(centerTile).ToVector2XZ();
-                    if (posTechCentre.x > posTileCentre.x)
-                    {
-                        if (posTechCentre.y > posTileCentre.y)
-                        {
-                            tiles = new List<IntVector2> {
-                            centerTile + new IntVector2(2,-1),
-                            centerTile + new IntVector2(2,0),
-                            centerTile + new IntVector2(2,1),
-                            centerTile + new IntVector2(2,2),
-                            centerTile + new IntVector2(1,2),
-                            centerTile + new IntVector2(0,2),
-                            centerTile + new IntVector2(-1,2),
-                            };
-                        }
-                        else
-                        {
-                            tiles = new List<IntVector2> {
-                            centerTile + new IntVector2(2,1),
-                            centerTile + new IntVector2(2,0),
-                            centerTile + new IntVector2(2,-1),
-                            centerTile + new IntVector2(2,-2),
-                            centerTile + new IntVector2(1,-2),
-                            centerTile + new IntVector2(0,-2),
-                            centerTile + new IntVector2(-1,-2),
-                            };
-                        }
-                    }
-                    else
-                    {
-                        if (posTechCentre.y > posTileCentre.y)
-                        {
-                            tiles = new List<IntVector2> {
-                            centerTile + new IntVector2(-2,-1),
-                            centerTile + new IntVector2(-2,0),
-                            centerTile + new IntVector2(-2,1),
-                            centerTile + new IntVector2(-2,2),
-                            centerTile + new IntVector2(-1,2),
-                            centerTile + new IntVector2(0,2),
-                            centerTile + new IntVector2(1,2),
-                            };
-                        }
-                        else
-                        {
-                            tiles = new List<IntVector2> {
-                            centerTile + new IntVector2(-2,1),
-                            centerTile + new IntVector2(-2,0),
-                            centerTile + new IntVector2(-2,-1),
-                            centerTile + new IntVector2(-2,-2),
-                            centerTile + new IntVector2(-1,-2),
-                            centerTile + new IntVector2(0,-2),
-                            centerTile + new IntVector2(1,-2),
-                            };
-                        }
-                    }
-                    break;
-                default:
-                    tiles = new List<IntVector2>();
-                    radCentered = 2;
-                    for (int step = -radCentered; step <= radCentered; step++)
-                    {
-                        for (int step2 = -radCentered; step2 <= radCentered; step2++)
-                        {
-                            tiles.Add(centerTile + new IntVector2(step, step2));
-                        }
-                    }
-                    break;
-            }
-            return tiles;
+                return;
+            ManTileLoader.GetActiveTilesAround(cache,
+                WorldPosition.FromScenePosition(tank.boundsCentreWorldNoCheck),
+                MaxTileLoadingDiameter);
         }
 
     }

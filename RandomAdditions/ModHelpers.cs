@@ -17,13 +17,44 @@ namespace RandomAdditions
         // Startup
         private static ModHelpers inst;
         private static bool hooked = false;
+        /// <summary>
+        /// True (Right, Left) False,
+        /// True   (Down, Up)  False
+        /// </summary>
+        public static Event<bool, bool> ClickNoCheckEvent = new Event<bool, bool>();
+        public static bool MouseLeftDown => mouseLeftDown;
+        private static bool mouseLeftDown = false;
+        public static bool MouseRightDown => mouseRightDown;
+        private static bool mouseRightDown = false;
         public static void Initiate()
         {
             if (hooked)
                 return;
             Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
             inst = new GameObject("LazyRender").AddComponent<ModHelpers>();
+            inst.enabled = true;
             hooked = true;
+        }
+        public static void UpdateThis()
+        {
+            bool lD = Input.GetMouseButton(0);
+            if (lD != mouseLeftDown)
+            {
+                mouseLeftDown = lD;
+                if (lD)
+                    ClickNoCheckEvent.Send(false, true);
+                else
+                    ClickNoCheckEvent.Send(false, false);
+            }
+            bool RD = Input.GetMouseButton(1);
+            if (RD != mouseRightDown)
+            {
+                mouseRightDown = RD;
+                if (RD)
+                    ClickNoCheckEvent.Send(true, true);
+                else
+                    ClickNoCheckEvent.Send(true, false);
+            }
         }
 
 
@@ -33,10 +64,11 @@ namespace RandomAdditions
         private static TankBlock target;
         public static void OnClick(ManPointer.Event mEvent, bool DOWN, bool yes2)
         {
+            //DebugRandAddi.Log("OnClick() - " + mEvent.ToString() + " | " + DOWN + " | " + Time.time);
             Visible targVis = Singleton.Manager<ManPointer>.inst.targetVisible;
-            if (targVis)
+            if (targVis && targVis.block)
             {
-                if (DOWN && mEvent == ManPointer.Event.RMB && targVis.block)
+                if (DOWN && mEvent == ManPointer.Event.RMB)
                 {
                     TankBlock TB = targVis.block;
                     if (TB.GetComponent<ModulePartWeapon>())
@@ -55,10 +87,30 @@ namespace RandomAdditions
                         if (MPWD.AssignedMPW)
                             MPWD.AssignedMPW.HighlightEntireWeapon(true);
                     }
+                    else if (Input.GetKey(KeyCode.LeftShift) && TB.GetComponent<ModuleCircuit_Display_Text>())
+                    {
+                        var MCN = TB.GetComponent<ModuleCircuitNode>();
+                        if (MCN && MCN.Receiver)
+                        {
+                            var WP = WorldPosition.FromScenePosition(TB.trans.position);
+                            var charge = MCN.Receiver.CurrentFrameCharge;
+                            if (charge.HasNetworkCharge())
+                            {
+                                if (charge.HighestChargeReceived == int.MinValue)
+                                    RailSystem.ManTrainPathing.TrainStatusPopup("int.MinValue", WP);
+                                else
+                                    RailSystem.ManTrainPathing.TrainStatusPopup(charge.HighestChargeReceived.ToString(), WP);
+                            }
+                            else
+                            {
+                                RailSystem.ManTrainPathing.TrainStatusPopup("No Charge", WP);
+                            }
+                        }
+                    }
                 }
-                if (allowQuickSnap && !cooldown && mEvent == ManPointer.Event.LMB)
+                if (allowQuickSnap && !cooldown && mEvent == ManPointer.Event.LMB && Input.GetKey(KickStart.SnapBlockButton))
                 {
-                    if ((bool)targVis.block && Input.GetKey(KickStart.SnapBlockButton))
+                    if ((bool)targVis.block)
                     {
                         target = targVis.block;
                         ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);

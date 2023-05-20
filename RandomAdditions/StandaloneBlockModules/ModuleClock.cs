@@ -7,7 +7,8 @@ public class ModuleClock : RandomAdditions.ModuleClock { };
 namespace RandomAdditions
 {
     [AutoSaveComponent]
-    public class ModuleClock : ExtModule
+    [RequireComponent(typeof(ModuleCircuitNode))]
+    public class ModuleClock : ExtModule, ICircuitDispensor
     {
         // The module that handles the visualization of time through a clock interface.
         public bool DisplayTime = true;     // Rotate a GameObject called "TimeObject" depending on the time
@@ -22,6 +23,9 @@ namespace RandomAdditions
         [SSaveField]
         public bool LockedTime = false;
 
+        // Logic
+        private bool LogicConnected = false;
+
 
         protected override void Pool()
         {
@@ -30,7 +34,7 @@ namespace RandomAdditions
             {
                 try
                 {
-                    thisInst.TimeObject = KickStart.HeavyObjectSearch(transform, "TimeObject");
+                    thisInst.TimeObject = KickStart.HeavyTransformSearch(transform, "TimeObject");
                 }
                 catch
                 {
@@ -46,7 +50,7 @@ namespace RandomAdditions
             if (ControlTime)
             {
                 block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-                block.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                block.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec, bool>(OnSerializeText));
             }
             if (tank.IsNotNull())
             {
@@ -65,12 +69,12 @@ namespace RandomAdditions
             if (ControlTime)
             {
                 block.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-                block.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                block.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec, bool>(OnSerializeText));
             }
         }
 
         [Serializable]
-        private new class SerialData : Module.SerialData<SerialData>
+        private class SerialData : Module.SerialData<SerialData>
         {
             public int savedTime;
             public bool lockedTime;
@@ -119,6 +123,11 @@ namespace RandomAdditions
             }
             catch { }
         }
+        private void OnSerializeText(bool saving, TankPreset.BlockSpec blockSpec, bool tankPresent)
+        {
+            if (tankPresent)
+                OnSerialize(saving, blockSpec);
+        }
 
         //All ModuleClock(s) will control the time based on global values.
         //  The latest Techs will override this however.
@@ -159,6 +168,22 @@ namespace RandomAdditions
             }
             */
             return ControlTime;
+        }
+
+        public int GetDispensableCharge()
+        {
+            if (CircuitExt.LogicEnabled)
+                return GlobalClock.LastHour;
+            return 0;
+        }
+        /// <summary>
+        /// Directional!
+        /// </summary>
+        public int GetDispensableCharge(Vector3 APOut)
+        {
+            if (CircuitExt.LogicEnabled)
+                return GlobalClock.LastHour;
+            return 0;
         }
     }
 }

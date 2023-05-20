@@ -36,32 +36,30 @@ namespace RandomAdditions
         }
         protected void GetSignal()
         {
-            RailLightRedTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalOn");
+            RailLightRedTrans = KickStart.HeavyTransformSearch(transform, "_trackSignalOn");
             if (RailLightRedTrans)
                 RailLightRed = RailLightRedTrans.GetComponent<Light>();
-            RailLightWarnTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalWarn");
+            RailLightWarnTrans = KickStart.HeavyTransformSearch(transform, "_trackSignalWarn");
             if (RailLightWarnTrans)
                 RailLightWarn = RailLightWarnTrans.GetComponent<Light>();
-            RailLightGreenTrans = KickStart.HeavyObjectSearch(transform, "_trackSignalOff");
+            RailLightGreenTrans = KickStart.HeavyTransformSearch(transform, "_trackSignalOff");
             if (RailLightGreenTrans)
                 RailLightGreen = RailLightGreenTrans.GetComponent<Light>();
-            semaphore = KickStart.HeavyObjectSearch(transform, "_semaphore");
+            semaphore = KickStart.HeavyTransformSearch(transform, "_semaphore");
         }
 
-        public List<ModuleRailSignal> GetOtherSignals()
+        public void GetOtherSignals(List<ModuleRailSignal> cache)
         {
-            List<ModuleRailSignal> points = new List<ModuleRailSignal>();
             if (Node != null)
             {
                 RailTrackNode RTN = Node;
                 foreach (var item in RTN.GetAllConnectedLinks())
                 {
-                    RailTrackNode RTNO = RTN.GetConnection(item).GetOtherSideNode(RTN);
+                    RailTrackNode RTNO = item.GetOtherSideNode();
                     if (RTNO != RTN && RTNO.Point != null && RTNO.Point != this && RTNO.Point is ModuleRailSignal MRS)
-                        points.Add(MRS);
+                        cache.Add(MRS);
                 }
             }
-            return points;
         }
 
         private int pastLightStatus = -1;

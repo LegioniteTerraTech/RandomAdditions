@@ -10,9 +10,9 @@ namespace RandomAdditions
     {
         private const string modName = "RandomAdditions";
 
-        internal static bool LogAll = false;
         internal static bool ShouldLog = true;
-        private static bool LogDev = true;
+        internal const bool LogAll = false;
+        private const bool LogDev = true;
 
         internal static void Info(string message)
         {
@@ -66,6 +66,11 @@ namespace RandomAdditions
             Debug.Log(modName + ": ENCOUNTERED CRITICAL ERROR: " + e);
             Debug.Log(modName + ": MAY NOT WORK PROPERLY AFTER THIS ERROR, PLEASE REPORT!");
             Debug.Log(modName + ": STACKTRACE: " + StackTraceUtility.ExtractStackTrace());
+        }
+        internal static void Exception(bool shouldAssert, string e)
+        {
+            if (shouldAssert)
+                throw new Exception(e);
         }
 
         internal static void DrawDirIndicator(Vector3 posScene, Vector3 vectorWorld, Color color, float duration = 2)

@@ -88,7 +88,7 @@ namespace RandomAdditions
                 {
                     Dictionary<int, string> lingo = (Dictionary<int, string>)locFA.GetValue(Localisation.inst);
                     int lingoSearch = (LS.m_Bank + LS.m_Id).GetHashCode();
-                    if (lingo.TryGetValue(lingoSearch, out _))
+                    if (lingo.ContainsKey(lingoSearch))
                     {
                         lingo.Remove(lingoSearch);
                         lingo.Add(lingoSearch, HintDescription);
@@ -129,7 +129,7 @@ namespace RandomAdditions
                 {
                     Dictionary<int, string> lingo = (Dictionary<int, string>)locFA.GetValue(Localisation.inst);
                     int lingoSearch = (LS.m_Bank + LS.m_Id).GetHashCode();
-                    if (lingo.TryGetValue(lingoSearch, out _))
+                    if (lingo.ContainsKey(lingoSearch))
                     {
                         lingo.Remove(lingoSearch);
                         lingo.Add(lingoSearch, HintDescription);

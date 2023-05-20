@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace RandomAdditions
 {
@@ -27,13 +29,32 @@ namespace RandomAdditions
             }
         }
 
-        public void DownScale(bool downscale)
+        public void Rescale(bool downscale)
         {
             Downscale = downscale;
-            enabled = true;
+            pending.Add(this);
         }
 
-        private void Update()
+        private static List<TankBlockScaler> pending = new List<TankBlockScaler>();
+        public static void UpdateAll()
+        {
+            int step = 0;
+            while (step < pending.Count)
+            {
+                var pend = pending[step];
+                if (pend != null)
+                {
+                    pend.UpdateThis();
+                    if (pend.enabled == true)
+                        step++;
+                    else
+                        pending.RemoveAt(step);
+                }
+                else
+                    pending.RemoveAt(step);
+            }
+        }
+        private void UpdateThis()
         {
             //Only activate this behaviour to rescale
             if (attempts > 0)

@@ -45,7 +45,7 @@ namespace RandomAdditions
             PB.rbody.angularVelocity = Vector3.zero;
             if (PB.shooter)
             {
-                Collider col = GetComponentInChildren<Collider>();
+                Collider col = GetComponentInChildren<Collider>(true);
                 if (col)
                     col.enabled = false;
                 fadeCurrent = 1;
@@ -127,7 +127,7 @@ namespace RandomAdditions
                             if (hit.distance > distEnd)
                                 continue;
                             Damageable toDamage = hit.collider.GetComponentInParents<Damageable>(false);
-                            if (toDamage && !damaged.TryGetValue(toDamage, out _))
+                            if (toDamage && !damaged.ContainsKey(toDamage))
                                 damaged.Add(toDamage, hit);
                         }
                         if (PierceDepth > 0)

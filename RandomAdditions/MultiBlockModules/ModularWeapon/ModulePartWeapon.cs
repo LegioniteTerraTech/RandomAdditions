@@ -30,86 +30,6 @@ namespace RandomAdditions
     /// </summary>
     public class ModulePartWeapon : ExtModule, IExtGimbalControl
     {
-        protected static Dictionary<float, Transform> Explosions
-        {
-            get
-            {
-                if (_Explosions == null)
-                    GetExplosions();
-                return _Explosions;
-            }
-        }
-        private static Dictionary<float, Transform> _Explosions = null;
-
-        private static void GetExplosions()
-        {
-            _Explosions = new Dictionary<float, Transform>();
-            Transform exploder;
-            FetchExplosion(BlockTypes.GSOBigBertha_845, out exploder);
-            _Explosions.Add(3000, exploder);
-            FetchExplosion(BlockTypes.HE_CannonBattleship_216, out exploder);
-            _Explosions.Add(1500, exploder);
-            FetchExplosion(BlockTypes.GSOMediumCannon_222, out exploder);
-            _Explosions.Add(500, exploder);
-            FetchExplosion(BlockTypes.GSOCannonTurret_111, out exploder);
-            _Explosions.Add(150, exploder);
-            FetchExplosion(BlockTypes.VENMicroMissile_112, out exploder);
-            _Explosions.Add(50, exploder);
-            FetchExplosion(BlockTypes.GSOMGunFixed_111, out exploder);
-            _Explosions.Add(0, exploder);
-        }
-        internal static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static float FetchExplosion(BlockTypes BT, out Transform exploder)
-        {
-            try
-            {
-                TankBlock TB = ManSpawn.inst.GetBlockPrefab(BT);
-                if (TB)
-                {
-                    FireData FD = TB.GetComponent<FireData>();
-                    if (FD)
-                    {
-                        if (FD.m_BulletPrefab)
-                        {
-                            Projectile proj = FD.m_BulletPrefab.GetComponent<Projectile>();
-                            if (proj)
-                            {
-                                Transform transCase = (Transform)explode.GetValue(proj);
-                                if (transCase)
-                                {
-                                    exploder = transCase;
-                                    if (transCase.GetComponent<Explosion>())
-                                    {
-                                        float deals = transCase.GetComponent<Explosion>().m_MaxDamageStrength;
-                                        DebugRandAddi.Assert("explosion trans " + BT.ToString() + " deals " + deals);
-                                        return deals;
-                                    }
-                                    DebugRandAddi.Assert("explosion trans " + BT.ToString() + " deals nothing");
-                                    return 0;
-                                }
-                                else
-                                    DebugRandAddi.Assert("Failed to fetch explosion trans from " + BT.ToString());
-                            }
-                            else
-                                DebugRandAddi.Assert("Failed to fetch projectile from " + BT.ToString());
-                        }
-                        else
-                            DebugRandAddi.Assert("Failed to fetch WeaponRound from " + BT.ToString());
-                    }
-                    else
-                        DebugRandAddi.Assert("Failed to fetch fireData from " + BT.ToString());
-                }
-                else
-                    DebugRandAddi.Assert("Failed to fetch prefab " + BT.ToString());
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.Assert("Failed to fetch explosion from " + BT.ToString() + " | " + e);
-            }
-            exploder = null;
-            return float.MaxValue;
-        }
-
         /// <summary>The place where barrels are attached when moving</summary>
         private Transform barrelRotatingMount;
 
@@ -199,7 +119,7 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
-            barrelMountPrefab = KickStart.HeavyObjectSearch(transform, "_barrelMountPrefab");
+            barrelMountPrefab = KickStart.HeavyTransformSearch(transform, "_barrelMountPrefab");
             if (!barrelMountPrefab)
             {
                 LogHandler.ThrowWarning("RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelMountPrefab with a model!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
@@ -208,7 +128,7 @@ namespace RandomAdditions
                 return;
             }
             barrelMountPrefab.gameObject.SetActive(false);
-            barrelMountAttacher = KickStart.HeavyObjectSearch(transform, "_barrelMountAttacher");
+            barrelMountAttacher = KickStart.HeavyTransformSearch(transform, "_barrelMountAttacher");
             if (!barrelMountAttacher)
             {
                 LogHandler.ThrowWarning("RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelMountAttacher with a model!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
@@ -216,7 +136,7 @@ namespace RandomAdditions
                 block.damage.SelfDestruct(0.5f);
                 return;
             }
-            barrelRotatingMount = KickStart.HeavyObjectSearch(transform, "_barrelRotatingMount");
+            barrelRotatingMount = KickStart.HeavyTransformSearch(transform, "_barrelRotatingMount");
             if (!barrelRotatingMount)
             {
                 LogHandler.ThrowWarning("RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelRotatingMount on the same GameObject as the Aux Barrel!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
@@ -339,19 +259,11 @@ namespace RandomAdditions
                     {
                         case (ManDamage.DamageType)3:// Blast
                             float damage = item.Damage * m_DamageMulti;
-                            foreach (var explo in Explosions)
+                            var explos = Pyromanic.SpawnExplosionByStrength(damage, hitPos, true);
+                            if (explos)
                             {
-                                if (explo.Key <= damage && explo.Value)
-                                {
-                                    DebugRandAddi.Info(block.name + " used explosion(MISS) of strength " + explo.Key);
-                                    Explosion explos = explo.Value.UnpooledSpawn(null, hitPos, Quaternion.identity).GetComponent<Explosion>();
-                                    if (explos)
-                                    {
-                                        explos.SetDamageSource(tank);
-                                        explos.SetDirectHitTarget(null);
-                                    }
-                                    break;
-                                }
+                                explos.SetDamageSource(tank);
+                                explos.SetDirectHitTarget(target);
                             }
                             break;
                     }
@@ -384,19 +296,11 @@ namespace RandomAdditions
                             break;
                         case (ManDamage.DamageType)3: // Blast
                             knockback = 0;
-                            foreach (var explo in Explosions)
+                            var explos = Pyromanic.SpawnExplosionByStrength(damage, hitPos, true);
+                            if (explos)
                             {
-                                if (explo.Key <= damage && explo.Value)
-                                {
-                                    DebugRandAddi.Info(block.name + " used explosion of strength " + explo.Key);
-                                    Explosion explos = explo.Value.UnpooledSpawn(null, hitPos, Quaternion.identity).GetComponent<Explosion>();
-                                    if (explos)
-                                    {
-                                        explos.SetDamageSource(tank);
-                                        explos.SetDirectHitTarget(target);
-                                    }
-                                    break;
-                                }
+                                explos.SetDamageSource(tank);
+                                explos.SetDirectHitTarget(target);
                             }
                             damage *= 0.5f; // Because Explosions are kinda OP
                             break;
@@ -475,7 +379,7 @@ namespace RandomAdditions
             DebugRandAddi.Info(dongle.name + " has requested un-assignment from " + name);
             if (dongle is ModulePartWeaponBarrel B)
             {
-                if (!barrels.TryGetValue(B, out _))
+                if (!barrels.ContainsKey(B))
                     DebugRandAddi.Assert("The ModulePartWeaponBarrel is not registered in the ModulePartWeapon!");
                 BarrelsDirty = true;
             }

@@ -3,77 +3,75 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using TerraTechETCUtil;
+using RandomAdditions.Minimap;
 
 namespace RandomAdditions.RailSystem
 {
-    public class UIMiniMapLayerTrain : UIMiniMapLayer
+    public class UIMiniMapLayerTrain : UIMiniMapLayerExt
 	{
+		private const float railIconLengthRescale = 0.0375f;
+		private const float railIconWidthRescaleWorldMap = 0.15f;
+		private const float railIconWidthRescaleMiniMap = 0.075f;
+
 		private static List<UIMiniMapLayerTrain> layersManaged = new List<UIMiniMapLayerTrain>();
 
-		private Dictionary<RailType, IconPool> iconCache = new Dictionary<RailType, IconPool>();
-		private MinimapExtended ext;
-		private bool WorldMap = false;
-		private bool init = false;
-
-
-		private void InsureInit()
-		{
-			if (!init)
-			{
-				init = true;
-				layersManaged.Add(this);
-				ext = m_MapDisplay.GetComponent<MinimapExtended>();
-				if (ext.WorldMap)
-					WorldMap = true;
-				foreach (var item in ext.GetMapLayers())
-				{
-					if (item is UIMiniMapLayerTech t)
-						m_RectTrans = t.GetComponent<RectTransform>();
-				}
-			}
-		}
 		public static void RemoveAllPre()
 		{
-            foreach (var item in new List<UIMiniMapLayerTrain>(layersManaged))
-            {
+			foreach (var item in new List<UIMiniMapLayerTrain>(layersManaged))
+			{
 				item.PurgeAllIcons();
-            }
+			}
 		}
 
-		public override void UpdateLayer()
+		private Dictionary<RailType, IconPool> iconCache = new Dictionary<RailType, IconPool>();
+
+		protected override void Init()
 		{
-			InsureInit();
-			if (Singleton.playerTank)
-				UpdateTrainRoutes();
+			fetchedTracks = new HashSet<RailTrack>();
+			layersManaged.Add(this);
+		}
+		protected override void Show()
+		{
+			UpdateTrainRoutesImmedeate();
+		}
+		protected override void Hide()
+		{
+			ClearAllIcons();
+		}
+		protected override void Recycle()
+		{
+			PurgeAllIcons();
+			layersManaged.Remove(this);
 		}
 
-		private static Color trackColorDefault = new Color(0.05f, 0.1f, 0.05f, 1);
-		private const float lengthRescale = 0.0375f;
-		private const float widthRescaleWorldMap = 0.15f;
-		private const float widthRescaleMiniMap = 0.075f;
-		private HashSet<RailTrack> fetchedTracks = new HashSet<RailTrack>();
+		public override void OnUpdateLayer()
+		{
+			UpdateTrainRoutesImmedeate();
+		}
+
+		private static Color trackColorBase = new Color(1f, 1f, 1f, 0.8f);
+		private static Color trackColorDefault = new Color(0.1f, 0.1f, 0.1f, 1);
+		private static Color trackColorDefaultC = new Color(0.1f, 0.1f, 0.1f, 0.325f);
+		private HashSet<RailTrack> fetchedTracks = null;
 		private int trainRouteStep = 0;
-		private void UpdateTrainRoutes()
+		private void UpdateTrainRoutesImmedeate()
 		{
+			if (WorldMap && ManRails.fakeNodeStart != null)
+				UpdateTrainRouteStep(ManRails.fakeNodeStart, false);
 			while (trainRouteStep < ManRails.AllRailNodes.Count)
 			{
-				UpdateTrainRouteStep();
+				UpdateTrainRouteStep(ManRails.AllRailNodes.ToList().ElementAt(trainRouteStep).Value, WorldMap);
 				trainRouteStep++;
 			}
-			trainRouteStep = 0;
-			fetchedTracks.Clear();
-			foreach (var item in iconCache)
-			{
-				item.Value.RemoveAllUnused();
-				item.Value.Reset();
-			}
+			ClearUnusedIcons();
 		}
 
 		private void UpdateTrainRoutesSlow()
 		{
 			if (trainRouteStep < ManRails.AllRailNodes.Count)
 			{
-				UpdateTrainRouteStep();
+				UpdateTrainRouteStep(ManRails.AllRailNodes.ToList().ElementAt(trainRouteStep).Value, WorldMap);
 				trainRouteStep++;
 			}
 			else
@@ -88,35 +86,37 @@ namespace RandomAdditions.RailSystem
 			}
 		}
 
-		private void UpdateTrainRouteStep()
+		private static List<Vector3> RailSegIterateCache = new List<Vector3>();
+		private void UpdateTrainRouteStep(RailTrackNode node, bool useThick)
 		{
-			var item = ManRails.AllRailNodes.ElementAt(trainRouteStep);
-			var listInt = item.Value.GetAllConnectedLinks();
 			//float scaleMap = m_MapDisplay.WorldToUIUnitRatio * m_MapDisplay.CurrentZoomLevel;
-			float rad = Singleton.playerTank ? Singleton.playerTank.Radar.GetRange(ModuleRadar.RadarScanType.Techs) : 0f;
+			float rad = Singleton.playerTank ? Singleton.playerTank.Radar.GetRange(ModuleRadar.RadarScanType.Techs) : 50f;
 			rad *= rad;
-			foreach (var item2 in listInt)
+			foreach (var item2 in node.GetAllConnectedLinks())
 			{
-				var track = item.Value.GetConnection(item2).LinkTrack;
+				var track = item2.LinkTrack;
 				if (track != null && !fetchedTracks.Contains(track))
 				{
-					Vector3[] posi = track.GetRailSegmentPositions();
+					fetchedTracks.Add(track);
+					RailSegIterateCache.Clear();
+					track.GetRailSegmentPositions(RailSegIterateCache);
+					// Only displays RailTracks longer than length 64 to prevent clutter
 					int startNodeID = track.StartNode.NodeID;
 					int endNodeID = track.EndNode.NodeID;
 
-					Vector3 vec = posi[0] - m_MapDisplay.FocalPoint.ScenePosition;
+					Vector3 vec = RailSegIterateCache[0] - m_MapDisplay.FocalPoint.ScenePosition;
 					Vector2 relVec = vec.ToVector2XZ();
 					CalculateIconPosition(relVec, false, rad, 0, out Vector2 posPrev);
-					for (int step = 1; step < posi.Length; step++)
+					for (int step = 1; step < RailSegIterateCache.Count; step++)
 					{
-						vec = posi[step] - this.m_MapDisplay.FocalPoint.ScenePosition;
+						vec = RailSegIterateCache[step] - this.m_MapDisplay.FocalPoint.ScenePosition;
 						relVec = vec.ToVector2XZ();
 						CalculateIconPosition(relVec, false, rad, 0, out Vector2 posNext);
 						if (WorldMap || relVec.sqrMagnitude <= rad)
 						{
 							float dist = (posNext - posPrev).magnitude;
 							float rot = Vector2.SignedAngle(Vector2.up, (posNext - posPrev).normalized);
-							var icon = SpawnTrackIconFromCache(track.Type, (posNext + posPrev) / 2, dist, rot);
+							var icon = SpawnTrackIconFromCache(track.Type, (posNext + posPrev) / 2, dist, rot, useThick);
 							icon.EnableTooltip(startNodeID + " <-> " + endNodeID, UITooltipOptions.Default);
 							//DebugRandAddi.Log("MinimapExtended: Placed " + startNodeID + " <-> " + endNodeID + " railtrack section number "
 							//	+ step + " with magnitude " + dist);
@@ -127,13 +127,12 @@ namespace RandomAdditions.RailSystem
 			}
 		}
 
-		private Dictionary<RailType, UIMiniMapElement> prefabs = null;
-		private UIMiniMapElement SpawnTrackIconFromCache(RailType type, Vector2 pos, float length, float rotation)
+		private UIMiniMapElement SpawnTrackIconFromCache(RailType type, Vector2 pos, float length, float rotation, bool useThick)
 		{
 			InsureIcons();
 			if (iconCache.TryGetValue(type, out var val))
 			{
-				var prefab = val.SpawnOrReuse(m_RectTrans);
+				var prefab = val.ReuseOrSpawn(m_RectTrans);
                 switch (type)
                 {
                     case RailType.LandGauge2:
@@ -150,17 +149,27 @@ namespace RandomAdditions.RailSystem
 						break;
                     case RailType.Revolver:
                         break;
-                    case RailType.InclinedElevator:
+                    case RailType.Funicular:
                         break;
                     default:
 						prefab.Icon.color = trackColorDefault;
 						break;
                 }
 				prefab.RectTrans.localRotation = Quaternion.Euler(0, 0, rotation);
-				if (WorldMap)
-					prefab.RectTrans.localScale = new Vector3(widthRescaleWorldMap, length * lengthRescale, widthRescaleWorldMap);
+				if (useThick)
+				{
+					prefab.RectTrans.localScale = new Vector3(railIconWidthRescaleWorldMap, length * railIconLengthRescale, railIconWidthRescaleWorldMap);
+					//float rescaleVertH = railIconWidthRescaleWorldMap / (length * railIconLengthRescale * 2);
+					//prefab.RectTrans.offsetMax = new Vector3(1, rescaleVertH);
+					//prefab.RectTrans.offsetMin = new Vector3(1, -rescaleVertH);
+				}
 				else
-					prefab.RectTrans.localScale = new Vector3(widthRescaleMiniMap, length * lengthRescale, widthRescaleMiniMap);
+				{
+					prefab.RectTrans.localScale = new Vector3(railIconWidthRescaleMiniMap, length * railIconLengthRescale, railIconWidthRescaleMiniMap);
+					//float rescaleVertH = railIconWidthRescaleMiniMap / (length * railIconLengthRescale * 2);
+					//prefab.RectTrans.offsetMax = new Vector3(1, rescaleVertH);
+					//prefab.RectTrans.offsetMin = new Vector3(1, -rescaleVertH);
+				}
 				//prefab.RectTrans.sizeDelta = new Vector2(1, length);
 				prefab.RectTrans.localPosition = GetIconPos3D(pos, ManRadar.IconType.AreaQuest);
 				return prefab;
@@ -171,9 +180,8 @@ namespace RandomAdditions.RailSystem
 
 		private void InsureIcons()
 		{
-			if (prefabs != null)
+			if (iconCache.Count != 0)
 				return;
-			prefabs = new Dictionary<RailType, UIMiniMapElement>();
 			UIMiniMapElement mainPrefab = ManRadar.inst.GetIconElementPrefab(ManRadar.IconType.FriendlyVehicle);
 			if (mainPrefab != null)
 			{
@@ -182,107 +190,62 @@ namespace RandomAdditions.RailSystem
 					RailType item = (RailType)step;
 					UIMiniMapElement newPrefab = mainPrefab.UnpooledSpawn();
 					ModContainer MC = ManMods.inst.FindMod("Random Additions");
-					Texture2D Tex = KickStart.GetTextureFromModAssetBundle(MC, "MapTrack_" + item.ToString());
+					Texture2D Tex = ResourcesHelper.GetTextureFromModAssetBundle(MC, "MapTrack_" + item.ToString());
 					if (Tex != null)
 					{
 						var im = newPrefab.GetComponent<Image>();
 						im.sprite = Sprite.Create(Tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
+						im.type = Image.Type.Tiled;
 					}
 					else
 					{
 						var im = newPrefab.GetComponent<Image>();
 						Tex = new Texture2D(2, 2);
-						Tex.SetPixels(0,0,2,2, new Color[4] { trackColorDefault , trackColorDefault , trackColorDefault , trackColorDefault });
+						Tex.SetPixels(0,0,2,2, new Color[4] { trackColorBase, trackColorBase, trackColorBase, trackColorBase });
 						Tex.Apply(false, false);
 						im.sprite = Sprite.Create(Tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
+						//im.type = Image.Type.Tiled;
 						newPrefab.TrackedVis = null;
 					}
 					newPrefab.Icon.color = trackColorDefault;
-					iconCache.Add(item, new IconPool(newPrefab));
+					newPrefab.gameObject.SetActive(false);
+					iconCache.Add(item, new IconPool(newPrefab, RailSegment.segmentPoolInitSize));
 				}
 			}
 			else
 				throw new Exception("UIMiniMapLayerTrain: InsureIcons could not fetch main prefab for icon!");
 		}
 
+		public void ClearUnusedIcons()
+		{
+			trainRouteStep = 0;
+			fetchedTracks.Clear();
+			foreach (var item in iconCache)
+			{
+				item.Value.RemoveAllUnused();
+				item.Value.Reset();
+			}
+		}
+		public void ClearAllIcons()
+		{
+			trainRouteStep = 0;
+			fetchedTracks.Clear();
+			foreach (var item in iconCache)
+			{
+				item.Value.RemoveAll();
+			}
+		}
+
 		internal void PurgeAllIcons()
 		{
-			if (prefabs == null)
+			if (iconCache.Count == 0)
 				return;
             foreach (var item in iconCache)
 			{
 				item.Value.DestroyAll();
 			}
 			iconCache.Clear();
-
-			foreach (var item in prefabs)
-			{
-				item.Value.DeletePool();
-				Destroy(item.Value);
-			}
-			prefabs = null;
 		}
 
-		internal class IconPool
-		{
-			private readonly UIMiniMapElement prefab;
-			private Stack<UIMiniMapElement> elementsUnused = new Stack<UIMiniMapElement>();
-			private Stack<UIMiniMapElement> elementsUsed = new Stack<UIMiniMapElement>();
-			public List<UIMiniMapElement> ElementsActive => elementsUsed.ToList();
-
-			internal IconPool(UIMiniMapElement prefab)
-			{
-				prefab.CreatePool(RailSegment.segmentPoolInitSize);
-				this.prefab = prefab;
-			}
-
-			internal UIMiniMapElement SpawnOrReuse(RectTransform rectTrans)
-			{
-				UIMiniMapElement spawned;
-				if (elementsUnused.Count > 0)
-				{
-					spawned = elementsUnused.Pop();
-				}
-				else
-				{
-					spawned = prefab.Spawn();
-					spawned.RectTrans.SetParent(rectTrans, false);
-                    foreach (var item in spawned.GetComponents<MonoBehaviour>())
-                    {
-						item.enabled = true;
-					}
-					spawned.gameObject.SetActive(true);
-				}
-				elementsUsed.Push(spawned);
-				return spawned;
-			}
-
-			internal void Reset()
-			{
-				while (elementsUsed.Count > 0)
-				{
-					elementsUnused.Push(elementsUsed.Pop());
-				}
-			}
-			internal void RemoveAllUnused()
-			{
-                while(elementsUnused.Count > 0)
-                {
-					var ele = elementsUnused.Pop();
-					ele.RectTrans.SetParent(null);
-					ele.Recycle(false);
-                }
-			}
-			internal void DestroyAll()
-			{
-				RemoveAllUnused();
-				while (elementsUsed.Count > 0)
-				{
-					elementsUsed.Pop().Recycle(false);
-				}
-				prefab.DeletePool();
-				Destroy(prefab);
-			}
-		}
 	}
 }

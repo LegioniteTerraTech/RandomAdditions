@@ -9,7 +9,7 @@ namespace RandomAdditions
 {
     public interface ITileLoader
     {
-        List<IntVector2> GetActiveTiles();
+        void GetActiveTiles(List<IntVector2> tileCache);
     }
 
     [AutoSaveManager]
@@ -20,15 +20,21 @@ namespace RandomAdditions
         [SSaveField]
         public IntVector2[] TilesNeedLoadedNextLoad;
 
-        public static List<IntVector2> RequestedLoaded => (inst && inst.LoadedTileCoords != null) ? inst.LoadedTileCoords : new List<IntVector2>();
+        public static HashSet<IntVector2> RequestedLoaded => (inst && inst.LoadedTileCoords != null) ? inst.LoadedTileCoords : new HashSet<IntVector2>();
+        public static HashSet<IntVector2> Perimeter => (inst && inst.PerimeterTileSubLoaded != null) ? inst.PerimeterTileSubLoaded : new HashSet<IntVector2>();
         private static readonly Dictionary<IntVector2, float> TempLoaders = new Dictionary<IntVector2, float>();
-        private static readonly List<IntVector2> FixedTileLoaders = new List<IntVector2>();
+        private static readonly HashSet<IntVector2> FixedTileLoaders = new HashSet<IntVector2>();
         private static readonly List<ITileLoader> DynamicTileLoaders = new List<ITileLoader>();
 
-        private static readonly float TempDuration = 6; // In seconds
+        private const float TempDurationDefault = 6; // In seconds
+        private const float MaxWorldPhysicsSafeDistance = 100_000; // In blocks
+        private static int MaxWorldPhysicsSafeDistanceTiles = Mathf.CeilToInt(100_000/ ManWorld.inst.TileSize) - 1; // In blocks
+
 
         [SSaveField]
-        public List<IntVector2> LoadedTileCoords = new List<IntVector2>();
+        public HashSet<IntVector2> LoadedTileCoords = new HashSet<IntVector2>();
+
+        public HashSet<IntVector2> PerimeterTileSubLoaded = new HashSet<IntVector2>();
 
 
         public static void Initiate()
@@ -71,16 +77,19 @@ namespace RandomAdditions
                 }
             }
         }
-        public static bool TempLoadTile(IntVector2 posTile)
+        public static bool TempLoadTile(IntVector2 posTile, float loadTime = TempDurationDefault)
         {
-            if (!TempLoaders.TryGetValue(posTile, out _))
+            if (!TempLoaders.ContainsKey(posTile))
             {
-                DebugRandAddi.Log("TEMP LOADING TILE " + posTile.ToString());
-                TempLoaders.Add(posTile, TempDuration + Time.time);
-                return true;
+                //DebugRandAddi.Info("TEMP LOADING TILE (extended) " + posTile.ToString());
+                TempLoaders.Add(posTile, loadTime + Time.time);
             }
             else
-                return false;
+            {
+                DebugRandAddi.Info("TEMP LOADING TILE " + posTile.ToString());
+                TempLoaders[posTile] = loadTime + Time.time;
+            }
+            return true;
         }
         public static bool RegisterDynamicTileLoader(ITileLoader loader)
         {
@@ -111,26 +120,40 @@ namespace RandomAdditions
 
         internal static void UpdateTileLoading()
         {
+            if (inst == null)
+                return;
+            inst.UpdateTileLoadingInternal();
+        }
+        private static readonly List<IntVector2> tilesPosCache = new List<IntVector2>();
+        private void UpdateTileLoadingInternal()
+        {
             RequestedLoaded.Clear();
-            RequestedLoaded.AddRange(TempLoaders.Keys);
-            RequestedLoaded.AddRange(FixedTileLoaders);
+            foreach (var item in TempLoaders.Keys)
+            {
+                if (!RequestedLoaded.Contains(item))
+                    RequestedLoaded.Add(item);
+            }
+            foreach (var item in FixedTileLoaders)
+            {
+                if (!RequestedLoaded.Contains(item))
+                    RequestedLoaded.Add(item);
+            }
 
             // UPDATE THE DYNAMIC TILES
             foreach (var item in DynamicTileLoaders)
             {
-                List<IntVector2> tilesPos = item.GetActiveTiles();
-                foreach (var pos in tilesPos)
+                item.GetActiveTiles(tilesPosCache);
+                foreach (var pos in tilesPosCache)
                 {
                     if (!RequestedLoaded.Contains(pos))
-                    {
                         RequestedLoaded.Add(pos);
-                    }
                 }
+                tilesPosCache.Clear();
             }
 
             // UPDATE THE TEMP TILES
             int length = TempLoaders.Count;
-            for (int step = 0; step < length; )
+            for (int step = 0; step < length;)
             {
                 var pos = TempLoaders.ElementAt(step);
                 if (pos.Value < Time.time)
@@ -141,6 +164,18 @@ namespace RandomAdditions
                 else
                     step++;
             }
+            IntVector2 loadOrigin = ManWorld.inst.FloatingOriginTile;
+            int minCoordsX = loadOrigin.x - MaxWorldPhysicsSafeDistanceTiles;
+            int minCoordsY = loadOrigin.y - MaxWorldPhysicsSafeDistanceTiles;
+            int maxCoordsX = loadOrigin.x + MaxWorldPhysicsSafeDistanceTiles;
+            int maxCoordsY = loadOrigin.y + MaxWorldPhysicsSafeDistanceTiles;
+            for (int step = RequestedLoaded.Count - 1; step > -1; step--)
+            {
+                IntVector2 pos = RequestedLoaded.ElementAt(step);
+                if (pos.x < minCoordsX || pos.y < minCoordsY || pos.x > maxCoordsX || pos.y > maxCoordsY)
+                    RequestedLoaded.Remove(pos);
+            }
+            GetActiveTilePerimeterForRequestedLoaded();
         }
 
         public static int lastTechID = -1;
@@ -284,6 +319,178 @@ namespace RandomAdditions
                 }
             }
             catch { }
+        }
+
+        private void GetActiveTilePerimeterForRequestedLoaded()
+        {
+            PerimeterTileSubLoaded.Clear();
+            foreach (var item in LoadedTileCoords)
+            {
+                AddActiveTilePerimeterAroundPosition(item, ref PerimeterTileSubLoaded);
+            }
+            foreach (var item in LoadedTileCoords)
+            {
+                PerimeterTileSubLoaded.Remove(item);
+            }
+        }
+        private static void AddActiveTilePerimeterAroundPosition(IntVector2 posSpot, ref HashSet<IntVector2> perimeter)
+        {
+            IntVector2 newSpot;
+            newSpot = posSpot + new IntVector2(-1, -1);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(0, -1);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(1, -1);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(-1, 0);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(1, 0);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(-1, 1);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(0, 1);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+            newSpot = posSpot + new IntVector2(1, 1);
+            TryAddTilePerimeterAroundPosition(ref newSpot, ref perimeter);
+        }
+        private static void TryAddTilePerimeterAroundPosition(ref IntVector2 perimeterToAdd, ref HashSet<IntVector2> perimeter)
+        {
+            if (perimeter.Contains(perimeterToAdd))
+                return;
+            else
+                perimeter.Add(perimeterToAdd);
+        }
+
+        public static void GetActiveTilesAround(List<IntVector2> cache, WorldPosition WP, int MaxTileLoadingDiameter)
+        {
+            IntVector2 centerTile = WP.TileCoord;
+            int radCentered;
+            Vector2 posTechCentre;
+            Vector2 posTileCentre;
+
+            switch (MaxTileLoadingDiameter)
+            {
+                case 0:
+                case 1:
+                    cache.Add(centerTile);
+                    break;
+                case 2:
+                    posTechCentre = WP.ScenePosition.ToVector2XZ();
+                    posTileCentre = ManWorld.inst.TileManager.CalcTileCentreScene(centerTile).ToVector2XZ();
+                    if (posTechCentre.x > posTileCentre.x)
+                    {
+                        if (posTechCentre.y > posTileCentre.y)
+                        {
+                            cache.Add(centerTile);
+                            cache.Add(centerTile + new IntVector2(1, 0));
+                            cache.Add(centerTile + new IntVector2(1, 1));
+                            cache.Add(centerTile + new IntVector2(0, 1));
+                        }
+                        else
+                        {
+                            cache.Add(centerTile);
+                            cache.Add(centerTile + new IntVector2(1, 0));
+                            cache.Add(centerTile + new IntVector2(1, -1));
+                            cache.Add(centerTile + new IntVector2(0, -1));
+                        }
+                    }
+                    else
+                    {
+                        if (posTechCentre.y > posTileCentre.y)
+                        {
+                            cache.Add(centerTile);
+                            cache.Add(centerTile + new IntVector2(-1, 0));
+                            cache.Add(centerTile + new IntVector2(-1, 1));
+                            cache.Add(centerTile + new IntVector2(0, 1));
+                        }
+                        else
+                        {
+                            cache.Add(centerTile);
+                            cache.Add(centerTile + new IntVector2(-1, 0));
+                            cache.Add(centerTile + new IntVector2(-1, -1));
+                            cache.Add(centerTile + new IntVector2(0, -1));
+                        }
+                    }
+                    break;
+                case 3:
+                    radCentered = 1;
+                    for (int step = -radCentered; step <= radCentered; step++)
+                    {
+                        for (int step2 = -radCentered; step2 <= radCentered; step2++)
+                        {
+                            cache.Add(centerTile + new IntVector2(step, step2));
+                        }
+                    }
+                    break;
+                case 4:
+                    radCentered = 1;
+                    for (int step = -radCentered; step <= radCentered; step++)
+                    {
+                        for (int step2 = -radCentered; step2 <= radCentered; step2++)
+                        {
+                            cache.Add(centerTile + new IntVector2(step, step2));
+                        }
+                    }
+                    posTechCentre = WP.ScenePosition.ToVector2XZ();
+                    posTileCentre = ManWorld.inst.TileManager.CalcTileCentreScene(centerTile).ToVector2XZ();
+                    if (posTechCentre.x > posTileCentre.x)
+                    {
+                        if (posTechCentre.y > posTileCentre.y)
+                        {
+                            cache.Add(centerTile + new IntVector2(2, -1));
+                            cache.Add(centerTile + new IntVector2(2, 0));
+                            cache.Add(centerTile + new IntVector2(2, 1));
+                            cache.Add(centerTile + new IntVector2(2, 2));
+                            cache.Add(centerTile + new IntVector2(1, 2));
+                            cache.Add(centerTile + new IntVector2(0, 2));
+                            cache.Add(centerTile + new IntVector2(-1, 2));
+                        }
+                        else
+                        {
+                            cache.Add(centerTile + new IntVector2(2, 1));
+                            cache.Add(centerTile + new IntVector2(2, 0));
+                            cache.Add(centerTile + new IntVector2(2, -1));
+                            cache.Add(centerTile + new IntVector2(2, -2));
+                            cache.Add(centerTile + new IntVector2(1, -2));
+                            cache.Add(centerTile + new IntVector2(0, -2));
+                            cache.Add(centerTile + new IntVector2(-1, -2));
+                        }
+                    }
+                    else
+                    {
+                        if (posTechCentre.y > posTileCentre.y)
+                        {
+                            cache.Add(centerTile + new IntVector2(-2, -1));
+                            cache.Add(centerTile + new IntVector2(-2, 0));
+                            cache.Add(centerTile + new IntVector2(-2, 1));
+                            cache.Add(centerTile + new IntVector2(-2, 2));
+                            cache.Add(centerTile + new IntVector2(-1, 2));
+                            cache.Add(centerTile + new IntVector2(0, 2));
+                            cache.Add(centerTile + new IntVector2(1, 2));
+                        }
+                        else
+                        {
+                            cache.Add(centerTile + new IntVector2(-2, 1));
+                            cache.Add(centerTile + new IntVector2(-2, 0));
+                            cache.Add(centerTile + new IntVector2(-2, -1));
+                            cache.Add(centerTile + new IntVector2(-2, -2));
+                            cache.Add(centerTile + new IntVector2(-1, -2));
+                            cache.Add(centerTile + new IntVector2(0, -2));
+                            cache.Add(centerTile + new IntVector2(1, -2));
+                        }
+                    }
+                    break;
+                default:
+                    radCentered = MaxTileLoadingDiameter / 2;
+                    for (int step = -radCentered; step <= radCentered; step++)
+                    {
+                        for (int step2 = -radCentered; step2 <= radCentered; step2++)
+                        {
+                            cache.Add(centerTile + new IntVector2(step, step2));
+                        }
+                    }
+                    break;
+            }
         }
     }
 }

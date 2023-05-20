@@ -187,7 +187,6 @@ namespace RandomAdditions
             }
             return 0;
         }
-
     }
     /*
     public class GUILudicrousSpeedButton : MonoBehaviour

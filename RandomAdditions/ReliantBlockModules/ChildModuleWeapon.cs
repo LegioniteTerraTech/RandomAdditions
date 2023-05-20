@@ -378,7 +378,7 @@ namespace RandomAdditions
                     audioTickData.isNoteOn = doSpool;
                     audioTickData.adsrTime01 = 1;//doSpool ? 1 : 0;
                     TechAudio.AudioTickData value = audioTickData;
-                    OnAudioTickUpdate.Send(value, null);
+                    OnAudioTickUpdate.Send(value, FMODEvent.FMODParams.empty);
                     barrelsFired = 0;
                 }
             }
@@ -813,27 +813,27 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("RACannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
 
             trans = transform;
-            bulletTrans = KickStart.HeavyObjectSearch(trans, "_bulletSpawn");
+            bulletTrans = KickStart.HeavyTransformSearch(trans, "_bulletSpawn");
             if (!bulletTrans)
             {
-                bulletTrans = KickStart.HeavyObjectSearch(trans, "_spawnBullet");
+                bulletTrans = KickStart.HeavyTransformSearch(trans, "_spawnBullet");
                 if (!bulletTrans)
                 {
                     LogHandler.ThrowWarning("RACannonBarrel expects a _bulletSpawn or a _spawnBullet in GameObject hierachy!");
                 }
             }
-            recoilTrans = KickStart.HeavyObjectSearch(trans, "_recoiler");
+            recoilTrans = KickStart.HeavyTransformSearch(trans, "_recoiler");
             if (!recoilTrans)
             {
                 //LogHandler.ThrowWarning("RACannonBarrel expects a _recoiler in GameObject hierachy!");
             }
-            var smokeTrans = KickStart.HeavyObjectSearch(trans, "_smoke");
+            var smokeTrans = KickStart.HeavyTransformSearch(trans, "_smoke");
             if (smokeTrans)
             {
                 PS = smokeTrans.GetComponentsInChildren<ParticleSystem>();
             }
-            rotBarrel = GetComponentInChildren<Spinner>();
-            beamWeap = GetComponentInChildren<BeamWeapon>();
+            rotBarrel = GetComponentInChildren<Spinner>(true);
+            beamWeap = GetComponentInChildren<BeamWeapon>(true);
             flash = trans.GetComponentsInChildren<MuzzleFlash>(true).FirstOrDefault();
             recoiling = false;
             if (recoilTrans)

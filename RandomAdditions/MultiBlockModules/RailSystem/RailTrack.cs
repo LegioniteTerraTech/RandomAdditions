@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace RandomAdditions.RailSystem
         public readonly RailSpace Space;
         public readonly bool IsNodeTrack;
         public readonly RailType Type;
+        public bool ShowRailTies => RailResolution > ManRails.LocalRailResolution;
 
         internal readonly RailConnectInfo StartConnection;
         internal RailTrackNode StartNode => StartConnection.HostNode;
@@ -39,13 +41,13 @@ namespace RandomAdditions.RailSystem
 
         // Inactive Information
         /// <summary> How many RailSegments at max this holds.  For the defining points are +1 of this. </summary>
-        public int RailSystemLength => railLength;
-        private int railLength = 0;
-        /// <summary> IN SCENE SPACE unless space is set to LOCAL </summary>
+        public int RailSystemSegmentCount => railSegmentCount;
+        private int railSegmentCount = 0;
+        /// <summary> IN SCENE SPACE unless Space is set to LOCAL </summary>
         private List<Vector3> railPoints;
-        /// <summary> IN SCENE SPACE unless space is set to LOCAL </summary>
+        /// <summary> IN SCENE SPACE unless Space is set to LOCAL </summary>
         private List<Vector3> railFwds;
-        /// <summary> IN SCENE SPACE unless space is set to LOCAL </summary>
+        /// <summary> IN SCENE SPACE unless Space is set to LOCAL </summary>
         private List<Vector3> railUps;
 
         // World Loaded Information
@@ -58,11 +60,15 @@ namespace RandomAdditions.RailSystem
         /// </summary>
         internal RailTrack(RailConnectInfo lowValSide, RailConnectInfo highValSide, bool ForceLoad, bool fake, int railRes)
         {
-            DebugRandAddi.Assert(lowValSide.HostNode.SystemType != highValSide.HostNode.SystemType, "RailTrack.Constructor - Mismatch in RailType");
-            Type = lowValSide.HostNode.SystemType;
+            DebugRandAddi.Assert(lowValSide.HostNode.TrackType != highValSide.HostNode.TrackType, "RailTrack.Constructor - Mismatch in RailType");
+            Type = lowValSide.HostNode.TrackType;
             IsNodeTrack = false;
             StartConnection = lowValSide;
             EndConnection = highValSide;
+
+            DebugRandAddi.Exception(StartConnection == null || StartNode == null, "RailTrack.Constructor - INVALID StartNode, connection " + (StartConnection == null));
+            DebugRandAddi.Exception(EndConnection == null || EndNode == null, "RailTrack.Constructor - INVALID EndNode, connection " + (EndConnection == null));
+
             RailResolution = railRes;
             Removing = false;
             Fake = fake;
@@ -70,24 +76,32 @@ namespace RandomAdditions.RailSystem
             railFwds = new List<Vector3>();
             railUps = new List<Vector3>();
 
-            bool local = lowValSide.HostNode.Space == RailSpace.Local || highValSide.HostNode.Space == RailSpace.Local;
-            if (Parent != null && local)
+            bool local = ManRails.HasLocalSpace(lowValSide.HostNode.Space) && ManRails.HasLocalSpace(highValSide.HostNode.Space);
+            if (local && StartNode?.Point)
             {
-                DebugRandAddi.Assert("FIXED TRACK");
+                DebugRandAddi.Info("FIXED TRACK");
                 Space = RailSpace.Local;
             }
             else
             {
                 if (local)
-                    DebugRandAddi.Assert(lowValSide.HostNode.SystemType != highValSide.HostNode.SystemType,
-                        "RailTrack.Constructor - a node was set as RailSpace.Local but there was no transform provided!" +
-                        "\n  Falling back to other options.");
-                Space = (lowValSide.HostNode.Space == RailSpace.WorldFloat || highValSide.HostNode.Space == RailSpace.WorldFloat)
-                    ? RailSpace.WorldFloat : RailSpace.World;
+                {
+                    //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but there was no transform provided!" +
+                    //    "\n  Falling back to other options.");
+                    DebugRandAddi.Log("FIXED TRACK - ModuleNodePoints unloaded");
+                    Space = RailSpace.Local;
+                }
+                else if (ManRails.HasLocalSpace(lowValSide.HostNode.Space) || ManRails.HasLocalSpace(highValSide.HostNode.Space))
+                {
+                    //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but the other side wasn't??");
+                    Space = RailSpace.WorldFloat;
+                }
+                else
+                {
+                    Space = (lowValSide.HostNode.Space == RailSpace.WorldFloat || highValSide.HostNode.Space == RailSpace.WorldFloat)
+                        ? RailSpace.WorldFloat : RailSpace.World;
+                }
             }
-
-            DebugRandAddi.Assert(StartConnection == null || StartNode == null, "RecalcRailSegmentsEnds - INVALID StartNode, connection " + (StartConnection == null));
-            DebugRandAddi.Assert(EndConnection == null || EndNode == null, "RecalcRailSegmentsEnds - INVALID EndNode, connection " + (EndConnection == null));
 
             RecalcRailSegmentsEnds();
 
@@ -98,36 +112,54 @@ namespace RandomAdditions.RailSystem
         /// <summary>
         /// DO NOT CALL THIS DIRECTLY - Use ManRails.SpawnRailTrack instead!
         /// </summary>
-        internal RailTrack(RailTrackNode holder, RailConnectInfo lowValSide, RailConnectInfo highValSide)
+        internal RailTrack(RailTrackNode holder, RailConnectInfo lowValSide, RailConnectInfo highValSide, bool fake)
         {
-            Type = holder.SystemType;
+            DebugRandAddi.Assert(lowValSide.HostNode.TrackType != highValSide.HostNode.TrackType, "RailTrack(NodeTrack).Constructor - Mismatch in RailType");
+            Type = holder.TrackType;
             IsNodeTrack = true;
+            Fake = fake;
             StartConnection = lowValSide;
             EndConnection = highValSide;
-            RailResolution = ManRails.DynamicRailResolution;
+
+            DebugRandAddi.Exception(StartConnection == null || StartNode == null, "RailTrack(NodeTrack).Constructor - INVALID StartNode, connection " + (StartConnection == null));
+            DebugRandAddi.Exception(EndConnection == null || EndNode == null, "RailTrack(NodeTrack).Constructor - INVALID EndNode, connection " + (EndConnection == null));
+
+            if (fake)
+                RailResolution = ManRails.LocalRailResolution;
+            else
+                RailResolution = ManRails.DynamicRailResolution;
             Removing = false;
             railPoints = new List<Vector3>();
             railFwds = new List<Vector3>();
             railUps = new List<Vector3>();
             Space = holder.Space;
-            if (Parent != null && Space == RailSpace.Local)
+            bool local = lowValSide.HostNode.Space == RailSpace.Local && highValSide.HostNode.Space == RailSpace.Local;
+            if (local && StartNode?.Point)
             {
-                DebugRandAddi.Assert("FIXED TRACK");
+                DebugRandAddi.Info("FIXED TRACK");
                 Space = RailSpace.Local;
             }
             else
             {
-                if (Space == RailSpace.Local)
-                    DebugRandAddi.Assert(lowValSide.HostNode.SystemType != highValSide.HostNode.SystemType,
-                        "RailTrack.Constructor - a node was set as RailSpace.Local but there was no transform provided!" +
-                        "\n  Falling back to other options.");
-                Space = (lowValSide.HostNode.Space == RailSpace.WorldFloat || highValSide.HostNode.Space == RailSpace.WorldFloat)
-                    ? RailSpace.WorldFloat : RailSpace.World;
+                if (local)
+                {
+                    //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but there was no transform provided!" +
+                    //    "\n  Falling back to other options.");
+                    DebugRandAddi.Info("FIXED TRACK - ModuleNodePoints unloaded");
+                    Space = RailSpace.Local;
+                }
+                else if (lowValSide.HostNode.Space == RailSpace.Local || highValSide.HostNode.Space == RailSpace.Local)
+                {
+                    //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but the other side wasn't??");
+                    Space = RailSpace.LocalUnstable;
+                }
+                else
+                {
+                    Space = (lowValSide.HostNode.Space == RailSpace.WorldFloat || highValSide.HostNode.Space == RailSpace.WorldFloat)
+                        ? RailSpace.WorldFloat : RailSpace.World;
+                }
             }
-            DebugRandAddi.Log("New RailTrack(NodeTrack) from " + holder.NodeID + " (" + (bool)Parent + " | " + Space.ToString() + ")");
-
-            DebugRandAddi.Assert(StartConnection == null || StartNode == null, "RecalcRailSegmentsEnds - INVALID StartNode, connection " + (StartConnection == null));
-            DebugRandAddi.Assert(EndConnection == null || EndNode == null, "RecalcRailSegmentsEnds - INVALID EndNode, connection " + (EndConnection == null));
+            DebugRandAddi.Info("New RailTrack(NodeTrack) from " + holder.NodeID + " (" + (bool)Parent + " | " + Space.ToString() + ")");
 
             RecalcRailSegmentsEnds();
         }
@@ -136,6 +168,7 @@ namespace RandomAdditions.RailSystem
         {
             return !Removing;
         }
+        public bool CanLoad => Space != RailSpace.Local || StartNode?.Point;
         public bool IsLoaded()
         {
             return ActiveSegments.Count > 0;
@@ -146,6 +179,12 @@ namespace RandomAdditions.RailSystem
             if (Space != RailSpace.Local || !StartNode?.Point)
                 return null;
             return StartNode.Point.LinkHubs[StartConnectionIndex];
+        }
+        public Rigidbody GetRigidbody()
+        {
+            if (!StartNode.Point?.tank?.rbody)
+                return null;
+            return StartNode.Point.tank.rbody;
         }
 
         private void AddRailSegment(Vector3 point, Vector3 forwards, Vector3 upright)
@@ -162,7 +201,7 @@ namespace RandomAdditions.RailSystem
                 railFwds.Add(forwards);
                 railUps.Add(upright);
             }
-            railLength++;
+            railSegmentCount++;
         }
 
 
@@ -207,15 +246,16 @@ namespace RandomAdditions.RailSystem
             }
             return false;
         }
-        public List<ModuleRailBogie> GetBogiesOnTrackSegment(int segmentIndex)
+        private static List<ModuleRailBogie> cacheTrackSeg = new List<ModuleRailBogie>();
+        public List<ModuleRailBogie> IterateBogiesOnTrackSegment(int segmentIndex)
         {
-            List<ModuleRailBogie> bogies = new List<ModuleRailBogie>();
+            cacheTrackSeg.Clear();
             foreach (var item in ActiveBogeys)
             {
-                if (item.CurrentSegmentIndex == segmentIndex) 
-                    bogies.Add(item);
+                if (item.CurrentSegmentIndex == segmentIndex)
+                    cacheTrackSeg.Add(item);
             }
-            return bogies;
+            return cacheTrackSeg;
         }
         public bool OtherTrainOnTrackAhead(ModuleRailBogie bogie, int depth = 1)
         {
@@ -292,28 +332,31 @@ namespace RandomAdditions.RailSystem
                 return Parent.TransformPoint((railPoints[railIndex] + railPoints[railIndex + 1]) / 2);
             return (railPoints[railIndex] + railPoints[railIndex + 1]) / 2;
         }
-        internal Vector3[] GetRailSegmentPositions()
+        internal void GetRailSegmentPositions(List<Vector3> cacheRailSegPos)
         {
             if (Parent != null)
             {
-                Vector3[] points = new Vector3[railPoints.Count - 1];
                 for (int step = 0; step < railPoints.Count - 1; step++)
                 {
-                    points[step] = Parent.TransformPoint((railPoints[step] + railPoints[step + 1]) / 2);
+                    cacheRailSegPos.Add(Parent.TransformPoint((railPoints[step] + railPoints[step + 1]) / 2));
                 }
-                return points;
             }
             else
             {
-                Vector3[] points = new Vector3[railPoints.Count - 1];
                 for (int step = 0; step < railPoints.Count - 1; step++)
                 {
-                    points[step] = (railPoints[step] + railPoints[step + 1]) / 2;
+                    cacheRailSegPos.Add((railPoints[step] + railPoints[step + 1]) / 2);
                 }
-                return points;
             }
         }
-        internal Vector3 GetRailEndPosition(bool StartOfTrack)
+        internal void GetLoadedRailSegmentPositions(List<Vector3> cache)
+        {
+            foreach (var item in ActiveSegments)
+            {
+                cache.Add(GetRailSegmentPosition(item.Key));
+            }
+        }
+        internal Vector3 GetRailEndPositionScene(bool StartOfTrack)
         {
             if (Parent)
             {
@@ -343,15 +386,17 @@ namespace RandomAdditions.RailSystem
                 return -railFwds[railFwds.Count - 1];
             }
         }
+        private static List<Vector3> GetTrackCenterPosCache = new List<Vector3>();
         public Vector3 GetTrackCenter()
         {
-            Vector3[] points = GetRailSegmentPositions();
+            GetTrackCenterPosCache.Clear();
+            GetRailSegmentPositions(GetTrackCenterPosCache);
             Vector3 add = Vector3.zero;
-            foreach (var item in points)
+            foreach (var item in GetTrackCenterPosCache)
             {
                 add += item;
             }
-            add /= points.Length;
+            add /= GetTrackCenterPosCache.Count;
             if (Parent)
                 return Parent.TransformPoint(add);
             return add;
@@ -359,28 +404,19 @@ namespace RandomAdditions.RailSystem
         
         private void RecalcRailSegmentsEnds()
         {
-            railLength = 0;
+            railSegmentCount = 0;
             railPoints.Clear();
             railFwds.Clear();
             railUps.Clear();
-            float Height;
             //DebugRandAddi.Log("RailTrack - Reset");
 
             DebugRandAddi.Assert(StartConnection == null || StartNode == null, "RecalcRailSegmentsEnds - INVALID StartNode, connection " + (StartConnection == null));
             DebugRandAddi.Assert(EndConnection == null || EndNode == null, "RecalcRailSegmentsEnds - INVALID EndNode, connection " + (EndConnection == null));
 
             Vector3 Start = StartNode.GetLinkCenter(StartConnectionIndex).ScenePosition;
-            if (StartNode.Space == RailSpace.World)
-            {
-                ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Start, out Height);
-                Start.y = Height;
-            }
+            RailSegment.AdjustHeightIfNeeded(Type, StartNode.Space, ref Start);
             Vector3 End = EndNode.GetLinkCenter(EndConnectionIndex).ScenePosition;
-            if (EndNode.Space == RailSpace.World)
-            {
-                ManRails.GetTerrainOrAnchoredBlockHeightAtPos(End, out Height);
-                End.y = Height;
-            }
+            RailSegment.AdjustHeightIfNeeded(Type, EndNode.Space, ref End);
             //DebugRandAddi.Log("RailTrack - Positioned");
 
             Vector3 StartF;
@@ -398,30 +434,32 @@ namespace RandomAdditions.RailSystem
             distance = (End - Start).magnitude;
             //DebugRandAddi.Log("RailTrack - Directed");
 
+            Vector3 StartU = StartNode.GetLinkUp(StartConnectionIndex);
+            Vector3 EndU = EndNode.GetLinkUp(EndConnectionIndex);
             if (distance > ManRails.RailIdealMaxStretch)
             {   // Build tracks according to terrain conditions
                 if (Parent)
                 {
                     railPoints.Add(Parent.InverseTransformPoint(Start));
                     railFwds.Add(Parent.InverseTransformDirection(StartF));
-                    railUps.Add(Parent.InverseTransformDirection(Vector3.up));
+                    railUps.Add(Parent.InverseTransformDirection(StartU));
                 }
                 else
                 {
                     railPoints.Add(Start);
                     railFwds.Add(StartF);
-                    railUps.Add(Vector3.up);
+                    railUps.Add(StartU);
                 }
-                int advisedTrackPointCount = Mathf.CeilToInt(distance / ManRails.RailIdealMaxStretch);
-                float distSegemented = distance / advisedTrackPointCount;
-                advisedTrackPointCount++;
+                int TotalTrackPointCount = Mathf.CeilToInt(distance / ManRails.RailIdealMaxStretch);
+                float distSegemented = distance / TotalTrackPointCount;
+                TotalTrackPointCount++;
                 Vector3 up;
-                if (advisedTrackPointCount < 6)
+                if (TotalTrackPointCount < 6)
                 {   // Short-Hop
                     //  We make 3-5 points for 2-4 tracks between them
                     //DebugRandAddi.Log("RailTrack - Short-Hop");
                     Vector3 forward;
-                    int steps = advisedTrackPointCount - 1;
+                    int steps = TotalTrackPointCount - 1;
                     for (int step = 1; step < steps; step++)
                     {
                         float linePos = (float)step / steps;
@@ -429,44 +467,68 @@ namespace RandomAdditions.RailSystem
                             Start, End, linePos, Space, true, out forward, out up), forward, up);
                     }
 
-                    AddRailSegment(End, -EndF, Vector3.up);
+                    AddRailSegment(End, -EndF, EndU);
                 }
                 else
                 {   // Long-Distance, 5+ tracks
                     //  We make 6+ points, with (points - 1) tracks between them.
                     //DebugRandAddi.Log("RailTrack - Long-Hop");
                     float linePos;
+                    int EndTrackPointCount;
+                    if (ManRails.railTypeStats.TryGetValue(Type, out var val))
+                        EndTrackPointCount = Mathf.Clamp(Mathf.FloorToInt((TotalTrackPointCount - 1f) / 2), 2, val.maxEndCurveTracks);
+                    else
+                        EndTrackPointCount = 2;
 
                     // Make Middle Tracks line start
-                    linePos = (float)1 / advisedTrackPointCount;
-                    Vector3 startStraightMid = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, EndF,
-                        distSegemented * 2, Start, End, linePos, Space, true, out Vector3 startUpMid);
-                    linePos = (float)2 / advisedTrackPointCount;
-                    Vector3 startStraight = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, EndF,
-                        distSegemented * 4, Start, End, linePos, Space, true, out up);
+                    linePos = (float)EndTrackPointCount / TotalTrackPointCount;
+                    Vector3 StartVec = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, EndF,
+                        distSegemented * (TotalTrackPointCount - EndTrackPointCount), Start, End, linePos, Space, true, 
+                        out Vector3 StartVecFwd, out Vector3 StartVecUp);
 
                     // Make Middle Tracks line end
-                    linePos = (float)(advisedTrackPointCount - 1) / advisedTrackPointCount;
-                    Vector3 endStraightMid = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, EndF,
-                        distSegemented * 2, Start, End, linePos, Space, true, out Vector3 endUpMid);
-                    linePos = (float)(advisedTrackPointCount - 2) / advisedTrackPointCount;
-                    Vector3 endStraight = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, EndF,
-                        distSegemented * 4, Start, End, linePos, Space, true, out Vector3 up2);
+                    linePos = (float)(TotalTrackPointCount - EndTrackPointCount) / TotalTrackPointCount;
+                    Vector3 EndVec = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, EndF,
+                        distSegemented * (TotalTrackPointCount - EndTrackPointCount), Start, End, linePos, Space, true, 
+                        out Vector3 EndVecFwd, out Vector3 EndVecUp);
 
-                    up = (up + up2).normalized;
-                    Vector3 betweenFacing = (endStraight - startStraight).normalized;
-
-                    AddRailSegment(startStraightMid, (startStraight - Start).normalized, startUpMid);
-                    // Make the Tracks between the first and last tracks!
-                    int steps = advisedTrackPointCount - 3;
-                    for (int step = 0; step <= steps; step++)
+                    Vector3 betweenFacing = (StartVecFwd + EndVecFwd).normalized;
+                    // Make start curve
+                    for (int step = 1; step < EndTrackPointCount; step++)
                     {
-                        linePos = (float)step / steps;
-                        float invLinePos = 1f - linePos;
-                        AddRailSegment((endStraight * linePos) + (startStraight * invLinePos), betweenFacing, up);
+                        linePos = (float)step / EndTrackPointCount;
+                        Vector3 curve = ManRails.EvaluateTrackAtPosition(RailResolution, Type, StartF, -betweenFacing,
+                            distSegemented * EndTrackPointCount, Start, StartVec, linePos, Space, true, 
+                            out Vector3 curveFwd, out Vector3 curveUp);
+                        AddRailSegment(curve, curveFwd, curveUp);
                     }
-                    AddRailSegment(endStraightMid, (End - endStraight).normalized, endUpMid);
-                    AddRailSegment(End, -EndF, Vector3.up);
+
+                    // Make the Tracks between the first and last tracks!
+                    int MidTrackPointCount = TotalTrackPointCount - (EndTrackPointCount * 2);
+                    //Vector3 betweenFacing = (EndVec - StartVec).normalized;
+                    //up = (StartVecUp + EndVecUp).normalized;
+                    for (int step = 0; step <= MidTrackPointCount; step++)
+                    {
+                        linePos = (float)step / MidTrackPointCount;
+                        Vector3 curve = ManRails.EvaluateTrackAtPosition(RailResolution, Type, betweenFacing, -betweenFacing,
+                            distSegemented * MidTrackPointCount, StartVec, EndVec, linePos, Space, true, 
+                            out Vector3 curveFwd, out Vector3 curveUp);
+                        AddRailSegment(curve, curveFwd, curveUp);
+                        //float invLinePos = 1f - linePos;
+                        //AddRailSegment((EndVec * linePos) + (StartVec * invLinePos), betweenFacing, up);
+                    }
+
+                    // Make end curve
+                    for (int step = 1; step < EndTrackPointCount; step++)
+                    {
+                        linePos = (float)step / EndTrackPointCount;
+                        Vector3 curve = ManRails.EvaluateTrackAtPosition(RailResolution, Type, betweenFacing, EndF,
+                            distSegemented * EndTrackPointCount, EndVec, End, linePos, Space, true, 
+                            out Vector3 curveFwd, out Vector3 curveUp);
+                        AddRailSegment(curve, curveFwd, curveUp);
+                    }
+
+                    AddRailSegment(End, -EndF, EndU);
                 }
                 //DebugRandAddi.Log("RailTrack - Applied(" + advisedTrackPointCount + ")");
             }
@@ -480,8 +542,8 @@ namespace RandomAdditions.RailSystem
                     railPoints.Add(Parent.InverseTransformPoint(End));
                     railFwds.Add(Parent.InverseTransformDirection(StartF));
                     railFwds.Add(Parent.InverseTransformDirection(-EndF));
-                    railUps.Add(Parent.InverseTransformDirection(Vector3.up));
-                    railUps.Add(Parent.InverseTransformDirection(Vector3.up));
+                    railUps.Add(Parent.InverseTransformDirection(StartU));
+                    railUps.Add(Parent.InverseTransformDirection(EndU));
                 }
                 else
                 {
@@ -489,10 +551,10 @@ namespace RandomAdditions.RailSystem
                     railPoints.Add(End);
                     railFwds.Add(StartF);
                     railFwds.Add(-EndF);
-                    railUps.Add(Vector3.up);
-                    railUps.Add(Vector3.up);
+                    railUps.Add(StartU);
+                    railUps.Add(EndU);
                 }
-                railLength = 1;
+                railSegmentCount = 1;
                 //DebugRandAddi.Log("RailTrack - Applied(1)");
             }
             /*
@@ -503,35 +565,49 @@ namespace RandomAdditions.RailSystem
         }
         internal void UpdateExistingShapeIfNeeded()
         {
-            if (Space == RailSpace.Local)
+            if (ManRails.HasLocalSpace(Space))
             {
-                DebugRandAddi.Log("RailTrack: UpdateExistingIfNeeded() - Railtrack Space is Local so skipping UpdateExistingIfNeeded().\n  " +
-                    "UpdateExistingIfNeeded() should not be called on local tracks since they do not conform to terrain.");
-                return;
-            }
-            RecalcRailSegmentsEnds();
-            float delta = 0.1f;
-            foreach (var item in ActiveSegments)
-            {
-                var n = item.Key;
-                var r = item.Value;
-                if (!r.startPoint.Approximately(railPoints[n], delta) || !r.endPoint.Approximately(railPoints[n + 1], delta)
-                    || !r.startVector.Approximately(railFwds[n], delta) || !r.endVector.Approximately(-railFwds[n + 1], delta))
+                //DebugRandAddi.Log("RailTrack: UpdateExistingIfNeeded() - Railtrack Space is Local so skipping UpdateExistingIfNeeded().\n  " +
+                //    "UpdateExistingIfNeeded() should not be called on local tracks since they do not conform to terrain.");
+
+                RecalcRailSegmentsEnds();
+                foreach (var item in ActiveSegments)
                 {
-                    r.startPoint = railPoints[n];
+                    var n = item.Key;
+                    var r = item.Value;
                     r.startVector = railFwds[n];
-                    r.startUp = railUps[n];
-                    r.endPoint = railPoints[n + 1];
                     r.endVector = -railFwds[n + 1];
+                    r.startUp = railUps[n];
                     r.endUp = railUps[n + 1];
-                    r.OnSegmentDynamicShift();
+                    item.Value.OnSegmentDynamicShift();
+                }
+            }
+            else
+            {
+                RecalcRailSegmentsEnds();
+                float delta = 0.1f;
+                foreach (var item in ActiveSegments)
+                {
+                    var n = item.Key;
+                    var r = item.Value;
+                    if (!r.startPoint.Approximately(railPoints[n], delta) || !r.endPoint.Approximately(railPoints[n + 1], delta)
+                        || !r.startVector.Approximately(railFwds[n], delta) || !r.endVector.Approximately(-railFwds[n + 1], delta))
+                    {
+                        r.startPoint = railPoints[n];
+                        r.startVector = railFwds[n];
+                        r.startUp = railUps[n];
+                        r.endPoint = railPoints[n + 1];
+                        r.endVector = -railFwds[n + 1];
+                        r.endUp = railUps[n + 1];
+                        r.OnSegmentDynamicShift();
+                    }
                 }
             }
         }
 
         internal void OnWorldMovePre(IntVector3 move)
         {
-            if (Space != RailSpace.Local)
+            if (!ManRails.HasLocalSpace(Space))
             {
                 for (int step = 0; step < railPoints.Count; step++)
                 {
@@ -546,7 +622,7 @@ namespace RandomAdditions.RailSystem
         }
         internal void OnWorldMovePost()
         {
-            if (Space != RailSpace.Local)
+            if (!ManRails.HasLocalSpace(Space))
             {
                 foreach (var rail in ActiveSegments)
                 {
@@ -555,10 +631,10 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-        internal void OnRemove()
+        internal void OnRemove(bool usePhysics)
         {
             DetachAllBogies();
-            RemoveAllSegments();
+            RemoveAllSegments(usePhysics);
             Removing = true;
             //DebugRandAddi.Log("RandomAdditions: RailTrack.OnRemove");
         }
@@ -576,7 +652,7 @@ namespace RandomAdditions.RailSystem
                     {
                         curSeg++;
                         segDelta--;
-                        if (curSeg > RN2.RailSystemLength - 1)
+                        if (curSeg > RN2.RailSystemSegmentCount - 1)
                         {
                             RN2 = RN2.PeekNextTrack(ref curSeg, out _, out _, out bool reversed, out bool stop);
                             if (stop || RN2 == null)
@@ -587,7 +663,8 @@ namespace RandomAdditions.RailSystem
                             {
                                 if (reversed)
                                 {
-                                    curSeg = RN2.RailSystemLength - 1;
+                                    curSeg = RN2.RailSystemSegmentCount - 1;
+                                    segDelta = -segDelta;
                                 }
                                 else
                                 {
@@ -619,10 +696,11 @@ namespace RandomAdditions.RailSystem
                                 if (reversed)
                                 {
                                     curSeg = 0;
+                                    segDelta = -segDelta;
                                 }
                                 else
                                 {
-                                    curSeg = RN2.RailSystemLength - 1;
+                                    curSeg = RN2.RailSystemSegmentCount - 1;
                                 }
                                 break;
                             }
@@ -647,124 +725,176 @@ namespace RandomAdditions.RailSystem
         {
             int curSegIndex = MRB.CurrentSegment.SegIndex;
             reverseDirection = false;
-            RailTrack RN2;
+            RailTrack RN2 = null;
+            int end;
+
             while (true)
             {
                 // Step curSegIndex (Tracks) based on RailRelativePos (Position relative to the track)
                 if (MRB.FixedPositionOnRail >= 0)
                 {   // Forwards in relation to current rail
-                    while (true)
-                    {
-                        //DebugRandAddi.Log("RandomAdditions: Run " + RailRelativePos + " | " + curRail.RoughLineDist + " || "
-                        //    + curSegIndex + " | " + (network.RailSystemLength - 1));
-                        MRB.Track.CHK_Index(curSegIndex);
-                        MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                        if (MRB.FixedPositionOnRail < MRB.CurrentSegment.AlongTrackDist)
-                            return 0;
-                        MRB.FixedPositionOnRail -= MRB.CurrentSegment.AlongTrackDist;
-                        curSegIndex++;
-
-                        if (curSegIndex > MRB.Track.RailSystemLength - 1)
-                        {
-                            RN2 = MoveToNextTrack(MRB, ref curSegIndex, 
-                                out RailTrackNode nodeTrav, out bool reversed, out bool endOfLine);
-                            if (endOfLine)
-                            {
-                                //DebugRandAddi.Log("RandomAdditions: stop");
-                                curSegIndex = MRB.Track.SnapToNetwork(curSegIndex);
-                                MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                                if (nodeTrav.Stopper)
-                                {
-                                    MRB.FixedPositionOnRail = MRB.CurrentSegment.AlongTrackDist - 0.1f;
-                                    return nodeTrav != null ? 1 : 0;
-                                }
-                                else
-                                {
-                                    MRB.FixedPositionOnRail = MRB.CurrentSegment.AlongTrackDist - 0.1f;
-                                    return 0;
-                                }
-                            }
-                            else if (RN2 != null)
-                            {
-                                MRB.Track = RN2;
-                                MRB.Track.CHK_Index(curSegIndex);
-                                MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                                ManRails.UpdateAllSignals = true;
-                                //DebugRandAddi.Log("RandomAdditions: relay reversed: " + reversed + ", pos: " + MRB.FixedPositionOnRail + ", railIndex " + curSegIndex);
-                                if (reversed)
-                                {
-                                    MRB.FixedPositionOnRail = MRB.CurrentSegment.AlongTrackDist - MRB.FixedPositionOnRail;
-                                    reverseDirection = !reverseDirection;
-                                    //DebugRandAddi.Log("RandomAdditions: Invert " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
-                                }
-                                else
-                                {
-                                    //DebugRandAddi.Log("RandomAdditions: Straight " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
-                                }
-                                break;
-                            }
-                        }
-                    }
+                    if (IterateRailForwards(ref RN2, ref curSegIndex, ref reverseDirection, MRB, out end))
+                        return end;
                 }
                 else
                 {   // Backwards in relation to current rail
-                    while (true)
-                    { 
-                        //DebugRandAddi.Log("RandomAdditions: (B) Run " + RailRelativePos);
-                        MRB.Track.CHK_Index(curSegIndex);
-                        MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                        curSegIndex--;
-                        if (curSegIndex < 0)
-                        {
-                            RN2 = MoveToNextTrack(MRB, ref curSegIndex,
-                                out RailTrackNode nodeTrav, out bool reversed, out bool endOfLine);
-                            if (endOfLine)
-                            {
-                                //DebugRandAddi.Log("RandomAdditions: (B) stop");
-                                curSegIndex = MRB.Track.SnapToNetwork(curSegIndex);
-                                MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                                if (nodeTrav.Stopper)
-                                {
-                                    MRB.FixedPositionOnRail = 0.1f;
-                                    return nodeTrav != null ? -1 : 0;
-                                }
-                                else
-                                {
-                                    MRB.FixedPositionOnRail = 0.1f;
-                                    return 0;
-                                }
-                            }
-                            else if (RN2 != null)
-                            {
-                                MRB.Track = RN2;
-                                MRB.Track.CHK_Index(curSegIndex);
-                                MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                                ManRails.UpdateAllSignals = true;
-                                //DebugRandAddi.Log("RandomAdditions: (B) relay reversed: " + reversed + ", pos: " + MRB.FixedPositionOnRail + ", railIndex " + curSegIndex);
-                                if (reversed)
-                                {
-                                    MRB.FixedPositionOnRail = -MRB.FixedPositionOnRail;
-                                    reverseDirection = !reverseDirection;
-                                    //DebugRandAddi.Log("RandomAdditions: (B) Invert " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
-                                }
-                                else
-                                {
-                                    MRB.FixedPositionOnRail += MRB.CurrentSegment.AlongTrackDist;
-                                    //DebugRandAddi.Log("RandomAdditions: (B) Straight " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
-                                }
-                                break;
-                            }
-                        }
-                        // Snap to rail
-                        MRB.Track.CHK_Index(curSegIndex);
-                        MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
-                        MRB.FixedPositionOnRail += MRB.CurrentSegment.AlongTrackDist;
-                        if (MRB.FixedPositionOnRail >= 0)
-                            return 0;
-                    }
+                    if (IterateRailBackwards(ref RN2, ref curSegIndex, ref reverseDirection, MRB, out end))
+                        return end;
                 }
             }
         }
+
+        private static bool IterateRailForwards(ref RailTrack RN2, ref int curSegIndex, ref bool reverseDirection, ModuleRailBogie MRB, out int ending)
+        {
+            try
+            {
+                while (true)
+                {
+                    //DebugRandAddi.Log("RandomAdditions: Run " + RailRelativePos + " | " + curRail.RoughLineDist + " || "
+                    //    + curSegIndex + " | " + (network.RailSystemLength - 1));
+                    MRB.Track.CHK_Index(curSegIndex);
+                    MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                    if (MRB.FixedPositionOnRail < MRB.CurrentSegment.AlongTrackDist)
+                    {
+                        ending = 0;
+                        return true;
+                    }
+                    MRB.FixedPositionOnRail -= MRB.CurrentSegment.AlongTrackDist;
+                    curSegIndex++;
+
+                    if (curSegIndex > MRB.Track.RailSystemSegmentCount - 1)
+                    {
+                        RN2 = MoveToNextTrack(MRB, ref curSegIndex,
+                            out RailTrackNode nodeTrav, out bool reversed, out bool endOfLine);
+                        if (endOfLine)
+                        {
+                            //DebugRandAddi.Log("RandomAdditions: stop");
+                            curSegIndex = MRB.Track.SnapToNetwork(curSegIndex);
+                            MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                            if (nodeTrav != null && nodeTrav.Stopper)
+                            {
+                                MRB.FixedPositionOnRail = MRB.CurrentSegment.AlongTrackDist - 0.1f;
+                                ending = nodeTrav != null ? 1 : 0;
+                                return true;
+                            }
+                            else
+                            {
+                                MRB.FixedPositionOnRail = MRB.CurrentSegment.AlongTrackDist - 0.1f;
+                                ending = 0;
+                                return true;
+                            }
+                        }
+                        else if (RN2 != null)
+                        {
+                            MoveBogieForwardsOneRail(ref RN2, ref curSegIndex, ref reverseDirection, MRB, reversed);
+                            ending = 0;
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch (NullReferenceException e)
+            {
+                throw new NullReferenceException("IterateRailForwards encountered a null parameter: RN2- " + (RN2 != null) + 
+                    " | MRB- " + ((MRB != null) ? "true(Present) | MRB.Track- " + (MRB.Track != null) + 
+                    " | MRB.CurrentSegment- " + (MRB.CurrentSegment != null) : " MRB IS NULL!!!"), e);
+            }
+        }
+        private static void MoveBogieForwardsOneRail(ref RailTrack RN2, ref int curSegIndex, ref bool reverseDirection, ModuleRailBogie MRB, bool reversed)
+        {
+            MRB.Track = RN2;
+            MRB.Track.CHK_Index(curSegIndex);
+            MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+            ManRails.UpdateAllSignals = true;
+            //DebugRandAddi.Log("RandomAdditions: relay reversed: " + reversed + ", pos: " + MRB.FixedPositionOnRail + ", railIndex " + curSegIndex);
+            if (reversed)
+            {
+                MRB.FixedPositionOnRail = MRB.CurrentSegment.AlongTrackDist - MRB.FixedPositionOnRail;
+                reverseDirection = !reverseDirection;
+                //DebugRandAddi.Log("RandomAdditions: Invert " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
+            }
+            else
+            {
+                //DebugRandAddi.Log("RandomAdditions: Straight " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
+            }
+        }
+        private static bool IterateRailBackwards(ref RailTrack RN2, ref int curSegIndex, ref bool reverseDirection, ModuleRailBogie MRB, out int ending)
+        {
+            try
+            {
+                while (true)
+                {
+                    //DebugRandAddi.Log("RandomAdditions: (B) Run " + RailRelativePos);
+                    MRB.Track.CHK_Index(curSegIndex);
+                    MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                    curSegIndex--;
+                    if (curSegIndex < 0)
+                    {
+                        RN2 = MoveToNextTrack(MRB, ref curSegIndex,
+                            out RailTrackNode nodeTrav, out bool reversed, out bool endOfLine);
+                        if (endOfLine)
+                        {
+                            //DebugRandAddi.Log("RandomAdditions: (B) stop");
+                            curSegIndex = MRB.Track.SnapToNetwork(curSegIndex);
+                            MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                            if (nodeTrav != null && nodeTrav.Stopper)
+                            {
+                                MRB.FixedPositionOnRail = 0.1f;
+                                ending = nodeTrav != null ? -1 : 0;
+                                return true;
+                            }
+                            else
+                            {
+                                MRB.FixedPositionOnRail = 0.1f;
+                                ending = 0;
+                                return true;
+                            }
+                        }
+                        else if (RN2 != null)
+                        {
+                            MoveBogieBackwardsOneRail(ref RN2, ref curSegIndex, ref reverseDirection, MRB, reversed);
+                            ending = 0;
+                            return false;
+                        }
+                    }
+                    // Snap to rail
+                    MRB.Track.CHK_Index(curSegIndex);
+                    MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+                    MRB.FixedPositionOnRail += MRB.CurrentSegment.AlongTrackDist;
+                    if (MRB.FixedPositionOnRail >= 0)
+                    {
+                        ending = 0;
+                        return true;
+                    }
+                }
+            }
+            catch (NullReferenceException e)
+            {
+                throw new NullReferenceException("IterateRailBackwards encountered a null parameter: RN2- " + (RN2 != null) +
+                    " | MRB- " + ((MRB != null) ? "true(Present) | MRB.Track- " + (MRB.Track != null) +
+                    " | MRB.CurrentSegment- " + (MRB.CurrentSegment != null) : " MRB IS NULL!!!"), e);
+            }
+        }
+        private static void MoveBogieBackwardsOneRail(ref RailTrack RN2, ref int curSegIndex, ref bool reverseDirection, ModuleRailBogie MRB, bool reversed)
+        {
+            MRB.Track = RN2;
+            MRB.Track.CHK_Index(curSegIndex);
+            MRB.CurrentSegment = MRB.Track.InsureSegment(curSegIndex);
+            ManRails.UpdateAllSignals = true;
+            //DebugRandAddi.Log("RandomAdditions: (B) relay reversed: " + reversed + ", pos: " + MRB.FixedPositionOnRail + ", railIndex " + curSegIndex);
+            if (reversed)
+            {
+                MRB.FixedPositionOnRail = -MRB.FixedPositionOnRail;
+                reverseDirection = !reverseDirection;
+                //DebugRandAddi.Log("RandomAdditions: (B) Invert " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
+            }
+            else
+            {
+                MRB.FixedPositionOnRail += MRB.CurrentSegment.AlongTrackDist;
+                //DebugRandAddi.Log("RandomAdditions: (B) Straight " + MRB.FixedPositionOnRail + " out of " + MRB.CurrentSegment.AlongTrackDist);
+            }
+        }
+
 
         internal RailTrack PathfindRailStep(bool forwards, out bool reverseDirection, out RailConnectInfo entryInfo, ref int curSeg)
         {
@@ -785,7 +915,7 @@ namespace RandomAdditions.RailSystem
                     {
                         curSeg++;
                         segDelta--;
-                        if (curSeg > RN2.RailSystemLength - 1)
+                        if (curSeg > RN2.RailSystemSegmentCount - 1)
                         {
                             RN2 = RN2.PeekNextTrack(ref curSeg, out entryInfo, out _, out bool reversed, out bool stop);
                             if (stop || RN2 == null)
@@ -798,7 +928,7 @@ namespace RandomAdditions.RailSystem
                             {
                                 if (reversed)
                                 {
-                                    curSeg = RN2.RailSystemLength - 1;
+                                    curSeg = RN2.RailSystemSegmentCount - 1;
                                     segDelta = -segDelta;
                                     reverseDirection = !reverseDirection;
                                 }
@@ -842,7 +972,7 @@ namespace RandomAdditions.RailSystem
                                 }
                                 else
                                 {
-                                    curSeg = RN2.RailSystemLength - 1;
+                                    curSeg = RN2.RailSystemSegmentCount - 1;
                                 }
                                 break;
                             }
@@ -856,6 +986,98 @@ namespace RandomAdditions.RailSystem
                 }
             }
         }
+
+        internal RailTrack PathfindRailStepObeyOneWay(bool forwards, out bool reverseDirection, out RailConnectInfo entryInfo, ref int curSeg)
+        {
+            RailTrack RN2 = this;
+            int segDelta = forwards ? 1 : -1;
+            reverseDirection = false;
+            entryInfo = null;
+            while (true)
+            {
+                if (segDelta == 0)
+                {
+                    //DebugRandAddi.Log("PathfindRail hit end with node (0) " + (node != null));
+                    return RN2;
+                }
+                else if (segDelta > 0)
+                {   // Forwards in relation to current rail
+                    while (true)
+                    {
+                        curSeg++;
+                        segDelta--;
+                        if (curSeg > RN2.RailSystemSegmentCount - 1)
+                        {
+                            RN2 = RN2.PeekNextTrackObeyOneWay(ref curSeg, out entryInfo, out _, out bool reversed, out bool stop);
+                            if (stop || RN2 == null)
+                            {
+                                //DebugRandAddi.Log("PathfindRail hit end of rail (1)");
+                                reverseDirection = false;
+                                return null;
+                            }
+                            else
+                            {
+                                if (reversed)
+                                {
+                                    curSeg = RN2.RailSystemSegmentCount - 1;
+                                    segDelta = -segDelta;
+                                    reverseDirection = !reverseDirection;
+                                }
+                                else
+                                {
+                                    curSeg = 0;
+                                }
+                                break;
+                            }
+                        }
+                        if (segDelta == 0)
+                        {
+                            //DebugRandAddi.Log("PathfindRail hit end with node (1) " + (node != null));
+                            return RN2;
+                        }
+                    }
+                }
+                else
+                {   // Backwards in relation to current rail
+                    while (true)
+                    {
+                        //DebugRandAddi.Log("RandomAdditions: (B) Run " + RailRelativePos);
+                        curSeg--;
+                        segDelta++;
+                        if (curSeg < 0)
+                        {
+                            RN2 = RN2.PeekNextTrackObeyOneWay(ref curSeg, out entryInfo, out _, out bool reversed, out bool stop);
+                            if (stop || RN2 == null)
+                            {
+                                //DebugRandAddi.Log("PathfindRail hit end of rail (-1)");
+                                reverseDirection = false;
+                                return RN2;
+                            }
+                            else
+                            {
+                                if (reversed)
+                                {
+                                    curSeg = 0;
+                                    segDelta = -segDelta;
+                                    reverseDirection = !reverseDirection;
+                                }
+                                else
+                                {
+                                    curSeg = RN2.RailSystemSegmentCount - 1;
+                                }
+                                break;
+                            }
+                        }
+                        if (segDelta == 0)
+                        {
+                            //DebugRandAddi.Log("PathfindRail hit end with node (-1) " + (node != null));
+                            return RN2;
+                        }
+                    }
+                }
+            }
+        }
+
 
 
         internal bool BogiesAheadPrecise(float rootBlockDistForwardsOnRail, ModuleRailBogie MRB)
@@ -892,7 +1114,7 @@ namespace RandomAdditions.RailSystem
                         distDelta -= curSeg.AlongTrackDist;
                         curSegIndex++;
 
-                        if (curSegIndex > Track.RailSystemLength - 1)
+                        if (curSegIndex > Track.RailSystemSegmentCount - 1)
                         {
                             Track = Track.PeekNextTrack(ref curSegIndex, out _, out _, out bool reversed, 
                                 out bool stop, MRB);
@@ -981,7 +1203,7 @@ namespace RandomAdditions.RailSystem
             TankLocomotive master = MRB.engine.GetMaster();
             if (forwards)
             {
-                foreach (var item in MRB.Track.GetBogiesOnTrackSegment(curSegIndex))
+                foreach (var item in MRB.Track.IterateBogiesOnTrackSegment(curSegIndex))
                 {
                     if (item != MRB && item.engine.GetMaster() != master && item.FixedPositionOnRail >= posEst)
                         return true;
@@ -989,7 +1211,7 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                foreach (var item in MRB.Track.GetBogiesOnTrackSegment(curSegIndex))
+                foreach (var item in MRB.Track.IterateBogiesOnTrackSegment(curSegIndex))
                 {
                     if (item != MRB && item.engine.GetMaster() != master && item.FixedPositionOnRail <= posEst)
                         return true;
@@ -1006,7 +1228,7 @@ namespace RandomAdditions.RailSystem
             TankLocomotive master = MRB.engine.GetMaster();
             if (forwards)
             {
-                foreach (var item in RS.Track.GetBogiesOnTrackSegment(curSegIndex))
+                foreach (var item in RS.Track.IterateBogiesOnTrackSegment(curSegIndex))
                 {
                     if (item != MRB && item.engine.GetMaster() != master && item.FixedPositionOnRail >= posEst)
                         return true;
@@ -1014,7 +1236,7 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                foreach (var item in MRB.Track.GetBogiesOnTrackSegment(curSegIndex))
+                foreach (var item in MRB.Track.IterateBogiesOnTrackSegment(curSegIndex))
                 {
                     if (item != MRB && item.engine.GetMaster() != master && item.FixedPositionOnRail <= posEst)
                         return true;
@@ -1153,7 +1375,7 @@ namespace RandomAdditions.RailSystem
             TankLocomotive master = MRB.engine.GetMaster();
             if (forwards)
             {
-                foreach (var item in MRB.Track.GetBogiesOnTrackSegment(curSegIndex))
+                foreach (var item in MRB.Track.IterateBogiesOnTrackSegment(curSegIndex))
                 {
                     if (item != MRB && item.engine.GetMaster() == master && item.FixedPositionOnRail >= posEst)
                         return true;
@@ -1161,7 +1383,7 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                foreach (var item in MRB.Track.GetBogiesOnTrackSegment(curSegIndex))
+                foreach (var item in MRB.Track.IterateBogiesOnTrackSegment(curSegIndex))
                 {
                     if (item != MRB && item.engine.GetMaster() == master && item.FixedPositionOnRail <= posEst)
                         return true;
@@ -1180,7 +1402,7 @@ namespace RandomAdditions.RailSystem
         internal RailSegment InsureSegment(int railIndex)
         {
             if (EndOfTrack(railIndex) != 0)
-                throw new IndexOutOfRangeException("Rail index " + railIndex + " is out of range of [0 - " + (railLength - 1) + "]");
+                throw new IndexOutOfRangeException("Rail index " + railIndex + " is out of range of [0 - " + (railSegmentCount - 1) + "]");
 
             if (Removing)
                 throw new UnauthorizedAccessException("Rail index " + railIndex + " is in the process of being removed but InsureRail was called on it");
@@ -1214,20 +1436,22 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
+                if (ManRails.HasLocalSpace(Space))
+                    DebugRandAddi.Assert("RailTrack.LoadSegment tried to load a LOCAL RailTrack segment WHILE IT'S PARENT IS INACTIVE!");
                 RS = RailSegment.PlaceSegment(this, rPos, railPoints[rPos],
                     railFwds[rPos], railPoints[nRPos], -railFwds[nRPos]);
             }
             ActiveSegments.Add(rPos, RS);
 
             // Now we correct and snap the uprights between two connected RailTrack ends if nesseary
-            Vector3 upS = Vector3.zero;
-            Vector3 upE = Vector3.zero;
+            Vector3 upS = railUps[rPos];
+            Vector3 upE = railUps[nRPos];
             if (!Fake)
             {   // Fake rails should not alter existing
                 Vector3 turn = Vector3.zero;
                 int turnIndex;
                 bool nodeTrack;
-                if (EndOfTrack(rPos) == -1 && StartNode != null && StartNode.ConnectionType == RailNodeType.Straight &&
+                if (EndOfTrack(rPos) == -1 && StartNode != null && StartNode.NodeType == RailNodeType.Straight &&
                     StartNode.RelayBestAngle(turn, out turnIndex))
                 {
                     var info = StartNode.GetConnectionByTrack(this, out nodeTrack);
@@ -1250,11 +1474,11 @@ namespace RandomAdditions.RailSystem
                             else
                             {
                                 //upS = (upS + next.railUps[next.RailSystemLength]).normalized;
-                                if (next.ActiveSegments.TryGetValue(0, out RailSegment val))
+                                if (next.ActiveSegments.TryGetValue(next.RailSystemSegmentCount - 1, out RailSegment val))
                                 {
                                     upS = (EvaluateUpright(rPos == 0) + next.EvaluateUpright(false)).normalized;
                                     railUps[rPos] = upS;
-                                    next.railUps[next.RailSystemLength] = upS;
+                                    next.railUps[next.RailSystemSegmentCount] = upS;
                                     val.UpdateSegmentUprightEnds(Vector3.zero, upS);
                                 }
                             }
@@ -1262,7 +1486,7 @@ namespace RandomAdditions.RailSystem
                     }
                 }
 
-                if (EndOfTrack(nRPos) == 1 && EndNode != null && EndNode.ConnectionType == RailNodeType.Straight &&
+                if (EndOfTrack(nRPos) == 1 && EndNode != null && EndNode.NodeType == RailNodeType.Straight &&
                     EndNode.RelayBestAngle(turn, out turnIndex))
                 {
                     var info = EndNode.GetConnectionByTrack(this, out nodeTrack);
@@ -1274,11 +1498,11 @@ namespace RandomAdditions.RailSystem
                             if (reversed)
                             {
                                 //upE = (upE + next.railUps[next.RailSystemLength]).normalized;
-                                if (next.ActiveSegments.TryGetValue(next.RailSystemLength - 1, out RailSegment val))
+                                if (next.ActiveSegments.TryGetValue(next.RailSystemSegmentCount - 1, out RailSegment val))
                                 {
-                                    upE = (EvaluateUpright(nRPos < RailSystemLength) + next.EvaluateUpright(false)).normalized;
+                                    upE = (EvaluateUpright(nRPos < RailSystemSegmentCount) + next.EvaluateUpright(false)).normalized;
                                     railUps[nRPos] = upE;
-                                    next.railUps[next.RailSystemLength] = upE;
+                                    next.railUps[next.RailSystemSegmentCount] = upE;
                                     val.UpdateSegmentUprightEnds(Vector3.zero, upE);
                                 }
                             }
@@ -1287,7 +1511,7 @@ namespace RandomAdditions.RailSystem
                                 //upE = (upE + next.railUps[0]).normalized;
                                 if (next.ActiveSegments.TryGetValue(0, out RailSegment val))
                                 {
-                                    upE = (EvaluateUpright(nRPos < RailSystemLength) + next.EvaluateUpright(true)).normalized;
+                                    upE = (EvaluateUpright(nRPos < RailSystemSegmentCount) + next.EvaluateUpright(true)).normalized;
                                     railUps[nRPos] = upE;
                                     next.railUps[0] = upE;
                                     val.UpdateSegmentUprightEnds(upE, Vector3.zero);
@@ -1307,7 +1531,7 @@ namespace RandomAdditions.RailSystem
         {
             if (immedate)
             {
-                for (int step = 0; step < RailSystemLength; step++)
+                for (int step = 0; step < RailSystemSegmentCount; step++)
                 {
                     InsureSegment(step);
                 }
@@ -1321,14 +1545,14 @@ namespace RandomAdditions.RailSystem
         {
             //DebugRandAddi.Log("RandomAdditions: RemoveSegment");
             int rPos = R_Index(railIndex);
-            ActiveSegments[rPos].RemoveSegment();
+            ActiveSegments[rPos].RemoveSegment(false);
             ActiveSegments.Remove(rPos);
         }
-        private void RemoveAllSegments()
+        private void RemoveAllSegments(bool usePhysics)
         {
             foreach (var item in ActiveSegments)
             {
-                item.Value.RemoveSegment();
+                item.Value.RemoveSegment(usePhysics);
             }
             //DebugRandAddi.Log("RandomAdditions: RemoveAllSegments removed " + ActiveSegments.Count());
             ActiveSegments.Clear();
@@ -1339,7 +1563,7 @@ namespace RandomAdditions.RailSystem
             foreach (var item in new HashSet<ModuleRailBogie>(ActiveBogeys))
             {
                 if (item != null)
-                    item.DetachBogey();
+                    item.DerailBogey();
             }
             ActiveBogeys.Clear();
         }
@@ -1347,13 +1571,13 @@ namespace RandomAdditions.RailSystem
         public void CHK_Index(int railIndex)
         {
             if (EndOfTrack(railIndex) != 0)
-                throw new IndexOutOfRangeException("CHK_Index - railIndex is out of bounds " + railIndex + " vs [0-" + (railLength - 1) + "]");
+                throw new IndexOutOfRangeException("CHK_Index - railIndex is out of bounds " + railIndex + " vs [0-" + (railSegmentCount - 1) + "]");
         }
         public int R_Index(int railIndex)
         {
             if (EndOfTrack(railIndex) != 0)
                 return SnapToNetwork(railIndex);
-            return (int)Mathf.Repeat(railIndex, railLength);
+            return (int)Mathf.Repeat(railIndex, railSegmentCount);
         }
 
         internal static RailTrack MoveToNextTrack(ModuleRailBogie MRB, ref int railIndex, out RailTrackNode nodeTraversed, out bool reversed, out bool EndOfTheLine)
@@ -1389,7 +1613,7 @@ namespace RandomAdditions.RailSystem
                             if (reversed)
                                 railIndex = 0;
                             else
-                                railIndex = RN.RailSystemLength - 1;
+                                railIndex = RN.RailSystemSegmentCount - 1;
                             if (curTrack.StartNode.NodeID == MRB.DestNodeID)
                                 MRB.engine.FinishPathing(TrainArrivalStatus.Arrived);
 
@@ -1424,7 +1648,7 @@ namespace RandomAdditions.RailSystem
                                 return null;
                             }
                             if (reversed)
-                                railIndex = RN.RailSystemLength - 1;
+                                railIndex = RN.RailSystemSegmentCount - 1;
                             else
                                 railIndex = 0;
                             if (curTrack.EndNode.NodeID == MRB.DestNodeID)
@@ -1450,6 +1674,7 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+        private const bool debugModePeekNextTrack = false;
         internal RailTrack PeekNextTrack(ref int railIndex, out RailConnectInfo entryInfo, out RailConnectInfo exitInfo, out bool reversed, out bool EndOfTheLine, ModuleRailBogie MRB = null)
         {
             int turnIndex;
@@ -1471,6 +1696,8 @@ namespace RandomAdditions.RailSystem
                             RailTrack RN = StartNode.RelayToNextOnNode(entryInfo, nodeTrack, true, turnIndex, out reversed, out exitInfo);
                             if (RN == null)
                             {
+                                if (debugModePeekNextTrack)
+                                    DebugRandAddi.Log("PeekNextTrack() - End of rail prev");
                                 reversed = false;
                                 EndOfTheLine = true;
                                 exitInfo = null;
@@ -1479,12 +1706,16 @@ namespace RandomAdditions.RailSystem
                             if (reversed)
                                 railIndex = 0;
                             else
-                                railIndex = RN.RailSystemLength - 1;
+                                railIndex = RN.RailSystemSegmentCount - 1;
 
                             EndOfTheLine = false;
                             return RN;
                         }
+                        else if (debugModePeekNextTrack)
+                            DebugRandAddi.Log("PeekNextTrack() - End of rail Prev Track does not exist");
                     }
+                    else
+                        throw new Exception("PeekNextTrack was used on a track with no StartNode.  How is this possible?");
                     break;
                 case 1: // beyond end
                     if (EndNode != null)
@@ -1501,22 +1732,125 @@ namespace RandomAdditions.RailSystem
                             RailTrack RN = EndNode.RelayToNextOnNode(entryInfo, nodeTrack, false, turnIndex, out reversed, out exitInfo);
                             if (RN == null)
                             {
+                                if (debugModePeekNextTrack)
+                                    DebugRandAddi.Log("PeekNextTrack() - End of rail Next");
                                 reversed = false;
                                 EndOfTheLine = true;
                                 return null;
                             }
                             if (reversed)
-                                railIndex = RN.RailSystemLength - 1;
+                                railIndex = RN.RailSystemSegmentCount - 1;
                             else
                                 railIndex = 0;
 
                             EndOfTheLine = false;
                             return RN;
                         }
+                        else if (debugModePeekNextTrack)
+                            DebugRandAddi.Log("PeekNextTrack() - End of rail Next Track does not exist");
                     }
+                    else
+                        throw new Exception("PeekNextTrack was used on a track with no EndNode.  How is this possible?");
                     break;
-                case 0:
+                default:
+                    throw new Exception("PeekNextTrack should only be called if we are absolutely sure we have no more segments to traverse" +
+                        " in our intended direction");
+            }
+            reversed = false;
+            EndOfTheLine = true;
+            entryInfo = null;
+            exitInfo = null;
+            return null;
+        }
+
+        internal RailTrack PeekNextTrackObeyOneWay(ref int railIndex, out RailConnectInfo entryInfo, out RailConnectInfo exitInfo, out bool reversed, out bool EndOfTheLine, ModuleRailBogie MRB = null)
+        {
+            int turnIndex;
+            bool nodeTrack;
+            switch (EndOfTrack(railIndex))
+            {
+                case -1: // behind start
+                    if (StartNode != null)
+                    {
+                        entryInfo = StartNode.GetConnectionByTrack(this, out nodeTrack);
+                        if (MRB)
+                        {
+                            turnIndex = MRB.GetTurnInput(StartNode, entryInfo, out _);
+                        }
+                        else
+                            StartNode.RelayBestAngle(Vector3.zero, out turnIndex);
+                        if (StartNode.NextTrackExists(entryInfo, turnIndex, nodeTrack, true))
+                        {
+                            RailTrack RN = StartNode.RelayToNextOnNode(entryInfo, nodeTrack, true, turnIndex, out reversed, out exitInfo);
+                            if (RN == null)
+                            {
+                                if (debugModePeekNextTrack)
+                                    DebugRandAddi.Log("PeekNextTrack() - End of rail prev");
+                                reversed = false;
+                                EndOfTheLine = true;
+                                exitInfo = null;
+                                return null;
+                            }
+                            if (reversed)
+                                railIndex = 0;
+                            else
+                                railIndex = RN.RailSystemSegmentCount - 1;
+
+                            EndOfTheLine = false;
+                            return RN;
+                        }
+                        else if (debugModePeekNextTrack)
+                            DebugRandAddi.Log("PeekNextTrack() - End of rail Prev Track does not exist");
+                    }
+                    else
+                        throw new Exception("PeekNextTrack was used on a track with no StartNode.  How is this possible?");
                     break;
+                case 1: // beyond end
+                    if (EndNode != null)
+                    {
+                        entryInfo = EndNode.GetConnectionByTrack(this, out nodeTrack);
+                        if (MRB)
+                        {
+                            turnIndex = MRB.GetTurnInput(EndNode, entryInfo, out _);
+                        }
+                        else
+                            EndNode.RelayBestAngle(Vector3.zero, out turnIndex);
+                        if (EndNode.NextTrackExists(entryInfo, turnIndex, nodeTrack, false))
+                        {
+                            RailTrack RN;
+                            if (EndNode.OneWay)
+                            {
+                                RN = null;
+                                exitInfo = null;
+                                reversed = false;
+                            }
+                            else
+                                RN = EndNode.RelayToNextOnNode(entryInfo, nodeTrack, false, turnIndex, out reversed, out exitInfo);
+                            if (RN == null)
+                            {
+                                if (debugModePeekNextTrack)
+                                    DebugRandAddi.Log("PeekNextTrack() - End of rail Next");
+                                reversed = false;
+                                EndOfTheLine = true;
+                                return null;
+                            }
+                            if (reversed)
+                                railIndex = RN.RailSystemSegmentCount - 1;
+                            else
+                                railIndex = 0;
+
+                            EndOfTheLine = false;
+                            return RN;
+                        }
+                        else if (debugModePeekNextTrack)
+                            DebugRandAddi.Log("PeekNextTrack() - End of rail Next Track does not exist");
+                    }
+                    else
+                        throw new Exception("PeekNextTrack was used on a track with no EndNode.  How is this possible?");
+                    break;
+                default:
+                    throw new Exception("PeekNextTrack should only be called if we are absolutely sure we have no more segments to traverse" +
+                        " in our intended direction");
             }
             reversed = false;
             EndOfTheLine = true;
@@ -1536,14 +1870,14 @@ namespace RandomAdditions.RailSystem
                     StartNode.RelayBestAngle(turn, out index);
                     if (StartNode != null && StartNode.NextTrackExists(this, index, true))
                     {
-                        StartNode.RelayLoadToOthers(this, railIndex + railLength);
+                        StartNode.RelayLoadToOthers(this, railIndex + railSegmentCount);
                     }
                     break;
                 case 1: // beyond end
                     StartNode.RelayBestAngle(turn, out index);
                     if (EndNode != null && EndNode.NextTrackExists(this, index, false))
                     {
-                        EndNode.RelayLoadToOthers(this, railIndex - railLength);
+                        EndNode.RelayLoadToOthers(this, railIndex - railSegmentCount);
                     }
                     break;
                 case 0:
@@ -1560,7 +1894,7 @@ namespace RandomAdditions.RailSystem
         /// <returns></returns>
         public int EndOfTrack(int railIndex)
         {
-            if (railIndex >= railLength)
+            if (railIndex >= railSegmentCount)
                 return 1;
             if (railIndex < 0)
                 return -1;
@@ -1569,11 +1903,36 @@ namespace RandomAdditions.RailSystem
 
         public int SnapToNetwork(int railIndex)
         {
-            if (railIndex >= railLength)
-                return railLength - 1;
+            if (railIndex >= railSegmentCount)
+                return railSegmentCount - 1;
             if (railIndex < 0)
                 return 0;
             return railIndex;
+        }
+
+
+        public void GetTrackInformation()
+        {
+            if (StartConnection.HostNode != null)
+            {
+                DebugRandAddi.Log("Low End Node:");
+                StartConnection.HostNode.GetNodeInformation();
+            }
+            else
+                DebugRandAddi.Log("Low End Node:  !!! NULL !!!");
+            if (EndConnection.HostNode != null)
+            {
+                DebugRandAddi.Log("High End Node:");
+                EndConnection.HostNode.GetNodeInformation();
+            }
+            else
+                DebugRandAddi.Log("High End Node:  !!! NULL !!!");
+            DebugRandAddi.Log("GetTrackInformation() - Track [" + 
+                ((StartConnection.HostNode != null) ? StartConnection.HostNode.NodeID.ToString() : "NULL")  + " - " +
+                ((EndConnection.HostNode != null) ? EndConnection.HostNode.NodeID.ToString() : "NULL") + "]\n  Track Type: " + 
+                Type + "\n  Space: " + Space + "\n  Segment Count: " + railSegmentCount + "\n  IsFake: " + Fake +
+                "\n  Segment Resolution: " + RailResolution + "\n  Active Segment Count: " + ActiveSegments.Count +
+                "\n  Active Bogie Count: " + ActiveBogeys.Count);
         }
     }
 }

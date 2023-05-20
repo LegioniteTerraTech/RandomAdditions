@@ -15,7 +15,7 @@ namespace RandomAdditions
     public class JSONRandAddModules : JSONModuleLoader
     {
         private static JSONRandAddModules inst;
-        private static Dictionary<string, Type> registeredTypes = new Dictionary<string, Type>();
+        private static Dictionary<string, Type> registeredTypes = null;
         public static void CompileLookupAndInit()
         {
             if (registeredTypes != null)

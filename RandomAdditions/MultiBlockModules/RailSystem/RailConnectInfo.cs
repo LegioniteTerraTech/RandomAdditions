@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace RandomAdditions.RailSystem
 {
@@ -19,29 +20,42 @@ namespace RandomAdditions.RailSystem
             Index = index;
         }
 
-        internal void Connect(RailTrack track, bool LowTrackConnection)
+        internal void Connect(RailTrack track, bool lowTrackConnection)
         {
             LinkTrack = track;
-            this.LowTrackConnection = LowTrackConnection;
+            LowTrackConnection = lowTrackConnection;
         }
         internal void SetNodeTrack(RailTrack track)
         {
             NodeTrack = track;
         }
 
-        internal RailTrackNode GetOtherSideNode(RailTrackNode ThisSide)
+        internal RailTrackNode GetOtherSideNode()
         {
-            if (LinkTrack.StartNode == ThisSide)
+            if (LinkTrack.StartNode == HostNode)
                 return LinkTrack.EndNode;
             return LinkTrack.StartNode;
         }
 
-        internal Vector3 GetThisSideRailEndPosition(RailTrackNode ThisSide)
+        internal Vector3 RailEndPositionOnRailScene()
         {
-            return LinkTrack.GetRailEndPosition(LinkTrack.StartNode == ThisSide);
+            return LinkTrack.GetRailEndPositionScene(LinkTrack.StartNode == HostNode);
+        }
+        internal WorldPosition RailEndPositionOnNode()
+        {
+            return HostNode.GetLinkCenter(Index);
+        }
+        internal Transform GetTrans()
+        {
+            if (!HostNode.Point)
+                throw new NullReferenceException("GetTrans() expects to be called after checking for HostNode.Point first, but it was NULL");
+            if (HostNode.Point.SingleLinkHub)
+                return HostNode.Point.LinkHubs[0];
+            else
+                return HostNode.Point.LinkHubs[Index];
         }
 
-        public void DisconnectLinkedTrack()
+        public void DisconnectLinkedTrack(bool usePhysics)
         {
             if (LinkTrack != null)
             {
@@ -61,7 +75,7 @@ namespace RandomAdditions.RailSystem
                     DebugRandAddi.Assert("RandomAdditions: DisconnectLinkedTrack - RailConnectInfo was removed but not from it's host node");
                 }
 
-                if (!ManRails.DestroyLinkRailTrack(track))
+                if (!ManRails.DestroyLinkRailTrack(track, usePhysics))
                     DebugRandAddi.Assert("RandomAdditions: DisconnectLinkedTrack - Could not destroy assigned RailTrack");
             }
         }

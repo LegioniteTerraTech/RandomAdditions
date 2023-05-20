@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
+using System.IO;
 using HarmonyLib;
 using UnityEngine;
 using TerraTechETCUtil;
@@ -13,6 +14,7 @@ using ModHelper;
 using Nuterra.NativeOptions;
 using RandomAdditions.RailSystem;
 using RandomAdditions.PhysicsTethers;
+using RandomAdditions.Minimap;
 
 
 namespace RandomAdditions
@@ -23,6 +25,7 @@ namespace RandomAdditions
     public class KickStart
     {
         internal const string ModName = "RandomAdditions";
+        internal const float TerrainLowestAlt = -50;
 
         // MOD SUPPORT
         internal static bool isWaterModPresent = false;
@@ -45,6 +48,7 @@ namespace RandomAdditions
         public static bool MandateSeaReplacement = true;
         public static bool MandateLandReplacement = false;
         public static int ForceIntoModeStartup = 0;
+        public static bool AllowIngameQuitToDesktop = false;
 
 
         // CONTROLS
@@ -290,6 +294,17 @@ namespace RandomAdditions
             ModHelpers.Initiate();
             GUIClock.Initiate();
             ManTileLoader.Initiate();
+            ManPhysicsExt.InsureInit();
+
+            // Net hooks
+            ModuleHangar.InsureNetHooks();
+            ManRails.InsureNetHooks();
+
+            // etc
+            IngameQuit.Init();
+#if DEBUG
+            DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
+#endif
         }
 
 #if STEAM
@@ -324,7 +339,9 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
             }
-            MinimapExtended.DeInitAll();
+            ManRadio.DeInit();
+            CircuitExt.Unload();
+            ManMinimapExt.DeInitAll();
             ManRails.DeInit();
             ManTileLoader.DeInit();
             GUIClock.DeInit();
@@ -397,7 +414,10 @@ namespace RandomAdditions
         {
             ManTileLoader.Initiate();
 #if DEBUG
-            GetAvailSFX();
+            GetAvail
+            
+            
+            ();
 #endif
         }
 #endif
@@ -434,7 +454,20 @@ namespace RandomAdditions
             }
             return false;
         }
-        public static Transform HeavyObjectSearch(Transform trans, string name)
+
+        public static Type LookForType(string name)
+        {
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var typeGet = assembly.GetType(name);
+                if (typeGet != null)
+                {
+                    return typeGet;
+                }
+            }
+            return null;
+        }
+        public static Transform HeavyTransformSearch(Transform trans, string name)
         {
             if (name.NullOrEmpty())
                 return null;
@@ -458,37 +491,6 @@ namespace RandomAdditions
                 {
                     DebugRandAddi.Log(item2.Key + " | " + item2.Value);
                 }
-            }
-        }
-
-        public static void LookIntoModContents(ModContainer MC)
-        {
-            try
-            {
-                DebugRandAddi.Log("----- CHECKING IN " + MC.ModID + " -----");
-                FieldInfo FI = typeof(ModContainer).GetField("m_AssetLookup", BindingFlags.NonPublic | BindingFlags.Instance);
-                Dictionary<string, ModdedAsset> content = (Dictionary<string, ModdedAsset>)FI.GetValue(MC);
-                if (content != null)
-                {
-                    DebugRandAddi.Log("----- GETTING ALL CONTENT KEYS -----");
-                    foreach (var item in content)
-                    {
-                        DebugRandAddi.Log(item.Key);
-                    }
-                }
-                if (MC.Contents.m_AdditionalAssets != null)
-                {
-                    DebugRandAddi.Log("----- GETTING ALL EXTRA CONTENT KEYS -----");
-                    foreach (var item in MC.Contents.m_AdditionalAssets)
-                    {
-                        DebugRandAddi.Log(item.name);
-                    }
-                }
-                DebugRandAddi.Log("-------- END --------");
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.Log(e);
             }
         }
 
@@ -705,7 +707,7 @@ namespace RandomAdditions
             }
             return closest;
         }
-        public static int GetClosestIndex(Vector3[] points, Vector3 scenePos)
+        public static int GetClosestIndex(List<Vector3> points, Vector3 scenePos)
         {
             int closest = 0;
             float posDist = int.MaxValue;
@@ -724,42 +726,6 @@ namespace RandomAdditions
             return closest;
         }
 
-        /// <summary>
-        /// Make sure the Mod AssetBundle is loaded first!
-        /// </summary>
-        public static Mesh GetMeshFromModAssetBundle(ModContainer MC, string nameNoExt)
-        {
-            Mesh mesh = null;
-            UnityEngine.Object obj = MC.Contents.m_AdditionalAssets.Find(delegate (UnityEngine.Object cand)
-            { return cand.name.Equals(nameNoExt); });
-            if (obj is Mesh mesh1)
-                mesh = mesh1;
-            else if (obj is GameObject objGO)
-                mesh = objGO.GetComponentInChildren<MeshFilter>().sharedMesh;
-            DebugRandAddi.Assert(mesh == null, nameNoExt + ".obj could not be found!");
-            return mesh;
-        }
-        /// <summary>
-        /// Make sure the Mod AssetBundle is loaded first!
-        /// </summary>
-        public static Texture2D GetTextureFromModAssetBundle(ModContainer MC, string nameNoExt)
-        {
-            Texture2D tex = null;
-            UnityEngine.Object obj = MC.Contents.m_AdditionalAssets.Find(delegate (UnityEngine.Object cand)
-            { return cand.name.Equals(nameNoExt); });
-            if (obj is Texture2D tex1)
-                tex = tex1;
-            else if (obj is GameObject objGO)
-                tex = (Texture2D)objGO.GetComponentInChildren<MeshRenderer>().sharedMaterial.mainTexture;
-            DebugRandAddi.Assert(tex == null, nameNoExt + ".png could not be found!");
-            return tex;
-        }
-        public static Material GetMaterialFromBaseGame(string MaterialName)
-        {
-            var res = (Material[])Resources.FindObjectsOfTypeAll(typeof(Material));
-            Material mat = res.ToList().Find(delegate (Material cand) { return cand.name.Equals(MaterialName); });
-            return mat;
-        }
     }
 
     public class KickStartOptions
@@ -787,8 +753,14 @@ namespace RandomAdditions
 
         // DEVELOPMENT
         public static OptionKey blockSnap;
+        public static OptionToggle allowQuitFromIngameMenu;
         public static OptionToggle allowPopups;
         public static OptionList<string> startup;
+
+        // Tony Rails
+        public static OptionRange RailRenderRange;
+        public static OptionRange RailPathingUpdateSpeed;
+
 
         private static bool launched = false;
 
@@ -825,6 +797,12 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
                 thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
                 thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
+                thisModConfig.BindConfig<KickStart>(null, "AllowIngameQuitToDesktop");
+
+                // Tony Rails
+                thisModConfig.BindConfig<ManRails>(null, "MaxRailLoadRange");
+                thisModConfig.BindConfig<ManTrainPathing>(null, "QueueStepRepeatTimes");
+
 
                 config = thisModConfig;
                 ExtUsageHint.SaveToHintsSeen();
@@ -893,6 +871,25 @@ namespace RandomAdditions
                 {
                     KickStart.ForceIntoModeStartup = startup.SavedValue;
                 });
+                allowQuitFromIngameMenu = new OptionToggle("Quit to Desktop Ingame", RandomDev, KickStart.AllowIngameQuitToDesktop);
+                allowQuitFromIngameMenu.onValueSaved.AddListener(() =>
+                {
+                    KickStart.AllowIngameQuitToDesktop = allowQuitFromIngameMenu.SavedValue;
+                    IngameQuit.SetExitButtonIngamePauseMenu(allowQuitFromIngameMenu.SavedValue);
+                });
+
+                var TonyRails = KickStart.ModName + " - Tony Rails";
+                RailRenderRange = new OptionRange("Rail Render Range", TonyRails, ManRails.MaxRailLoadRange, 250, 750, 50);
+                RailRenderRange.onValueSaved.AddListener(() =>
+                {
+                    ManRails.MaxRailLoadRange = RailRenderRange.SavedValue;
+                    ManRails.MaxRailLoadRangeSqr = ManRails.MaxRailLoadRange * ManRails.MaxRailLoadRange;
+                });
+                RailPathingUpdateSpeed = new OptionRange("Train Pathing Speed", TonyRails, ManTrainPathing.QueueStepRepeatTimes, 1, 6, 1);
+                RailPathingUpdateSpeed.onValueSaved.AddListener(() =>
+                {
+                    ManTrainPathing.QueueStepRepeatTimes = Mathf.FloorToInt(RailPathingUpdateSpeed.SavedValue);
+                });
 
 
 
@@ -925,8 +922,18 @@ namespace RandomAdditions
 
     internal static class ExtraExtensions
     {
+        public static bool IsServerManaged(this Tank tank)
+        {
+            return ManNetwork.IsNetworked && tank.netTech && tank.netTech.isServer;
+        }
+        public static bool CanRunPhysics(this Tank tank)
+        {
+            if (!ManNetwork.IsNetworked || tank.netTech == null)
+                return true;
+            return tank.netTech.hasAuthority;
+        }
 
-        public static int GetBlockIndex(this TankBlock block)
+        public static int GetBlockIndexOnTank(this TankBlock block)
         {
             if (block == null || block.tank == null)
                 return -1;
@@ -935,6 +942,24 @@ namespace RandomAdditions
             {
                 if (item == block)
                     return index;
+                index++;
+            }
+            return -1;
+        }
+
+        public static int GetBlockIndexAndTechNetID(this TankBlock block, out uint netID)
+        {
+            netID = 0;
+            if (block == null || block.tank == null)
+                return -1;
+            int index = 0;
+            foreach (var item in block.tank.blockman.IterateBlocks())
+            {
+                if (item == block)
+                {
+                    netID = block.tank.netTech.netId.Value;
+                    return index;
+                }
                 index++;
             }
             return -1;
@@ -1037,6 +1062,127 @@ namespace RandomAdditions
             else
                 DebugRandAddi.Log("RandomAdditions: no tank!");
             return true;
+        }
+
+        public static bool WithinBox(this Vector3 vec, float extents)
+        {
+            return vec.x >= -extents && vec.x <= extents && vec.y >= -extents && vec.y <= extents && vec.z >= -extents && vec.z <= extents;
+        }
+
+        private static FieldInfo blockFlags = typeof(TankBlock).GetField("m_Flags", BindingFlags.NonPublic | BindingFlags.Instance);
+        public static void TrySetBlockFlag(this TankBlock block, TankBlock.Flags flag, bool trueState)
+        {
+            if (block == null)
+                throw new NullReferenceException("TrySetBlockFlag was given a NULL block to handle!");
+            TankBlock.Flags val = (TankBlock.Flags)blockFlags.GetValue(block);
+            if (GetSetFlag(ref val, flag, trueState))
+            {
+                blockFlags.SetValue(block, val);
+                DebugRandAddi.Log("TrySetBlockFlag " + val + ", value: " + trueState);
+            }
+        }
+        public static bool GetSetFlag<T>(ref T val, T flagBit, bool trueState) where T : Enum
+        {
+            int valM = (int)Enum.Parse(typeof(T), val.ToString());
+            int valF = (int)Enum.Parse(typeof(T), flagBit.ToString());
+            bool curState = (valM & valF) != 0;
+            if (curState != trueState)
+            {
+                if (curState)
+                    valM = valM - valF;
+                if (trueState)
+                    valM = valM + valF;
+                val = (T)Enum.ToObject(typeof(T), valM);
+                return true;
+            }
+            return false;
+        }
+
+        public static ManSaveGame.StoredTech GetUnloadedTech(this TrackedVisible TV)
+        {
+            if (TV.visible != null)
+                return null;
+            try
+            {
+                if (Singleton.Manager<ManSaveGame>.inst.CurrentState.m_StoredTiles.TryGetValue(TV.GetWorldPosition().TileCoord, out var val))
+                {
+                    if (val.m_StoredVisibles.TryGetValue(1, out List<ManSaveGame.StoredVisible> techs))
+                    {
+                        var techD = techs.Find(x => x.m_ID == TV.ID);
+                        if (techD != null && (techD is ManSaveGame.StoredTech tech))
+                        {
+                            return tech;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+
+        public static bool SubToLogicReceiverCircuitUpdate(this ExtModule module, Action<Circuits.Charge> OnRec, bool unsub)
+        {
+            if (module.block.CircuitNode?.Receiver && CircuitExt.LogicEnabled)
+            {
+                if (unsub)
+                    module.block.CircuitNode.Receiver.ChargeChangedEvent.Unsubscribe(OnRec);
+                else
+                    module.block.CircuitNode.Receiver.ChargeChangedEvent.Subscribe(OnRec);
+                return true;
+            }
+            return false;
+        }
+        public static bool SubToLogicReceiverFrameUpdate(this ExtModule module, Action<Circuits.Charge> OnRec, bool unsub)
+        {
+            if (module.block.CircuitNode?.Receiver && CircuitExt.LogicEnabled)
+            {
+                if (unsub)
+                    module.block.CircuitNode?.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRec);
+                else
+                    module.block.CircuitNode?.Receiver.FrameChargeChangedEvent.Subscribe(OnRec);
+                return true;
+            }
+            return false;
+        }
+
+
+        public static float GetMaxStableForceThisFixedFrame(this Rigidbody rbody)
+        {
+            return Mathf.Pow(rbody.mass, 1.4f) / Time.fixedDeltaTime;
+        }
+
+        public static Vector3 GetForceDifference(this Rigidbody rbody, Rigidbody rbodyO, Vector3 pointWorldSpace)
+        {
+            Vector3 veloM = rbody.GetPointVelocity(pointWorldSpace) * rbody.mass;
+            Vector3 veloO = rbodyO.GetPointVelocity(pointWorldSpace) * rbodyO.mass;
+            return veloM - veloO;
+        }
+        /// <summary>
+        /// UNFINISHED
+        /// </summary>
+        /// <param name="rbody"></param>
+        /// <param name="rbodyO"></param>
+        /// <returns></returns>
+        public static ForceEqualizer GetForceEqualizer(this Rigidbody rbody, Rigidbody rbodyO)
+        {
+            return new ForceEqualizer(rbody, rbodyO);
+        }
+    }
+    public class ForceEqualizer
+    {
+        Rigidbody main;
+        Rigidbody other;
+        Vector3 mainToOther;
+        internal ForceEqualizer(Rigidbody rbody, Rigidbody rbody2)
+        {
+            main = rbody;
+            other = rbody2;
+            //mainToOther = rbody.GetForceDifference(rbody2, )
+        }
+        public static void ApplyForces()
+        {
+
         }
     }
 

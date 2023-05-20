@@ -21,7 +21,7 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
-            VisualMesh = KickStart.HeavyObjectSearch(transform, "_MainMesh");
+            VisualMesh = KickStart.HeavyTransformSearch(transform, "_MainMesh");
         }
 
         protected void AlignInternalMeshWithController(bool align)
@@ -379,7 +379,7 @@ namespace RandomAdditions
         internal Transform GetBarrelModelTrans(bool show)
         {
             if (mainCollider == null)
-                mainCollider = GetComponentInChildren<Collider>();
+                mainCollider = GetComponentInChildren<Collider>(true);
             if (mainCollider)
             {
                 if (show)
@@ -397,7 +397,7 @@ namespace RandomAdditions
         internal void UpdateMainColliderPosition(Vector3 worldSpace, Quaternion forwards)
         {
             if (mainCollider == null)
-                mainCollider = GetComponentInChildren<Collider>();
+                mainCollider = GetComponentInChildren<Collider>(true);
             if (mainCollider)
             {
                 mainCollider.transform.rotation = forwards;
@@ -407,7 +407,7 @@ namespace RandomAdditions
         internal void ResetMainColliderPosition()
         {
             if (mainCollider == null)
-                mainCollider = GetComponentInChildren<Collider>();
+                mainCollider = GetComponentInChildren<Collider>(true);
             if (mainCollider)
             {
                 mainCollider.transform.localPosition = Vector3.zero;

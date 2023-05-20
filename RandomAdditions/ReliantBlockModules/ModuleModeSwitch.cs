@@ -69,6 +69,7 @@ namespace RandomAdditions
         private float m_ShotTimer = 0;      //
         private AnimetteController[] anims;
 
+        public bool ModeSwitched => working;
         private bool working = false;
         private bool sharedBarrels = false;
         public Event<bool> ModeSwitchEvent = new Event<bool>();
@@ -403,7 +404,7 @@ namespace RandomAdditions
                             targVelo = target.rbody.velocity;
                         else
                             targVelo = Vector3.zero;
-                        SetMode((targVelo - tankVelo).magnitude * Globals.inst.MilesPerGameUnit >= SetValue);
+                        SetMode((targVelo - tankVelo).magnitude >= SetValue);
                     }
                     else
                         SetMode(false);
@@ -421,7 +422,7 @@ namespace RandomAdditions
                             targVelo = target.rbody.velocity;
                         else
                             targVelo = Vector3.zero;
-                        SetMode((targVelo - tankVelo).magnitude * Globals.inst.MilesPerGameUnit <= SetValue);
+                        SetMode((targVelo - tankVelo).magnitude <= SetValue);
                     }
                     else
                         SetMode(false);

@@ -6,7 +6,9 @@ using System.Reflection;
 using TerraTechETCUtil;
 
 public class ModuleCustomShop : RandomAdditions.ModuleCustomShop { };
-
+/// <summary>
+/// Obsolete - Use CommunityPatch for it's system 
+/// </summary>
 namespace RandomAdditions
 {
     public class ModuleCustomShop : ExtModule

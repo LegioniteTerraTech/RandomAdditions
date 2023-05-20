@@ -41,15 +41,16 @@ namespace RandomAdditions
             /// </summary>
             private static bool SpawnExplosion_Prefix(Projectile __instance, ref Vector3 explodePos, ref Damageable directHitTarget)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
+                bool directHit = (bool)directHitTarget;
                 var Split = __instance.GetComponent<SpiltProjectile>();
                 if ((bool)Split)
                 {
-                    Split.Explode();
+                    Split.Explode_Internal(directHit);
                 }
                 try // Handle ModuleReinforced
                 {
                     var ModuleCheck = __instance.GetComponent<OHKOProjectile>();
-                    if (!(bool)directHitTarget || ModuleCheck)
+                    if (!directHit || ModuleCheck)
                         return true;
                     var modifPresent = directHitTarget.GetComponent<ModuleReinforced>();
                     if ((bool)modifPresent)

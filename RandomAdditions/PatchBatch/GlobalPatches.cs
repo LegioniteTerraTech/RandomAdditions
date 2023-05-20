@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Reflection;
+using TerraTechETCUtil;
 using RandomAdditions.Networking;
+using RandomAdditions.Minimap;
 
 namespace RandomAdditions
 {
@@ -154,8 +158,11 @@ namespace RandomAdditions
                     errorList.gameObject.SetActive(true);
                     //var errorText = errorList.gameObject.GetComponent<Text>();
                     var errorField = errorList.gameObject.GetComponent<InputField>();
-                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----\n  The log file is at: " + outputLogLocation + "\n<b>Multiplayer:</b> " + ManNetwork.IsNetworked + "  <b>Mods:</b> " + LogHandler.GetMods()
-                        + "\n--------------------  Stack Trace  --------------------\n<b>Error:</b> " + latestError;
+                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----\n  The log file is at: " + outputLogLocation + 
+                        "\n<b>Multiplayer:</b> " + ManNetwork.IsNetworked + "  <b>Mods:</b> " + LogHandler.GetMods(out bool tooMany)
+                        + "\n--------------------  Stack Trace  --------------------\n<b>Error:</b> " + latestError + 
+                        (tooMany ? ("\n--------------------  Mods  --------------------\n" + LogHandler.GetModsIgnoreCount()) : "" );
+                    DebugRandAddi.Log(errorField.text);
                     var errorText = errorField.textComponent;
                     //errorText.alignByGeometry = true;
                     errorText.alignment = TextAnchor.UpperLeft; // causes it to go far out of the box
@@ -163,7 +170,6 @@ namespace RandomAdditions
                     //errorText.fontSize = 16;
                     errorText.horizontalOverflow = HorizontalWrapMode.Wrap;
                     //errorText.verticalOverflow = VerticalWrapMode.Overflow;
-                    //bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<color=#f23d3dff>Please DON'T press</color> <b>SEND</b>!  <color=#f23d3dff>This is a MODDED GAME AND THAT DOESN'T WORK!</color>  \nYou can skip this screen with the button at the upper-left corner and continue in your world, but do remember you are putting your save at risk! \n\nError: ";
                 }
                 catch
                 {
@@ -182,6 +188,19 @@ namespace RandomAdditions
             }
 
         }
+
+        /*
+        internal static class ManPointerPatches
+        {
+            internal static Type target = typeof(ManPointer);
+            /// <summary>
+            /// AllowBypass
+            /// IMPORTANT
+            /// </summary>
+            private static void Update_Prefix(ManPointer __instance)
+            {
+            }
+        }*/
 
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -247,7 +266,7 @@ namespace RandomAdditions
                                     var bound = __instance.block.BlockCellBounds.extents;
                                     ModuleScale.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
                                 }
-                                ModuleScale.DownScale(true);
+                                ModuleScale.Rescale(true);
                                 //DebugRandAddi.Log("RandomAdditions: Queued Rescale Down");
                             }
 
@@ -280,7 +299,7 @@ namespace RandomAdditions
                                 var bound = __instance.block.BlockCellBounds.extents;
                                 ModuleScale.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
                             }
-                            ModuleScale.DownScale(false);
+                            ModuleScale.Rescale(false);
                             //DebugRandAddi.Log("RandomAdditions: Queued Rescale Up");
 
                             //Reset them collodos
@@ -330,9 +349,9 @@ namespace RandomAdditions
             {
                 if ((bool)__instance)
                 {
-                    if (__instance.GetComponent<MinimapExtended>())
+                    if (__instance.GetComponent<ManMinimapExt.MinimapExt>())
                         return;
-                    var instWorld = __instance.gameObject.AddComponent<MinimapExtended>();
+                    var instWorld = __instance.gameObject.AddComponent<ManMinimapExt.MinimapExt>();
                     instWorld.InitInst(__instance);
                 }
             }
@@ -530,7 +549,7 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(TileManager);
 
-            private static bool removeCorruptedTest = true;
+            private static bool removeCorruptedTest = false;
             private const float maxDistFromOrigin = 80000;
             private static List<IntVector2> starTiles = null;
             private static Dictionary<IntVector2, WorldTile> exisTiles = null;
@@ -557,10 +576,10 @@ namespace RandomAdditions
                     }
 
                     DebugRandAddi.Assert(ManTileLoader.RequestedLoaded == null, "ManTileLoader - RequestedLoaded IS NULL");
-                    int requests = ManTileLoader.RequestedLoaded.Count;
-                    for (int step = 0; step < requests;)
+                    int requests = ManTileLoader.Perimeter.Count;
+                    for (int step = 0; step < requests; step++)
                     {
-                        var item = ManTileLoader.RequestedLoaded[step];
+                        var item = ManTileLoader.Perimeter.ElementAt(step);
                         if (item != null)
                         {
                             Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
@@ -568,25 +587,55 @@ namespace RandomAdditions
                                 pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
                                 pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
                             {
-                                if (exisTiles.ContainsKey(item))
+                                if (exisTiles.TryGetValue(item, out WorldTile WT))
                                 {
-                                    if (exisTiles.TryGetValue(item, out WorldTile WT))
+                                    if (WT != null)
                                     {
-                                        if (WT != null)
-                                        {
-                                            //DebugRandAddi.Log("ManTileLoader - Loading tile at " + WT.Coord);
-                                            WT.m_RequestState = WorldTile.State.Loaded;
-                                        }
-                                        else
-                                            DebugRandAddi.Assert("ManTileLoader - Tile at " + item + " is NULL");
+                                        //DebugRandAddi.Log("ManTileLoader - Loading tile at " + WT.Coord);
+                                        if (WT.m_RequestState < WorldTile.State.Created)
+                                            WT.m_RequestState = WorldTile.State.Created;
                                     }
+                                    else
+                                        DebugRandAddi.Assert("ManTileLoader(Perimeter) - Tile at " + item + " is NULL");
                                 }
                                 else
                                 {
                                     if (!starTiles.Contains(item))
                                     {
                                         starTiles.Add(item);
-                                        DebugRandAddi.Assert("ManTileLoader - Force-loading Tile at " + item);
+                                        DebugRandAddi.Info("ManTileLoader(Perimeter) - Force-loading NEW Tile at " + item);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    requests = ManTileLoader.RequestedLoaded.Count;
+                    for (int step = 0; step < requests;)
+                    {
+                        var item = ManTileLoader.RequestedLoaded.ElementAt(step);
+                        if (item != null)
+                        {
+                            Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
+                            if (pos.x > -maxDistFromOrigin && pos.x < maxDistFromOrigin &&
+                                pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
+                                pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
+                            {
+                                if (exisTiles.TryGetValue(item, out WorldTile WT))
+                                {
+                                    if (WT != null)
+                                    {
+                                        //DebugRandAddi.Log("ManTileLoader - Loading tile at " + WT.Coord);
+                                        WT.m_RequestState = WorldTile.State.Loaded;
+                                    }
+                                    else
+                                        DebugRandAddi.Assert("ManTileLoader - Tile at " + item + " is NULL");
+                                }
+                                else
+                                {
+                                    if (!starTiles.Contains(item))
+                                    {
+                                        starTiles.Add(item);
+                                        DebugRandAddi.Info("ManTileLoader - Force-loading NEW Tile at " + item);
                                     }
                                 }
                             }
@@ -594,8 +643,8 @@ namespace RandomAdditions
                         }
                         else
                         {
-                            DebugRandAddi.Assert("ManTileLoader - NULL TILE IN RequestedLoaded, TRASHING");
-                            ManTileLoader.RequestedLoaded.RemoveAt(step);
+                            DebugRandAddi.Assert("ManTileLoader - NULL TILE IN RequestedLoaded, canceled.");
+                            ManTileLoader.RequestedLoaded.Remove(item);
                             requests--;
                         }
                     }
@@ -629,12 +678,17 @@ namespace RandomAdditions
             internal static Type target = typeof(NetPlayer);
             private static void OnStartClient_Postfix(NetPlayer __instance)
             {
+                int counter = 0;
                 foreach (var item in ManModNetwork.hooks)
                 {
-                    ManNetwork.inst.SubscribeToClientMessage(__instance.netId, (TTMsgType)item.Key, new ManNetwork.MessageHandler(item.Value.OnClientReceive_Internal));
-                    DebugRandAddi.Log("Subscribed " + item.Value.ToString() + " to network under ID " + item.Key);
+                    if (item.Value.ClientRecieves())
+                    {
+                        ManNetwork.inst.SubscribeToClientMessage(__instance.netId, (TTMsgType)item.Key, new ManNetwork.MessageHandler(item.Value.OnToClientReceive_Internal));
+                        DebugRandAddi.Log("Client Subscribed " + item.Value.ToString() + " to network under ID " + item.Key);
+                        counter++;
+                    }
                 }
-                DebugRandAddi.Log("Subscribed " + ManModNetwork.hooks.Count + " hooks.");
+                DebugRandAddi.Log("Client subscribed " + counter + " hooks.");
             }
             private static void OnStartServer_Postfix(NetPlayer __instance)
             {
@@ -643,6 +697,18 @@ namespace RandomAdditions
                     DebugRandAddi.Log("Host started, hooked ManModNetwork update broadcasting to " + __instance.netId.ToString());
                     ManModNetwork.Host = __instance.netId;
                     ManModNetwork.HostExists = true;
+
+                    int counter = 0;
+                    foreach (var item in ManModNetwork.hooks)
+                    {
+                        if (item.Value.ServerRecieves()) 
+                        {
+                            ManNetwork.inst.SubscribeToServerMessage(__instance.netId, (TTMsgType)item.Key, new ManNetwork.MessageHandler(item.Value.OnToServerReceive_Internal));
+                            DebugRandAddi.Log("Server Subscribed " + item.Value.ToString() + " to network under ID " + item.Key);
+                            counter++;
+                        }
+                    }
+                    DebugRandAddi.Log("Server subscribed " + counter + " hooks.");
                 }
             }
         }
@@ -670,6 +736,16 @@ namespace RandomAdditions
                             val.text = modDamageable.CustomDamagableName;
                     }
                 }
+            }
+        }
+
+        internal static class ManHUDPatches
+        {
+            internal static Type target = typeof(ManHUD);
+
+            private static bool AddRadialOpenRequest_Prefix(ManHUD __instance, ref ManHUD.HUDElementType elementType)
+            {
+                return elementType != UIHelpersExt.customElement;
             }
         }
     }

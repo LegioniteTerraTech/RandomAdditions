@@ -157,14 +157,33 @@ namespace RandomAdditions
                 ForceQuitScreen();
         }
 
-        public static string GetMods()
+        public static string GetMods(out bool tooMany)
         {
             string modList = ManMods.inst.GetModsInCurrentSession();
-            int modGuessCount = modList.Count(x => x.Equals('\n'));
+            int modGuessCount = modList.Count(x => x.Equals(','));
             if (modGuessCount > 16)
             {
+                tooMany = true;
                 return "[Too much to display] Count: " + modGuessCount;
             }
+            string modsInSession = ManMods.inst.GetModsInCurrentSession().Replace("[", "");
+            bool junkWithin = true;
+            while (junkWithin)
+            {
+                int startIndex = modsInSession.IndexOf(":");
+                int endIndex = modsInSession.IndexOf("]");
+                if (startIndex != -1 && endIndex != -1)
+                {
+                    modsInSession = modsInSession.Replace(modsInSession.Substring(startIndex, endIndex - startIndex + 1), "");
+                }
+                else
+                    junkWithin = false;
+            }
+            tooMany = false;
+            return modsInSession.Replace(",", ", ");
+        }
+        public static string GetModsIgnoreCount()
+        {
             string modsInSession = ManMods.inst.GetModsInCurrentSession().Replace("[", "");
             bool junkWithin = true;
             while (junkWithin)

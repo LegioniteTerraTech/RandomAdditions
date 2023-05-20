@@ -47,7 +47,7 @@ namespace RandomAdditions
             enabled = true;
             try
             {
-                forceEmitter = KickStart.HeavyObjectSearch(transform, "_Emitter");
+                forceEmitter = KickStart.HeavyTransformSearch(transform, "_Emitter");
             }
             catch { }
             if (forceEmitter == null)
@@ -56,11 +56,11 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("RandomAdditions: \nModuleTractorBeam NEEDS a GameObject in hierarchy named \"_Emitter\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
             if (!(bool)spinner)
-                spinner = GetComponentInChildren<Spinner>();
+                spinner = GetComponentInChildren<Spinner>(true);
             MaxRangeSq = MaxRange * MaxRange;
             try
             {
-                forceEmitterEnd = KickStart.HeavyObjectSearch(transform, "_Target");
+                forceEmitterEnd = KickStart.HeavyTransformSearch(transform, "_Target");
             }
             catch { }
             if (forceEmitterEnd != null)

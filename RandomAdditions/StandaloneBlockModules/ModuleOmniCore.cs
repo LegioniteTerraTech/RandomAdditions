@@ -304,20 +304,20 @@ namespace RandomAdditions
         private void PHYRotateAxis(Vector3 command)
         {
             Vector3 localAngleVelo = cab.InverseTransformVector(tank.rbody.angularVelocity);
-            Vector3 localVelo = Vector3.Scale(cab.InverseTransformVector(tank.rbody.angularVelocity), tank.rbody.inertiaTensor) * 2;
+            Vector3 localAngleForce = Vector3.Scale(localAngleVelo, tank.rbody.inertiaTensor) * 2;
             Vector3 InertiaDampenCheck = Vector3.zero;
-            InertiaDampenCheck.x = localVelo.x;// * Mathf.Abs(localVelo.x);
-            InertiaDampenCheck.y = localVelo.y;// * Mathf.Abs(localVelo.y);
-            InertiaDampenCheck.z = localVelo.z;// * Mathf.Abs(localVelo.z);
+            InertiaDampenCheck.x = localAngleForce.x;// * Mathf.Abs(localVelo.x);
+            InertiaDampenCheck.y = localAngleForce.y;// * Mathf.Abs(localVelo.y);
+            InertiaDampenCheck.z = localAngleForce.z;// * Mathf.Abs(localVelo.z);
             Vector3 InertiaDampen = Vector3.zero;
             float forceX;
-            if (!PHYRotateDirect(-command.x, localAngleVelo.x, localVelo.x, ref CurRotat.x, out forceX))
+            if (!PHYRotateDirect(-command.x, localAngleVelo.x, localAngleForce.x, ref CurRotat.x, out forceX))
                 InertiaDampen.x = -InertiaDampenCheck.x * 2;
             float forceY;
-            if (!PHYRotateDirect(-command.y, localAngleVelo.y, localVelo.y, ref CurRotat.y, out forceY))
+            if (!PHYRotateDirect(-command.y, localAngleVelo.y, localAngleForce.y, ref CurRotat.y, out forceY))
                 InertiaDampen.y = -InertiaDampenCheck.y * 2;
             float forceZ;
-            if (!PHYRotateDirect(-command.z, localAngleVelo.z, localVelo.z, ref CurRotat.z, out forceZ))
+            if (!PHYRotateDirect(-command.z, localAngleVelo.z, localAngleForce.z, ref CurRotat.z, out forceZ))
                 InertiaDampen.z = -InertiaDampenCheck.z * 2;
 
             Vector3 maxed = new Vector3(forceX, forceY, forceZ);

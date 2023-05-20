@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SafeSaves;
 using UnityEngine;
+using UnityEngine.Networking;
 using TerraTechETCUtil;
 
 
@@ -36,6 +37,74 @@ namespace RandomAdditions.PhysicsTethers
     }
     public class ManTethers
     {
+        public class TetherMessage : MessageBase
+        {
+            public TetherMessage() { }
+            public TetherMessage(ModuleTechTether main, ModuleTechTether link, bool connected, bool playSound)
+            {
+                BlockIndex = main.block.GetBlockIndexAndTechNetID(out TechID);
+                OtherBlockIndex = link.block.GetBlockIndexAndTechNetID(out TechOther);
+                this.connected = connected;
+                this.playSound = playSound;
+            }
+            
+            public uint TechID;
+            public int BlockIndex;
+            public uint TechOther;
+            public int OtherBlockIndex;
+            public bool connected;
+            public bool playSound;
+        }
+        private static NetworkHook<TetherMessage> netHook = new NetworkHook<TetherMessage>(OnReceiveTetherRequest, NetMessageType.FromClientToServerThenClients);
+
+        private static bool OnReceiveTetherRequest(TetherMessage command, bool isServer)
+        {
+            //command.GetBlockModuleOnTech<ModuleTechTether>(command.TechID, command.BlockIndex, out var MTT)
+            NetTech NT = ManNetTechs.inst.FindTech(command.TechID);
+            NetTech target = ManNetTechs.inst.FindTech(command.TechOther);
+            if (NT?.tech && target?.tech)
+            {
+                TankBlock TB = NT.tech.blockman.GetBlockWithIndex(command.BlockIndex);
+                TankBlock TB2 = target.tech.blockman.GetBlockWithIndex(command.OtherBlockIndex);
+                if (TB && TB2)
+                {
+                    ModuleTechTether MTT = TB.GetComponent<ModuleTechTether>();
+                    ModuleTechTether MTT2 = TB2.GetComponent<ModuleTechTether>();
+                    if (MTT && MTT2)
+                    {
+                        if (command.connected)
+                        {
+                            DoLinkTethers(MTT, MTT2, command.playSound);
+                            return true;
+                        }
+                        else
+                        {
+                            for (int step = 0; step < LinkedTethers.Count; step++)
+                            {
+                                var item = LinkedTethers.ElementAt(step);
+                                if (item.main == MTT && item.link == MTT2)
+                                {
+                                    item.DoDisconnect(command.playSound);
+                                    LinkedTethers.Remove(item);
+                                    return true;
+                                }
+                            }
+                            DebugRandAddi.Assert("OnReceiveTetherRequest - Request for disconnect has no matches!");
+                        }
+                        DebugRandAddi.Assert("OnReceiveTetherRequest - Failed layer 3!");
+                        return false;
+                    }
+                    DebugRandAddi.Assert("OnReceiveTetherRequest - Failed layer 2!");
+                    return false;
+                }
+                DebugRandAddi.Assert("OnReceiveTetherRequest - Failed layer 1!");
+                return false;
+            }
+            DebugRandAddi.Assert("OnReceiveTetherRequest - Failed layer 0!");
+            // Else we cannot link it!
+            return false;
+        }
+
         private const float BumpLinkReconnectIgnoreTime = 2;
 
 
@@ -46,21 +115,24 @@ namespace RandomAdditions.PhysicsTethers
         private static ModuleTechTether hoveringOver;
         private static HashSet<TetherPair> LinkedTethers;
         private static List<TetherPair> DeLinkedTethers = new List<TetherPair>();
+        private static bool UIClicked = false;
+
         public static void Init()
         {
             ActiveTethers = new List<ModuleTechTether>();
             LinkedTethers = new HashSet<TetherPair>();
-            Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
+            //Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(OnFixedUpdatePre), 85);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(OnFixedUpdatePost), -85);
             ManUpdate.inst.AddAction(ManUpdate.Type.Update, ManUpdate.Order.Last, new Action(OnUpdate), -9001);
+            netHook.Register();
         }
         public static void DeInit()
         {
             ManUpdate.inst.RemoveAction(ManUpdate.Type.Update, ManUpdate.Order.Last, new Action(OnUpdate));
             ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(OnFixedUpdatePost));
             ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(OnFixedUpdatePre));
-            Singleton.Manager<ManPointer>.inst.MouseEvent.Unsubscribe(OnClick);
+            //Singleton.Manager<ManPointer>.inst.MouseEvent.Unsubscribe(OnClick);
             LinkedTethers = null;
             ActiveTethers = null;
         }
@@ -68,55 +140,64 @@ namespace RandomAdditions.PhysicsTethers
         {
             if (mEvent == ManPointer.Event.RMB)
             {
-                var targVis = Singleton.Manager<ManPointer>.inst.targetVisible?.block;
-                if (targVis)
+                if (!UIClicked)
                 {
-                    if (down)
+                    var targVis = Singleton.Manager<ManPointer>.inst.targetVisible?.block;
+                    if (targVis)
                     {
-                        var tether = targVis.GetComponent<ModuleTechTether>();
-                        if (tether)
-                            hoveringOver = tether;
+                        if (down)
+                        {
+                            var tether = targVis.GetComponent<ModuleTechTether>();
+                            if (tether)
+                                hoveringOver = tether;
+                        }
+                        else
+                        {
+                            if (SelectedTether && SelectedTether.block.visible.isActive
+                                && SelectedTether.block.tank && targVis.tank)
+                            {
+                                var tether = targVis.GetComponent<ModuleTechTether>();
+                                if (tether && tether == hoveringOver && tether != SelectedTether)
+                                {
+                                    TryLinkTethers(SelectedTether, tether, true);
+                                }
+                            }
+                            else if (targVis.tank)
+                            {
+                                /*
+                                var tether = targVis.GetComponent<ModuleTechTether>();
+                                if (tether && tether == hoveringOver)
+                                {
+                                    if (tether.IsConnected)
+                                    {
+                                        tether.Connection.Disconnect(true);
+                                    }
+                                    else
+                                    {
+                                        SelectedTether = tether;
+                                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
+                                        foreach (var item in ActiveTethers)
+                                        {
+                                            if (item.tank != SelectedTether.tank)
+                                            {
+                                                item.block.visible.EnableOutlineGlow(true, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                                            }
+                                        }
+                                        hoveringOver = null;
+                                        return;
+                                    }
+                                }*/
+                            }
+                            foreach (var item in ActiveTethers)
+                            {
+                                item.block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                            }
+                            hoveringOver = null;
+                            SelectedTether = null;
+                        }
                     }
                     else
                     {
-                        if (SelectedTether && SelectedTether.block.visible.isActive
-                            && SelectedTether.block.tank && targVis.tank)
-                        {
-                            var tether = targVis.GetComponent<ModuleTechTether>();
-                            if (tether && tether == hoveringOver && tether != SelectedTether)
-                            {
-                                if (SelectedTether.IsConnected)
-                                    SelectedTether.Connection.Disconnect(false);
-                                if (tether.IsConnected)
-                                    tether.Connection.Disconnect(false);
-                                LinkTethers(SelectedTether, tether, true);
-                            }
-                        }
-                        else if (targVis.tank)
-                        {
-                            var tether = targVis.GetComponent<ModuleTechTether>();
-                            if (tether && tether == hoveringOver)
-                            {
-                                if (tether.IsConnected)
-                                {
-                                    tether.Connection.Disconnect(true);
-                                }
-                                else
-                                {
-                                    SelectedTether = tether;
-                                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
-                                    foreach (var item in ActiveTethers)
-                                    {
-                                        if (item.tank != SelectedTether.tank)
-                                        {
-                                            item.block.visible.EnableOutlineGlow(true, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
-                                        }
-                                    }
-                                    hoveringOver = null;
-                                    return;
-                                }
-                            }
-                        }
                         foreach (var item in ActiveTethers)
                         {
                             item.block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
@@ -125,20 +206,48 @@ namespace RandomAdditions.PhysicsTethers
                         SelectedTether = null;
                     }
                 }
-                else
-                {
-                    foreach (var item in ActiveTethers)
-                    {
-                        item.block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
-                    }
-                    hoveringOver = null;
-                    SelectedTether = null;
-                }
+
+                UIClicked = false;
             }
         }
 
-        public static void LinkTethers(ModuleTechTether Main, ModuleTechTether Link, bool playSound)
+        public static bool OnAttachRequest(ModuleTechTether tether)
         {
+            if (SelectedTether && SelectedTether.block.visible.isActive
+                && SelectedTether.block.tank && tether != SelectedTether && tether.tank && CanLinkTethers(SelectedTether, tether))
+            {
+                TryLinkTethers(SelectedTether, tether, true);
+                return true;
+            }
+            return false;
+        }
+
+
+        public static bool CanLinkTethers(ModuleTechTether Main, ModuleTechTether Link)
+        {
+            if (!Main.IsConnected && !Link.IsConnected)
+            {
+                float combinedMaxDist = Mathf.Pow(Main.MaxDistance + Link.MaxDistance, 2);
+                Vector3 spacing = Main.tetherEnd.position - Link.tetherEnd.position;
+                float Dist = spacing.sqrMagnitude;
+                if (Dist <= combinedMaxDist)
+                    return true;
+            }
+            return false;
+        }
+        public static void TryLinkTethers(ModuleTechTether Main, ModuleTechTether Link, bool playSound)
+        {
+            if (netHook.CanBroadcast())
+                netHook.TryBroadcast(new TetherMessage(Main, Link, true, playSound));
+            else
+                DoLinkTethers(Main, Link, playSound);
+        }
+        public static void DoLinkTethers(ModuleTechTether Main, ModuleTechTether Link, bool playSound)
+        {
+            if (Main.IsConnected)
+                Main.Connection.DoDisconnect(false);
+            if (Link.IsConnected)
+                Link.Connection.DoDisconnect(false);
             if (!Main.IsConnected && !Link.IsConnected)
             {
                 if (Main == Link)
@@ -164,6 +273,11 @@ namespace RandomAdditions.PhysicsTethers
                     Main.AC.RunBool(true);
                 if (Link.AC)
                     Link.AC.RunBool(true);
+                if (ManNetwork.IsHost)
+                {
+                    Main.tank.control.explosiveBoltDetonateEvents[3].Subscribe(Main.DisconnectX);
+                    Link.tank.control.explosiveBoltDetonateEvents[3].Subscribe(Link.DisconnectX);
+                }
                 ConnectionTethersUpdate.Send(true, Main.tank, Link.tank);
 
                 if (playSound && (Main.block.trans.position - Singleton.playerPos).Approximately(Vector3.zero, 100))
@@ -182,11 +296,12 @@ namespace RandomAdditions.PhysicsTethers
             foreach (var item in LinkedTethers)
             {
                 if (!item.CalcPhysicsImpact())
-                    DeLinkedTethers.Add(item);
+                    if (ManNetwork.IsHost)
+                        DeLinkedTethers.Add(item);
             }
             foreach (var item in DeLinkedTethers)
             {
-                item.Disconnect(true);
+                item.TryDisconnect(true, true);
             }
             DeLinkedTethers.Clear();
         }
@@ -195,9 +310,9 @@ namespace RandomAdditions.PhysicsTethers
         {
             foreach (var item in LinkedTethers)
             {
-                if (item.main.tank.rbody)
+                if (item.main.tank.rbody && item.main.tank.CanRunPhysics())
                     item.main.tank.rbody.AddForceAtPosition(-item.forceNormal * item.forcesThisFrame, item.main.tetherPoint.position, ForceMode.Force);
-                if (item.link.tank.rbody)
+                if (item.link.tank.rbody && item.link.tank.CanRunPhysics())
                     item.link.tank.rbody.AddForceAtPosition(item.forceNormal * item.forcesThisFrame, item.link.tetherPoint.position, ForceMode.Force);
             }
         }
@@ -247,7 +362,14 @@ namespace RandomAdditions.PhysicsTethers
                     return link;
                 return main;
             }
-            internal void Disconnect(bool playSound = false)
+            internal void TryDisconnect(bool HostOnly, bool playSound)
+            {
+                if (!ManNetwork.IsNetworked)
+                    DoDisconnect(playSound);
+                else if (!HostOnly || ManNetwork.IsHost)
+                    netHook.TryBroadcast(new TetherMessage(main, link, false, playSound));
+            }
+            internal void DoDisconnect(bool playSound)
             {
                 if (main == null || link == null)
                 {
@@ -255,7 +377,6 @@ namespace RandomAdditions.PhysicsTethers
                 }
                 if (playSound && main && (main.block.trans.position - Singleton.playerPos).Approximately(Vector3.zero, 100))
                     main.FireConnectionSound(false);
-
                 if (main?.tank)
                     main.Delink();
                 if (link?.tank)
@@ -313,6 +434,11 @@ namespace RandomAdditions.PhysicsTethers
             public Color BeamColorStart = new Color(0.05f, 0.1f, 1f, 0.8f);
             public Color BeamColorEnd = new Color(0.05f, 0.1f, 1f, 0.8f);
 
+            // Logic
+            public int DissconnectInputAPIndex = 0;
+            public int[] InputsOnAPIndexes = new int[0];
+            public int[] OutputsOnAPIndexes = new int[0];
+
             // Audio
             public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
             public TechAudio.SFXType m_ConnectSFXType = TechAudio.SFXType.Anchored;
@@ -339,13 +465,15 @@ namespace RandomAdditions.PhysicsTethers
             private Collider bumpLinkCollider;
             private float bumpLinkReconnectDelay = 0;
 
+            private ModuleUIButtons buttonGUI;
+
 
             protected override void Pool()
             {
                 enabled = true;
                 try
                 {
-                    tetherPoint = KickStart.HeavyObjectSearch(transform, "_Tether");
+                    tetherPoint = KickStart.HeavyTransformSearch(transform, "_Tether");
                 }
                 catch { }
                 if (tetherPoint == null)
@@ -355,13 +483,13 @@ namespace RandomAdditions.PhysicsTethers
                 }
                 try
                 {
-                    tetherUpright = KickStart.HeavyObjectSearch(transform, "_TetherUp");
+                    tetherUpright = KickStart.HeavyTransformSearch(transform, "_TetherUp");
                     if (tetherUpright)
                     {
-                        tetherConnector = KickStart.HeavyObjectSearch(transform, "_TetherConnector");
+                        tetherConnector = KickStart.HeavyTransformSearch(transform, "_TetherConnector");
                         if (tetherConnector == null)
                             LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_TetherConnector\" if \"_TetherUp\" is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
-                        tetherConnectorEnd = KickStart.HeavyObjectSearch(transform, "_TetherConnectorEnd");
+                        tetherConnectorEnd = KickStart.HeavyTransformSearch(transform, "_TetherConnectorEnd");
                         if (tetherConnectorEnd == null)
                             LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_TetherConnectorEnd\" if \"_TetherUp\" is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                         tetherConnectorStartLocal = tetherConnectorEnd.localPosition.z;
@@ -371,7 +499,7 @@ namespace RandomAdditions.PhysicsTethers
 
                 try
                 {
-                    Transform bumpTrans = KickStart.HeavyObjectSearch(transform, "_TetherBumpCollider");
+                    Transform bumpTrans = KickStart.HeavyTransformSearch(transform, "_TetherBumpCollider");
                     if (bumpTrans)
                     {
                         bumpLinkCollider = bumpTrans.GetComponent<SphereCollider>();
@@ -383,7 +511,7 @@ namespace RandomAdditions.PhysicsTethers
 
                 try
                 {
-                    tetherEnd = KickStart.HeavyObjectSearch(transform, "_Target");
+                    tetherEnd = KickStart.HeavyTransformSearch(transform, "_Target");
                 }
                 catch { }
                 if (tetherEnd != null)
@@ -399,20 +527,19 @@ namespace RandomAdditions.PhysicsTethers
 
             public override void OnAttach()
             {
+                InsureGUI();
                 ExtUsageHint.ShowExistingHint(4010);
                 ActiveTethers.Add(this);
                 bumpLinkReconnectDelay = Time.time + BumpLinkReconnectIgnoreTime;
                 tank.TechAudio.AddModule(this);
                 tank.CollisionEvent.Subscribe(OnCollisionTank);
-                tank.control.explosiveBoltDetonateEvents[0].Subscribe(DisconnectX);
             }
             public override void OnDetach()
             {
-                tank.control.explosiveBoltDetonateEvents[0].Unsubscribe(DisconnectX);
                 tank.CollisionEvent.Unsubscribe(OnCollisionTank);
                 tank.TechAudio.RemoveModule(this);
                 if (Connection != null)
-                    Connection.Disconnect(true);
+                    Connection.TryDisconnect(true, true);
                 UpdateTether(tetherConnectorStartLocal);
                 ActiveTethers.Remove(this);
                 block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
@@ -427,9 +554,58 @@ namespace RandomAdditions.PhysicsTethers
                     if (MTT && MTT.bumpLinkCollider == col.b.collider)
                     {
                         bumpLinkReconnectDelay = Time.time + BumpLinkReconnectIgnoreTime;
-                        LinkTethers(this, MTT, true);
+                        TryLinkTethers(this, MTT, true);
                     }
                 }
+            }
+
+            public void InsureGUI()
+            {
+                if (buttonGUI == null)
+                {
+                    buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Tether", true);
+                    buttonGUI.AddElement(ConnectionStatus, RequestConnection, null);
+                }
+            }
+            public string ConnectionStatus()
+            {
+                if (IsConnected)
+                    return "Unlink";
+                else
+                    return "Link";
+            }
+            public float RequestConnection(float unused)
+            {
+                UIClicked = true;
+                if (IsConnected)
+                {
+                    Connection.TryDisconnect(false, true);
+                }
+                else
+                {
+                    //ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
+                    if (SelectedTether != null)
+                    {
+                        OnAttachRequest(this);
+                        SelectedTether = null;
+                        foreach (var item in ActiveTethers)
+                        {
+                            item.block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                        }
+                        return 0;
+                    }
+                    SelectedTether = this;
+                    foreach (var item in ActiveTethers)
+                    {
+                        if (item.tank != SelectedTether.tank && CanLinkTethers(this, item))
+                        {
+                            item.block.visible.EnableOutlineGlow(true, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
+                        }
+                    }
+                    hoveringOver = null;
+                    return 0;
+                }
+                return 0;
             }
 
 
@@ -438,7 +614,7 @@ namespace RandomAdditions.PhysicsTethers
             {
                 if (IsConnected)
                 {
-                    Connection.Disconnect(true);
+                    Connection.TryDisconnect(true, true);
                 }
             }
             internal void FireConnectionSound(bool connected)
@@ -460,7 +636,7 @@ namespace RandomAdditions.PhysicsTethers
                         audioTickData.isNoteOn = true;
                         audioTickData.adsrTime01 = 1;//doSpool ? 1 : 0;
                         TechAudio.AudioTickData value = audioTickData;
-                        OnAudioTickUpdate.Send(value, null);
+                        OnAudioTickUpdate.Send(value, FMODEvent.FMODParams.empty);
                     }
                 }
                 catch { }
@@ -474,6 +650,8 @@ namespace RandomAdditions.PhysicsTethers
             {
                 if (IsConnected)
                 {
+                    if (ManNetwork.IsHost)
+                        tank.control.explosiveBoltDetonateEvents[3].Unsubscribe(DisconnectX);
                     BeamSide = false;
                     Connection = null;
                     bumpLinkReconnectDelay = Time.time + BumpLinkReconnectIgnoreTime;
@@ -591,7 +769,7 @@ namespace RandomAdditions.PhysicsTethers
                     if (MTT)
                     {
                         ModuleTechTether nextTech = MTT.GetOtherSideTetherWithQuat(out Quaternion nextQuat);
-                        if (nextTech && !list.TryGetValue(nextTech.tank, out _))
+                        if (nextTech && !list.ContainsKey(nextTech.tank))
                         {
                             nextTech.GetAllRecurseTethersRotation(list, prev * nextQuat);
                         }
@@ -664,7 +842,7 @@ namespace RandomAdditions.PhysicsTethers
                                     var comp = item2.GetComponent<ModuleTechTether>();
                                     if (comp)
                                     {
-                                        LinkTethers(this, comp, false);
+                                        DoLinkTethers(this, comp, false);
                                     }
                                     break;
                                 }
@@ -730,6 +908,15 @@ namespace RandomAdditions.PhysicsTethers
                 {
                     StopBeam();
                 }
+            }
+
+            // LOGIC interface
+
+            public int GetDispensableCharge(Vector3 APOut)
+            {
+                if (CircuitExt.LogicEnabled)
+                    return GlobalClock.LastHour;
+                return 0;
             }
 
 

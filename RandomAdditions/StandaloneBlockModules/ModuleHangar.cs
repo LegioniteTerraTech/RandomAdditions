@@ -19,16 +19,15 @@ namespace RandomAdditions
     /// </para>
     /// </summary>
     [AutoSaveComponent]
-    public class ModuleHangar : Module
+    public class ModuleHangar : ExtModule
     {
         public class HangarCommand : MessageBase
         {
             public HangarCommand() { }
-            public HangarCommand(uint TechID, int BlockIndex, uint TechToDock, bool ChangeTarget)
+            public HangarCommand(ModuleHangar techBay, Tank TechToDock, bool ChangeTarget)
             {
-                this.TechID = TechID;
-                this.BlockIndex = BlockIndex;
-                this.TechToDock = TechToDock;
+                BlockIndex = techBay.block.GetBlockIndexAndTechNetID(out TechID);
+                this.TechToDock = TechToDock.netTech.netId.Value;
                 this.ChangeTarget = ChangeTarget;
             }
 
@@ -37,9 +36,28 @@ namespace RandomAdditions
             public uint TechToDock;
             public bool ChangeTarget;
         }
+        private static NetworkHook<HangarCommand> netHook = new NetworkHook<HangarCommand>(OnReceiveDockingRequest, NetMessageType.ToServerOnly);
+
+        public class HangarLaunchCommand : MessageBase
+        {
+            public HangarLaunchCommand() { }
+            public HangarLaunchCommand(ModuleHangar techBay)
+            {
+                BlockIndex = techBay.block.GetBlockIndexAndTechNetID(out TechID);
+            }
+
+            public uint TechID;
+            public int BlockIndex;
+        }
+        private static NetworkHook<HangarLaunchCommand> netHookLaunch = new NetworkHook<HangarLaunchCommand>(OnReceiveLaunchRequest, NetMessageType.ToServerOnly);
+
+        internal static void InsureNetHooks()
+        {
+            netHook.Register();
+            netHookLaunch.Register();
+        }
 
         private const float DelayedUpdateDelay = 0.5f;
-        private static NetworkHook<HangarCommand> netHook = new NetworkHook<HangarCommand>(OnReceiveDockingRequest);
 
         internal Tank tank => block.tank;
         private bool isSaving = false;
@@ -88,34 +106,35 @@ namespace RandomAdditions
         private float nextTime = 0;
         private float HangarReturnRequestDelay = 0;
 
+        private ModuleUIButtons buttonGUI;
+        private GUI_BM_Element[] GUILocal = new GUI_BM_Element[1];
+        private GUI_BM_Element[] GUIOther = new GUI_BM_Element[1];
+
         public bool IsDocking => TankWantsToDock;
         public bool HasRoom { get { return GarrisonTechs.Count < MaxTechCapacity; } }
         public bool HasStoredTechs { get { return GarrisonTechs.Count > 0; } }
 
         public static void OnBlockSelect(Visible targVis, ManPointer.Event mEvent, bool DOWN, bool yes2)
         {
-            if (Singleton.playerTank && mEvent == ManPointer.Event.LMB)
+            if (Singleton.playerTank && mEvent == ManPointer.Event.LMB && Input.GetKey(KickStart.HangarButton))
             {
                 Tank tech = targVis.trans.root.GetComponent<Tank>();
                 if (tech)
                 {
                     if (tech.Team == Singleton.playerTank.Team && Singleton.playerTank != tech)
                     {
-                        if (Input.GetKey(KickStart.HangarButton))
+                        foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
                         {
-                            foreach (TankBlock TB in Singleton.playerTank.blockman.IterateBlocks())
+                            ModuleHangar MH = TB.GetComponent<ModuleHangar>();
+                            if (MH)
                             {
-                                ModuleHangar MH = TB.GetComponent<ModuleHangar>();
-                                if (MH)
+                                if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
                                 {
-                                    if (MH.HasRoom && (!MH.IsDocking || Input.GetKey(KeyCode.LeftShift)))
-                                    {
-                                        if (MH.RequestAssignToDock(tech))
-                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                                        else
-                                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                                        break;
-                                    }
+                                    if (MH.RequestAssignToDock(tech))
+                                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                                    else
+                                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
+                                    break;
                                 }
                             }
                         }
@@ -124,21 +143,46 @@ namespace RandomAdditions
             }
         }
 
-        internal void OnPool()
+        public void InsureGUI()
+        {
+            if (buttonGUI == null)
+            {
+                buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Hangar", true);
+                buttonGUI.OnGUIOpenAttemptEvent.Subscribe(BeforeGUI);
+                GUILocal[0] = ModuleUIButtons.MakeElement("Release Tech", RequestLaunchTech, GetIconRelease);
+                GUIOther[0] = ModuleUIButtons.MakeElement("Dock", RequestDockingPlayer, GetIconGrab);
+            }
+        }
+        public Sprite GetIconRelease()
+        {
+            return UIHelpersExt.GetGUIIcon("ICON_TECHLOADER");
+        }
+        public Sprite GetIconGrab()
+        {
+            return UIHelpersExt.GetGUIIcon("Icon_AI_SCU");
+        }
+        public void BeforeGUI()
+        {
+            if (tank != Singleton.playerTank)
+            {
+                buttonGUI.SetElementsInst(GUIOther);
+            }
+            else
+            {
+                if (GarrisonTechs.Count > 0)
+                    buttonGUI.SetElementsInst(GUILocal);
+                else
+                    buttonGUI.DenyShow();
+            }
+        }
+
+        protected override void Pool()
         {
             enabled = true;
             HangarStoredVolume = 0;
             try
             {
-                block.SubToBlockAttachConnected(OnAttach, OnDetach);
-            }
-            catch
-            {
-                DebugRandAddi.LogError("RandomAdditions: ModuleHangar - TankBlock IS NULL");
-            }
-            try
-            {
-                HangarEntry = KickStart.HeavyObjectSearch(transform, "_Entry");
+                HangarEntry = KickStart.HeavyTransformSearch(transform, "_Entry");
             }
             catch { }
             if (HangarEntry == null)
@@ -149,7 +193,7 @@ namespace RandomAdditions
 
             try
             {
-                HangarExit = KickStart.HeavyObjectSearch(transform, "_Exit");
+                HangarExit = KickStart.HeavyTransformSearch(transform, "_Exit");
             }
             catch { }
             if (HangarExit == null)
@@ -159,7 +203,7 @@ namespace RandomAdditions
 
             try
             {
-                HangarInside = KickStart.HeavyObjectSearch(transform, "_Inside");
+                HangarInside = KickStart.HeavyTransformSearch(transform, "_Inside");
             }
             catch { }
             if (HangarInside == null)
@@ -170,7 +214,7 @@ namespace RandomAdditions
 
             try
             {
-                HangarInsideExit = KickStart.HeavyObjectSearch(transform, "_InsideExit");
+                HangarInsideExit = KickStart.HeavyTransformSearch(transform, "_InsideExit");
             }
             catch { }
             if (HangarInsideExit == null)
@@ -214,19 +258,17 @@ namespace RandomAdditions
             }
         }
 
-        public void OnAttach()
+        public override void OnAttach()
         {
             enabled = true;
             block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             //block.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            block.MouseDownEvent.Subscribe(new Action<TankBlock, int>(RequestDockingPlayer));
             ExtUsageHint.ShowExistingHint(4009);
         }
-        public void OnDetach()
+        public override void OnDetach()
         {
             block.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             //block.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            block.MouseDownEvent.Unsubscribe(new Action<TankBlock, int>(RequestDockingPlayer));
             TankWantsToDock = null;
             if (TracBeam)
                 TracBeam.ReleaseTech();
@@ -244,7 +286,7 @@ namespace RandomAdditions
                 LaunchAnimating.trans.localScale = Vector3.one;
                 foreach (TankBlock TB in LaunchAnimating.blockman.IterateBlocks())
                 {
-                    TB.visible.SetInteractionTimeout(0);
+                    TB.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                     TB.visible.ColliderSwapper.EnableCollision(true);
                 }
                 LaunchAnimating.enabled = true;
@@ -254,12 +296,12 @@ namespace RandomAdditions
             {
                 fireTimes--;
             }
-            if (!isSaving)
+            if (!isSaving && ManNetwork.IsHost)
             {
                 fireTimes = GarrisonTechs.Count;
                 for (int step = 0; step < fireTimes;)
                 {
-                    LaunchTech(true);
+                    DoLaunchTech(true);
                     fireTimes--;
                 }
             }
@@ -302,7 +344,7 @@ namespace RandomAdditions
                         {
                             AbsorbAnimating.RemoveAt(step);
                             AbsorbAnimatingPos.RemoveAt(step);
-                            toManage.visible.SetInteractionTimeout(0);
+                            toManage.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                             toManage.visible.ColliderSwapper.EnableCollision(true);
                             ManLooseBlocks.inst.RequestDespawnBlock(toManage, DespawnReason.Host);
                             step--;
@@ -326,7 +368,7 @@ namespace RandomAdditions
                                 LaunchAnimating.trans.localScale = Vector3.one;
                                 foreach (TankBlock TB in LaunchAnimating.blockman.IterateBlocks())
                                 {
-                                    TB.visible.SetInteractionTimeout(0);
+                                    TB.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                                     TB.visible.ColliderSwapper.EnableCollision(true);
                                 }
                             }
@@ -344,7 +386,7 @@ namespace RandomAdditions
                         {
                             foreach (TankBlock TB in LaunchAnimating.blockman.IterateBlocks())
                             {
-                                TB.visible.SetInteractionTimeout(0);
+                                TB.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                                 TB.visible.ColliderSwapper.EnableCollision(true);
                             }
                             LaunchAnimating.trans.localScale = Vector3.one;
@@ -390,7 +432,7 @@ namespace RandomAdditions
                         LaunchAnimating.trans.localScale = Vector3.one;
                         foreach (TankBlock TB in LaunchAnimating.blockman.IterateBlocks())
                         {
-                            TB.visible.SetInteractionTimeout(0);
+                            TB.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 0);// disable ALL
                             TB.visible.ColliderSwapper.EnableCollision(true);
                         }
                     }
@@ -417,7 +459,7 @@ namespace RandomAdditions
                     TracBeam.ReleaseTech();
                 if (GarrisonTechs.Count > 0)
                 {
-                    LaunchTech();
+                    TryLaunchTech();
                 }
                 else
                     isEjecting = false;
@@ -436,6 +478,39 @@ namespace RandomAdditions
         }
 
 
+        public float RequestLaunchTech(float unused)
+        {
+            TryLaunchTech();
+            return 0;
+        }
+        public void TryLaunchTech()
+        {
+            if (ManNetwork.IsHost)
+                DoLaunchTech();
+            else
+            {
+                netHookLaunch.TryBroadcast(new HangarLaunchCommand());
+            }
+        }
+        private static bool OnReceiveLaunchRequest(HangarLaunchCommand command, bool isServer)
+        {
+            NetTech NT = ManNetTechs.inst.FindTech(command.TechID);
+            if (NT?.tech)
+            {
+                TankBlock TB = NT.tech.blockman.GetBlockWithIndex(command.BlockIndex);
+                if (TB)
+                {
+                    ModuleHangar MH = TB.GetComponent<ModuleHangar>();
+                    if (MH)
+                    {
+                        MH.DoLaunchTech();
+                        return true;
+                    }
+                }
+            }
+            // Else we cannot launch it!
+            return false;
+        }
         private bool GetBestGarrisonedTech(out KeyValuePair<STechDetails, TechData> garrisonedTech)
         {
             bool canRepair = RepairStoredTechsRate > 0;
@@ -471,9 +546,9 @@ namespace RandomAdditions
                 garrisonedTech = GarrisonTechs[0];
             return garrisonedTech.Value != null;
         }
-        private void LaunchTech(bool Disassemble = false)
+        private void DoLaunchTech(bool Disassemble = false)
         {
-            if (ManNetwork.IsHost)
+            if (ManNetwork.IsHost && GarrisonTechs.Count > 0)
             {
                 Vector3 ExitPosScene = HangarExit.position;
                 if (!ManWorld.inst.TryProjectToGround(ref ExitPosScene))
@@ -573,7 +648,7 @@ namespace RandomAdditions
             newTech.enabled = false;
             foreach (TankBlock TB in newTech.blockman.IterateBlocks())
             {
-                TB.visible.SetInteractionTimeout(4);
+                TB.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 4);// disable ALL
                 TB.visible.ColliderSwapper.EnableCollision(false);
                 HangarStoredVolume -= TB.filledCells.Length;
             }
@@ -722,16 +797,16 @@ namespace RandomAdditions
         }
         private void DoStoreTechWithAnimation(Tank tech)
         {
-            foreach (TankBlock TB in TankWantsToDock.blockman.IterateBlocks())
+            foreach (TankBlock TB in tech.blockman.IterateBlocks())
             {
-                TB.visible.SetInteractionTimeout(4);
+                TB.visible.SetLockTimout(Visible.LockTimerTypes.Interactible, 4);// disable ALL
                 TB.visible.ColliderSwapper.EnableCollision(false);
                 AbsorbAnimating.Add(TB);
                 AbsorbAnimatingPos.Add(transform.InverseTransformPoint(TB.visible.centrePosition));
             }
             if (TracBeam)
                 TracBeam.ReleaseTech();
-            TankWantsToDock.blockman.Disintegrate(false);
+            tech.blockman.Disintegrate(false);
         }
         private void DoStoreTechImmedeate(Tank tech)
         {
@@ -850,9 +925,9 @@ namespace RandomAdditions
         {
             if (ManNetwork.IsNetworked)
             {
-                if (netHook.CanBroadcast() && tank?.netTech && tech?.netTech)
+                if (netHook.CanBroadcastTech(tank) && tech?.netTech)
                 {
-                    netHook.TryBroadcastToAll(new HangarCommand(tank.netTech.netId.Value, block.GetBlockIndex(), tech.netTech.netId.Value, ChangeTarget));
+                    netHook.TryBroadcast(new HangarCommand(this, tech, ChangeTarget));
                 }
                 return true;
             }
@@ -861,7 +936,7 @@ namespace RandomAdditions
                 return DoAssignToDock(tech, ChangeTarget);
             }
         }
-        internal void RequestDockingPlayer(TankBlock block, int num)
+        internal float RequestDockingPlayer(float unused)
         {
             if (Singleton.playerTank == tank)
             {
@@ -870,21 +945,18 @@ namespace RandomAdditions
             }
             else
             {
-                if (block == this.block)
-                {
-                    if (RequestAssignToDock(Singleton.playerTank, true))
-                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                    else
-                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
-                }
+                if (RequestAssignToDock(Singleton.playerTank, true))
+                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                else
+                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
             }
+            return 0;
         }
-        private static void OnReceiveDockingRequest(MessageBase MB)
+        private static bool OnReceiveDockingRequest(HangarCommand command, bool isServer)
         {
-            HangarCommand command = (HangarCommand)MB;
             NetTech NT = ManNetTechs.inst.FindTech(command.TechID);
             NetTech target = ManNetTechs.inst.FindTech(command.TechToDock);
-            if (NT && NT.tech && target && target.tech)
+            if (NT?.tech && target?.tech)
             {
                 TankBlock TB = NT.tech.blockman.GetBlockWithIndex(command.BlockIndex);
                 if (TB)
@@ -893,10 +965,12 @@ namespace RandomAdditions
                     if (MH)
                     {
                         MH.DoAssignToDock(target.tech, command.ChangeTarget);
+                        return true;
                     }
                 }
             }
             // Else we cannot store it!
+            return false;
         }
         public bool DoAssignToDock(Tank tech, bool ChangeTarget = true)
         {
