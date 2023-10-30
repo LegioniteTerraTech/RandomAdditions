@@ -27,7 +27,8 @@ namespace RandomAdditions
             DebugRandAddi.Log("RandomAdditions: CALLED EARLYINIT");
             if (oInst == null)
             {
-                KickStart.OfficialEarlyInit();
+                TerraTechETCUtil.ModStatusChecker.EncapsulateSafeInit("Random Additions",
+                    KickStart.OfficialEarlyInit, KickStart.DeInitALL);
                 oInst = this;
             }
         }
@@ -38,8 +39,12 @@ namespace RandomAdditions
                 return;
             if (oInst == null)
                 oInst = this;
-
-            KickStart.MainOfficialInit();
+            try
+            {
+                TerraTechETCUtil.ModStatusChecker.EncapsulateSafeInit("Random Additions", 
+                    KickStart.MainOfficialInit, KickStart.DeInitALL);
+            }
+            catch { }
             //ManRails.LateInit();
             isInit = true;
         }

@@ -95,14 +95,17 @@ namespace RandomAdditions
             if (queuedGeneration > 1)
             {
                 //DebugRandAddi.Log("Pushing generation " + queuedGeneration);
-                tank.EnergyRegulator.Supply(EnergyRegulator.EnergyType.Electric, Energy, queuedGeneration);
+                tank.EnergyRegulator.Supply(TechEnergy.EnergyType.Electric, Energy, queuedGeneration);
                 queuedGeneration = 0;
             }
         }
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleFuelEnergyGenerator",
+            AltUI.HighlightString("Fuel Generators") + " burn " + AltUI.ObjectiveString("Fuel") + 
+            " to generate " + AltUI.BlueString("Energy") + ".");
         public override void OnAttach()
         {
             enabled = true;
-            ExtUsageHint.ShowExistingHint(4007);
+            hint.Show();
         }
         public override void OnDetach()
         {
@@ -172,7 +175,7 @@ namespace RandomAdditions
                 switch (GenerateCondition)
                 {
                     case GenerateMethod.Manual:
-                        if (tank.control.BoostControlJets)
+                        if (tank.control.CurState.m_BoostJets)
                         {   // generate
                             BoostGenerate();
                         }
@@ -200,7 +203,7 @@ namespace RandomAdditions
                             else
                                 isBoostingNow = false;
 
-                            energyDemand = GetCurrentEnergyPercent() < 0.9f || tank.control.BoostControlJets;
+                            energyDemand = GetCurrentEnergyPercent() < 0.9f || tank.control.CurState.m_BoostJets;
                             if (!isBoostingPhase && energyDemand && output > 0.98f)
                             {  // the tanks are full and we are ready to roar
                                 isBoostingPhase = true;
@@ -247,7 +250,7 @@ namespace RandomAdditions
         {
             if (tank != null)
             {
-                var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
                 return reg.storageTotal - reg.spareCapacity;
             }
             return 0;
@@ -256,7 +259,7 @@ namespace RandomAdditions
         {
             if (tank != null)
             {
-                return tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric).storageTotal;
+                return tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric).storageTotal;
             }
             return 0;
         }
@@ -264,7 +267,7 @@ namespace RandomAdditions
         {
             if (tank != null)
             {
-                var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
                 return reg.storageTotal - reg.currentAmount;
             }
             return 0;
@@ -272,7 +275,7 @@ namespace RandomAdditions
         // DO NOT CALL WHILE ADDING OR SUBTRACTING POWER
         public float GetCurrentEnergyPercent()
         {
-            var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             if (tank != null || reg.storageTotal > 1)
             {
                 //DebugRandAddi.Log("GetCurrentEnergyPercent - " + ((reg.storageTotal - reg.spareCapacity) / reg.storageTotal));

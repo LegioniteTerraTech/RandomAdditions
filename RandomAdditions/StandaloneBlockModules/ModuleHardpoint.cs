@@ -62,21 +62,17 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             enabled = true;
-            tank.AttachEvent.Subscribe(new Action<TankBlock, Tank>(BlockAttachedToTank));
-            tank.DetachEvent.Subscribe(new Action<TankBlock, Tank>(BlockDetachedFromTank));
+            block.NeighbourAttachedEvent.Subscribe(AdjacentBlockChanges);
+            block.NeighbourDetachedEvent.Subscribe(AdjacentBlockChanges);
+            AdjacentBlockChanges();
         }
         public override void OnDetach()
         {
-            tank.AttachEvent.Unsubscribe(BlockAttachedToTank);
-            tank.DetachEvent.Unsubscribe(BlockDetachedFromTank);
+            block.NeighbourAttachedEvent.Unsubscribe(AdjacentBlockChanges);
+            block.NeighbourDetachedEvent.Unsubscribe(AdjacentBlockChanges);
+            AdjacentBlockChanges();
         }
-        private void BlockAttachedToTank(TankBlock TB, Tank tank)
-        {
-            CancelInvoke();
-            Invoke("UpdateAttached", 0.001f);
-        }
-
-        private void BlockDetachedFromTank(TankBlock detachedBlock, Tank tank)
+        private void AdjacentBlockChanges(TankBlock TB = null)
         {
             CancelInvoke();
             Invoke("UpdateAttached", 0.001f);

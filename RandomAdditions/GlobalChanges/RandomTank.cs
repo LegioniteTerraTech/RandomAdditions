@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using TerraTechETCUtil;
 using RandomAdditions.RailSystem;
 
 namespace RandomAdditions
@@ -142,11 +143,11 @@ namespace RandomAdditions
             {
                 if (set)
                 {
-                    ManTileLoader.RegisterDynamicTileLoader(this);
+                    ManWorldTileExt.RegisterDynamicTileLoader(this);
                 }
                 else
                 {
-                    ManTileLoader.UnregisterDynamicTileLoader(this);
+                    ManWorldTileExt.UnregisterDynamicTileLoader(this);
                 }
             }
         }
@@ -159,7 +160,7 @@ namespace RandomAdditions
         {
             if (!tank || !ManSpawn.IsPlayerTeam(tank.Team))
                 return;
-            ManTileLoader.GetActiveTilesAround(cache,
+            ManWorldTileExt.GetActiveTilesAround(cache,
                 WorldPosition.FromScenePosition(tank.boundsCentreWorldNoCheck),
                 MaxTileLoadingDiameter);
         }

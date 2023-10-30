@@ -89,17 +89,17 @@ namespace RandomAdditions
                     }
                     else if (Input.GetKey(KeyCode.LeftShift) && TB.GetComponent<ModuleCircuit_Display_Text>())
                     {
-                        var MCN = TB.GetComponent<ModuleCircuitNode>();
+                        var MCN = TB.CircuitNode;
                         if (MCN && MCN.Receiver)
                         {
                             var WP = WorldPosition.FromScenePosition(TB.trans.position);
-                            var charge = MCN.Receiver.CurrentFrameCharge;
-                            if (charge.HasNetworkCharge())
+                            var charge = MCN.Receiver.CurrentChargeData;
+                            if (charge != null)
                             {
-                                if (charge.HighestChargeReceived == int.MinValue)
+                                if (charge.ChargeStrength == int.MinValue)
                                     RailSystem.ManTrainPathing.TrainStatusPopup("int.MinValue", WP);
                                 else
-                                    RailSystem.ManTrainPathing.TrainStatusPopup(charge.HighestChargeReceived.ToString(), WP);
+                                    RailSystem.ManTrainPathing.TrainStatusPopup(charge.ChargeStrength.ToString(), WP);
                             }
                             else
                             {
@@ -129,7 +129,7 @@ namespace RandomAdditions
             cooldown = false;
         }
 
-        private static string expDirect = new DirectoryInfo(Application.dataPath).Parent.ToString() + "\\AutoBlockPNG";
+        private static string expDirect = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "AutoBlockPNG");
         internal void MakeBlockPreviewJSONSimple()
         {   // The block preview is dirty, so we need to re-render a preview icon
             if (!target)

@@ -152,8 +152,8 @@ namespace RandomAdditions
                 return;
             }
 
-            List<CannonBarrel> BarrelsFetched = block.GetComponentsInChildren<CannonBarrel>().ToList();
-            int barrelCount = BarrelsFetched.Count;
+            CannonBarrel[] BarrelsFetched = block.GetComponentsInChildren<CannonBarrel>();
+            int barrelCount = BarrelsFetched.Length;
             List<CannonBarrel> barrelsTemp = new List<CannonBarrel>();
             sharedBarrels = (barrelCount <= AuxillaryBarrelsStartIndex || AuxillaryBarrelsStartIndex <= 0) ? true : false;
 
@@ -164,7 +164,7 @@ namespace RandomAdditions
 
                 for (int step = 0; step < barrelCount; step++)
                 {
-                    CannonBarrel CB = BarrelsFetched.ElementAt(step);
+                    CannonBarrel CB = BarrelsFetched[step];
                     if (step < AuxillaryBarrelsStartIndex)
                     {
                         BarrelsMain[step] = CB;
@@ -195,13 +195,17 @@ namespace RandomAdditions
             anims = KickStart.FetchAnimettes(transform, AnimCondition.WeaponSwitch);
             //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
+
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleModeSwitch",
+            "This " + AltUI.HighlightString("Weapon") + " can switch based on the " + 
+            AltUI.EnemyString("Enemy") + ".");
         public override void OnAttach()
         {
             if ((int)ModeSwitch > (int)ModeSwitchCondition.PrimarySecondarySalvo)
                 ManModeSwitch.inst.UpdateSwitchCheck.Subscribe(OnCheckUpdate);
             else
                 ManModeSwitch.inst.UpdateSwitchCheckFast.Subscribe(OnCheckUpdateFast);
-            ExtUsageHint.ShowExistingHint(4004);
+            hint.Show();
         }
         public override void OnDetach()
         {
@@ -239,7 +243,7 @@ namespace RandomAdditions
         {
             if (target != null)
             {
-                var reg = target.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = target.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
                 if (reg.storageTotal <= 0)
                 return (reg.storageTotal - reg.spareCapacity) / reg.storageTotal;
             }

@@ -45,6 +45,10 @@
     <DefineConstants>DEBUG;STEAM</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="3rdParty">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\3rdParty.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
@@ -217,6 +221,16 @@
     <Compile Include="GlobalChanges\Pyromanic.cs" />
     <Compile Include="GlobalChanges\ITankCompAuto.cs" />
     <Compile Include="GlobalChanges\IngameQuit.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\PrefabTrain.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailMeshBuilder.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailSegmentGround.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailSpace.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailType.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\RailTypeStats.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\UnstableTrack.cs" />
+    <Compile Include="ProjectileModules\AdvProjectile.cs" />
+    <Compile Include="ProjectileModules\LaserRiderProjectile.cs" />
+    <Compile Include="RandAddDebugGUI.cs" />
     <Compile Include="GlobalChanges\UnstableHook.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailEngine.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailPowerLine.cs" />
@@ -227,7 +241,6 @@
     <Compile Include="MultiBlockModules\RailSystem\ManTrainPathing.cs" />
     <Compile Include="MultiBlockModules\RailSystem\TankRailsLocal.cs" />
     <Compile Include="MultiBlockModules\RailSystem\UIMiniMapLayerTrain.cs" />
-    <Compile Include="Networking\ManModNetwork.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeaponPart.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeapon.cs" />
     <Compile Include="MultiBlockModules\ModularWeapon\ModulePartWeaponGun.cs" />
@@ -241,7 +254,6 @@
     <Compile Include="MultiBlockModules\RailSystem\TankLocomotive.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTrack.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTrackNode.cs" />
-    <Compile Include="Networking\NetworkHook.cs" />
     <Compile Include="PatchBatch\CircuitPatches.cs" />
     <Compile Include="PatchBatch\ManRailsPatches.cs" />
     <Compile Include="ReliantBlockModules\BlockScannerTarg.cs" />
@@ -294,7 +306,6 @@
     <Compile Include="ProjectileModules\ProxProjectile.cs" />
     <Compile Include="ProjectileModules\PulseProjectile.cs" />
     <Compile Include="ProjectileModules\RaycastProjectile.cs" />
-    <None Include="ProjectileModules\ProjBase.cs" />
     <Compile Include="ProjectileModules\TrailProjectile.cs" />
     <Compile Include="ProjectileModules\SpiltProjectile.cs" />
     <None Include="GlobalChanges\CustomDamageType.cs" />

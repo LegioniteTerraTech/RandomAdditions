@@ -9,10 +9,6 @@ namespace RandomAdditions
 {
     public class ModuleUIButtons : ExtModule, ManPointer.OpenMenuEventConsumer
     {
-        private static FieldInfo title = typeof(ModuleHUDSliderControl).GetField("m_HUDSliderTitle", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static FieldInfo form = typeof(ModuleHUDSliderControl).GetField(" m_HUDSliderValueFormat", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static FieldInfo res = typeof(ModuleHUDSliderControl).GetField(" m_HUDResetTooltip", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static FieldInfo tool = typeof(ModuleHUDSliderControl).GetField("m_HUDSliderTooltip", BindingFlags.NonPublic | BindingFlags.Instance);
         private static FieldInfo cont = typeof(TankBlock).GetField("m_ContextMenuType", BindingFlags.NonPublic | BindingFlags.Instance);
 
 
@@ -76,7 +72,7 @@ namespace RandomAdditions
                 openMouseStartTarg = this;
                 openMouseStart = ManHUD.inst.GetMousePositionOnScreen();
                 openMouseTime = Time.time + UIHelpersExt.ROROpenTimeDelay;
-                //DebugRandAddi.Log("ShowDelayedNoCheck() - " + Time.time);
+                DebugRandAddi.Info("ShowDelayedNoCheck() - " + Time.time);
                 //ManSFX.inst.PlayUISFX(ManSFX.UISfxType.LockOn);
             }
         }
@@ -108,6 +104,8 @@ namespace RandomAdditions
             PoolInsure();
         }
 
+        internal static PropertyInfo PropertyGrabber = typeof(TankBlock).GetProperty("openMenuEventConsumer", 
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
         internal static ModuleUIButtons AddInsure(GameObject targ, string Title, bool useClick = true)
         {
             var buttons = targ.GetComponent<ModuleUIButtons>();
@@ -118,6 +116,16 @@ namespace RandomAdditions
                     buttons.Title = Title;
                 buttons.UseClick = useClick;
                 buttons.OnPool();
+                buttons.PoolInsure();
+                if (useClick)
+                {
+                    TankBlock block = buttons.block;
+                    if (!block)
+                        throw new NullReferenceException("ModuleUIButtons is present on a GameObject that is not a legitimate block.  This is illegal");
+                    if (PropertyGrabber.GetMethod.Invoke(block, new object[0] { }) != null)
+                        DebugRandAddi.LogError("ModuleUIButtons set a new menu to a block that already has a menu -  this is not recommended");
+                    PropertyGrabber.SetMethod.Invoke(block, new object[] { buttons });
+                }
             }
             return buttons;
         }
@@ -126,12 +134,13 @@ namespace RandomAdditions
         {
             if (Pooled)
                 return;
-            //block.TrySetBlockFlag(TankBlock.Flags.HasContextMenu, true);
-            //DebugRandAddi.Log("PoolInsure() Has HasContextMenu value: " + block.HasContextMenu);
-            InitSharedMenu();
             Pooled = true;
-            //cont.SetValue(block, UIHelpers.customElement);
-            //DebugRandAddi.Log("SetupButtons() - Init Buttons for " + block.name);
+            block.TrySetBlockFlag(TankBlock.Flags.HasContextMenu, true);
+            DebugRandAddi.Info("PoolInsure() Has HasContextMenu value: " + block.HasContextMenu);
+            InitSharedMenu();
+            block.m_ContextMenuForPlayerTechOnly = false;
+            cont.SetValue(block, UIHelpersExt.customElement);
+            DebugRandAddi.Info("SetupButtons() - Init Buttons for " + block.name);
         }
 
 
@@ -208,6 +217,7 @@ namespace RandomAdditions
         {
             int pos = madnessElements.Length;
             Array.Resize(ref madnessElements, pos + 1);
+            DebugRandAddi.Info("AddElement() - Added Button " + ele.GetName + " for " + block.name);
             madnessElements[pos] = ele;
         }
         public GUI_BM_Element AddElement(string Name, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
@@ -215,6 +225,7 @@ namespace RandomAdditions
             int pos = madnessElements.Length;
             Array.Resize(ref madnessElements, pos + 1);
             madnessElements[pos] = MakeElement(Name, onTriggered, sprite, sliderDescIfIsSlider, numClampSteps);
+            DebugRandAddi.Info("AddElement() - Added Button " + Name + " for " + block.name);
             return madnessElements[pos];
         }
         public GUI_BM_Element AddElement(Func<string> Name, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
@@ -222,6 +233,7 @@ namespace RandomAdditions
             int pos = madnessElements.Length;
             Array.Resize(ref madnessElements, pos + 1);
             madnessElements[pos] = MakeElement(Name, onTriggered, sprite, sliderDescIfIsSlider, numClampSteps);
+            DebugRandAddi.Info("AddElement() - Added Button " + Name() + " for " + block.name);
             return madnessElements[pos];
         }
 

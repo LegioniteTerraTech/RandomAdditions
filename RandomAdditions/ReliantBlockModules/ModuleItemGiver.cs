@@ -81,7 +81,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver)
                 {
                     LogicConnected = true;
-                    block.CircuitNode.Receiver.FrameChargeChangedEvent.Subscribe(OnRecCharge);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
                 }
             }
             UpdateGiveTarget();
@@ -90,7 +90,7 @@ namespace RandomAdditions
         public override void OnDetach()
         {
             if (LogicConnected)
-                block.CircuitNode.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRecCharge);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
             LogicConnected = false;
             tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
             if (grabStack != null)
@@ -127,7 +127,7 @@ namespace RandomAdditions
             return otherStack != pullStack;
         }
 
-        public void OnRecCharge(Circuits.Charge charge)
+        public void OnRecCharge(Circuits.BlockChargeData charge)
         {
             //DebugRandAddi.Log("OnRecCharge " + charge);
             try
@@ -236,14 +236,9 @@ namespace RandomAdditions
                 var holder = TargetItemHolder.GetComponent<ModuleItemHolder>();
                 if (holder.NumStacks > 0)
                 {
-                    List<Visible> collected = new List<Visible>();
-                    foreach (Visible item in firstStack.IterateItemsIncludingLinkedStacks(0))
-                    {
-                        collected.Add(item);
-                    }
                     if (needsToDropFirst)
                     {
-                        foreach (var itemGet in collected)
+                        foreach (var itemGet in firstStack.IterateItemsIncludingLinkedStacks(0))
                         {
                             if (itemGet.TakenThisHeartbeat)
                                 continue;
@@ -273,7 +268,7 @@ namespace RandomAdditions
                     }
                     else
                     {
-                        foreach (var itemGet in collected)
+                        foreach (var itemGet in firstStack.IterateItemsIncludingLinkedStacks(0))
                         {
                             if (itemGet.TakenThisHeartbeat)
                                 continue;
@@ -307,12 +302,7 @@ namespace RandomAdditions
         private void Take(ModuleItemHolder.Stack firstStack)
         {
             int taken = 0;
-            List<Visible> collected = new List<Visible>();
             foreach (Visible item in pullStack.IterateItemsIncludingLinkedStacks(0))
-            {
-                collected.Add(item);
-            }
-            foreach (Visible item in collected)
             {
                 if (firstStack.TryTakeOnHeartbeat(item) == TechHolders.OperationResult.Effect)
                 {

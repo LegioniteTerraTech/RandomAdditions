@@ -8,7 +8,6 @@ using UnityEngine.UI;
 using TMPro;
 using System.Reflection;
 using TerraTechETCUtil;
-using RandomAdditions.Networking;
 using RandomAdditions.Minimap;
 
 namespace RandomAdditions
@@ -21,19 +20,6 @@ namespace RandomAdditions
         //-----------------------------------------------------------------------------------------------
         // The NEW crash handler with useful mod-crash-related information
 
-        internal static class ModePatches
-        {
-            internal static Type target = typeof(Mode);
-#if !STEAM
-            /// <summary>
-            /// Startup
-            /// </summary>
-            private static void EnterPreMode_Prefix()
-            {
-                KickStart.DelayedInitAll();
-            }
-#endif
-        }
 
         internal static class UIScreenBugReportPatches
         {
@@ -158,7 +144,10 @@ namespace RandomAdditions
                     errorList.gameObject.SetActive(true);
                     //var errorText = errorList.gameObject.GetComponent<Text>();
                     var errorField = errorList.gameObject.GetComponent<InputField>();
-                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----\n  The log file is at: " + outputLogLocation + 
+                    errorField.text = "-----  TerraTech [Modded] Automatic Crash Report  -----" +
+                        "\nGame Version: " + SKU.DisplayVersion + (MassPatcher.CheckIfUnstable() ? 
+                        " [UNSTABLE]\n- WARNING: Unstable Branch is unlikely to have mod support" : " [Stable]") +
+                        "\nThe log file is at: " + outputLogLocation + 
                         "\n<b>Multiplayer:</b> " + ManNetwork.IsNetworked + "  <b>Mods:</b> " + LogHandler.GetMods(out bool tooMany)
                         + "\n--------------------  Stack Trace  --------------------\n<b>Error:</b> " + latestError + 
                         (tooMany ? ("\n--------------------  Mods  --------------------\n" + LogHandler.GetModsIgnoreCount()) : "" );
@@ -183,24 +172,12 @@ namespace RandomAdditions
                     //errorText.alignByGeometry = true;
                     //errorText.alignment = TextAnchor.UpperLeft; // causes it to go far out of the box
                     errorText.fontSize = 50;
-                    errorText.text = "<b>COULD NOT FETCH ERROR!!!</b>";
+                    errorText.text = "<b>COULD NOT FETCH ANY ERROR!!!</b>";
                 }
             }
 
         }
 
-        /*
-        internal static class ManPointerPatches
-        {
-            internal static Type target = typeof(ManPointer);
-            /// <summary>
-            /// AllowBypass
-            /// IMPORTANT
-            /// </summary>
-            private static void Update_Prefix(ManPointer __instance)
-            {
-            }
-        }*/
 
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -229,6 +206,11 @@ namespace RandomAdditions
                 var rp = block.GetComponent<ModuleReplace>();
                 if ((bool)rp)
                     rp.Init(__instance);
+                InvokeHelper.Invoke(OnPool_Delayed, 3, __instance);
+            }
+            internal static void OnPool_Delayed(TankBlock block)
+            {
+                new WikiPageBlock((int)block.GetComponent<Visible>().ItemType);
             }
 
             /// <summary>
@@ -545,134 +527,6 @@ namespace RandomAdditions
                 return true;
             }
         }*/
-        internal static class TileManagerPatches
-        {
-            internal static Type target = typeof(TileManager);
-
-            private static bool removeCorruptedTest = false;
-            private const float maxDistFromOrigin = 80000;
-            private static List<IntVector2> starTiles = null;
-            private static Dictionary<IntVector2, WorldTile> exisTiles = null;
-            static FieldInfo TilesNew = typeof(TileManager).GetField("m_TileCoordsToCreateWorking", BindingFlags.NonPublic | BindingFlags.Instance);
-            static FieldInfo Tiles = typeof(TileManager).GetField("m_TileLookup", BindingFlags.NonPublic | BindingFlags.Instance);
-            /// <summary>
-            /// EnableTileLoading
-            /// </summary>
-            private static void UpdateTileRequestStatesInStandardMode_Postfix(TileManager __instance)
-            {
-                try
-                {
-                    if (starTiles == null)
-                    {
-                        DebugRandAddi.Log("ManTileLoader - Fetching tiles to create");
-                        starTiles = (List<IntVector2>)TilesNew.GetValue(__instance);
-                        DebugRandAddi.Log("ManTileLoader - Fetched tiles to create");
-                    }
-                    if (exisTiles == null)
-                    {
-                        DebugRandAddi.Log("ManTileLoader - Fetching tile lookup");
-                        exisTiles = (Dictionary<IntVector2, WorldTile>)Tiles.GetValue(__instance);
-                        DebugRandAddi.Log("ManTileLoader - Fetched tile lookup");
-                    }
-
-                    DebugRandAddi.Assert(ManTileLoader.RequestedLoaded == null, "ManTileLoader - RequestedLoaded IS NULL");
-                    int requests = ManTileLoader.Perimeter.Count;
-                    for (int step = 0; step < requests; step++)
-                    {
-                        var item = ManTileLoader.Perimeter.ElementAt(step);
-                        if (item != null)
-                        {
-                            Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
-                            if (pos.x > -maxDistFromOrigin && pos.x < maxDistFromOrigin &&
-                                pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
-                                pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
-                            {
-                                if (exisTiles.TryGetValue(item, out WorldTile WT))
-                                {
-                                    if (WT != null)
-                                    {
-                                        //DebugRandAddi.Log("ManTileLoader - Loading tile at " + WT.Coord);
-                                        if (WT.m_RequestState < WorldTile.State.Created)
-                                            WT.m_RequestState = WorldTile.State.Created;
-                                    }
-                                    else
-                                        DebugRandAddi.Assert("ManTileLoader(Perimeter) - Tile at " + item + " is NULL");
-                                }
-                                else
-                                {
-                                    if (!starTiles.Contains(item))
-                                    {
-                                        starTiles.Add(item);
-                                        DebugRandAddi.Info("ManTileLoader(Perimeter) - Force-loading NEW Tile at " + item);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    requests = ManTileLoader.RequestedLoaded.Count;
-                    for (int step = 0; step < requests;)
-                    {
-                        var item = ManTileLoader.RequestedLoaded.ElementAt(step);
-                        if (item != null)
-                        {
-                            Vector3 pos = ManWorld.inst.TileManager.CalcTileCentreScene(item);
-                            if (pos.x > -maxDistFromOrigin && pos.x < maxDistFromOrigin &&
-                                pos.y > -maxDistFromOrigin && pos.y < maxDistFromOrigin &&
-                                pos.z > -maxDistFromOrigin && pos.z < maxDistFromOrigin)
-                            {
-                                if (exisTiles.TryGetValue(item, out WorldTile WT))
-                                {
-                                    if (WT != null)
-                                    {
-                                        //DebugRandAddi.Log("ManTileLoader - Loading tile at " + WT.Coord);
-                                        WT.m_RequestState = WorldTile.State.Loaded;
-                                    }
-                                    else
-                                        DebugRandAddi.Assert("ManTileLoader - Tile at " + item + " is NULL");
-                                }
-                                else
-                                {
-                                    if (!starTiles.Contains(item))
-                                    {
-                                        starTiles.Add(item);
-                                        DebugRandAddi.Info("ManTileLoader - Force-loading NEW Tile at " + item);
-                                    }
-                                }
-                            }
-                            step++;
-                        }
-                        else
-                        {
-                            DebugRandAddi.Assert("ManTileLoader - NULL TILE IN RequestedLoaded, canceled.");
-                            ManTileLoader.RequestedLoaded.Remove(item);
-                            requests--;
-                        }
-                    }
-                    if (removeCorruptedTest)
-                    {
-                        foreach (var item in new Dictionary<IntVector2, WorldTile>(exisTiles))
-                        {
-                            if (item.Key == null || item.Value == null || item.Value.patchesToPopulate == null
-                                || item.Value.SaveData == null)
-                            {
-                                DebugRandAddi.Assert(item.Key == null, "ManTileLoader - NULL TILE  Key in TileManager somehow!?");
-                                DebugRandAddi.Assert(item.Value == null, "ManTileLoader - NULL TILE  WorldTile in TileManager somehow? Removing...");
-                                DebugRandAddi.Assert(item.Value.patchesToPopulate == null,
-                                    "ManTileLoader - NULL TILE  patchesToPopulate in TileManager somehow? Removing...");
-                                DebugRandAddi.Assert(item.Value.SaveData == null,
-                                    "ManTileLoader - NULL TILE " + item.Key + "  SaveData in TileManager somehow? Removing...");
-                                exisTiles.Remove(item.Key);
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    throw new Exception("ManTileLoader encountered an error - " + e);
-                }
-            }
-        }
-
         internal static class NetPlayerPatches
         {
             internal static Type target = typeof(NetPlayer);
@@ -718,7 +572,8 @@ namespace RandomAdditions
             internal static Type target = typeof(UIDamageTypeDisplay);
 
             static FieldInfo type = typeof(UIDamageTypeDisplay).GetField("m_DisplayType", BindingFlags.NonPublic | BindingFlags.Instance);
-            static FieldInfo name = typeof(UIDamageTypeDisplay).GetField("m_NameText", BindingFlags.NonPublic | BindingFlags.Instance);
+            static FieldInfo name = typeof(UIDamageTypeDisplay).GetField("m_NameText", BindingFlags.NonPublic | BindingFlags.Instance); 
+            static FieldInfo dispName = typeof(UIDamageTypeDisplay).GetField("m_Tooltip", BindingFlags.NonPublic | BindingFlags.Instance);
 
             private static void SetBlock_Postfix(UIDamageTypeDisplay __instance, ref BlockTypes blockType)
             {
@@ -733,7 +588,13 @@ namespace RandomAdditions
                         __instance.Set(modDamageable.CustomDamagableIcon);
                         var val = (TextMeshProUGUI)name.GetValue(__instance);
                         if (val)
+                        {
                             val.text = modDamageable.CustomDamagableName;
+                            //DebugRandAddi.Log("set damageable name to " + modDamageable.CustomDamagableName);
+                        }
+                        var namD = (TooltipComponent)dispName.GetValue(__instance);
+                        if (namD)
+                            namD.SetText(modDamageable.CustomDamagableName);
                     }
                 }
             }

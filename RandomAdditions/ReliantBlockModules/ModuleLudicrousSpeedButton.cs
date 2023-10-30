@@ -63,17 +63,20 @@ namespace RandomAdditions
             if (queuedDrain > 0)
             {
                 //DebugRandAddi.Log("Consuming " + queuedDrain);
-                Energy.ConsumeIfEnough(EnergyRegulator.EnergyType.Electric, queuedDrain);
+                Energy.ConsumeIfEnough(TechEnergy.EnergyType.Electric, queuedDrain);
                 queuedDrain = 0;
             }
         }
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleLudicrousSpeedButton",
+            AltUI.HighlightString("Overclockers") + ", when anchored can dramatically " + 
+            AltUI.HintString("speed up") +" crafting.");
         private void OnAttach()
         {
             tonk = transform.root.GetComponent<Tank>();
             tonk.AttachEvent.Subscribe(UpdateAttach);
             tonk.DetachEvent.Subscribe(UpdateDetach);
             lastTechHolderCount = tonk.blockman.IterateBlockComponents<ModuleItemHolderBeam>().Count();
-            ExtUsageHint.ShowExistingHint(4006);
+            hint.Show();
         }
         private void OnDetach()
         {
@@ -182,7 +185,7 @@ namespace RandomAdditions
         {
             if (tonk != null)
             {
-                var reg = tonk.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = tonk.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
                 return reg.storageTotal - reg.spareCapacity;
             }
             return 0;

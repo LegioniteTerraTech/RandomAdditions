@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
@@ -178,7 +179,27 @@ namespace RandomAdditions
             {
                 SlowUpdateEvent.Send();
             }
+
+
         }
 
+        internal class GUIManaged
+        {
+            private static bool display = false;
+
+            public static void GUIGetTotalManaged()
+            {
+                GUILayout.Box("---- Global Clock --- ");
+                display = AltUI.Toggle(display, "Show: ");
+                if (display)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("Time[HOUR]: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(LastHour.ToString());
+                    GUILayout.EndHorizontal();
+                }
+            }
+        }
     }
 }

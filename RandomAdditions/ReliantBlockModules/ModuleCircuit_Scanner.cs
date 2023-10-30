@@ -121,7 +121,7 @@ namespace RandomAdditions
             if (CircuitExt.LogicEnabled)
             {
                 LogicConnected = true;
-                Circuits.PreChargeUpdate.Subscribe(UpdateScan);
+                Circuits.PreSlowUpdate.Subscribe(UpdateScan);
                 block.NeighbourAttachedEvent.Subscribe(OnNeighboorAttach);
                 block.NeighbourDetachedEvent.Subscribe(OnNeighboorDetached);
                 block.NeighbourDetachingEvent.Subscribe(OnNeighboorDetach);
@@ -141,7 +141,7 @@ namespace RandomAdditions
                 block.NeighbourDetachingEvent.Unsubscribe(OnNeighboorDetach);
                 block.NeighbourDetachedEvent.Unsubscribe(OnNeighboorDetached);
                 block.NeighbourAttachedEvent.Unsubscribe(OnNeighboorAttach);
-                Circuits.PreChargeUpdate.Unsubscribe(UpdateScan);
+                Circuits.PreSlowUpdate.Unsubscribe(UpdateScan);
             }
             LogicConnected = false;
         }

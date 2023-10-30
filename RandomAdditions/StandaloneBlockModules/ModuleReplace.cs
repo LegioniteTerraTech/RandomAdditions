@@ -136,6 +136,8 @@ namespace RandomAdditions
                 return;
             }
         }
+
+        private static StringBuilder SB = new StringBuilder();
         public bool CheckIfValid()
         {
             bool valid = true;
@@ -149,13 +151,12 @@ namespace RandomAdditions
                 TankBlock blockCompare =  Singleton.Manager<ManSpawn>.inst.GetBlockPrefab(bloc);
                 //OrthoRotation oRot = new OrthoRotation(offsetRot);
                 List <IntVector3> rotCells = new List<IntVector3>();
-                foreach (IntVector3 vec in blockO.filledCells.ToList())
+                foreach (IntVector3 vec in blockO.filledCells)
                 {
                     rotCells.Add((offsetRot * vec) + ReplaceOffsetPosition);
                 }
                 List<Vector3> rotAPs = new List<Vector3>();
-                StringBuilder loader = new StringBuilder();
-                foreach (Vector3 vec in blockO.attachPoints.ToList())
+                foreach (Vector3 vec in blockO.attachPoints)
                 {
                     rotAPs.Add((offsetRot * vec) + ReplaceOffsetPosition);
                 }
@@ -163,32 +164,32 @@ namespace RandomAdditions
                 {
                     foreach (IntVector3 vect in blockCompare.filledCells)
                     {
-                        loader.Append(vect.ToString() + " | ");
+                        SB.Append(vect.ToString() + " | ");
                     }
-                    string batch1 = loader.ToString();
-                    loader.Clear();
+                    string batch1 = SB.ToString();
+                    SB.Clear();
                     foreach (IntVector3 vect in rotCells)
                     {
-                        loader.Append(vect.ToString() + " | ");
+                        SB.Append(vect.ToString() + " | ");
                     }
-                    string batch2 = loader.ToString();
+                    string batch2 = SB.ToString();
+                    SB.Clear();
                     LogHandler.ThrowWarning("ModuleReplace: Filled cells for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + blockCompare.filledCells.ToString() + "! | " + blockO.filledCells.ToString());
                     valid = false;
                 }
                 if (!Contains(blockCompare.attachPoints.ToList(), rotAPs))
                 {
-                    loader.Clear();
                     foreach (Vector3 vect in blockCompare.attachPoints)
                     {
-                        loader.Append(vect.ToString() + " | ");
+                        SB.Append(vect.ToString() + " | ");
                     }
-                    string batch1 = loader.ToString();
-                    loader.Clear();
+                    string batch1 = SB.ToString();
+                    SB.Clear();
                     foreach (Vector3 vect in rotAPs)
                     {
-                        loader.Append(vect.ToString() + " | ");
+                        SB.Append(vect.ToString() + " | ");
                     }
-                    string batch2 = loader.ToString();
+                    string batch2 = SB.ToString();
                     LogHandler.ThrowWarning("ModuleReplace: Attachment points for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + batch1 + "! | " + batch2);
                     valid = false;
                 }
@@ -266,25 +267,33 @@ namespace RandomAdditions
                 }
             }
         }
+        private static List<KeyValuePair<BlockTypes, List<ModuleReplace>>> paired = new List<KeyValuePair<BlockTypes, List<ModuleReplace>>>();
         public static void RemoveBlock(ModuleReplace rp)
         {
             if (Replacables.Contains(rp))
             {
                 Replacables.Remove(rp);
-                List<KeyValuePair<BlockTypes, List<ModuleReplace>>> paired = Supported.ToList();
-                Supported.Clear();
-                for (int step = 0; step < paired.Count(); step++)
+                try
                 {
-                    KeyValuePair<BlockTypes, List<ModuleReplace>> pair = paired.ElementAt(step);
-                    if (pair.Value.Contains(rp))
+                    paired.AddRange(Supported);
+                    Supported.Clear();
+                    for (int step = 0; step < paired.Count(); step++)
                     {
-                        if (pair.Value.Count == 1)
-                            paired.RemoveAt(step);
-                        else
-                            pair.Value.Remove(rp);
-                        step--;
+                        KeyValuePair<BlockTypes, List<ModuleReplace>> pair = paired.ElementAt(step);
+                        if (pair.Value.Contains(rp))
+                        {
+                            if (pair.Value.Count == 1)
+                                paired.RemoveAt(step);
+                            else
+                                pair.Value.Remove(rp);
+                            step--;
+                        }
+                        Supported.Add(pair.Key, pair.Value);
                     }
-                    Supported.Add(pair.Key, pair.Value);
+                }
+                finally
+                {
+                    paired.Clear();
                 }
             }
         }

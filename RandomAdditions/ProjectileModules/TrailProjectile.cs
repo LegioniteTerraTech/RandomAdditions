@@ -16,11 +16,50 @@ namespace RandomAdditions
     /// </summary>
     public class TrailProjectile : ExtProj
     {
+        private static TrailRenderer latentPool;
+
+        private static void InsureInit()
+        {
+            if (!latentPool)
+            {
+                latentPool = new GameObject("TrailProjectileDummy").AddComponent<TrailRenderer>();
+                latentPool.autodestruct = false;
+                latentPool.CreatePool(8);
+            }
+        }
+        private static Vector3[] transferArray = new Vector3[26];
+        private static void KeepTrailPresent(TrailProjectile TP)
+        {
+            var TRo = TP.trail;
+            var TR = latentPool.Spawn(null, TP.transform.position);
+            TR.time = TP.delay;
+            TR.textureMode = TRo.textureMode;
+            TR.sharedMaterial = TRo.sharedMaterial;
+            TR.alignment = TRo.alignment;
+            TR.allowOcclusionWhenDynamic = TRo.allowOcclusionWhenDynamic;
+            TR.startColor = TRo.startColor;
+            TR.endColor = TRo.endColor;
+            TR.startWidth = TRo.startWidth;
+            TR.endWidth = TRo.endWidth;
+            TR.minVertexDistance = TRo.minVertexDistance;
+            TR.widthMultiplier = TRo.widthMultiplier;
+            TR.numCapVertices = TRo.numCapVertices;
+            TR.numCornerVertices = TRo.numCornerVertices;
+            if (TRo.positionCount > transferArray.Length)
+                Array.Resize(ref transferArray, TRo.positionCount);
+            TP.trail.GetPositions(transferArray);
+            TR.AddPositions(transferArray);
+            TRo.Clear();
+            InvokeHelper.Invoke(TR.Recycle, TP.delay, true);
+        }
+
+
         private Collider[] cols;
         private TrailRenderer trail;
         private bool hasEmiss = false;
         private ParticleSystem[] emiss;
         private bool wasGrav = false;
+        private float delay => trail.time;
 
         public override void Fire(FireData fireData)
         {
@@ -48,7 +87,10 @@ namespace RandomAdditions
             }
 
             if (trail)
+            {
+                KeepTrailPresent(this);
                 trail.emitting = false;
+            }
             foreach (var col in cols)
                 col.enabled = false;
             if (hasEmiss)
@@ -61,6 +103,7 @@ namespace RandomAdditions
 
         private void OnPool()
         {
+            InsureInit();
             cols = GetComponentsInChildren<Collider>();
             wasGrav = PB.rbody.useGravity;
             trail = GetComponent<TrailRenderer>();

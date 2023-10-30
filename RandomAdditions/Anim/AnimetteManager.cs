@@ -248,7 +248,7 @@ namespace RandomAdditions
         {
             if (tank != null)
             {
-                var reg = tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+                var reg = tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
                 float val = reg.storageTotal - reg.spareCapacity;
                 valPercent = val / reg.storageTotal;
                 return (int)val;
@@ -295,6 +295,10 @@ namespace RandomAdditions
         private const int GUIClikMenuID = 8036;
         internal class GUIDisplayClickUI : MonoBehaviour
         {
+            private void CloseMenu()
+            {
+                playerSelected = null;
+            }
             private void Update()
             {
                 if (openTime > 0)
@@ -305,7 +309,7 @@ namespace RandomAdditions
                 if (KickStart.IsIngame && playerSelected?.block?.tank && (openTime > 0 || UIHelpersExt.MouseIsOverSubMenu(HotWindow)))
                 {
                     Tank playerTank = playerSelected.block.tank;
-                    HotWindow = GUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "<b>Block Menu</b>");
+                    HotWindow = AltUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "Block Menu", CloseMenu);
                 }
                 else
                     CloseGUI();

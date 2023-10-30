@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using TerraTechETCUtil;
 
 namespace RandomAdditions.Minimap
 {
@@ -18,6 +19,10 @@ namespace RandomAdditions.Minimap
 
         internal static MinimapExt instWorld;
         internal static MinimapExt instMini;
+
+        internal static LoadingHintsExt.LoadingHint newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, "CREATIVE HINT",
+            "Using the " + AltUI.HighlightString("Map") + ", you can quick-jump to another " + 
+            AltUI.BlueString("Tech") + " by " +  AltUI.HighlightString("Double Right-Clicking") + " on it's icon");
 
 
         private static Dictionary<int, Type> LayersIndexedCached = new Dictionary<int, Type>();
@@ -136,25 +141,26 @@ namespace RandomAdditions.Minimap
                     LayersIndexed.Add(PriorityStepper, item);
                     PriorityStepper += layerPrioritySpacing;
                 }
-                if (target.gameObject.name.GetHashCode() == "MapDisplay".GetHashCode())
+                if (disp.gameObject.name.GetHashCode() == "MapDisplay".GetHashCode())
                 {
                     WorldMap = true;
-                    target.PointerDownEvent.Subscribe(OnClick);
-                    target.PointerUpEvent.Subscribe(OnRelease);
+                    disp.PointerDownEvent.Subscribe(OnClick);
+                    disp.PointerUpEvent.Subscribe(OnRelease);
                     instWorld = this;
-                    DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + target.gameObject.name + " in mode World");
+                    DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + disp.gameObject.name + " in mode World");
                 }
                 else
                 {
                     WorldMap = false;
                     instMini = this;
-                    DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + target.gameObject.name + " in mode Mini");
+                    DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + disp.gameObject.name + " in mode Mini");
                 }
-                target.HideEvent.Subscribe(OnHide);
+                disp.HideEvent.Subscribe(OnHide);
                 UpdateAll();
             }
             internal void DeInitInst()
             {
+                disp.HideEvent.Unsubscribe(OnHide);
                 if (WorldMap)
                 {
                     disp.PointerUpEvent.Unsubscribe(OnRelease);
@@ -181,12 +187,12 @@ namespace RandomAdditions.Minimap
                         switch (PED.button)
                         {
                             case PointerEventData.InputButton.Left:
-                                ManMinimapExt.lastElementLMB = list.First();
-                                ManMinimapExt.startPosLMB = PED.position;
+                                lastElementLMB = list.FirstOrDefault();
+                                startPosLMB = PED.position;
                                 break;
                             case PointerEventData.InputButton.Middle:
-                                ManMinimapExt.lastElementMMB = list.First();
-                                ManMinimapExt.startPosMMB = PED.position;
+                                lastElementMMB = list.FirstOrDefault();
+                                startPosMMB = PED.position;
                                 break;
                         }
                     }
@@ -223,7 +229,7 @@ namespace RandomAdditions.Minimap
                                 {
                                     if (lastClickTime > Time.time - Globals.inst.doubleTapDelay)
                                     {
-                                        var tonk = list.First().TrackedVis;
+                                        var tonk = list.FirstOrDefault().TrackedVis;
                                         if (tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam && tonk.ObjectType == ObjectTypes.Vehicle)
                                         {// WE SWITCH TECHS
                                             BeginPlayerTransfer(tonk);
@@ -243,8 +249,8 @@ namespace RandomAdditions.Minimap
                         }
                         if (lastElement != null && (startPos - PED.position).sqrMagnitude < MouseDeltaTillButtonIgnored)
                         {
-                            DebugRandAddi.Log("MinimapExtended - MiniMapElementSelectEvent " + PED.button + " | " + list.First().name);
-                            MiniMapElementSelectEvent.Send((int)PED.button, list.First());
+                            DebugRandAddi.Log("MinimapExtended - MiniMapElementSelectEvent " + PED.button + " | " + list.FirstOrDefault().name);
+                            MiniMapElementSelectEvent.Send((int)PED.button, list.FirstOrDefault());
                         }
                     }
                 }
@@ -260,7 +266,7 @@ namespace RandomAdditions.Minimap
                 DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer");
                 nextPlayerTech = TV;
                 transferInProgress = true;
-                ManTileLoader.TempLoadTile(TV.GetWorldPosition().TileCoord);
+                ManWorldTileExt.TempLoadTile(TV.GetWorldPosition().TileCoord);
                 ManUI.inst.FadeToColour(Color.black, 1f);
                 Invoke("DoPlayerTransfer", 1f);
             }
@@ -274,7 +280,7 @@ namespace RandomAdditions.Minimap
                     transferInProgress = false;
                     return;
                 }
-                ManTileLoader.TempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord);
+                ManWorldTileExt.TempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord);
                 Quaternion camRot = Singleton.cameraTrans.rotation;
                 Vector3 look = Singleton.cameraTrans.position - Singleton.playerTank.boundsCentreWorld;
                 CameraManager.inst.ResetCamera(nextPlayerTech.GetWorldPosition().ScenePosition + look, camRot);
@@ -284,7 +290,7 @@ namespace RandomAdditions.Minimap
             public void FinishPlayerTransfer()
             {
                 if (nextPlayerTech != null)
-                    ManTileLoader.TempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord);
+                    ManWorldTileExt.TempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord);
                 nextPlayerTech = null;
                 transferInProgress = false;
                 ManUI.inst.ClearFade(1f);
@@ -333,7 +339,7 @@ namespace RandomAdditions.Minimap
                 int arraySize = LayersIndexed.Count;
                 var array = (UIMiniMapLayer[])layers.GetValue(disp);
                 Array.Resize(ref array, arraySize);
-                var toAdd = LayersIndexed.ToList().OrderBy(x => x.Key).ToList();
+                var toAdd = LayersIndexed.OrderBy(x => x.Key).ToList();
                 for (int step = 0; step < arraySize; step++)
                 {
                     array[step] = toAdd[step].Value;

@@ -248,7 +248,7 @@ namespace RandomAdditions.Scanners
 
         public override int GetSignalInt()
         {
-            var reg = block.tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = block.tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             try
             {
                 return Mathf.RoundToInt(reg.storageTotal - reg.spareCapacity);
@@ -260,7 +260,7 @@ namespace RandomAdditions.Scanners
         }
         public override int GetSignal999()
         {
-            var reg = block.tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = block.tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             try
             {
                 return CircuitExt.UIntSignalFromFloat1((reg.storageTotal - reg.spareCapacity) / reg.storageTotal);
@@ -272,7 +272,7 @@ namespace RandomAdditions.Scanners
         }
         public override int GetSignalAnalog()
         {
-            var reg = block.tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = block.tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             try
             {
                 return CircuitExt.AnalogSignalFromFloat1((reg.storageTotal - reg.spareCapacity) / reg.storageTotal);
@@ -297,7 +297,7 @@ namespace RandomAdditions.Scanners
         
         public override int GetSignalInt()
         {
-            var reg = block.tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = block.tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             try
             {
                 return Mathf.RoundToInt(reg.storageTotal - reg.spareCapacity);
@@ -309,7 +309,7 @@ namespace RandomAdditions.Scanners
         }
         public override int GetSignal999()
         {
-            var reg = block.tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = block.tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             try
             {
                 return CircuitExt.UIntSignalFromFloat1((reg.storageTotal - reg.spareCapacity) / reg.storageTotal);
@@ -321,7 +321,7 @@ namespace RandomAdditions.Scanners
         }
         public override int GetSignalAnalog()
         {
-            var reg = block.tank.EnergyRegulator.Energy(EnergyRegulator.EnergyType.Electric);
+            var reg = block.tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
             try
             {
                 return CircuitExt.AnalogSignalFromFloat1((reg.storageTotal - reg.spareCapacity) / reg.storageTotal);

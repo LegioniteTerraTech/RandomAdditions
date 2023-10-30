@@ -11,7 +11,7 @@ namespace RandomAdditions
         private const string modName = "RandomAdditions";
 
         internal static bool ShouldLog = true;
-        internal const bool LogAll = false;
+        internal const bool LogAll = true;
         private const bool LogDev = true;
 
         internal static void Info(string message)

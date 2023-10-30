@@ -269,10 +269,10 @@ namespace RandomAdditions.PhysicsTethers
                 Main.Connection = NewConnection;
                 Link.Connection = NewConnection;
                 Main.BeamSide = true;
-                if (Main.AC)
-                    Main.AC.RunBool(true);
-                if (Link.AC)
-                    Link.AC.RunBool(true);
+                if (Main.animette != null)
+                    Main.animette.RunBool(true);
+                if (Link.animette != null)
+                    Link.animette.RunBool(true);
                 if (ManNetwork.IsHost)
                 {
                     Main.tank.control.explosiveBoltDetonateEvents[3].Subscribe(Main.DisconnectX);
@@ -331,6 +331,49 @@ namespace RandomAdditions.PhysicsTethers
         }
 
 
+        internal class GUIManaged
+        {
+            private static bool display = false;
+            private static bool displayLinked = false;
+
+            public static void GUIGetTotalManaged()
+            {
+                GUILayout.Box("---- Physics Tethers --- ");
+                display = AltUI.Toggle(display, "Show: ");
+                if (display)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("Active Tethers: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(ActiveTethers.Count.ToString());
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("Linked Tethers: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(LinkedTethers.Count.ToString());
+                    GUILayout.EndHorizontal();
+
+                    displayLinked = AltUI.Toggle(displayLinked, "Show Linked: ");
+                    if (displayLinked)
+                    {
+                        foreach (var item in LinkedTethers)
+                        {
+                            if (item != null)
+                            {
+                                GUILayout.BeginHorizontal();
+                                GUILayout.Label("Main: ");
+                                GUILayout.Label(item.main?.tank ? "NULL" : item.main.tank.ToString());
+                                GUILayout.FlexibleSpace();
+                                GUILayout.Label("Other: ");
+                                GUILayout.Label(item.link?.tank ? "NULL" : item.link.tank.ToString());
+                                GUILayout.EndHorizontal();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         public class TetherPair
         {
@@ -420,7 +463,7 @@ namespace RandomAdditions.PhysicsTethers
 
         // Note that this module is merely a suggestion - Can break if enough force is applied 
         [AutoSaveComponent]
-        public class ModuleTechTether : ExtModule, TechAudio.IModuleAudioProvider
+        public class ModuleTechTether : ExtModule, TechAudio.IModuleAudioProvider, ICircuitDispensor
         {
             public float SpringTensionForce = 750;
             public float MaxDistance = 8;
@@ -438,6 +481,7 @@ namespace RandomAdditions.PhysicsTethers
             public int DissconnectInputAPIndex = 0;
             public int[] InputsOnAPIndexes = new int[0];
             public int[] OutputsOnAPIndexes = new int[0];
+            internal Dictionary<Vector3, int> OutputsCache = new Dictionary<Vector3, int>();
 
             // Audio
             public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
@@ -455,7 +499,7 @@ namespace RandomAdditions.PhysicsTethers
 
             internal Transform tetherPoint;
             internal Transform tetherEnd;
-            internal AnimetteController AC;
+            internal AnimetteController animette;
 
 
             private Transform tetherUpright;
@@ -521,21 +565,49 @@ namespace RandomAdditions.PhysicsTethers
                 }
                 else
                     LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_Target\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
-                AC = KickStart.FetchAnimette(transform, "_Tether", AnimCondition.Tether);
+                if (InputsOnAPIndexes.Length != OutputsOnAPIndexes.Length)
+                {
+                    LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether every AP specified in " +
+                      "InputsOnAPIndexes should have a OutputsOnAPIndexes counterpart." +
+                      "\nThis operation cannot be handled " +
+                      "automatically.\nCause of error - Block " + gameObject.name);
+                }
+                else
+                {
+                    if (InputsOnAPIndexes.Length > 0)
+                    {
+                        for (int step = 0; step < InputsOnAPIndexes.Length; step++)
+                        {
+                            OutputsCache[block.attachPoints[InputsOnAPIndexes[step]]] = 0;
+                        }
+                    }
+                }
+                animette = KickStart.FetchAnimette(transform, "_Tether", AnimCondition.Tether);
                 block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
+                InsureGUI();
             }
 
+            private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTechTether",
+                 AltUI.HighlightString("Couplers") + " connects to other " + AltUI.HighlightString("Couplers") + 
+                " to keep " + AltUI.BlueString("Techs") + " together."); 
+            public override void OnGrabbed()
+            {
+                hint.Show();
+            }
             public override void OnAttach()
             {
                 InsureGUI();
-                ExtUsageHint.ShowExistingHint(4010);
                 ActiveTethers.Add(this);
                 bumpLinkReconnectDelay = Time.time + BumpLinkReconnectIgnoreTime;
                 tank.TechAudio.AddModule(this);
                 tank.CollisionEvent.Subscribe(OnCollisionTank);
+                if (block.CircuitNode?.Receiver)
+                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, false);
             }
             public override void OnDetach()
             {
+                if (block.CircuitNode?.Receiver)
+                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, true);
                 tank.CollisionEvent.Unsubscribe(OnCollisionTank);
                 tank.TechAudio.RemoveModule(this);
                 if (Connection != null)
@@ -551,7 +623,7 @@ namespace RandomAdditions.PhysicsTethers
                     && col.b.block && col.a.collider == bumpLinkCollider)
                 {
                     var MTT = col.b.block.GetComponent<ModuleTechTether>();
-                    if (MTT && MTT.bumpLinkCollider == col.b.collider)
+                    if (MTT && MTT.bumpLinkCollider == col.b.collider && CanLinkTethers(this, MTT))
                     {
                         bumpLinkReconnectDelay = Time.time + BumpLinkReconnectIgnoreTime;
                         TryLinkTethers(this, MTT, true);
@@ -564,7 +636,7 @@ namespace RandomAdditions.PhysicsTethers
                 if (buttonGUI == null)
                 {
                     buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Tether", true);
-                    buttonGUI.AddElement(ConnectionStatus, RequestConnection, null);
+                    buttonGUI.AddElement(ConnectionStatus, RequestConnection, ConnectionIcon);
                 }
             }
             public string ConnectionStatus()
@@ -573,6 +645,13 @@ namespace RandomAdditions.PhysicsTethers
                     return "Unlink";
                 else
                     return "Link";
+            }
+            public Sprite ConnectionIcon()
+            {
+                ModContainer MC = ManMods.inst.FindMod("Random Additions");
+                if (IsConnected)
+                    return UIHelpersExt.GetIconFromBundle(MC, "GUI_Unlink");
+                return UIHelpersExt.GetIconFromBundle(MC, "GUI_Link");
             }
             public float RequestConnection(float unused)
             {
@@ -625,10 +704,13 @@ namespace RandomAdditions.PhysicsTethers
                         m_ConnectSFXType = TechAudio.SFXType.Anchored;
                     else
                         m_ConnectSFXType = TechAudio.SFXType.UnAnchored;
+                    tank.TechAudio.PlayOneshot(TechAudio.AudioTickData.ConfigureOneshot(block, m_ConnectSFXType, 
+                        0.3f, 1));
+                    /*
                     if (OnAudioTickUpdate != null)
                     {
                         TechAudio.AudioTickData audioTickData = default;
-                        audioTickData.module = block.damage;
+                        audioTickData.block = block; // only need pos
                         audioTickData.provider = this;
                         audioTickData.sfxType = m_ConnectSFXType;
                         audioTickData.numTriggered = 1;
@@ -636,8 +718,8 @@ namespace RandomAdditions.PhysicsTethers
                         audioTickData.isNoteOn = true;
                         audioTickData.adsrTime01 = 1;//doSpool ? 1 : 0;
                         TechAudio.AudioTickData value = audioTickData;
-                        OnAudioTickUpdate.Send(value, FMODEvent.FMODParams.empty);
-                    }
+                        tank.TechAudio.PlayOneshot(audioTickData);
+                    }*/
                 }
                 catch { }
             }
@@ -656,8 +738,8 @@ namespace RandomAdditions.PhysicsTethers
                     Connection = null;
                     bumpLinkReconnectDelay = Time.time + BumpLinkReconnectIgnoreTime;
                     bumpLinkCollider.gameObject.SetActive(true);
-                    if (AC)
-                        AC.RunBool(false);
+                    if (animette != null)
+                        animette.RunBool(false);
                     ResetTether();
                 }
             }
@@ -914,10 +996,24 @@ namespace RandomAdditions.PhysicsTethers
 
             public int GetDispensableCharge(Vector3 APOut)
             {
-                if (CircuitExt.LogicEnabled)
-                    return GlobalClock.LastHour;
+                if (IsConnected && Connection.GetOpposingSide(this).OutputsCache.TryGetValue(APOut, out int val))
+                    return val;
                 return 0;
             }
+
+            public void OnRecCharge(Circuits.BlockChargeData charge)
+            {
+                //DebugRandAddi.Log("OnRecCharge " + charge);
+                try
+                {
+                    foreach (var item in InputsOnAPIndexes)
+                    {
+                        OutputsCache[block.attachPoints[item]] = charge.AllChargeAPsAndCharges[block.attachPoints[item]];
+                    }
+                }
+                catch { }
+            }
+
 
 
             private LineRenderer TracBeamVis;

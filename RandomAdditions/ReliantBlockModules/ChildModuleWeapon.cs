@@ -120,7 +120,7 @@ namespace RandomAdditions
                 block.damage.SelfDestruct(0.5f);
                 return;
             }
-            MainGun = BarrelsMain.First();
+            MainGun = BarrelsMain.FirstOrDefault();
 
             if (Gravioli())
             {
@@ -370,7 +370,7 @@ namespace RandomAdditions
                 if (OnAudioTickUpdate != null)
                 {
                     TechAudio.AudioTickData audioTickData = default;
-                    audioTickData.module = modDmg; // only need pos
+                    audioTickData.block = block; // only need pos
                     audioTickData.provider = this;
                     audioTickData.sfxType = m_FireSFXType;
                     audioTickData.numTriggered = barrelsFired;

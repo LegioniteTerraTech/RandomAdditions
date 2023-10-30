@@ -127,8 +127,7 @@ namespace RandomAdditions
                 var ModuleCheck = __instance.gameObject.GetComponent<BurnerJet>();
                 if (ModuleCheck != null)
                 {
-                    if (!ModuleCheck.isSetup)
-                        ModuleCheck.Initiate(__instance);
+                    ModuleCheck.InsureInit(__instance);
                     ModuleCheck.Run(__instance.IsFiring);
                 }
             }

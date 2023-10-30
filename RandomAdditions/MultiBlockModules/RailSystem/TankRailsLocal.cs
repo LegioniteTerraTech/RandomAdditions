@@ -73,7 +73,7 @@ namespace RandomAdditions.RailSystem
 
         public ModuleRailPoint GetFirstPoint()
         {
-            return Modules.First();
+            return Modules.FirstOrDefault();
         }
 
     }

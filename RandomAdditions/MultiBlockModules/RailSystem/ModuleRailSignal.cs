@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using RandomAdditions.RailSystem;
 using SafeSaves;
+using TerraTechETCUtil;
 
 public class ModuleRailSignal : RandomAdditions.ModuleRailSignal { };
 namespace RandomAdditions
@@ -33,6 +34,14 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("RandomAdditions: ModuleRailSignal cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
+        }
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailPoint",
+           AltUI.HighlightString("Guides") + " designate a path for " + AltUI.ObjectiveString("Tracks") + 
+            " to follow. " + AltUI.HighlightString("Right-Click") + " or use the map to link " + 
+            AltUI.ObjectiveString("Tracks") + ".");
+        public override void OnGrabbed()
+        {
+            hint.Show();
         }
         protected void GetSignal()
         {

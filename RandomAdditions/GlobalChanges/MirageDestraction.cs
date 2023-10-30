@@ -14,7 +14,7 @@ namespace RandomAdditions
         private MirageType type = MirageType.Circle;
         private List<ModuleMirage> ModuleMirages = new List<ModuleMirage>();
         internal List<MirageTank> Mirages = new List<MirageTank>();
-        private EnergyRegulator reg;
+        private TechEnergy reg;
 
         // GLOBAL Stats
         private const int SmallTechMaxVol = 48;
@@ -185,7 +185,7 @@ namespace RandomAdditions
                 }
                 types.Add(item, count);
             }
-            type = types.OrderByDescending(x => x.Value).First().Key;
+            type = types.OrderByDescending(x => x.Value).FirstOrDefault().Key;
 
             foreach (var item in ModuleMirages)
             {

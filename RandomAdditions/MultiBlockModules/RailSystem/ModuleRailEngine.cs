@@ -66,6 +66,13 @@ namespace RandomAdditions
         }
 
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailEngine",
+            AltUI.HighlightString("Engines") + " allow " + AltUI.HighlightString("Bogies") + 
+            " to apply force.");
+        public override void OnGrabbed()
+        {
+            hint.Show();
+        }
         public override void OnAttach()
         {
             //DebugRandAddi.Log("OnAttach - ModuleRailEngine");
@@ -74,7 +81,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver)
                 {
                     LogicConnected = true;
-                    block.CircuitNode.Receiver.FrameChargeChangedEvent.Subscribe(OnRecCharge);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
                 }
             }
             TankLocomotive.HandleAddition(tank, this);
@@ -101,11 +108,11 @@ namespace RandomAdditions
             }
             TankLocomotive.HandleRemoval(tank, this);
             if (LogicConnected)
-                block.CircuitNode.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRecCharge);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
             LogicConnected = false;
         }
 
-        public void OnRecCharge(Circuits.Charge charge)
+        public void OnRecCharge(Circuits.BlockChargeData charge)
         {
             //DebugRandAddi.Log("OnRecCharge " + charge);
             try

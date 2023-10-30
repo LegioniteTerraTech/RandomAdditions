@@ -33,7 +33,7 @@ namespace RandomAdditions.Anim
             if (m.tank.control.GetThrottle(0, out float thr))
             {
                 //DebugRandAddi.Log("ANIMATION NUMBERS UPDATING");
-                val = Mathf.RoundToInt((m.tank.control.TurnControl + 1) * 499);
+                val = Mathf.RoundToInt((m.tank.control.m_Movement.m_DriveTurn + 1) * 499);
             }
             else
                 val = 0;
@@ -41,7 +41,7 @@ namespace RandomAdditions.Anim
         }
         public static void SteerUpdate(AnimetteManager m)
         {
-            int val = Mathf.RoundToInt((m.tank.control.TurnControl + 1) * 499);
+            int val = Mathf.RoundToInt((m.tank.control.m_Movement.m_DriveTurn + 1) * 499);
             SetAllToVal(m, val);
         }
         public static void SetAllToVal(AnimetteManager m, int val)

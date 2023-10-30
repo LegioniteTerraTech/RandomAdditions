@@ -20,6 +20,15 @@ namespace RandomAdditions.RailSystem
             Index = index;
         }
 
+        internal RailConnectInfo(int hostNodeID, byte index)
+        {
+            if (ManRails.AllRailNodes.TryGetValue(hostNodeID, out var val))
+                throw new NullReferenceException("ManRails - LoadingSave attempted loading a track with " +
+                    "unregistered node ID " + hostNodeID + " from memory!");
+            HostNode = val;
+            Index = index;
+        }
+
         internal void Connect(RailTrack track, bool lowTrackConnection)
         {
             LinkTrack = track;
@@ -41,7 +50,7 @@ namespace RandomAdditions.RailSystem
         {
             return LinkTrack.GetRailEndPositionScene(LinkTrack.StartNode == HostNode);
         }
-        internal WorldPosition RailEndPositionOnNode()
+        internal WorldPosition RailEndPosOnNode()
         {
             return HostNode.GetLinkCenter(Index);
         }

@@ -18,6 +18,14 @@ namespace RandomAdditions
         private int lastMode = 0;
         public IntVector3[] HubSelections = new IntVector3[0];
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailJunction",
+            AltUI.HighlightString("Junctions") +" split " + AltUI.HighlightString("Guide") + " " + 
+            AltUI.ObjectiveString("Tracks") + ". "+ AltUI.HighlightString("Right-Click") + 
+            " to set junction settings.");
+        public override void OnGrabbed()
+        {
+            hint.Show();
+        }
         protected override void Pool()
         {
             ManRails.InitExperimental();
@@ -58,10 +66,11 @@ namespace RandomAdditions
                 {
                     eles[step] = eles[step - 1];
                 }
-                eles[1] = ModuleUIButtons.MakeElement("Junction Type", ChangeShape, null, SliderDescName, HubSelections.Length);
+                eles[1] = ModuleUIButtons.MakeElement("Junction Type", ChangeShape, null, SliderDescName);
                 buttonGUI.SetElementsInst(eles);
             }
         }
+       
         public override void OnSetNodesAvailability(bool Attached, bool Anchored)
         {
             if (Node == null)
@@ -110,7 +119,7 @@ namespace RandomAdditions
                 }
             }
         }
-
+        
         private List<Transform> GetTrans(IntVector3 values)
         {
             return new List<Transform>() { linkHubsAll[values.x], linkHubsAll[values.y], linkHubsAll[values.z] };
@@ -118,7 +127,7 @@ namespace RandomAdditions
         public float ChangeShape(float valueF)
         {
             if (float.IsNaN(valueF))
-                return lastMode;
+                return (float)lastMode / (HubSelections.Length - 1);
             int value = Mathf.RoundToInt(valueF * (HubSelections.Length - 1));
             if (lastMode != value)
             {

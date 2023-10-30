@@ -27,8 +27,6 @@ namespace RandomAdditions
         */
 
         private ModuleCircuitNode node;
-        private ModuleCircuitDispensor disp;
-        private ModuleCircuitReceiver reci;
         private bool[] recentInStates = new bool[0];
         private bool[] lastInStates = new bool[0];
         private Renderer[] InStateRends = null;
@@ -110,11 +108,8 @@ namespace RandomAdditions
         {
             if (CircuitExt.LogicEnabled)
             {
-                reci = GetComponent<ModuleCircuitReceiver>();
-                disp = GetComponent<ModuleCircuitDispensor>();
-                if (reci)
-                    reci.FrameChargeChangedEvent.Subscribe(OnFrameChargeChanged);
-                Circuits.PostChargeUpdate.Subscribe(OnPostChargeUpdate);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeValueRefreshed, false);
+                Circuits.PostSlowUpdate.Subscribe(PostSlowUpdate);
             }
             else
                 enabled = false;
@@ -123,30 +118,26 @@ namespace RandomAdditions
         {
             if (CircuitExt.LogicEnabled)
             {
-                Circuits.PostChargeUpdate.Unsubscribe(OnPostChargeUpdate);
-                disp = null;
-                if (reci)
-                    reci.FrameChargeChangedEvent.Unsubscribe(OnFrameChargeChanged);
-                reci = null;
+                Circuits.PostSlowUpdate.Unsubscribe(PostSlowUpdate);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeValueRefreshed, true);
             }
             else
                 enabled = false;
         }
-        public void OnFrameChargeChanged(Circuits.Charge update)
+        public void OnChargeValueRefreshed(Circuits.BlockChargeData update)
         {
-            int charge;
             for (int step = 0; step < recentInStates.Length && step < node.ChargeInPoints.Length; step++)
             {
-                if (update.AllChargeAPsAndCharges.TryGetValue(node.ChargeInPoints[step], out charge))
+                if (update.AllChargeAPsAndCharges.TryGetValue(node.ChargeInPoints[step], out int charge))
                 {
                     recentInStates[step] = charge > 0;
                 }
                 else
                     recentInStates[step] = false;
             }
-            recentOutState = update.HighestChargeStrengthFromHere > 0;
+            recentOutState = update.ChargeStrength > 0;
         }
-        public void OnPostChargeUpdate()
+        public void PostSlowUpdate()
         {
             for (int step = 0; step < lastInStates.Length; step++)
             {

@@ -176,7 +176,7 @@ namespace RandomAdditions
         }
 
 
-        private Color GetTrailColorFromStats(List<WeaponTypeStats> randWeapStats)
+        private Color GetTrailColorFromStats(IEnumerable<WeaponTypeStats> randWeapStats)
         {
             float redVal = 1;
             float greenVal = 1;
@@ -230,7 +230,7 @@ namespace RandomAdditions
         }
         public Color GetTrailColor()
         {
-            return GetTrailColorFromStats(DamageTypeDistrib.Values.ToList());
+            return GetTrailColorFromStats(DamageTypeDistrib.Values);
         }
         public Color GetRandomDamage(float dmgBudgetPercent, out List<WeaponTypeStats> randWeapStats)
         {
@@ -249,7 +249,7 @@ namespace RandomAdditions
 
             return GetTrailColorFromStats(randWeapStats);
         }
-        public virtual void DealDamage(Damageable target, Vector3 hitPos, Vector3 dmgDirect, List<WeaponTypeStats> randWeapStats)
+        public virtual void DealDamage(Damageable target, Vector3 hitPos, Vector3 dmgDirect, IEnumerable<WeaponTypeStats> randWeapStats)
         {
             if (target == null)
             {
@@ -316,7 +316,7 @@ namespace RandomAdditions
         }
         public virtual void DealDamageSummary(Damageable target, Vector3 hitPos, Vector3 dmgDirect)
         {
-            DealDamage(target, hitPos, dmgDirect, DamageTypeDistrib.Values.ToList());
+            DealDamage(target, hitPos, dmgDirect, DamageTypeDistrib.Values);
         }
 
 

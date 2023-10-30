@@ -78,10 +78,13 @@ namespace RandomAdditions
             }
         }
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTractorBeam",
+            AltUI.HighlightString("Tractor Beams") + " can carry friendly " + AltUI.BlueString("Techs") + 
+            " above the ground.");
         public override void OnAttach()
         {
             enabled = true;
-            ExtUsageHint.ShowExistingHint(4010);
+            hint.Show();
         }
         public override void OnDetach()
         {

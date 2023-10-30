@@ -39,9 +39,7 @@ namespace RandomAdditions
         public void Setup(ModuleItemSilo MIS)
         {
             siloMain = MIS;
-            IEnumerable<Shader> shaders = Resources.FindObjectsOfTypeAll<Shader>();
-            shaders = shaders.Where(s => s.name == "Standard"); ////Standard
-            var shader = shaders.ElementAt(1);
+            var shader = Resources.FindObjectsOfTypeAll<Shader>().Where(s => s.name == "Standard").ElementAt(1); ////Standard
             if (shader.IsNull())
                 LogHandler.ThrowWarning("RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
             shade = shader;

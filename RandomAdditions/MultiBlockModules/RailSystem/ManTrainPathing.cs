@@ -27,6 +27,8 @@ namespace RandomAdditions.RailSystem
         private static int PatherQueueStepRepeatTimes => QueueStepRepeatTimes;
         private static int NodePatherQueueStepRepeatTimes => QueueStepRepeatTimes;
 
+        private static Color PathDebugColor = new Color(0.9f, 0.9f, 0.2f, 1);
+        private static float PathDebugUpdateTime = 1;
 
         private static bool shouldLog = false;
         private static Dictionary<int, int> PathsToResume = null;
@@ -105,6 +107,14 @@ namespace RandomAdditions.RailSystem
             if (AllyTextStor == null)
                 AltUI.CreateCustomPopupInfo("TrainCall", new Color(0.85f, 0.65f, 0.65f), out AllyTextData);
             CallQueue.Add(new TrainCallRequest(RTN, Callback));
+        }
+        public static void CancelFindNearestTrainInRailNetworkAsync(RailTrackNode RTN)
+        {
+            if (AllyTextStor == null)
+                AltUI.CreateCustomPopupInfo("TrainCall", new Color(0.85f, 0.65f, 0.65f), out AllyTextData);
+            CallQueue.Find(delegate (TrainCallRequest cand) {
+                return cand != null && cand.target == RTN;
+            });
         }
 
         internal static void AsyncManageStationTrainSearch()
@@ -227,6 +237,211 @@ namespace RandomAdditions.RailSystem
             Debug.Log(message);
         }
 
+
+        internal class GUIManaged
+        {
+            internal enum TrainPathingType
+            {
+                None,
+                CallTrain,
+                PathTracks,
+                PathNodes,
+            }
+
+            private static bool display = false;
+            private static bool displayBWD = false;
+
+            private static TrainPathingType displayedPather = TrainPathingType.None;
+            private static TrainCallRequest dispCallPatherCache = null;
+            private static TrainPathRequest dispTrackPatherCache = default;
+            private static RailPathRequest dispNodePatherCache = default;
+            public static void GUIShowWorld()
+            {
+                try
+                {
+                    switch (displayedPather)
+                    {
+                        case TrainPathingType.None:
+                            break;
+                        case TrainPathingType.CallTrain:
+                            dispCallPatherCache.Debug_SHOW(displayBWD);
+                            break;
+                        case TrainPathingType.PathTracks:
+                            dispTrackPatherCache.Debug_SHOW(displayBWD);
+                            break;
+                        case TrainPathingType.PathNodes:
+                            dispNodePatherCache.Debug_SHOW(displayBWD);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                catch (ExitGUIException e) { throw e; }
+                catch { }
+            }
+            public static void GUIGetTotalManaged()
+            {
+                if (!ManRails.IsInit)
+                {
+                    GUILayout.Box("--- Train Pathing [DISABLED] --- ");
+                    return;
+                }
+                GUILayout.Box("--- Train Pathing --- ");
+                display = AltUI.Toggle(display, "Show: ");
+                if (display)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label(" CallTrain Count: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(CallQueue.Count.ToString());
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label(" PathTracks Count: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(patherQueue.Count.ToString());
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label(" PathNodes Count: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(nodePatherQueue.Count.ToString());
+                    GUILayout.EndHorizontal();
+
+                    displayBWD = AltUI.Toggle(displayBWD, "Backwards: ");
+                    displayedPather = (TrainPathingType)GUILayout.Toolbar(
+                        (int)displayedPather, Enum.GetNames(typeof(TrainPathingType)));
+                    switch (displayedPather)
+                    {
+                        case TrainPathingType.None:
+                            break;
+                        case TrainPathingType.CallTrain:
+                            if (dispCallPatherCache == null)
+                            {
+                                for (int step = 0; step < CallQueue.Count; step++)
+                                {
+                                    var item = CallQueue.ElementAt(step);
+                                    if (GUILayout.Button(item.target.Point ?
+                                        item.target.Point.tank.name : item.target.NodeID.ToString()))
+                                    {
+                                        dispCallPatherCache = item;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (GUILayout.Button("Back"))
+                                    dispCallPatherCache = null;
+                                else
+                                {
+                                    GUILayout.BeginHorizontal();
+                                    GUILayout.Label("  Target Node ID: ");
+                                    GUILayout.FlexibleSpace();
+                                    GUILayout.Label(dispCallPatherCache.target.NodeID.ToString());
+                                    GUILayout.EndHorizontal();
+
+                                    GUILayout.BeginHorizontal();
+                                    GUILayout.Label("  Target Node Coordinates: ");
+                                    GUILayout.FlexibleSpace();
+                                    GUILayout.Label(dispCallPatherCache.target.GetLinkCenter(0).GameWorldPosition.ToString());
+                                    GUILayout.EndHorizontal();
+
+                                    GUILayout.BeginHorizontal();
+                                    GUILayout.Label("  Target Node Present? ");
+                                    GUILayout.FlexibleSpace();
+                                    GUILayout.Label(dispCallPatherCache.target.Point ? "True" : "False");
+                                    GUILayout.EndHorizontal();
+
+                                    var train = dispCallPatherCache.train;
+                                    if (dispCallPatherCache.train)
+                                    {
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Found? ");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label("True");
+                                        GUILayout.EndHorizontal();
+
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Coordinates:");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label(WorldPosition.FromScenePosition(train.tank.boundsCentreWorldNoCheck).GameWorldPosition.ToString());
+                                        GUILayout.EndHorizontal();
+
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Speed:");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label(train.lastForwardSpeed.ToString("F"));
+                                        GUILayout.EndHorizontal();
+
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Velocity:");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label(train.lastCenterSpeed.ToString("F"));
+                                        GUILayout.EndHorizontal();
+                                    }
+                                    else
+                                    {
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Found? ");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label("False");
+                                        GUILayout.EndHorizontal();
+
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Coordinates:");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label("NULL");
+                                        GUILayout.EndHorizontal();
+
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Speed:");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label("NULL");
+                                        GUILayout.EndHorizontal();
+
+                                        GUILayout.BeginHorizontal();
+                                        GUILayout.Label("  Train Velocity:");
+                                        GUILayout.FlexibleSpace();
+                                        GUILayout.Label("NULL");
+                                        GUILayout.EndHorizontal();
+                                    }
+                                }
+                            }
+                            break;
+                        case TrainPathingType.PathTracks:
+                            for (int step = 0; step < patherQueue.Count; step++)
+                            {
+                                var item = patherQueue.ElementAt(step);
+                                var ele = patherQueue.ElementAt(step).Key;
+                                if (GUILayout.Button(item.Key.ToString()))
+                                {
+                                    dispTrackPatherCache = ele;
+                                }
+                            }
+                            break;
+                        case TrainPathingType.PathNodes:
+                            for (int step = 0; step < nodePatherQueue.Count; step++)
+                            {
+                                var item = nodePatherQueue.ElementAt(step);
+                                var ele = nodePatherQueue.ElementAt(step).Value.Key;
+                                if (GUILayout.Button(item.Key.ToString()))
+                                {
+                                    dispNodePatherCache = ele;
+                                }
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else
+                {
+                    displayedPather = TrainPathingType.None;
+                }
+            }
+        }
+
+
         public class TrainCallRequest
         {
             private readonly float startTime;
@@ -265,12 +480,12 @@ namespace RandomAdditions.RailSystem
             public bool IsValidTrainOnTrack(RailTrack x)
             {
                 return x != null && x.Exists() && x.ActiveBogeys.Count() > 0 &&
-                x.ActiveBogeys.ToList().Find(delegate (ModuleRailBogie cand) {
-                    if (!cand || !cand.engine || cand.engine.tank.Team != requestTeam)
+                x.ActiveBogeys.FirstOrDefault(delegate (ModuleRailBogie.RailBogie cand) {
+                    if (cand == null || !cand.engine || cand.engine.tank.Team != requestTeam)
                         return false;
                     TankLocomotive master = cand.engine.GetMaster();
                     return master.CanCall() && !FinishedSearches.Contains(master);
-                });
+                }) != null;
             }
             public bool AsyncManageTrainCall()
             {
@@ -296,6 +511,8 @@ namespace RandomAdditions.RailSystem
                             if (!target.Registered() || !train)
                             {
                                 DebugRandAddi.Log("\nTarget RailTrackNode does not exist after " + (Time.time - startTime) + " seconds");
+                                if (finishedEvent != null)
+                                    finishedEvent.Invoke(null);
                                 return false; // Can't call to an unloaded station!
                             }
 
@@ -319,13 +536,16 @@ namespace RandomAdditions.RailSystem
                 {
                     DebugRandAddi.Log("trainSearcher current is null " + (trainSearcher.Current == null) + " on attempt " + attempts);
                 }
-                attempts++;
-                if (ManRails.ManagedTracks.Count < attempts)
+                if (!trainSearcher.nodeTrack)
+                    attempts++;
+                if (ManRails.ManagedTracks.Count * 2 < attempts)
                 {
-                    DebugRandAddi.Assert("Attempts bypassed number of managed tracks. " + attempts + " vs " + ManRails.ManagedTracks.Count);
+                    if (finishedEvent != null)
+                        finishedEvent.Invoke(null);
+                    DebugRandAddi.Assert("Attempts bypassed number of managed tracks x2. " + attempts + " vs " + ManRails.ManagedTracks.Count);
                     return false;
                 }
-                if (trainSearcher.MoveNextSlow())
+                if (trainSearcher.MoveNextStep())
                 {
                     return true;
                 }
@@ -368,26 +588,39 @@ namespace RandomAdditions.RailSystem
             }
             private bool ConcludeIfNeeded()
             {
-                if (trainSearcher.MoveNextSlow())
+                if (trainSearcher.MoveNextStep())
                     return true;
                 if (FinishedRequests.Count == 0)
                 {
                     DebugRandAddi.Log("\nOut of possible options at " + (Time.time - startTime) + " seconds");
-                    finishedEvent.Invoke(null);
+                    if (finishedEvent != null)
+                        finishedEvent.Invoke(null);
                     return false;
                 }
                 // We have some results to look through
                 FinishedRequests = FinishedRequests.OrderBy(x => x.Value.GetResults()).ToList();
 
-                FinishedRequests.First().Value.SubmitResults();
+                FinishedRequests.FirstOrDefault().Value.SubmitResults();
                 DebugRandAddi.Log("\n(All possible routes busy or obstructed) Train is called to station at " + (Time.time - startTime) + " seconds");
                 if (finishedEvent != null)
-                    finishedEvent.Invoke(FinishedRequests.First().Key.GetMaster());
+                    finishedEvent.Invoke(FinishedRequests.FirstOrDefault().Key.GetMaster());
                 return false;
             }
 
+            internal void Debug_SHOW(bool backwards)
+            {
+                if (train == null)
+                {
+                    trainSearcher.Debug_SHOW(PathDebugUpdateTime);
+                }
+                else
+                {
+                    trainPather.Debug_SHOW(backwards);
+                }
+            }
         }
 
+        private static StringBuilder SB = new StringBuilder();
         public struct RailPathRequest
         {
             private static bool AllowReverseSearch = true;
@@ -407,7 +640,7 @@ namespace RandomAdditions.RailSystem
             {
                 this.start = start;
                 this.target = target;
-                var startTrack = start.GetAllConnectedLinks().First().LinkTrack;
+                var startTrack = start.GetAllConnectedLinks().FirstOrDefault().LinkTrack;
                 requestFWD = new RailPathingTree(startTrack, true, target);
                 requestBKD = new RailPathingTree(startTrack, false, target);
                 finishedRequestFWD = null;
@@ -489,7 +722,6 @@ namespace RandomAdditions.RailSystem
                 {
                     var item = finishedRequestFWD;
                     Dictionary<RailConnectInfo, int> thePlan = new Dictionary<RailConnectInfo, int>();
-                    StringBuilder SB = new StringBuilder();
                     foreach (var item2 in item.instructions)
                     {
                         thePlan.Add(item2.Key, item2.Value);
@@ -503,14 +735,20 @@ namespace RandomAdditions.RailSystem
                 {
                     var item = finishedRequestBKD;
                     Dictionary<RailConnectInfo, int> thePlan = new Dictionary<RailConnectInfo, int>();
-                    StringBuilder SB = new StringBuilder();
-                    foreach (var item2 in item.instructions)
+                    try
                     {
-                        thePlan.Add(item2.Key, item2.Value);
-                        SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + "] => ");
+                        foreach (var item2 in item.instructions)
+                        {
+                            thePlan.Add(item2.Key, item2.Value);
+                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + "] => ");
+                        }
+                        SB.Append("[" + target.NodeID + "]");
+                        DebugRandAddi.Log("RailPathRequest BKD plans: " + SB.ToString());
                     }
-                    SB.Append("[" + target.NodeID + "]");
-                    DebugRandAddi.Log("RailPathRequest BKD plans: " + SB.ToString());
+                    finally
+                    {
+                        SB.Clear();
+                    }
                     return thePlan;
                 }
             }
@@ -523,27 +761,34 @@ namespace RandomAdditions.RailSystem
                 float accumlativeDist = 0;
                 var item = finishedRequestFWD;
 
-                StringBuilder SB = new StringBuilder();
-                accumlativeDist += item.dist;
-                foreach (var item2 in item.instructions)
+                try
                 {
-                    if (item2.Key != null)
+
+                    accumlativeDist += item.dist;
+                    foreach (var item2 in item.instructions)
                     {
-                        if (!item2.Key.HostNode.Registered())
+                        if (item2.Key != null)
                         {
-                            DebugRandAddi.Assert("RailPathRequest cancelled because track nodes changed");
+                            if (!item2.Key.HostNode.Registered())
+                            {
+                                DebugRandAddi.Assert("RailPathRequest cancelled because track nodes changed");
+                                return float.MaxValue;
+                            }
+                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.dist + "] => ");
+                        }
+                        else
+                        {
+                            DebugRandAddi.Assert("RailPathRequest cancelled because track changed");
                             return float.MaxValue;
                         }
-                        SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.dist + "] => ");
                     }
-                    else
-                    {
-                        DebugRandAddi.Assert("RailPathRequest cancelled because track changed");
-                        return float.MaxValue;
-                    }
+                    SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
+                    Log("RailPathRequest FWD plans: " + SB.ToString());
                 }
-                SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
-                Log("RailPathRequest FWD plans: " + SB.ToString());
+                finally
+                {
+                    SB.Clear();
+                }
 
                 return accumlativeDist;
             }
@@ -553,33 +798,50 @@ namespace RandomAdditions.RailSystem
                 {
                     return float.MaxValue;
                 }
-                StringBuilder SB = new StringBuilder();
                 float accumlativeDist = 0;
                 var item = finishedRequestFWD;
 
-
-                accumlativeDist += item.dist;
-                foreach (var item2 in item.instructions)
+                try
                 {
-                    if (item2.Key != null)
+                    accumlativeDist += item.dist;
+                    foreach (var item2 in item.instructions)
                     {
-                        if (!item2.Key.HostNode.Registered())
+                        if (item2.Key != null)
                         {
-                            DebugRandAddi.Assert("RailPathRequest cancelled because track nodes changed");
+                            if (!item2.Key.HostNode.Registered())
+                            {
+                                DebugRandAddi.Assert("RailPathRequest cancelled because track nodes changed");
+                                return float.MaxValue;
+                            }
+                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.dist + "] => ");
+                        }
+                        else
+                        {
+                            DebugRandAddi.Assert("RailPathRequest cancelled because track changed");
                             return float.MaxValue;
                         }
-                        SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.dist + "] => ");
                     }
-                    else
-                    {
-                        DebugRandAddi.Assert("RailPathRequest cancelled because track changed");
-                        return float.MaxValue;
-                    }
+                    SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
+                    Log("RailPathRequest BKD plans: " + SB.ToString());
                 }
-                SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
-                Log("RailPathRequest BKD plans: " + SB.ToString());
-
+                finally
+                {
+                    SB.Clear();
+                }
                 return accumlativeDist;
+            }
+
+            internal void Debug_SHOW(bool backwards)
+            {
+                int Index = 0;
+                if (backwards)
+                {
+                    requestBKD.Debug_SHOW(true, ref Index, new Vector3(0, 1, 0));
+                }
+                else
+                {
+                    requestFWD.Debug_SHOW(true, ref Index, new Vector3(0, 1, 0));
+                }
             }
 
 
@@ -609,7 +871,7 @@ namespace RandomAdditions.RailSystem
                         return 0;
                     if (finished.Count == 0)
                         return -1;
-                    branch = finished.OrderBy(x => x.dist).First();
+                    branch = finished.OrderBy(x => x.dist).FirstOrDefault();
                     return 1;
                 }
                 private int UpdatePathing_Internal()
@@ -633,6 +895,24 @@ namespace RandomAdditions.RailSystem
                         }
                     }
                     return curOps.Count() == 0 ? 1 : 0;
+                }
+
+                internal void Debug_SHOW(bool backwards, ref int index, Vector3 upNum)
+                {
+                    if (backwards)
+                    {
+                        for (int step = 0; step < curOps.Count; step++)
+                        {
+                            curOps[step].Debug_SHOW(Color.red, ref index, upNum);
+                        }
+                    }
+                    else
+                    {
+                        for (int step = 0; step < curOps.Count; step++)
+                        {
+                            curOps[step].Debug_SHOW(Color.green, ref index, upNum);
+                        }
+                    }
                 }
 
                 internal class RailPathBranch
@@ -733,6 +1013,27 @@ namespace RandomAdditions.RailSystem
                         return 0;
                     }
 
+                    internal void Debug_SHOW(Color route, ref int index, Vector3 upNum)
+                    {
+                        RailConnectInfo RCI = null;
+                        foreach (var item in instructions)
+                        {
+                            RailConnectInfo RCI2 = item.Key;
+                            if (RCI == null)
+                            {
+                                RCI = RCI2;
+                            }
+                            else
+                            {
+                                DebugExtUtilities.DrawDirIndicator(RCI.RailEndPositionOnRailScene() + upNum,
+                                    RCI2.RailEndPositionOnRailScene() + upNum,
+                                    DebugExtUtilities.BlendColors(route, DebugExtUtilities.GetUniqueColor(index), 0.333f),
+                                    PathDebugUpdateTime);
+                                index++;
+                                RCI = RCI2;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -751,9 +1052,9 @@ namespace RandomAdditions.RailSystem
             private int expectedFinishedRequests;
             private readonly List<BogiePathingTree> requestsFWD;
             private readonly List<BogiePathingTree> requestsBKD;
-            private readonly Dictionary<ModuleRailBogie, BogiePathingTree.BogiePathBranch> finishedRequestsFWD;
-            private readonly Dictionary<ModuleRailBogie, BogiePathingTree.BogiePathBranch> finishedRequestsBKD;
-            private readonly HashSet<ModuleRailBogie> Bogies;
+            private readonly Dictionary<ModuleRailBogie.RailBogie, BogiePathingTree.BogiePathBranch> finishedRequestsFWD;
+            private readonly Dictionary<ModuleRailBogie.RailBogie, BogiePathingTree.BogiePathBranch> finishedRequestsBKD;
+            private readonly HashSet<ModuleRailBogie.RailBogie> Bogies;
             public float distFWD;
             public float distBKD;
             private bool FWDObst;
@@ -767,14 +1068,14 @@ namespace RandomAdditions.RailSystem
                 this.target = target;
                 requestsFWD = new List<BogiePathingTree>();
                 requestsBKD = new List<BogiePathingTree>();
-                Bogies = new HashSet<ModuleRailBogie>();
+                Bogies = new HashSet<ModuleRailBogie.RailBogie>();
                 foreach (var item in train.MasterGetAllInterconnectedBogies())
                 {
                     Bogies.Add(item);
                 }
                 expectedFinishedRequests = Bogies.Count;
-                finishedRequestsFWD = new Dictionary<ModuleRailBogie, BogiePathingTree.BogiePathBranch>();
-                finishedRequestsBKD = new Dictionary<ModuleRailBogie, BogiePathingTree.BogiePathBranch>();
+                finishedRequestsFWD = new Dictionary<ModuleRailBogie.RailBogie, BogiePathingTree.BogiePathBranch>();
+                finishedRequestsBKD = new Dictionary<ModuleRailBogie.RailBogie, BogiePathingTree.BogiePathBranch>();
                 distFWD = float.MaxValue;
                 distBKD = float.MaxValue;
                 FWDObst = false;
@@ -893,17 +1194,23 @@ namespace RandomAdditions.RailSystem
                     foreach (var item in finishedRequestsFWD)
                     {
                         Dictionary<RailConnectInfo, int> thePlan = new Dictionary<RailConnectInfo, int>();
-                        StringBuilder SB = new StringBuilder();
-                        foreach (var item2 in item.Value.instructions)
+                        try
                         {
-                            thePlan.Add(item2.Key, item2.Value);
-                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + "] => ");
+                            foreach (var item2 in item.Value.instructions)
+                            {
+                                thePlan.Add(item2.Key, item2.Value);
+                                SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + "] => ");
+                            }
+                            SB.Append("[" + target.NodeID + "]");
+                            DebugRandAddi.Log("TrainPathRequest for \"" + item.Key.engine.tank.name + "\" plans: " + SB.ToString());
                         }
-                        SB.Append("[" + target.NodeID + "]");
-                        DebugRandAddi.Log("TrainPathRequest for \"" + item.Key.engine.tank.name + "\" plans: " + SB.ToString());
+                        finally
+                        {
+                            SB.Clear();
+                        }
                         item.Key.SetupPathing(target.NodeID, thePlan);
                     }
-                    finishedRequestsFWD.First().Key.engine.StartPathing(true);
+                    finishedRequestsFWD.FirstOrDefault().Key.engine.StartPathing(true);
                     DebugRandAddi.Log("\nTrainPathRequest commanded " + finishedRequestsFWD.Count + " bogies with reverse direction: " + false + "\n");
                 }
                 else
@@ -911,17 +1218,23 @@ namespace RandomAdditions.RailSystem
                     foreach (var item in finishedRequestsBKD)
                     {
                         Dictionary<RailConnectInfo, int> thePlan = new Dictionary<RailConnectInfo, int>();
-                        StringBuilder SB = new StringBuilder();
-                        foreach (var item2 in item.Value.instructions)
+                        try
                         {
-                            thePlan.Add(item2.Key, item2.Value);
-                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + "] => ");
+                            foreach (var item2 in item.Value.instructions)
+                            {
+                                thePlan.Add(item2.Key, item2.Value);
+                                SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + "] => ");
+                            }
+                            SB.Append("[" + target.NodeID + "]");
+                            DebugRandAddi.Log("TrainPathRequest for \"" + train.name + "\" plans: " + SB.ToString());
                         }
-                        SB.Append("[" + target.NodeID + "]");
-                        DebugRandAddi.Log("TrainPathRequest for \"" + train.name + "\" plans: " + SB.ToString());
+                        finally
+                        {
+                            SB.Clear();
+                        }
                         item.Key.SetupPathing(target.NodeID, thePlan);
                     }
-                    finishedRequestsBKD.First().Key.engine.StartPathing(false);
+                    finishedRequestsBKD.FirstOrDefault().Key.engine.StartPathing(false);
                     DebugRandAddi.Log("\nTrainPathRequest commanded " + finishedRequestsBKD.Count + " bogies with reverse direction: " + true + "\n");
                 }
             }
@@ -934,27 +1247,33 @@ namespace RandomAdditions.RailSystem
                 float accumlativeDist = 0;
                 foreach (var item in finishedRequestsFWD)
                 {
-                    StringBuilder SB = new StringBuilder();
-                    accumlativeDist += item.Value.dist;
-                    foreach (var item2 in item.Value.instructions)
+                    try
                     {
-                        if (item2.Key != null)
+                        accumlativeDist += item.Value.dist;
+                        foreach (var item2 in item.Value.instructions)
                         {
-                            if (!item2.Key.HostNode.Registered())
+                            if (item2.Key != null)
                             {
-                                DebugRandAddi.Assert("TrainPathRequest cancelled because track nodes changed");
+                                if (!item2.Key.HostNode.Registered())
+                                {
+                                    DebugRandAddi.Assert("TrainPathRequest cancelled because track nodes changed");
+                                    return float.MaxValue;
+                                }
+                                SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.Value.dist + "] => ");
+                            }
+                            else
+                            {
+                                DebugRandAddi.Assert("TrainPathRequest cancelled because track changed");
                                 return float.MaxValue;
                             }
-                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.Value.dist + "] => ");
                         }
-                        else
-                        {
-                            DebugRandAddi.Assert("TrainPathRequest cancelled because track changed");
-                            return float.MaxValue;
-                        }
+                        SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
+                        Log("TrainPathRequest for \"" + train.name + "\" FWD plans: " + SB.ToString());
                     }
-                    SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
-                    Log("TrainPathRequest for \"" + train.name + "\" FWD plans: " + SB.ToString());
+                    finally
+                    {
+                        SB.Clear();
+                    }
                 }
                 if (finishedRequestsFWD.Count == 0)
                     return float.MaxValue;
@@ -966,46 +1285,71 @@ namespace RandomAdditions.RailSystem
                 {
                     return float.MaxValue;
                 }
-                StringBuilder SB = new StringBuilder();
                 float accumlativeDist = 0;
                 foreach (var item in finishedRequestsBKD)
                 {
-                    accumlativeDist += item.Value.dist;
-                    foreach (var item2 in item.Value.instructions)
+                    try
                     {
-                        if (item2.Key != null)
+                        accumlativeDist += item.Value.dist;
+                        foreach (var item2 in item.Value.instructions)
                         {
-                            if (!item2.Key.HostNode.Registered())
+                            if (item2.Key != null)
                             {
-                                DebugRandAddi.Assert("TrainPathRequest cancelled because track nodes changed");
+                                if (!item2.Key.HostNode.Registered())
+                                {
+                                    DebugRandAddi.Assert("TrainPathRequest cancelled because track nodes changed");
+                                    return float.MaxValue;
+                                }
+                                SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.Value.dist + "] => ");
+                            }
+                            else
+                            {
+                                DebugRandAddi.Assert("TrainPathRequest cancelled because track changed");
                                 return float.MaxValue;
                             }
-                            SB.Append("[" + item2.Key.HostNode.NodeID + " | " + item2.Value + " | " + item.Value.dist + "] => ");
                         }
-                        else
-                        {
-                            DebugRandAddi.Assert("TrainPathRequest cancelled because track changed");
-                            return float.MaxValue;
-                        }
+                        SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
+                        Log("TrainPathRequest for \"" + train.name + "\" BKD plans: " + SB.ToString());
                     }
-                    SB.Append("[" + target.NodeID + " | " + accumlativeDist + "]");
-                    Log("TrainPathRequest for \"" + train.name + "\" BKD plans: " + SB.ToString());
+                    finally
+                    {
+                        SB.Clear();
+                    }
                 }
                 if (finishedRequestsBKD.Count == 0)
                     return float.MaxValue;
                 return accumlativeDist;
             }
 
+            internal void Debug_SHOW(bool backwards)
+            {
+                int Index = 0;
+                if (backwards)
+                {
+                    for (int step = 0; step < requestsBKD.Count; step++)
+                    {
+                        requestsBKD[step].Debug_SHOW(true, ref Index, new Vector3(0, step +1, 0));
+                    }
+                }
+                else
+                {
+                    for (int step = 0; step < requestsFWD.Count; step++)
+                    {
+                        requestsFWD[step].Debug_SHOW(true, ref Index, new Vector3(0, step + 1, 0));
+                    }
+                }
+            }
+
 
             private struct BogiePathingTree
             {
                 private readonly TrainPathRequest request;
-                public readonly ModuleRailBogie bogie;
+                public readonly ModuleRailBogie.RailBogie bogie;
                 private readonly RailTrackNode dest;
                 private readonly List<BogiePathBranch> curOps;
                 private List<BogiePathBranch> finished;
 
-                public BogiePathingTree(TrainPathRequest requester, RailTrack start, bool reversed, RailTrackNode destination, ModuleRailBogie bogie)
+                public BogiePathingTree(TrainPathRequest requester, RailTrack start, bool reversed, RailTrackNode destination, ModuleRailBogie.RailBogie bogie)
                 {
                     request = requester;
                     this.bogie = bogie;
@@ -1027,7 +1371,7 @@ namespace RandomAdditions.RailSystem
                         return 0;
                     if (finished.Count == 0)
                         return -1;
-                    branch = finished.OrderBy(x => x.dist).First();
+                    branch = finished.OrderBy(x => x.dist).FirstOrDefault();
                     return 1;
                 }
                 private int UpdatePathing_Internal()
@@ -1051,6 +1395,24 @@ namespace RandomAdditions.RailSystem
                         }
                     }
                     return curOps.Count() == 0 ? 1 : 0;
+                }
+
+                internal void Debug_SHOW(bool backwards, ref int index, Vector3 upNum)
+                {
+                    if (backwards)
+                    {
+                        for (int step = 0; step < curOps.Count; step++)
+                        {
+                            curOps[step].Debug_SHOW(Color.red, ref index, upNum);
+                        }
+                    }
+                    else
+                    {
+                        for (int step = 0; step < curOps.Count; step++)
+                        {
+                            curOps[step].Debug_SHOW(Color.green, ref index, upNum);
+                        }
+                    }
                 }
 
                 internal class BogiePathBranch
@@ -1091,64 +1453,23 @@ namespace RandomAdditions.RailSystem
                         }
                         RailTrack prev = curTrack;
                         curTrack = curTrack.PathfindRailStepObeyOneWay(Forward, out bool inv, out RailConnectInfo info, ref curSeg);
+                        if (curTrack == null)
+                        {
+                            Log("BogiePath " + id + " next rail null(2)");
+                            return -1;
+                        }
                         if (info != null)
                         {
                             RailTrackNode node = info.HostNode;
+                            if (info.HostNode == null)
+                                throw new NullReferenceException("Pathfind - Somehow HostNode is null");
                             if (node != null)
                             {
-                                dist += curTrack.distance;
-                                foreach (var item in curTrack.ActiveBogeys)
-                                {
-                                    if (request.request.Bogies.Contains(item))
-                                    {
-                                        Obstructed = true;
-                                        if (item.engine.AutopilotActive)
-                                            dist += MovingTrainObstructionPenalty;
-                                        else
-                                            dist += StationaryTrainObstructionPenalty;
-                                    }
-                                }
-                                if (node == request.dest)
-                                {
-                                    Log("BogiePath " + id + " reached destination");
-                                    return 1;
-                                }
-                                if (prev == null || !prev.IsNodeTrack)
-                                {   // ignore NodeTracks, only LinkTracks count
-                                    if (passed.Contains(info))
-                                    {
-                                        Log("BogiePath " + id + " looped on itself");
-                                        return -1; // LOOP 
-                                    }
-
-                                    if (node.NodeType == RailNodeType.Junction && node.GetLinkTrackIndex(prev) == 0)
-                                    {
-                                        Log("BogiePath " + id + " split at junction node " + node.NodeID);
-                                        foreach (var item in node.GetAllConnectedLinks())
-                                        {
-                                            if (item.Index != 0)
-                                            {
-                                                if (item.LinkTrack != prev)
-                                                {
-                                                    BogiePathBranch path = new BogiePathBranch(item.LinkTrack, curSeg, dist, passed,
-                                                        instructions, item.LowTrackConnection, id + "_" + node.NodeID + "_" + item);
-                                                    path.passed.Add(info);
-                                                    path.instructions.Add(new KeyValuePair<RailConnectInfo, int>(info, item.Index));
-                                                    request.curOps.Add(path);
-                                                    Log("BogiePath " + id + " split added " + item);
-                                                }
-                                            }
-                                        }
-                                        passed.Add(info);
-                                        instructions.Add(new KeyValuePair<RailConnectInfo, int>(info, 0));
-                                    }
-                                    else
-                                    {
-                                        Log("BogiePath " + id + " passed a point node " + node.NodeID);
-                                        passed.Add(info);
-                                        instructions.Add(new KeyValuePair<RailConnectInfo, int>(info, 0));
-                                    }
-                                }
+                                if (prev == null)
+                                    throw new NullReferenceException("Pathfind - Somehow prev is null");
+                                int valOut = PathfindNode(request, curTrack, prev, node, info);
+                                if (valOut != 0)
+                                    return valOut;
                             }
                             else
                             {
@@ -1162,6 +1483,87 @@ namespace RandomAdditions.RailSystem
                         return 0;
                     }
 
+                    public int PathfindNode(BogiePathingTree request, RailTrack curTrack,
+                        RailTrack prev, RailTrackNode node, RailConnectInfo info)
+                    {
+                        dist += curTrack.distance;
+                        if (curTrack.ActiveBogeys == null)
+                            throw new NullReferenceException("Pathfind - Somehow ActiveBogeys is null");
+                        foreach (var item in curTrack.ActiveBogeys)
+                        {
+                            if (!request.request.Bogies.Contains(item))
+                            {
+                                Obstructed = true;
+                                if (item.engine.AutopilotActive)
+                                    dist += MovingTrainObstructionPenalty;
+                                else
+                                    dist += StationaryTrainObstructionPenalty;
+                            }
+                        }
+                        if (node == request.dest)
+                        {
+                            Log("BogiePath " + id + " reached destination");
+                            return 1;
+                        }
+                        if (prev == null || !prev.IsNodeTrack)
+                        {   // ignore NodeTracks, only LinkTracks count
+                            if (passed.Contains(info))
+                            {
+                                Log("BogiePath " + id + " looped on itself");
+                                return -1; // LOOP 
+                            }
+
+                            if (node.NodeType == RailNodeType.Junction && node.GetLinkTrackIndex(prev) == 0)
+                            {
+                                Log("BogiePath " + id + " split at junction node " + node.NodeID);
+                                foreach (var item in node.GetAllConnectedLinks())
+                                {
+                                    if (item.Index != 0 && item.LinkTrack != null)
+                                    {
+                                        if (item.LinkTrack != prev)
+                                        {
+                                            BogiePathBranch path = new BogiePathBranch(item.LinkTrack, curSeg, dist, passed,
+                                                instructions, item.LowTrackConnection, id + "_" + node.NodeID + "_" + item);
+                                            path.passed.Add(info);
+                                            path.instructions.Add(new KeyValuePair<RailConnectInfo, int>(info, item.Index));
+                                            request.curOps.Add(path);
+                                            Log("BogiePath " + id + " split added " + item);
+                                        }
+                                    }
+                                }
+                                passed.Add(info);
+                                instructions.Add(new KeyValuePair<RailConnectInfo, int>(info, 0));
+                            }
+                            else
+                            {
+                                Log("BogiePath " + id + " passed a point node " + node.NodeID);
+                                passed.Add(info);
+                                instructions.Add(new KeyValuePair<RailConnectInfo, int>(info, 0));
+                            }
+                        }
+                        return 0;
+                    }
+                    internal void Debug_SHOW(Color route, ref int index, Vector3 upNum)
+                    {
+                        RailConnectInfo RCI = null;
+                        foreach (var item in instructions)
+                        {
+                            RailConnectInfo RCI2 = item.Key;
+                            if (RCI == null)
+                            {
+                                RCI = RCI2;
+                            }
+                            else
+                            {
+                                DebugExtUtilities.DrawDirIndicator(RCI.RailEndPositionOnRailScene() + upNum, 
+                                    RCI2.RailEndPositionOnRailScene() + upNum,
+                                    DebugExtUtilities.BlendColors(route, DebugExtUtilities.GetUniqueColor(index), 0.333f), 
+                                    PathDebugUpdateTime);
+                                index++;
+                                RCI = RCI2;
+                            }
+                        }
+                    }
                 }
             }
         }

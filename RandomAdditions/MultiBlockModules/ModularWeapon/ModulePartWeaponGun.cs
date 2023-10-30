@@ -292,7 +292,7 @@ namespace RandomAdditions
                 if (OnAudioTickUpdate != null)
                 {
                     TechAudio.AudioTickData audioTickData = default;
-                    audioTickData.module = MD; // only need pos
+                    audioTickData.block = block; // only need pos
                     audioTickData.provider = this;
                     audioTickData.sfxType = m_FireSFXType;
                     audioTickData.numTriggered = barrelsFired;

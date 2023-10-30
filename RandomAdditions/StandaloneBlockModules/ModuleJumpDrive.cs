@@ -32,9 +32,16 @@ namespace RandomAdditions
         {
         }
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleJumpDrive",
+            AltUI.HighlightString("Jump Drives") + " let you jump to your other " + AltUI.BlueString("Techs") +
+            ".  Open your " + AltUI.ObjectiveString("World Map") + " and double-click on the " + AltUI.BlueString("Tech") + 
+            " to jump to");
+        public override void OnGrabbed()
+        {
+            hint.Show();
+        }
         public override void OnAttach()
         {
-            ExtUsageHint.ShowExistingHint(4012);
             ManPointer.inst.MouseEvent.Subscribe(Click);
             ManWorldTreadmill.inst.AddListener(this);
         }
@@ -368,15 +375,20 @@ namespace RandomAdditions
         private const int GUIJumperID = 8035;
         internal class GUIDisplayTechJumper : MonoBehaviour
         {
+            private void CloseMenu()
+            {
+                playerSelected = null;
+            }
+
             private void OnGUI()
             {
                 if (KickStart.IsIngame && playerSelected?.block?.tank)
                 {
                     Tank playerTank = playerSelected.block.tank;
                     if (!playerTank.Vision.GetFirstVisibleTechIsEnemy(playerTank.Team))
-                        HotWindow = GUI.Window(GUIJumperID, HotWindow, GUIHandler, "<b>Jump Target Menu</b>");
+                        HotWindow = AltUI.Window(GUIJumperID, HotWindow, GUIHandler, "Jump Target Menu", CloseMenu);
                     else
-                        HotWindow = GUI.Window(GUIJumperID, HotWindow, GUIHandlerJammed, "<b>Jump Target Menu</b>");
+                        HotWindow = AltUI.Window(GUIJumperID, HotWindow, GUIHandlerJammed, "Jump Target Menu", CloseMenu);
                 }
                 else
                     gameObject.SetActive(false);

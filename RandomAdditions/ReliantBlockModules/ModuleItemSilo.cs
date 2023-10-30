@@ -252,6 +252,10 @@ namespace RandomAdditions
             }
             ResetGaugesAndDisplays();
         }
+
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleItemSilo",
+             AltUI.HighlightString("Storages") + " hold stacks of " + AltUI.ObjectiveString("Chunks") +
+            " or " + AltUI.ObjectiveString("Blocks") + " safely inside.");
         private void OnAttach()
         {
             if (StackSet == 0)
@@ -263,8 +267,8 @@ namespace RandomAdditions
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
 
             ResetGaugesAndDisplays();
-            isSaving = false;
-            ExtUsageHint.ShowExistingHint(4005);
+            isSaving = false; 
+            hint.Show();
         }
         private void OnDetach()
         {

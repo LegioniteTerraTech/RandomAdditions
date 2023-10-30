@@ -258,12 +258,15 @@ namespace RandomAdditions
             }
         }
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleHangar",
+            AltUI.HighlightString("Hangars") + " hold Techs!  " + AltUI.HighlightString("H + Right-Click") + 
+            " on a Tech to store or " + AltUI.HighlightString("move close and right-click on it") + " from another.");
         public override void OnAttach()
         {
             enabled = true;
             block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             //block.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            ExtUsageHint.ShowExistingHint(4009);
+            hint.Show();
         }
         public override void OnDetach()
         {
@@ -489,7 +492,7 @@ namespace RandomAdditions
                 DoLaunchTech();
             else
             {
-                netHookLaunch.TryBroadcast(new HangarLaunchCommand());
+                netHookLaunch.TryBroadcast(new HangarLaunchCommand(this));
             }
         }
         private static bool OnReceiveLaunchRequest(HangarLaunchCommand command, bool isServer)
@@ -751,7 +754,7 @@ namespace RandomAdditions
                             }
                             foreach (ModuleEnergyStore MES in TankWantsToDock.blockman.IterateBlockComponents<ModuleEnergyStore>())
                             {
-                                if (MES.m_EnergyType == EnergyRegulator.EnergyType.Electric)
+                                if (MES.m_EnergyType == TechEnergy.EnergyType.Electric)
                                 {
                                     TechBattMax += Mathf.CeilToInt(MES.m_Capacity);
                                     TechBatt += Mathf.CeilToInt(MES.CurrentAmount);
@@ -1059,14 +1062,14 @@ namespace RandomAdditions
 
         private void UpdateGains(STechDetails sTech)
         {
-            EnergyRegulator.EnergyType ET = EnergyRegulator.EnergyType.Electric;
+            TechEnergy.EnergyType ET = TechEnergy.EnergyType.Electric;
             if (ChargeStoredTechsRate > 0)
             {
                 if (sTech.EnergyCurrent < sTech.EnergyCapacity)
                 {
                     long delta = Math.Min(ChargeStoredTechsRate, sTech.EnergyCapacity - sTech.EnergyCurrent);
                     if ((energyMan.GetCurrentAmount(ET) - delta) / (energyMan.GetTotalCapacity(ET) + 0.1f) > MinimumEnergyPercent)
-                        sTech.EnergyCurrent += Mathf.CeilToInt(energyMan.ConsumeUpToMax(EnergyRegulator.EnergyType.Electric, delta));
+                        sTech.EnergyCurrent += Mathf.CeilToInt(energyMan.ConsumeUpToMax(TechEnergy.EnergyType.Electric, delta));
                 }
             }
             if (RepairStoredTechsRate > 0)
@@ -1076,7 +1079,7 @@ namespace RandomAdditions
                     long delta = Math.Min(RepairStoredTechsRate, sTech.HealthDamage - sTech.HealthAdded);
                     float ER = delta / EnergyToRepairRatio;
                     if ((energyMan.GetCurrentAmount(ET) - ER) / (energyMan.GetTotalCapacity(ET) + 0.1f) > MinimumEnergyPercent)
-                        sTech.HealthAdded += Mathf.CeilToInt(energyMan.ConsumeUpToMax(EnergyRegulator.EnergyType.Electric, ER) * EnergyToRepairRatio);
+                        sTech.HealthAdded += Mathf.CeilToInt(energyMan.ConsumeUpToMax(TechEnergy.EnergyType.Electric, ER) * EnergyToRepairRatio);
                 } 
             }
         }

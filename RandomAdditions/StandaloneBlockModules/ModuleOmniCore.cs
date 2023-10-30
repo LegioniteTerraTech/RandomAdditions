@@ -39,10 +39,15 @@ namespace RandomAdditions
 
         private bool working = false;
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleOmniCore",
+           AltUI.HighlightString("Starship Engines") + " apply centralized thrust in any direction and axi regardless of placement.");
+        public override void OnGrabbed()
+        {
+            hint.Show();
+        }
         public override void OnAttach()
         {
             AddTo();
-            ExtUsageHint.ShowExistingHint(4011);
         }
         public override void OnDetach()
         {

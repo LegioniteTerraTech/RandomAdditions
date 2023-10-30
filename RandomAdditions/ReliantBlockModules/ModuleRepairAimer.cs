@@ -85,10 +85,13 @@ namespace RandomAdditions
             InitHealBeam();
         }
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRepairAimer",
+            AltUI.HighlightString("Repair Arms") + " repair blocks from far away at the cost of " +
+            AltUI.BlueString("Energy") + ".");
         public override void OnAttach()
         {
             TankRepairer.stat.HandleAddition(this);
-            ExtUsageHint.ShowExistingHint(4003);
+            hint.Show();
         }
 
         public override void OnDetach()
@@ -167,7 +170,7 @@ namespace RandomAdditions
             {
                 if (ManNetwork.IsHost || !ManNetwork.IsNetworked)
                 {
-                    if (Energy.ConsumeIfEnough(EnergyRegulator.EnergyType.Electric, HealPulseCost))
+                    if (Energy.ConsumeIfEnough(TechEnergy.EnergyType.Electric, HealPulseCost))
                     {
                         StartBeam();
                         var DMG = aimTargBlock.visible.damageable;
@@ -296,7 +299,7 @@ namespace RandomAdditions
         }
         public void StartManagingPost()
         {
-            primary = Modules.First();
+            primary = Modules.FirstOrDefault();
             primary.Energy.UpdateConsumeEvent.Unsubscribe(UpdatePower);
         }
         public void StopManaging()
@@ -312,7 +315,7 @@ namespace RandomAdditions
             if (primary == rep)
             {
                 primary.Energy.UpdateConsumeEvent.Unsubscribe(UpdatePower);
-                primary = Modules.ToList().Find(x => x != rep);
+                primary = Modules.FirstOrDefault(x => x != rep);
                 if (primary)
                     primary.Energy.UpdateConsumeEvent.Subscribe(UpdatePower);
             }

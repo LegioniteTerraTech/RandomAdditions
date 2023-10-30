@@ -189,7 +189,7 @@ namespace RandomAdditions
         public class TankSimpleLegs : MonoBehaviour
         {
             private Tank tank;
-            private EnergyRegulator reg;
+            private TechEnergy reg;
             private List<ModuleSimpleLegs> LegBlocks = new List<ModuleSimpleLegs>();
 
             public static void HandleAddition(Tank tank, ModuleSimpleLegs legs)

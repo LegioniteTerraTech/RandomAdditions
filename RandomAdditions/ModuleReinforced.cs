@@ -4,7 +4,7 @@ using TerraTechETCUtil;
 public class ModuleReinforced : RandomAdditions.ModuleReinforced { };
 namespace RandomAdditions
 {
-    public class ModuleReinforced : MonoBehaviour
+    public class ModuleReinforced : MonoBehaviour, IInvokeGrabbable
     {
         /* Throw this within your JSONBLOCK
         "RandomAdditions.ModuleReinforced":{ // Add a special resistance to your block
@@ -63,9 +63,14 @@ namespace RandomAdditions
             }
             catch { }
         }
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleReinforced",
+            "This block is " + AltUI.HighlightString("reinforced") + " and has special resistance properties.");
+        public void OnGrabbed()
+        {
+            hint.Show();
+        }
         private void OnAttach()
         {
-            ExtUsageHint.ShowExistingHint(4008);
             gameObject.GetComponent<TankBlock>().GetComponent<TankBlock>().UnSubToBlockAttachConnected(OnAttach, null);
         }
 

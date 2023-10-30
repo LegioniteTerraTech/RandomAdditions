@@ -164,7 +164,7 @@ namespace RandomAdditions
             if (modGuessCount > 16)
             {
                 tooMany = true;
-                return "[Too much to display] Count: " + modGuessCount;
+                return "[See Below Stack Trace] Count: " + modGuessCount;
             }
             string modsInSession = ManMods.inst.GetModsInCurrentSession().Replace("[", "");
             bool junkWithin = true;

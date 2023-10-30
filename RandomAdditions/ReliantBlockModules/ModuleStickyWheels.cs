@@ -20,7 +20,8 @@ namespace RandomAdditions
         private ModuleWheels wheels;
         private Rigidbody rbody => tank.rbody;
         private List<ManWheels.Wheel> wheelInst;
-        private readonly Dictionary<ManWheels.Wheel, WheelStickiness> wheelsSurface = new Dictionary<ManWheels.Wheel, WheelStickiness>();
+        private readonly Dictionary<ManWheels.Wheel, WheelStickiness> wheelsSurface = 
+            new Dictionary<ManWheels.Wheel, WheelStickiness>(4);
         private readonly List<ManWheels.Wheel> wheelsRelease = new List<ManWheels.Wheel>();
         private Transform rootTrans;
         private Transform wheelsDownwards;
@@ -109,7 +110,8 @@ namespace RandomAdditions
                                 else
                                 {
                                     wheelsSurface.Add(item, new WheelStickiness 
-                                    {   lastContactTime = nextTime, 
+                                    {   
+                                        lastContactTime = nextTime, 
                                         lastContactVectorWorld = item.ContactNormal,
                                         lastContactPointLocal = block.trans.InverseTransformPoint(item.ContactPoint),
                                     });
@@ -146,10 +148,16 @@ namespace RandomAdditions
                                     StickyCompressionForce = 1 - item.Key.Compression;
                                 else
                                     StickyCompressionForce = 1 - (item.Key.Compression / WheelIdealCompression);
-                                rbody.AddForceAtPosition(item.Value.lastContactVectorWorld * StickForce * StickyCompressionForce
-                                    , transform.TransformPoint(item.Value.lastContactPointLocal), ForceMode.Force);
+                                Vector3 force = item.Value.lastContactVectorWorld * StickForce * StickyCompressionForce;
+                                rbody.AddForceAtPosition(force, transform.TransformPoint(item.Value.lastContactPointLocal), 
+                                    ForceMode.Force);
+                                Rigidbody rbodyOther = item.Key.ContactCollider?.attachedRigidbody;
+                                if (rbodyOther)
+                                {
+                                    rbodyOther.AddForceAtPosition(-force, 
+                                        transform.TransformPoint(item.Value.lastContactPointLocal), ForceMode.Force);
+                                }
                             }
-
                         }
                     }
                     foreach (var item in wheelsRelease)
@@ -161,11 +169,17 @@ namespace RandomAdditions
             }
         }
 
-        internal class WheelStickiness
+        internal struct WheelStickiness
         {
-            public float lastContactTime = 0;
-            public Vector3 lastContactVectorWorld = Vector3.down;
-            public Vector3 lastContactPointLocal = Vector3.down;
+            public float lastContactTime;
+            public Vector3 lastContactVectorWorld;
+            public Vector3 lastContactPointLocal;
+            public static WheelStickiness defaultInst => new WheelStickiness()
+            {
+                lastContactTime = 0,
+                lastContactVectorWorld = Vector3.down,
+                lastContactPointLocal = Vector3.down,
+            };
         }
     }
 }

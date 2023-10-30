@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using TerraTechETCUtil;
 using UnityEngine;
 
 public class BurnerJet : RandomAdditions.BurnerJet { };
 namespace RandomAdditions
 {
-    public class BurnerJet : MonoBehaviour
+    public class BurnerJet : MonoBehaviour, IInvokeGrabbable
     {   // Warning: IGNORES SHIELDS
         /* // Has to go in the same GameObject as the BoosterJet (NOT ModuleBooster!!!) to function! 
            "RandomAdditions.BurnerJet": {// Burn & yeet
@@ -53,8 +53,16 @@ namespace RandomAdditions
         private static FieldInfo effectoor = typeof(BoosterJet).GetField("m_Effector", BindingFlags.NonPublic | BindingFlags.Instance);
 
 
-        public void Initiate(BoosterJet jet)
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "BurnerJet",
+            "This booster can deal damage and fling objects.  " + AltUI.EnemyString("Use with care."));
+        public void OnGrabbed()
         {
+            hint.Show();
+        }
+        public void InsureInit(BoosterJet jet)
+        {
+            if (isSetup)
+                return;
             isSetup = true;
             Jet = jet;
             block = jet.GetComponentInParents<TankBlock>(true);

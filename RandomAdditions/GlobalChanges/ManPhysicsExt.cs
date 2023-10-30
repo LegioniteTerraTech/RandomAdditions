@@ -11,8 +11,10 @@ namespace RandomAdditions
 {
     public enum PhysicsClampMode : int
     {
-        LockWhenNoMovementAlly = 0,
-        AlwaysLock = 1,
+        Never = 0,
+        AnyMovement = 1,
+        OwnMovement = 2,
+        AttachedMovement = 3,
     }
 
     public class ManPhysicsExt
@@ -96,6 +98,451 @@ namespace RandomAdditions
     }
     [AutoSaveComponent]
     public class ModulePhysicsExt : ExtModule
+    {
+        internal static MethodInfo anc = typeof(TechAudio).GetMethod("OnTankAnchor", BindingFlags.NonPublic | BindingFlags.Instance);
+        protected const float IgnoreImpulseBelow = 6;
+        protected const float IgnoreAttachDelay = 1.4f;
+        protected static PhysicsLock phyLock = new PhysicsLock();
+
+        public float BreakingForce = 100000;
+        public float BreakingTorque = 10000;
+
+        private ModuleUIButtons buttonGUI = null;
+        [SSaveField]
+        public int LockMode = (int)PhysicsClampMode.Never;
+
+        protected float IgnoreAttachTime = 0;
+        protected HashSet<Collider> physLockCol = new HashSet<Collider>();
+        protected bool LockedToTech = false;
+
+        private Transform LockFootVisualTrans = null;
+        private Transform LockFootTrans = null;
+        private Tank lockedTech = null;
+
+        // Logic
+        private bool LogicConnected = false;
+
+        protected override void Pool()
+        {
+            InsureGUI();
+            LockFootVisualTrans = KickStart.HeavyTransformSearch(transform, "_anchorEndVisual");
+            LockFootTrans = KickStart.HeavyTransformSearch(transform, "_anchorEnd");
+            if (LockFootTrans == null)
+                LockFootTrans = transform;
+            phyLock.PistonBreak = BreakingForce;
+            phyLock.RotorBreak = BreakingTorque;
+        }
+
+        public void InsureGUI()
+        {
+            if (buttonGUI == null)
+            {
+                buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Tech Physics Joint", true);
+                buttonGUI.AddElement("Lock Settings", OnSetMode, OnIconSet, GetMode);
+                buttonGUI.AddElement("Unlock", OnUnlock, OnIconUnlock);
+            }
+        }
+
+        private Sprite OnIconUnlock()
+        {
+            return UIHelpersExt.GetGUIIcon("HUD_Slider_Graphics_01_1");
+        }
+        private float OnUnlock(float set)
+        {
+            DoUnlock();
+            IgnoreAttachTime = IgnoreAttachDelay;
+            return 1;
+        }
+        private Sprite OnIconSet()
+        {
+            return UIHelpersExt.GetGUIIcon("HUD_Slider_Graphics_01_1");
+        }
+        private float OnSetMode(float valueF)
+        {
+            if (float.IsNaN(valueF))
+                return LockMode / Enum.GetValues(typeof(PhysicsClampMode)).Length;
+            int value = Mathf.RoundToInt(valueF * (Enum.GetValues(typeof(PhysicsClampMode)).Length - 1));
+            if (LockMode != value)
+            {
+                TrySetMode(value);
+            }
+            return (float)LockMode / Enum.GetValues(typeof(PhysicsClampMode)).Length;
+        }
+
+        private void TrySetMode(int value)
+        {
+            if (ManPhysicsExt.netHook.CanBroadcast())
+                ManPhysicsExt.netHook.TryBroadcast(new ManPhysicsExt.ModulePhysicsSetMessage(this, value));
+            else
+                OnSetMode(value);
+        }
+        internal void OnSetMode(int value)
+        {
+            ResetSetMode(LockMode);
+            LockMode = value;
+            //DebugRandAddi.Log("ModulePhysicsExt set to " + value);
+            AttachSetMode();
+        }
+        private void ResetSetMode(int previous)
+        {
+            switch (previous)
+            {
+                case (int)PhysicsClampMode.AnyMovement:
+                    tank.control.driveControlEvent.Unsubscribe(OnInput);
+                    if (lockedTech)
+                        lockedTech.control.driveControlEvent.Unsubscribe(OnInput);
+                    break;
+                case (int)PhysicsClampMode.OwnMovement:
+                    tank.control.driveControlEvent.Unsubscribe(OnInput);
+                    break;
+                case (int)PhysicsClampMode.AttachedMovement:
+                    if (lockedTech)
+                        lockedTech.control.driveControlEvent.Unsubscribe(OnInput);
+                    break;
+            }
+        }
+        private void AttachSetMode()
+        {
+            switch (LockMode)
+            {
+                case (int)PhysicsClampMode.AnyMovement:
+                    tank.control.driveControlEvent.Subscribe(OnInput);
+                    if (lockedTech)
+                        lockedTech.control.driveControlEvent.Subscribe(OnInput);
+                    break;
+                case (int)PhysicsClampMode.OwnMovement:
+                    tank.control.driveControlEvent.Subscribe(OnInput);
+                    break;
+                case (int)PhysicsClampMode.AttachedMovement:
+                    if (lockedTech)
+                        lockedTech.control.driveControlEvent.Subscribe(OnInput);
+                    break;
+            }
+        }
+        private void RefreshSetMode()
+        {
+            try
+            {
+                ResetSetMode(LockMode);
+            }
+            catch { }
+            try
+            {
+                AttachSetMode();
+            }
+            catch { }
+        }
+
+        internal string GetMode()
+        {
+            return ((PhysicsClampMode)LockMode).ToString();
+        }
+
+        public override void OnAttach()
+        {
+            InsureGUI();
+            //DebugRandAddi.Log("OnAttach");
+            if (CircuitExt.LogicEnabled)
+            {
+                if (block.CircuitNode?.Receiver)
+                {
+                    LogicConnected = true;
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
+                }
+            }
+            enabled = true;
+            block.serializeEvent.Subscribe(OnSaveSerialization);
+            block.serializeTextEvent.Subscribe(OnTechSnapSerialization);
+            tank.CollisionEvent.Subscribe(OnCollision);
+            tank.control.explosiveBoltDetonateEvents[3].Subscribe(OnBolt);
+            phyLock.AttachedEvent.Subscribe(OnStick);
+            phyLock.DetachedEvent.Subscribe(OnUnStick);
+        }
+        public override void OnDetach()
+        {
+            //DebugRandAddi.Log("OnDetach");
+            phyLock.DetachedEvent.Unsubscribe(OnUnStick);
+            phyLock.AttachedEvent.Unsubscribe(OnStick);
+            block.serializeTextEvent.Unsubscribe(OnTechSnapSerialization);
+            block.serializeEvent.Unsubscribe(OnSaveSerialization);
+            enabled = false;
+            tank.control.driveControlEvent.Unsubscribe(OnInput);
+            tank.control.explosiveBoltDetonateEvents[3].Unsubscribe(OnBolt);
+            if (LogicConnected)
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
+            LogicConnected = false;
+            DoUnlock();
+            tank.CollisionEvent.Unsubscribe(OnCollision);
+        }
+
+        public void OnInput(TankControl.ControlState control)
+        {
+            switch (LockMode)
+            {
+                case 0:
+                    if (control.AnyMovementControl)
+                    {
+                        IgnoreAttachTime = Time.time + IgnoreAttachDelay;
+                        if (phyLock.IsAttached)
+                            DoUnlock();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+        public void OnBolt(TechSplitNamer un)
+        {
+            IgnoreAttachTime = Time.time + IgnoreAttachDelay;
+            DoUnlock();
+        }
+
+        public void AnchorsChanged(ModuleAnchor u, bool u2, bool u3)
+        {
+            DoUnlock();
+            IgnoreAttachTime = 0;
+        }
+        public void OnRecCharge(Circuits.BlockChargeData charge)
+        {
+            //DebugRandAddi.Log("OnRecCharge " + charge);
+            try
+            {
+                if (charge.ChargeStrength > 0)
+                    DoUnlock();
+            }
+            catch { }
+        }
+
+
+
+        public Vector3 GetAnchorPos(Transform trans, Vector3 offset)
+        {
+            return trans.root.InverseTransformPoint(trans.TransformPoint(offset));
+        }
+        public Quaternion GetAnchorRotWORLD(Transform trans, Quaternion offset)
+        {
+            return trans.rotation * offset;
+        }
+
+        public virtual void UpdateLateVisuals()
+        {
+            //DebugRandAddi.Log("OnRecCharge " + charge);
+            if (LockFootVisualTrans != null)
+            {
+                return;
+            }
+            LockFootVisualTrans.localPosition = Vector3.zero;
+            LockFootVisualTrans.localRotation = Quaternion.identity;
+        }
+
+        protected void PlaySound(bool attached)
+        {
+            try
+            {
+                anc.Invoke(tank.TechAudio, new object[2] { attached, true });
+            }
+            catch { }
+        }
+
+        protected void OnStick(Transform transIn)
+        {
+            PlaySound(true);
+            lockedTech = transIn.root.GetComponent<Tank>();
+            RefreshSetMode();
+        }
+        protected void OnUnStick()
+        {
+            PlaySound(false);
+            ResetSetMode(LockMode);
+            lockedTech = null;
+        }
+
+        protected bool ShouldDetach()
+        {
+            switch (LockMode)
+            {
+                case 0:
+                    return tank.control.TestAnyControl() || (lockedTech != null && lockedTech.control.TestAnyControl());
+                default:
+                    return false;
+            }
+        }
+
+        protected void TryUnlock(Tank tankO = null)
+        {
+            if (ManPhysicsExt.netHookUnlock.CanBroadcast())
+                ManPhysicsExt.netHookUnlock.TryBroadcast(new ManPhysicsExt.ModulePhysicsUnlockMessage(this));
+            else
+                DoUnlock();
+        }
+
+        public void OnCollision(Tank.CollisionInfo collide, Tank.CollisionInfo.Event whack)
+        {
+            try
+            {
+                if (whack == Tank.CollisionInfo.Event.NonAttached || IgnoreAttachTime > Time.time)
+                    return;
+                Tank.CollisionInfo.Obj thisC;
+                Tank.CollisionInfo.Obj other;
+                if (collide.a.tank == tank)
+                {
+                    thisC = collide.a;
+                    other = collide.b;
+                }
+                else
+                {
+                    other = collide.a;
+                    thisC = collide.b;
+                }
+                if (!physLockCol.Contains(thisC.collider))
+                    return;
+                if (whack == Tank.CollisionInfo.Event.Enter && !phyLock.IsAttached)
+                {
+                    WorldPosition WP = WorldPosition.FromScenePosition(collide.point);
+                    phyLock.Attach(WP, thisC.collider, WP, other.collider);
+                }
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("Whoops - ModulePhysics " + e);
+            }
+        }
+
+        public void FixedUpdateRelationToTargetTrans()
+        {
+            if (phyLock.IsAttached)
+            {
+            }
+        }
+
+
+        internal void DoUnlock(Tank tankO = null)
+        {
+            DoUnlock_Internal();
+        }
+        internal virtual void DoUnlock_Internal()
+        {
+        }
+
+        protected void ReallyUnlock()
+        {
+            if (phyLock.IsAttached)
+            {
+                if (ManNetwork.IsNetworked)
+                    DebugRandAddi.Log("ModulePhysicsExt - unlock local on NETWORK");
+                phyLock.Detach();
+            }
+        }
+
+        public class SerialData : Module.SerialData<SerialData>
+        {
+            public int lastMode;
+        }
+
+        protected void OnSaveSerialization(bool Saving, TankPreset.BlockSpec spec)
+        {
+            SerialData SD;
+            if (Saving)
+            {
+                SD = new SerialData() { lastMode = LockMode };
+                SD.Store(spec.saveState);
+            }
+            else
+            {
+                SD = SerialData.Retrieve(spec.saveState);
+                if (SD != null)
+                {
+                    LockMode = SD.lastMode;
+                }
+            }
+        }
+        protected void OnTechSnapSerialization(bool Saving, TankPreset.BlockSpec spec, bool tankPresent)
+        {
+            if (!tankPresent)
+                return;
+            if (Saving)
+            {
+                spec.Store(GetType(), "type", LockMode.ToString());
+            }
+            else
+            {
+                try
+                {
+                    LockMode = int.Parse(spec.Retrieve(GetType(), "type"));
+                }
+                catch
+                {
+                    DebugRandAddi.Assert("RandomAdditions: ModuleRailJunction - Unable to deserialize(String)!");
+                }
+            }
+        }
+
+        protected class RAPhysicsAnchor : MonoBehaviour, IWorldTreadmill
+        {
+            private static RAPhysicsAnchor prefab;
+
+            internal Rigidbody rbody;
+
+            public static void FirstInit()
+            {
+                if (prefab != null)
+                    return;
+                var GO = new GameObject("MaglockAnchor");
+                GO.layer = Globals.inst.layerCosmetic;
+                prefab = GO.AddComponent<RAPhysicsAnchor>();
+                GO.AddComponent<MeshFilter>();
+                GO.AddComponent<MeshRenderer>();
+                var SC = GO.AddComponent<SphereCollider>();
+                SC.radius = 0.2f;
+                SC.material = new PhysicMaterial();
+                var rb = GO.AddComponent<Rigidbody>();
+                rb.constraints = RigidbodyConstraints.None;
+                GO.SetActive(false);
+                prefab.CreatePool(1);
+            }
+            public static RAPhysicsAnchor InitNew(ExtModule inst, Vector3 contactPoint)
+            {
+                FirstInit();
+                var MTA = prefab.Spawn();
+                return MTA.Init(inst, contactPoint);
+            }
+            public RAPhysicsAnchor Init(ExtModule inst, Vector3 contactPoint)
+            {
+                rbody = GetComponent<Rigidbody>();
+                transform.position = contactPoint;
+                transform.rotation = inst.tank.transform.rotation;
+                rbody.freezeRotation = true;
+                rbody.mass = 9001;
+                rbody.constraints = RigidbodyConstraints.FreezeAll;
+                try
+                {
+                    GetComponent<MeshFilter>().sharedMesh = inst.GetComponentInChildren<MeshFilter>(true).sharedMesh;
+                    GetComponent<MeshRenderer>().sharedMaterial = inst.GetComponentInChildren<MeshRenderer>(true).sharedMaterial;
+                }
+                catch { }
+                ManWorldTreadmill.inst.AddListener(this);
+                return this;
+            }
+            public void DeInit()
+            {
+                ManWorldTreadmill.inst.RemoveListener(this);
+                this.Recycle();
+            }
+
+            public void OnMoveWorldOrigin(IntVector3 move)
+            {
+                transform.position += move;
+            }
+            public void OnRecycle()
+            {
+
+            }
+        }
+    }
+
+    /*
+    [AutoSaveComponent]
+    public class ModulePhysicsExt_Legacy : ExtModule
     {
         internal static MethodInfo anc = typeof(TechAudio).GetMethod("OnTankAnchor", BindingFlags.NonPublic | BindingFlags.Instance);
         protected const float IgnoreImpulseBelow = 6;
@@ -639,5 +1086,6 @@ namespace RandomAdditions
             }
         }
     }
+    */
 
 }

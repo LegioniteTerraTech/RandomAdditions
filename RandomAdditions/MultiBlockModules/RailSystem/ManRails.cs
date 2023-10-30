@@ -14,114 +14,11 @@ using RandomAdditions.Minimap;
 
 namespace RandomAdditions.RailSystem
 {
-    public enum RailType
-    {
-        // All trains (except RR) accept any blocks in the game. Props and even normal wheels will work.
-        //    Anchoring will disable the train.  These are just ideas and may or may not become a part of the mod.
-        //--------------------------------------------------------------------------------------------------
-        LandGauge2, // Venture One-Set-Bogie        - Extremely fast train with low capacity.  Banking turns.
-                    //    Bogey has APs top.  Extremely difficult to de-rail.
-        LandGauge3, // GSO / Hawkeye Two-Set-Bogie  - Middle-ground with everything.  Low turns.  Bogie has APs top
-                    //    Cheap or well armored bogies effective for combat.
-        LandGauge4, // GeoCorp Three-Set-Bogie      - Slow with massive weight capacity.  Low turns.  Bogie has APs top
-                    //    5x5 top area presented by track width presents high stability.
-        BeamRail,   // Better Future Halo Bogie     - Rides an elevated beam rail determined by station positioning.
-                    //    Bogie has APs top and bottom.  Keeps at least 12 blocks off the ground.
-        Revolver,   // RR Rotating Ring Bogie       - Can rotate along it's line based on the rotation of the rail nodes and the
-                    //                                  ring's own rotation.
-                    //    Limited in customization. Very weak to attacks.
-                    //    (needs new camera and interface things, probably the last one)
-        Funicular,//  ???  - Has extremely high torque and breaking capacity, but low top speed.  Can be completely vertical.
-        Spines,     // Legion Spine Crawler         - Transfers Centipede Trains by lending them over to other Spine Guides.
-                    //    Does not work with couplers.
-                    //    Can attack with a devastating high-knockback whip attack but will prioritize trains over attacking.
-                    //    The ONLY track system with limited linking range since Spine Guides can only reach so far.
-                    //    Spine Crawlers operate just like normal walker legs on terrain.
-    }
-    public enum RailSpace : byte
-    {
-        World,
-        WorldFloat,
-        Local,
-        LocalUnstable,
-    }
 
-    internal struct RailTypeStats
-    {
-        internal float RailGauge;
-        internal float railTurnRate;
-        internal float railMiniHeight;
-        internal float MaxIdealHeightDeviance;
-        internal float railCrossLength;
-        internal float railCrossHalfWidth;
-        internal float railIronScale;
-        internal Vector2 texturePositioning;
-        /// <summary> The multiplier in relation to the turn angle between rail points in RailSegment</summary>
-        internal float bankLevel;
-        /// <summary> The maximum angle before we try elevating the track off the ground with steeper bank angles </summary>
-        internal float minBankAngle;
-        /// <summary> The highest angle we can bank to </summary>
-        internal float maxBankAngle;
-        /// <summary> The max number of tracks spent on a long curve to turn the rails. Minimum 2.</summary>
-        internal int maxEndCurveTracks;
-        internal RailTypeStats(float railGauge,float turnRate, float minimumHeight, float idealHeightDev, float length, float hWidth,
-            float ironScale, Vector2 pos, float BankLevel, float minBankLevel, float maxBankLevel, int numEndCurveTracks)
-        {
-            RailGauge = railGauge;
-            railTurnRate = turnRate;
-            railMiniHeight = minimumHeight;
-            MaxIdealHeightDeviance = idealHeightDev;
-            railCrossLength = length;
-            railCrossHalfWidth = hWidth;
-            railIronScale = ironScale;
-            texturePositioning = pos;
-            bankLevel = BankLevel;
-            minBankAngle = minBankLevel;
-            maxBankAngle = maxBankLevel;
-            maxEndCurveTracks = Mathf.Max(2, numEndCurveTracks);
-        }
-    }
-
-    internal class UnstableTrack
-    {
-        private const float DetachDelta = 1.5f;
-        internal readonly RailTrack tracked;
-        internal bool setup;
-        internal Vector3 StartDelta;
-        internal Vector3 EndDelta;
-        internal UnstableTrack(RailTrack toTrack)
-        {
-            tracked = toTrack;
-            setup = false;
-            StartDelta = Vector3.zero;
-            EndDelta = Vector3.zero;
-        }
-        internal bool CheckStillConnected()
-        {
-            if (!setup)
-            {
-                setup = true;
-                StartDelta = -(tracked.StartConnection.RailEndPositionOnNode().ScenePosition -
-                    tracked.StartConnection.RailEndPositionOnRailScene());
-                EndDelta = -(tracked.EndConnection.RailEndPositionOnNode().ScenePosition -
-                    tracked.EndConnection.RailEndPositionOnRailScene());
-            }
-            Vector3 startDelta = tracked.StartConnection.RailEndPositionOnNode().ScenePosition -
-                tracked.StartConnection.RailEndPositionOnRailScene() + StartDelta;
-            Vector3 endDelta = tracked.EndConnection.RailEndPositionOnNode().ScenePosition -
-                tracked.EndConnection.RailEndPositionOnRailScene() + EndDelta;
-            bool still = startDelta.WithinBox(DetachDelta) && endDelta.WithinBox(DetachDelta);
-            if (!still)
-                DebugRandAddi.Log("UnstableTrack.CheckStillConnected() - detached due to start delta " + 
-                    startDelta.ToString() + " and end delta " + endDelta.ToString());
-            return still;
-        }
-    }
-
-    [AutoSaveManager]
     /// <summary>
     /// The manager that loads RailSegments when needed
     /// </summary>
+    [AutoSaveManager]
     public class ManRails : MonoBehaviour, IWorldTreadmill
     {
         public class NetworkedTrackMessage : MessageBase
@@ -142,6 +39,11 @@ namespace RandomAdditions.RailSystem
         }
         private static NetworkHook<NetworkedTrackMessage> netHook = new NetworkHook<NetworkedTrackMessage>(null, NetMessageType.ToServerOnly);
 
+        public class ManRailsLoadData
+        {
+            public RailNodeJSON[] RailNodeSerials;
+            public RailTrackJSON[] RailTrackSerials;
+        }
         public class ManRailsLoadMessage : MessageBase
         {
             public ManRailsLoadMessage() { }
@@ -153,7 +55,11 @@ namespace RandomAdditions.RailSystem
                     {
                         using (StreamWriter SW = new StreamWriter(GZS))
                         {
-                            SW.WriteLine(JsonConvert.SerializeObject(inst.RailNodeSerials, Formatting.None));
+                            SW.WriteLine(JsonConvert.SerializeObject(new ManRailsLoadData()
+                            {
+                                RailNodeSerials = inst.RailNodeSerials,
+                                RailTrackSerials = inst.RailTrackSerials,
+                            }, Formatting.None));
                             SW.Flush();
                         }
                     }
@@ -180,7 +86,7 @@ namespace RandomAdditions.RailSystem
 
             public byte[] infoBytes;
         }
-        private static NetworkHook<ManRailsLoadMessage> netHookStartup = new NetworkHook<ManRailsLoadMessage>(RequestCurrentNodesFromServer, NetMessageType.RequestServerFromClient);
+        private static NetworkHook<ManRailsLoadMessage> netHookStartup = new NetworkHook<ManRailsLoadMessage>(RequestDataFromServer, NetMessageType.RequestServerFromClient);
 
         public class JunctionChangeMessage : MessageBase
         {
@@ -204,6 +110,7 @@ namespace RandomAdditions.RailSystem
         }
         internal static NetworkHook<JunctionChangeMessage> netHookJunction = new NetworkHook<JunctionChangeMessage>(ModuleRailJunction.OnJunctionChangeNetwork, NetMessageType.ToClientsOnly);
 
+        internal static Material RailFoundationTexture;
 
 
         internal static float MaxRailHeightSnapDefault = 250;
@@ -233,11 +140,13 @@ namespace RandomAdditions.RailSystem
         internal const int RailMapPriority = 2041;
 
 
-        public static bool IsInit => inst != null;
+        public static bool IsInit => AllActiveStations != null;
         [SSManagerInst]
         public static ManRails inst;
         [SSaveField]
         public RailNodeJSON[] RailNodeSerials;
+        [SSaveField]
+        public RailTrackJSON[] RailTrackSerials;
         [SSaveField]
         public IntVector2[] RailEngineTiles;
         [SSaveField]
@@ -245,11 +154,14 @@ namespace RandomAdditions.RailSystem
 
 
         public static List<ModuleRailPoint> AllActiveStations;
+        private static int NodeIDStep = -1;
         /// <summary> NodeID, RailTrackNode</summary>
         public static Dictionary<int, RailTrackNode> AllRailNodes;
         public static List<RailTrackNode> DynamicNodes;
 
-        public static List<RailTrack> ManagedTracks;
+        private static int TrackIDStep = -1;
+        /// <summary> TrackID, RailTrackNode</summary>
+        public static Dictionary<int, RailTrack> ManagedTracks { get; private set; } = null;
         internal static Dictionary<RailTrack, UnstableTrack> UnstableTracks;
 
         /// <summary>
@@ -259,7 +171,6 @@ namespace RandomAdditions.RailSystem
         internal static HashSet<TankRailsLocal> AllRailTechs;
 
 
-        private static int NodeIDStep = -1;
         internal static Dictionary<RailType, Transform> prefabTracks = new Dictionary<RailType, Transform>();
         internal static Dictionary<RailType, RailTypeStats> railTypeStats = new Dictionary<RailType, RailTypeStats>();
         internal static Dictionary<RailType, Transform> prefabStops = new Dictionary<RailType, Transform>();
@@ -272,6 +183,12 @@ namespace RandomAdditions.RailSystem
         internal static ModuleRailPoint LastPlacedRecentCache = null;
         private static bool UIClicked = false;
 
+        private static RawTechTemplate attractTrain = null;
+        private static RawTechTemplate attractNode = null;
+        private static SpecialAttract.AttractInfo trainAttract;
+        private static Tank TrainShowcase = null;
+        private static List<Tank> ConnectedNodesList = new List<Tank>();
+
         internal static void InsureNetHooks()
         {
             netHookStartup.Register();
@@ -280,18 +197,27 @@ namespace RandomAdditions.RailSystem
             RailTrackNode.netHook.Register();
         }
 
-        public static void InitExperimental()
+        public static void Initiate()
         {
             if (inst)
+                return;
+            inst = Instantiate(new GameObject("ManRails"), null).AddComponent<ManRails>();
+            inst.gameObject.SetActive(false);
+        }
+
+        internal static LoadingHintsExt.LoadingHint newHint = null;
+        internal static LoadingHintsExt.LoadingHint newHint2 = null;
+        public static void InitExperimental()
+        {
+            if (AllActiveStations != null)
                 return;
             DebugRandAddi.Assert("RandomAdditions: InitExperimental - ManRails \n " +
                 "A block needed to use ManRails (Tony Rails) and it has been loaded into the memory as a result.");
 
-            inst = Instantiate(new GameObject("ManRails"), null).AddComponent<ManRails>();
             ManWorldTreadmill.inst.AddListener(inst);
             AllActiveStations = new List<ModuleRailPoint>();
             AllRailNodes = new Dictionary<int, RailTrackNode>();
-            ManagedTracks = new List<RailTrack>();
+            ManagedTracks = new Dictionary<int, RailTrack>();
             UnstableTracks = new Dictionary<RailTrack, UnstableTrack>();
             DynamicNodes = new List<RailTrackNode>();
             AllTrainTechs = new HashSet<TankLocomotive>();
@@ -305,6 +231,15 @@ namespace RandomAdditions.RailSystem
 
             MaxRailLoadRangeSqr = MaxRailLoadRange * MaxRailLoadRange;
             DebugRandAddi.Log("RandomAdditions: Init ManRails");
+            inst.gameObject.SetActive(true);
+            if (newHint == null)
+            {
+                newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, "TRAIN HINT", 
+                AltUI.HighlightString("Trains") + " can work beyond what you can see.\nTry them out!");
+                newHint2 = new LoadingHintsExt.LoadingHint(KickStart.ModID, "TRAIN HINT",
+                AltUI.HighlightString("Trains") + " can plow though pesky " + AltUI.EnemyString("Enemies") + 
+                " and send them flying!\nCan't stop this train!");
+            }
 
             LateInit();
             inst.enabled = true;
@@ -321,43 +256,110 @@ namespace RandomAdditions.RailSystem
                     DebugRandAddi.FatalError("Data for Random Additions is corrupted or missing.  Please close the game, mod launcher and re-subscribe to Random Additions to fix.");
                     return;
                 }
-                /*
-                TrackTurnrate.Add(RailType.LandGauge2, 8);
-                TrackTurnrate.Add(RailType.LandGauge3, 7);
-                TrackTurnrate.Add(RailType.LandGauge4, 5.5f);
-                TrackTurnrate.Add(RailType.BeamRail, 10);
-                TrackTurnrate.Add(RailType.Underground, 4.5f);
-                TrackTurnrate.Add(RailType.InclinedElevator, 3);
-                */
+
+                var res = (Material[])Resources.FindObjectsOfTypeAll(typeof(Material));
+                RailFoundationTexture = res.FirstOrDefault(x => x.name == "GSO_Main");
                 RailSegmentGround.Init();
                 RailSegmentBeam.Init();
                 InitRailStops();
+                trainAttract = new SpecialAttract.AttractInfo("I Like Trains", 2000, null, StartTrainAd, EndTrainAd, true);
             }
         }
+        public static bool StartTrainAd(ModeAttract __instance)
+        {
+            SpecialAttract.ForcedAttractID = 1;
+            var pos = SpecialAttract.GetRandomStartingPositions();
+            if (attractTrain == null)
+            {
+                attractTrain = new RawTechTemplate("TheTrain", PrefabTrain.TrainData);
+                attractNode = new RawTechTemplate("TheNode", PrefabTrain.RailNodeNoCabData);
+            }
+            Vector3 origin = pos.FirstOrDefault();
+            TrainShowcase = attractTrain.SpawnRawTech(origin, 1, Vector3.forward, true, false, true);
+            ConnectedNodesList.Clear();
+
+            float sizeMulti = 0.75f;
+
+            ConnectedNodesList.Add(attractNode.SpawnRawTech(origin + (new Vector3(14, 0, 16) * sizeMulti), 1, Vector3.left, true, false, true));
+            ConnectedNodesList.Add(attractNode.SpawnRawTech(origin + (new Vector3(-21, 0, 40) * sizeMulti), 1, Vector3.back, true, false, true));
+            ConnectedNodesList.Add(attractNode.SpawnRawTech(origin + (new Vector3(-40, 0, 14) * sizeMulti), 1, Vector3.right, true, false, true));
+
+            ConnectedNodesList.Add(attractNode.SpawnRawTech(origin + (new Vector3(40, 0, -14) * sizeMulti), 1, Vector3.left, true, false, true));
+            ConnectedNodesList.Add(attractNode.SpawnRawTech(origin + (new Vector3(21, 0, -40) * sizeMulti), 1, Vector3.forward, true, false, true));
+            ConnectedNodesList.Add(attractNode.SpawnRawTech(origin + (new Vector3(-14, 0, -16) * sizeMulti), 1, Vector3.right, true, false, true));
+
+            foreach (var item in ConnectedNodesList)
+            {
+                item.FixupAnchors();
+            }
+            return false;
+        }
+        public static void EndTrainAd(ModeAttract __instance)
+        {
+            InvokeHelper.CancelInvoke(EndTrainAd2);
+            InvokeHelper.Invoke(EndTrainAd2, 0.5f);
+        }
+
+        public static void EndTrainAd2()
+        {
+            try
+            {
+                ModuleRailPoint prev = null;
+                foreach (var item in ConnectedNodesList)
+                {
+                    var railNode = item.blockman.IterateBlocks().FirstOrDefault().GetComponent<ModuleRailPoint>();
+                    railNode.DisconnectLinked(false, false);
+                }
+                foreach (var item in ConnectedNodesList)
+                {
+                    var railNode = item.blockman.IterateBlocks().FirstOrDefault().GetComponent<ModuleRailPoint>();
+                    if (prev)
+                        railNode.ConnectToOther(prev.Node, true);
+                    prev = railNode;
+                }
+                prev.ConnectToOther(ConnectedNodesList.FirstOrDefault().blockman.IterateBlocks().FirstOrDefault().GetComponent<ModuleRailPoint>().Node, true);
+            }
+            catch { }
+            InvokeHelper.CancelInvoke(EndTrainAd2);
+        }
+
+        public static void KeepTrainMoving()
+        {
+            if (TrainShowcase == null)
+                return;
+            TrainShowcase.control.ApplyMovementInput(Vector3.forward, Vector3.zero, Vector3.forward, false, false);
+        }
+
         public static void DeInit()
         {
-            if (!inst)
-                return;
-            DebugRandAddi.Log("RandomAdditions: De-Init ManRails");
-            UIMiniMapLayerTrain.RemoveAllPre();
-            ManMinimapExt.RemoveMinimapLayer(typeof(UIMiniMapLayerTrain), RailMapPriority);
-            MassPatcherRA.harmonyInst.MassUnPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
-            inst.StopAllCoroutines();
-            ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(SemiLastFixedUpdate));
-            ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(SemiFirstFixedUpdate));
-            ManGameMode.inst.ModeFinishedEvent.Unsubscribe(OnModeEnd);
-            PurgeAllMan();
-            AllRailTechs = null;
-            AllTrainTechs = null;
-            DynamicNodes = null;
-            ManagedTracks = null;
-            AllRailNodes = null;
-            AllActiveStations = null;
-            ManWorldTreadmill.inst.RemoveListener(inst);
-            Destroy(inst);
-            inst = null;
+            if (inst)
+            {
+                if (AllActiveStations != null)
+                {
+                    inst.gameObject.SetActive(false);
+                    DebugRandAddi.Log("RandomAdditions: De-Init ManRails");
+                    UIMiniMapLayerTrain.RemoveAllPre();
+                    ManMinimapExt.RemoveMinimapLayer(typeof(UIMiniMapLayerTrain), RailMapPriority);
+                    MassPatcherRA.harmonyInst.MassUnPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
+                    inst.StopAllCoroutines();
+                    ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(SemiLastFixedUpdate));
+                    ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(SemiFirstFixedUpdate));
+                    ManGameMode.inst.ModeFinishedEvent.Unsubscribe(OnModeEnd);
+                    PurgeAllMan();
+                    AllRailTechs = null;
+                    AllTrainTechs = null;
+                    DynamicNodes = null;
+                    ManagedTracks = null;
+                    AllRailNodes = null;
+                    AllActiveStations = null;
+                    ManWorldTreadmill.inst.RemoveListener(inst);
+                }
+                Destroy(inst);
+                inst = null;
+            }
         }
         private static int onNodeSearchStep = 0;
+        /// <summary> We make our own since the default OpenMenuEventConsumer does not have enough range for our use cases </summary>
         public void OnClickRMB(bool down)
         {
             int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerTankIgnoreTerrain.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerLandmark.mask | Globals.inst.layerScenery.mask;
@@ -448,12 +450,13 @@ namespace RandomAdditions.RailSystem
         {
             PurgeAllMan();
             NodeIDStep = -1;
+            TrackIDStep = -1;
             LastPlaced = null;
         }
         public void OnMoveWorldOrigin(IntVector3 move)
         {
             Debug.Log("ManRails - OnMoveWorldOrigin()");
-            foreach (var item in ManagedTracks)
+            foreach (var item in ManagedTracks.Values)
             {
                 item.OnWorldMovePre(move);
             }
@@ -469,7 +472,7 @@ namespace RandomAdditions.RailSystem
         public void OnMoveWorldOriginPost()
         {
             Debug.Log("ManRails - OnMoveWorldOriginPost()");
-            foreach (var item in ManagedTracks)
+            foreach (var item in ManagedTracks.Values)
             {
                 item.OnWorldMovePost();
             }
@@ -533,7 +536,7 @@ namespace RandomAdditions.RailSystem
                     else
                     {
                         tryLoad = element.TrackedVis;
-                        ManTileLoader.TempLoadTile(tryLoad.GetWorldPosition().TileCoord);
+                        ManWorldTileExt.TempLoadTile(tryLoad.GetWorldPosition().TileCoord);
                         Invoke("AttemptDistantLoading", 1f);
                     }
                 }
@@ -640,7 +643,7 @@ namespace RandomAdditions.RailSystem
             }
             AllRailNodes.Clear();
 
-            foreach (var item in ManagedTracks)
+            foreach (var item in ManagedTracks.Values)
             {
                 item.OnRemove(false);
             }
@@ -691,14 +694,14 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-        private static List<ModuleRailPoint> pendingUpdate = new List<ModuleRailPoint>();
+        private static List<ModuleRailPoint> NeedsLocalConnectionsRefresh = new List<ModuleRailPoint>();
         internal static void QueueReEstablishLocalLinks(ModuleRailPoint Point)
         {
             if (Point == null)
                 DebugRandAddi.Assert("QueueReEstablishLocalLinks - Point is NULL!");
             else
             {
-                pendingUpdate.Add(Point);
+                NeedsLocalConnectionsRefresh.Add(Point);
             }
         }
         private static void DoTryReEstablishLocalLinks(ModuleRailPoint Point)
@@ -992,6 +995,34 @@ namespace RandomAdditions.RailSystem
             Height = ManWorld.inst.ProjectToGround(scenePos, false).y;
         }
 
+        internal static void RegisterRailTrack(RailTrack track)
+        {
+            if (ManagedTracks.TryGetValue(track.TrackID, out RailTrack cacheTrack))
+            {
+                if (cacheTrack != track)
+                {
+                    DebugRandAddi.Log("RandomAdditions: RegisterRailTrack - Conflict on load: rail track " + track.TrackID
+                        + " already has been assigned!  Reassigning the node!");
+                    track.TrackID = -1;
+                }
+                else
+                {
+                    DebugRandAddi.Log("RandomAdditions: RegisterRailTrack - Resynced RailTrack with ID " + track.TrackID);
+                    return;
+                }
+            }
+            if (track.TrackID == -1)
+            {
+                TrackIDStep++;
+                track.TrackID = TrackIDStep;
+                DebugRandAddi.Log("RandomAdditions: RegisterRailTrack - Added NEW RailTrack with ID " + track.TrackID);
+            }
+            else
+                DebugRandAddi.Log("RandomAdditions: RegisterRailTrack - Loaded RailTrack with ID " + track.TrackID);
+            ManagedTracks.Add(track.TrackID, track);
+        }
+
+
         internal static RailTrackNode GetRailSplit(ModuleRailPoint ToFetch)
         {
             RailTrackNode RTN;
@@ -1063,53 +1094,27 @@ namespace RandomAdditions.RailSystem
             return nodes;
         }
 
-        internal static RailTrack SpawnLinkRailTrack(RailConnectInfo lowSide, RailConnectInfo highSide, bool forceLoad)
-        {
-            DebugRandAddi.Assert((lowSide == null), "SpawnLinkRailTrack lowSide is null");
-            DebugRandAddi.Assert((highSide == null), "SpawnLinkRailTrack highSide is null"); 
-            RailTrack RT = new RailTrack(lowSide, highSide, forceLoad, false, RailResolution);
-            DebugRandAddi.Info("New World Link track (" + lowSide.HostNode.NodeID + " | " + highSide.HostNode.NodeID + " | " + RT.Space.ToString() + ")");
-            ManagedTracks.Add(RT);
-            return RT;
-        }
-
-        internal static RailTrack SpawnUnstableLinkRailTrack(RailConnectInfo lowSide, RailConnectInfo highSide, bool forceLoad)
+        internal static RailTrack SpawnLinkRailTrack(RailConnectInfo lowSide, RailConnectInfo highSide, 
+            bool forceRender, byte skinUniqueID, RailTieType tieType)
         {
             DebugRandAddi.Assert((lowSide == null), "SpawnLinkRailTrack lowSide is null");
             DebugRandAddi.Assert((highSide == null), "SpawnLinkRailTrack highSide is null");
-            RailTrack RT = new RailTrack(lowSide, highSide, forceLoad, false, RailResolution);
-            DebugRandAddi.Info("New Unstable Link track (" + lowSide.HostNode.NodeID + " | " + highSide.HostNode.NodeID + " | " + RT.Space.ToString() + ")");
-            ManagedTracks.Add(RT);
-            UnstableTracks.Add(RT, new UnstableTrack(RT));
-            return RT;
-        }
-        internal static RailTrack SpawnLocalLinkRailTrack(RailConnectInfo lowSide, RailConnectInfo highSide, bool forceLoad)
-        {
-            DebugRandAddi.Assert((lowSide == null), "SpawnLocalLinkRailTrack lowSide is null");
-            DebugRandAddi.Assert((highSide == null), "SpawnLocalLinkRailTrack highSide is null");
             int resolution;
-            if ((lowSide.RailEndPositionOnNode().ScenePosition - highSide.RailEndPositionOnNode().ScenePosition).WithinBox(6))
+            if (lowSide.HostNode.Space == RailSpace.Local && highSide.HostNode.Space == RailSpace.Local && 
+                (lowSide.RailEndPosOnNode().ScenePosition - highSide.RailEndPosOnNode().ScenePosition).WithinBox(6))
                 resolution = LocalRailResolution;
             else
                 resolution = DynamicRailResolution;
-            RailTrack RT = new RailTrack(lowSide, highSide, forceLoad, false, resolution);
-            ManagedTracks.Add(RT);
-            if (lowSide.HostNode.Point != null && highSide.HostNode.Point != null && lowSide.HostNode.Point.tank != highSide.HostNode.Point.tank)
-            {
-                UnstableTracks.Add(RT, new UnstableTrack(RT));
-                DebugRandAddi.Info("New Local Link track (" + lowSide.HostNode.NodeID + " | " + highSide.HostNode.NodeID + " | " +
-                    RT.Space.ToString() + " | Unstable )");
-            }
-            else
-                DebugRandAddi.Info("New Local Link track (" + lowSide.HostNode.NodeID + " | " + highSide.HostNode.NodeID + " | " + 
-                    RT.Space.ToString() + " | Stable )");
+            RailTrack RT = new RailTrack(lowSide, highSide, forceRender, false, resolution, skinUniqueID, tieType);
             return RT;
         }
-        internal static RailTrack SpawnFakeRailTrack(RailConnectInfo lowSide, RailConnectInfo highSide, bool forceLoad)
+
+        internal static RailTrack SpawnFakeRailTrack(RailConnectInfo lowSide, RailConnectInfo highSide, 
+            bool forceRender, byte skinIndex, RailTieType tieType)
         {
             DebugRandAddi.Assert((lowSide == null), "SpawnFakeRailTrack lowSide is null");
             DebugRandAddi.Assert((highSide == null), "SpawnFakeRailTrack highSide is null");
-            RailTrack RT = new RailTrack(lowSide, highSide, forceLoad, true, FakeRailResolution);
+            RailTrack RT = new RailTrack(lowSide, highSide, forceRender, true, FakeRailResolution, skinIndex, tieType);
             return RT;
         }
 
@@ -1124,14 +1129,15 @@ namespace RandomAdditions.RailSystem
             RT.OnRemove(PhysicsDestroy);
             if (RT.Fake)
             {
-                if (ManagedTracks.Remove(RT))
-                    DebugRandAddi.Assert("ManRails.DestroyLinkRailTrack() deleted a fake rail track but apparently it was used somewhere and now something is broken");
+                if (ManagedTracks.Remove(RT.TrackID))
+                    DebugRandAddi.Assert("ManRails.DestroyLinkRailTrack() deleted a fake rail track " +
+                        "but apparently it was used somewhere and now something is broken");
                 return true;
             }
             else
             {
                 UnstableTracks.Remove(RT);
-                return ManagedTracks.Remove(RT);
+                return ManagedTracks.Remove(RT.TrackID);
             }
         }
         
@@ -1141,7 +1147,6 @@ namespace RandomAdditions.RailSystem
             DebugRandAddi.Assert(Holder == null, "SpawnNodeRailTrack Holder is null");
             RailTrack RT = new RailTrack(Holder, lowSide, highSide, false);
             DebugRandAddi.Info("New Node track (" + RT.StartNode.NodeID + " | " + RT.EndNode.NodeID + " | " + RT.Space.ToString() + ")");
-            ManagedTracks.Add(RT);
             return RT;
         }
         internal static RailTrack SpawnFakeNodeRailTrack(RailTrackNode Holder, RailConnectInfo lowSide, RailConnectInfo highSide)
@@ -1154,7 +1159,7 @@ namespace RandomAdditions.RailSystem
         internal static void DestroyNodeRailTrack(RailTrack RT)
         {
             RT.OnRemove(false);
-            ManagedTracks.Remove(RT);
+            ManagedTracks.Remove(RT.TrackID);
         }
 
 
@@ -1324,15 +1329,15 @@ namespace RandomAdditions.RailSystem
         private static List<KeyValuePair<Vector3, KeyValuePair<RailTrack, int>>> railClosestSearch1 = new List<KeyValuePair<Vector3, KeyValuePair<RailTrack, int>>>();
         private static List<KeyValuePair<Vector3, RailTrack>> railClosestSearch2 = new List<KeyValuePair<Vector3, RailTrack>>();
         private static List<Vector3> cacheRailSegPos = new List<Vector3>(0);
-        public static void TryAssignClosestRailSegment(ModuleRailBogie MRB)
+        public static void TryAssignClosestRailSegment(ModuleRailBogie.RailBogie MRB)
         {
             //DebugRandAddi.Log("TryGetAndAssignClosestRail - for " + MRB.name);
             RailTrack RT;
             railClosestSearch1.Clear();
             Vector3 posScene = MRB.BogieCenterOffset;
-            foreach (var item in ManagedTracks)
+            foreach (var item in ManagedTracks.Values)
             {
-                if (IsCompatable(MRB.RailSystemType, item.Type) && item.IsLoaded() && 
+                if (IsCompatable(MRB.main.RailSystemType, item.Type) && item.IsLoaded() && 
                     (!item.GetRigidbody() || item.GetRigidbody().GetComponent<Tank>() != MRB.tank))
                 {
                     cacheRailSegPos.Clear();
@@ -1346,7 +1351,7 @@ namespace RandomAdditions.RailSystem
                     }
                 }
             }
-            DebugRandAddi.Info("There are " + railClosestSearch1.Count + " in range");
+            //DebugRandAddi.Info("There are " + railClosestSearch1.Count + " in range");
             railClosestSearch2.Clear();
             float midVal = (float)RailIdealMaxStretch;
             float posDist = midVal * midVal;
@@ -1376,11 +1381,11 @@ namespace RandomAdditions.RailSystem
                     }
                 }
                 float distBest = (closest.Key - MRB.BogieCenterOffset).sqrMagnitude;
-                DebugRandAddi.Info("The best rail is at " + closest.Key + ", a square dist of " + distBest + " vs max square dist " + ModuleRailBogie.snapToRailDistSqr);
+                //DebugRandAddi.Info("The best rail is at " + closest.Key + ", a square dist of " + distBest + " vs max square dist " + ModuleRailBogie.snapToRailDistSqr);
                 if (distBest <= ModuleRailBogie.snapToRailDistSqr)
                 {
                     Vector3 localOffset = MRB.BogieVisual.InverseTransformPoint(closest.Key);
-                    if (-MRB.BogieMaxUpPullDistance < localOffset.z && !MRB.IsTooFarFromTrack(-localOffset))
+                    if (-MRB.main.BogieMaxUpPullDistance < localOffset.z && !MRB.IsTooFarFromTrack(-localOffset))
                     {
                         //DebugRandAddi.Log("Snapped to best rail.");
                         RT = closest.Value;
@@ -1393,23 +1398,27 @@ namespace RandomAdditions.RailSystem
                         MRB.CurrentSegment = RS;
                         MRB.BogieRemote.position = MRB.CurrentSegment.GetClosestPointOnSegment(closest.Key, out float val);
                         MRB.FixedPositionOnRail = val * MRB.CurrentSegment.AlongTrackDist;
-                        DebugRandAddi.Info(MRB.name + " Found and fixed to a rail");
+                        DebugRandAddi.Info(MRB.main.name + " Found and fixed to a rail");
                     }
                 }
             }
         }
+
+        /// <summary>
+        /// Creates garbage - do not overuse!
+        /// </summary>
         public static List<RailTrack> TryGetRailTracksInRange(RailType type, Vector3 posScene)
         {
             List<RailTrack> rails = new List<RailTrack>();
             List<Vector3> points = new List<Vector3>();
             float midVal = (float)RailIdealMaxStretch / 2;
             float distSqr = midVal * midVal;
-            for (int step = 0; step < ManagedTracks.Count; step++)
+            foreach (var item in ManagedTracks.Values)
             {
-                if (ManagedTracks[step].Type == type && distSqr <= (ManagedTracks[step].GetTrackCenter() - posScene).sqrMagnitude)
+                if (item.Type == type && distSqr <= (item.GetTrackCenter() - posScene).sqrMagnitude)
                 {
-                    rails.Add(ManagedTracks[step]);
-                    points.Add(ManagedTracks[step].GetTrackCenter());
+                    rails.Add(item);
+                    points.Add(item.GetTrackCenter());
                 }
             }
             if (points.Count == 0)
@@ -1425,13 +1434,13 @@ namespace RandomAdditions.RailSystem
         internal static bool UpdateAllSignals = false;
         private void Update()
         {
-            if (pendingUpdate.Count > 0)
+            if (NeedsLocalConnectionsRefresh.Count > 0)
             {
-                foreach (var item in pendingUpdate)
+                foreach (var item in NeedsLocalConnectionsRefresh)
                 {
                     DoTryReEstablishLocalLinks(item);
                 }
-                pendingUpdate.Clear();
+                NeedsLocalConnectionsRefresh.Clear();
             }
             if (!ManPauseGame.inst.IsPaused)
             {
@@ -1553,9 +1562,10 @@ namespace RandomAdditions.RailSystem
         {
             int taxThisFrame = 0;
             int taxSuggestedMaxThisFrame = GetTrackStepMaxLoad();
-            while (asyncRangeStep < ManagedTracks.Count())
+            var values = ManagedTracks.Values;
+            while (asyncRangeStep < values.Count())
             {
-                var track = ManagedTracks[asyncRangeStep];
+                var track = values.ElementAt(asyncRangeStep);
                 DebugRandAddi.Assert(track == null, "RandomAdditions: ManRails - Null track in AllTracks.  This should not be possible");
                 if (asyncRangeSegStep < track.RailSystemSegmentCount && !track.Removing && track.CanLoad)
                 {
@@ -1809,7 +1819,7 @@ namespace RandomAdditions.RailSystem
             fakeNodeStart.GetDirectionHub(fakeNodeEnd, out RailConnectInfo hubThis);
             fakeNodeEnd.GetDirectionHub(fakeNodeStart, out RailConnectInfo hubThat);
 
-            fakeRail = SpawnFakeRailTrack(hubThis, hubThat, true);
+            fakeRail = SpawnFakeRailTrack(hubThis, hubThat, true, start.TryGetSkinUniqueID(), start.TryGetTieType());
         }
 
         private static void ShowRailAttachVisual(RailTrackNode start, ModuleRailPoint end)
@@ -1823,7 +1833,7 @@ namespace RandomAdditions.RailSystem
             fakeNodeStart.GetDirectionHub(fakeNodeEnd, out RailConnectInfo hubThis);
             fakeNodeEnd.GetDirectionHub(fakeNodeStart, out RailConnectInfo hubThat);
 
-            fakeRail = SpawnFakeRailTrack(hubThis, hubThat, true);
+            fakeRail = SpawnFakeRailTrack(hubThis, hubThat, true, start.TryGetSkinUniqueID(), start.TryGetTieType());
         }
         private static void HideRailAttachVisual()
         {
@@ -1849,17 +1859,28 @@ namespace RandomAdditions.RailSystem
 
 
         // Saving and Loading
+        private static List<RailNodeJSON> validJsons = new List<RailNodeJSON>();
+        private static List<RailTrackJSON> validJsons2 = new List<RailTrackJSON>();
         public static void PrepareForSaving()
         {
-            if (inst == null)
+            if (!IsInit)
                 return;
-            inst.RailNodeSerials = new RailNodeJSON[AllRailNodes.Count];
-            for (int step = 0; step < AllRailNodes.Count; step++)
+            foreach (var item in AllRailNodes.Values)
             {
-                if (AllRailNodes.ElementAt(step).Key != -1)
-                    inst.RailNodeSerials[step] = new RailNodeJSON(AllRailNodes.ElementAt(step).Value);
+                if (item != null && item.NodeID != -1)
+                    validJsons.Add(new RailNodeJSON(item));
             }
+            inst.RailNodeSerials = validJsons.ToArray();
+            validJsons.Clear();
             DebugRandAddi.Log("ManRails - Saved " + inst.RailNodeSerials.Length + " RailNodes to save.");
+            foreach (var item in ManagedTracks.Values)
+            {
+                if (item != null)
+                    validJsons2.Add(new RailTrackJSON(item));
+            }
+            inst.RailTrackSerials = validJsons2.ToArray();
+            validJsons2.Clear();
+            DebugRandAddi.Log("ManRails - Saved " + inst.RailTrackSerials.Length + " RailTracks to save.");
 
             List<TankLocomotive> activeTrains = new List<TankLocomotive>();
             foreach (var item in AllTrainTechs)
@@ -1883,18 +1904,24 @@ namespace RandomAdditions.RailSystem
         }
         public static void FinishedSaving()
         {
-            if (inst == null)
+            if (!IsInit)
                 return;
             inst.RailEngineTiles = null;
             inst.RailNodeSerials = null;
+            inst.RailTrackSerials = null;
             inst.PathfindRequestsActive = null;
         }
         public static void FinishedLoading()
         {
-            if (inst == null)
+            if (!IsInit)
                 return;
             if (ManNetwork.IsHost)
+            {
                 PushRailNodesIntoWorld();
+                PushRailTracksIntoWorld();
+                ReloadAllTankLocomotives();
+                ResumeTrainPathing();
+            }
         }
         public static void PushRailNodesIntoWorld()
         {
@@ -1912,20 +1939,41 @@ namespace RandomAdditions.RailSystem
                 }
                 inst.RailNodeSerials = null;
                 inst.firstLoad = AllRailNodes.Keys.ToList();
-                // Load Present - Get highest node
+
+                // Load Present next update - Get highest node
                 foreach (var item in AllRailNodes.Values)
                 {
-                    TryReEstablishLinks(item);
+                    if (item.Point)
+                        NeedsLocalConnectionsRefresh.Add(item.Point);
                 }
             }
+        }
+        public static void PushRailTracksIntoWorld()
+        {
+            if (inst.RailTrackSerials != null)
+            {
+                foreach (var item in inst.RailTrackSerials)
+                {
+                    item.Restore();
+                }
+                DebugRandAddi.Log("ManRails - Loaded " + inst.RailTrackSerials.Length + " rails from save.");
+                inst.RailTrackSerials = null;
+            }
+        }
+        public static void ReloadAllTankLocomotives()
+        {
             if (inst.RailEngineTiles != null)
             {
                 foreach (var item in inst.RailEngineTiles)
                 {
-                    ManTileLoader.TempLoadTile(item);
+                    ManWorldTileExt.TempLoadTile(item);
                 }
+                DebugRandAddi.Log("ManRails - Tile-Loading " + inst.RailEngineTiles.Length + " tiles for live TankLocomotives.");
                 inst.RailEngineTiles = null;
             }
+        }
+        public static void ResumeTrainPathing()
+        {
             if (inst.PathfindRequestsActive != null)
             {
                 ManTrainPathing.ResumePathingFromSave(inst.PathfindRequestsActive);
@@ -1933,14 +1981,17 @@ namespace RandomAdditions.RailSystem
                 inst.PathfindRequestsActive = null;
             }
         }
-        public static bool RequestCurrentNodesFromServer(ManRailsLoadMessage command, bool isServer)
+        public static bool RequestDataFromServer(ManRailsLoadMessage command, bool isServer)
         {
             if (isServer)
                 return true;
             else
             {
-                inst.RailNodeSerials = (RailNodeJSON[])JsonConvert.DeserializeObject(command.GetMessage());
+                ManRailsLoadData data = JsonConvert.DeserializeObject<ManRailsLoadData>(command.GetMessage());
+                inst.RailNodeSerials = data.RailNodeSerials;
                 PushRailNodesIntoWorld();
+                inst.RailTrackSerials = data.RailTrackSerials;
+                PushRailTracksIntoWorld();
                 return true;
             }
         }
@@ -1998,15 +2049,94 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+        internal class GUIManaged
+        {
+            private static bool display = false;
+            private static bool displayTrains = false;
+            private static TankLocomotive selectedTrain = null;
+
+            public static void GUIShowWorld()
+            {
+            }
+            public static void GUIGetTotalManaged()
+            {
+                if (!IsInit)
+                {
+                    GUILayout.Box("--- ManRails [DISABLED] --- ");
+                    return;
+                }
+                GUILayout.Box("--- ManRails --- ");
+                display = AltUI.Toggle(display, "Show: ");
+                if (display)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Box("  Trains: ");
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(AllTrainTechs.Count.ToString());
+                    GUILayout.EndHorizontal();
+                    displayTrains = AltUI.Toggle(displayTrains, "Show: ");
+                    if (displayTrains)
+                    {
+                        if (selectedTrain == null)
+                        {
+                            foreach (var item in AllTrainTechs)
+                            {
+                                if (item != null)
+                                {
+                                    GUILayout.BeginHorizontal();
+                                    if (GUILayout.Button(item.name))
+                                        selectedTrain = item;
+                                    GUILayout.Label("Team:");
+                                    GUILayout.Label(item.tank.Team.ToString());
+                                    GUILayout.Label("Cars:");
+                                    GUILayout.Label(item.TrainLength.ToString());
+                                    GUILayout.EndHorizontal();
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (GUILayout.Button("Back"))
+                                selectedTrain = null;
+                            GUILayout.BeginHorizontal();
+                            GUILayout.Label("Name:");
+                            GUILayout.FlexibleSpace();
+                            GUILayout.Label(selectedTrain.name);
+                            GUILayout.EndHorizontal();
+
+                            GUILayout.BeginHorizontal();
+                            GUILayout.Label("Team:");
+                            GUILayout.FlexibleSpace();
+                            GUILayout.Label(selectedTrain.tank.Team.ToString());
+                            GUILayout.EndHorizontal();
+
+                            GUILayout.BeginHorizontal();
+                            GUILayout.Label("Cars:");
+                            GUILayout.FlexibleSpace();
+                            GUILayout.Label(selectedTrain.TrainLength.ToString());
+                            GUILayout.EndHorizontal();
+
+                            foreach (var item in selectedTrain.MasterGetAllCars())
+                            {
+                                GUILayout.BeginHorizontal();
+                                GUILayout.FlexibleSpace();
+                                GUILayout.Label(item.name);
+                                GUILayout.EndHorizontal();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // --------------------------------------
-            //               ITERATORS
-            // --------------------------------------
+        //               ITERATORS
+        // --------------------------------------
 
         /// <summary>
-            /// Does Breadth Search!
-            /// Cheaper than RailTrackIterator but does not get tracks!
-            /// </summary>
+        /// Does Breadth Search!
+        /// Cheaper than RailTrackIterator but does not get tracks!
+        /// </summary>
         public struct RailNodeIterator : IEnumerator<RailTrackNode>
         {
             public RailTrackNode Current { get; private set; }
@@ -2035,12 +2165,10 @@ namespace RandomAdditions.RailSystem
                 return this;
             }
 
-            public RailTrackNode First()
+            public RailTrackNode FirstOrDefault()
             {
                 Reset();
-                if (MoveNext())
-                    return Current;
-                return null;
+                return startNode;
             }
 
             public RailTrackNode Last()
@@ -2113,6 +2241,7 @@ namespace RandomAdditions.RailSystem
         {
             public RailTrack Current { get; private set; }
             object IEnumerator.Current => this.Current;
+            public bool nodeTrack = false;
 
             private RailTrackNode curNode;
             private RailTrackNode startNode;
@@ -2135,7 +2264,6 @@ namespace RandomAdditions.RailSystem
                 tracks = new HashSet<RailTrack>();
                 toIterate = new Queue<RailTrackNode>();
                 toIterate.Enqueue(Node);
-                MoveNext();
             }
 
             public RailTrackIterator GetEnumerator()
@@ -2149,7 +2277,7 @@ namespace RandomAdditions.RailSystem
                 cache.AddRange(tracks);
             }
 
-            public RailTrack First()
+            public RailTrack FirstOrDefault()
             {
                 Reset();
                 if (MoveNext())
@@ -2183,7 +2311,7 @@ namespace RandomAdditions.RailSystem
                 Count();
                 return tracks.Count;
             }
-            public bool MoveNextSlow()
+            public bool MoveNextStep()
             {
                 if (toIterate.Count() == 0 && leftToCheck == 0)
                     return false;
@@ -2240,6 +2368,7 @@ namespace RandomAdditions.RailSystem
                 {
                     leftToCheck--;
                     RailConnectInfo RCI = curNode.GetConnection(leftToCheck);
+                    nodeTrack = false;
                     //DebugRandAddi.Log("SearchCurrentNode searching connection " + leftToCheck);
 
                     if (RCI.NodeTrack != null && !tracks.Contains(RCI.NodeTrack))
@@ -2247,6 +2376,7 @@ namespace RandomAdditions.RailSystem
                         Current = RCI.NodeTrack;
                         tracks.Add(Current);
                         leftToCheck++;
+                        nodeTrack = true;
                         //DebugRandAddi.Log("SearchCurrentNode found NodeTrack");
                         return true;
                     }
@@ -2278,6 +2408,18 @@ namespace RandomAdditions.RailSystem
             }
             public void Dispose()
             {
+            }
+
+            internal void Debug_SHOW(float dispTime)
+            {
+                foreach (var item in toIterate)
+                {
+                    if (item != null)
+                    {
+                        DebugExtUtilities.DrawDirIndicator(item.GetLinkCenter(0).ScenePosition, 
+                            item.GetLinkCenter(0).ScenePosition + (Vector3.up * 3), Color.black, dispTime);
+                    }
+                }
             }
         }
 

@@ -19,15 +19,7 @@ namespace RandomAdditions
         {
             get
             {
-                bool hasDLC = ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD);
-                bool inRaD = ManGameMode.inst.GetCurrentGameType() == ManGameMode.GameType.RaD;
-                if (!hasDLC || !inRaD)
-                {
-                    //DebugRandAddi.Log("CircuitExt - Could not hook up due to: dlc missing " + hasDLC + ", in chamber " + inRaD);
-                    return false;
-                }
-                //DebugRandAddi.Log("CircuitExt - Hooked up!");
-                return true;
+                return !ManNetwork.IsNetworked;
             }
         }
         private static bool tried = false;

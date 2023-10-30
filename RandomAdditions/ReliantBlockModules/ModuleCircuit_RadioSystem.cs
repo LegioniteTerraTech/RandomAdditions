@@ -30,13 +30,13 @@ namespace RandomAdditions
             if (inst)
                 return;
             inst = new GameObject("ManRadio").AddComponent<ManRadio>();
-            Circuits.PreChargeUpdate.Subscribe(inst.EndTransmit);
+            Circuits.EndChargeUpdate.Subscribe(inst.EndTransmit);
         }
         public static void DeInit()
         {
             if (!inst)
                 return;
-            Circuits.PreChargeUpdate.Unsubscribe(inst.EndTransmit);
+            Circuits.EndChargeUpdate.Unsubscribe(inst.EndTransmit);
             Destroy(inst.gameObject);
         }
 
@@ -91,7 +91,7 @@ namespace RandomAdditions
             }
         }
 
-        public void Transmit(ModuleCircuit_RadioSystem radio, Circuits.Charge charge)
+        public void Transmit(ModuleCircuit_RadioSystem radio, Circuits.BlockChargeData charge)
         {
             if (radio.tank.IsNull())
             {
@@ -99,19 +99,19 @@ namespace RandomAdditions
                 return;
             }
             var RS = ChannelsTransmitted[radio.RadioChannel];
-            if (RS.Signal < charge.HighestChargeReceived)
+            if (RS.Signal < charge.ChargeStrength)
             {
-                if (RS.Signal == 0 && charge.HighestChargeReceived > 0)
+                if (RS.Signal == 0 && charge.ChargeStrength > 0)
                 {
                     if (inst.ChannelsNeedReload.TryGetValue(radio.RadioChannel, out HashSet<IntVector2> val2))
                     {
                         foreach (var item in val2)
                         {
-                            ManTileLoader.TempLoadTile(item, 3);
+                            ManWorldTileExt.TempLoadTile(item, 3);
                         }
                     }
                 }
-                RS.Signal = charge.HighestChargeReceived;
+                RS.Signal = charge.ChargeStrength;
             }
         }
         public int ReceiveRadio(ModuleCircuit_RadioSystem radio)
@@ -174,7 +174,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver && Transmits)
                 {
                     LogicConnected = true;
-                    block.CircuitNode.Receiver.FrameChargeChangedEvent.Subscribe(OnRecCharge);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
                 }
             }
             ManRadio.HandleAddition(this);
@@ -188,11 +188,11 @@ namespace RandomAdditions
             SignalSend = Time.time;
             ManRadio.HandleRemoval(this);
             if (LogicConnected && Transmits)
-                block.CircuitNode.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRecCharge);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
             LogicConnected = false;
         }
 
-        public void OnRecCharge(Circuits.Charge charge)
+        public void OnRecCharge(Circuits.BlockChargeData charge)
         {
             if (!Receives)
                 return;

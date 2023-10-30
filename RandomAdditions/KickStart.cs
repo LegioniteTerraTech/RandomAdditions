@@ -25,6 +25,7 @@ namespace RandomAdditions
     public class KickStart
     {
         internal const string ModName = "RandomAdditions";
+        internal const string ModID = "Random Additions";
         internal const float TerrainLowestAlt = -50;
 
         // MOD SUPPORT
@@ -63,7 +64,7 @@ namespace RandomAdditions
         public static int _hangarButton = (int)HangarButton;
 
         // EVENTS
-
+        public static bool CanUseMenu { get { return !ManPauseGame.inst.IsPaused; } }
         public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
         public static void ReleaseControl(string Name = null)
@@ -235,7 +236,6 @@ namespace RandomAdditions
         }
 
 
-
         public static void MainOfficialInit()
         {
             //SafeSaves.DebugSafeSaves.LogAll = true;
@@ -295,6 +295,8 @@ namespace RandomAdditions
             GUIClock.Initiate();
             ManTileLoader.Initiate();
             ManPhysicsExt.InsureInit();
+            ManRails.Initiate();
+            RandAddDebugGUI.Initiate();
 
             // Net hooks
             ModuleHangar.InsureNetHooks();
@@ -339,6 +341,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
                 DebugRandAddi.Log(e);
             }
+            RandAddDebugGUI.DeInit();
             ManRadio.DeInit();
             CircuitExt.Unload();
             ManMinimapExt.DeInitAll();
@@ -471,7 +474,7 @@ namespace RandomAdditions
         {
             if (name.NullOrEmpty())
                 return null;
-            return trans.gameObject.GetComponentsInChildren<Transform>().ToList().Find(delegate (Transform cand)
+            return trans.gameObject.GetComponentsInChildren<Transform>().FirstOrDefault(delegate (Transform cand)
             {
                 if (cand.name.NullOrEmpty())
                     return false;
@@ -501,7 +504,10 @@ namespace RandomAdditions
             if (forcedToGame)
                 return true;
             forcedToGame = true;
-            if (Input.GetKey(KeyCode.Escape))
+#if DEBUG
+            DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
+#endif
+            if (Input.GetKey(KeyCode.Backspace) || Input.GetKey(KeyCode.Escape))
                 return true;
             try
             {
@@ -544,11 +550,11 @@ namespace RandomAdditions
                             ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
                         ManGameMode.inst.NextModeSetting.SwitchToMode();
                         ManUI.inst.FadeToBlack(0, true);
-                        DebugRandAddi.Log("RandomAdditions: Success");
+                        DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
                         return false;
                     }
                     else
-                        DebugRandAddi.Log("RandomAdditions: User profile is not set!  Cannot Execute!");
+                        DebugRandAddi.Log("RandomAdditions: QuickStartGame failed!  User profile is not set!  Cannot Execute!");
                 }
             }
             catch (Exception e)
@@ -784,7 +790,6 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
                 thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
                 thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
-                thisModConfig.BindConfig<ExtUsageHint>(null, "HintsSeenSAV");
 
                 // CONTROLS
                 thisModConfig.BindConfig<KickStart>(null, "LockPropWhenPropBoostOnly");
@@ -805,44 +810,44 @@ namespace RandomAdditions
 
 
                 config = thisModConfig;
-                ExtUsageHint.SaveToHintsSeen();
 
                 var RandomProperties = KickStart.ModName + " - General";
 #if !STEAM
                 realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
                 realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
 #endif
-                altDateFormat = new OptionToggle("Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
+                altDateFormat = new OptionToggle("Clock Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
                 altDateFormat.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = altDateFormat.SavedValue; });
-                noCameraShake = new OptionToggle("Disable Camera Shake", RandomProperties, KickStart.NoShake);
+                noCameraShake = new OptionToggle("Disable Damage Feedback Rattle", RandomProperties, KickStart.NoShake);
                 noCameraShake.onValueSaved.AddListener(() => { KickStart.NoShake = noCameraShake.SavedValue; });
-                scaleBlocksInSCU = new OptionToggle("Scale Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);
+                scaleBlocksInSCU = new OptionToggle("Shrink Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);
                 scaleBlocksInSCU.onValueSaved.AddListener(() => { KickStart.AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
-                replaceChance = new OptionRange("Chance for modded block spawns", RandomProperties, KickStart.GlobalBlockReplaceChance, 0, 100, 10);
-                replaceChance.onValueSaved.AddListener(() => { KickStart.GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
-                rpLand = new OptionToggle("Force Land Block Replacement", RandomProperties, KickStart.MandateLandReplacement);
-                rpLand.onValueSaved.AddListener(() => { KickStart.MandateLandReplacement = rpLand.SavedValue; });
-                rpSea = new OptionToggle("Force Sea Block Replacement", RandomProperties, KickStart.MandateSeaReplacement);
-                rpSea.onValueSaved.AddListener(() => { KickStart.MandateSeaReplacement = rpSea.SavedValue; });
-
-                moddedPopupReset = new OptionToggle("Reset all modded popups", RandomProperties, KickStart.ResetModdedPopups);
+                moddedPopupReset = new OptionToggle("Reset All Mod Hints", RandomProperties, KickStart.ResetModdedPopups);
                 moddedPopupReset.onValueSaved.AddListener(() => {
                     if (moddedPopupReset.SavedValue)
                     {
-                        ExtUsageHint.HintsSeen.Clear();
-                        ExtUsageHint.HintsSeenToSave();
-                        config.WriteConfigJsonFile();
+                        ExtUsageHint.ResetHints();
+                        moddedPopupReset.ResetValue();
                     }
                 });
 
+                var RandomBlocks = KickStart.ModName + " - Population Tweaks";
+                replaceChance = new OptionRange("Chance for Custom Block replacement", RandomBlocks, KickStart.GlobalBlockReplaceChance, 0, 100, 10);
+                replaceChance.onValueSaved.AddListener(() => { KickStart.GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
+                rpLand = new OptionToggle("Force Land Custom Block", RandomBlocks, KickStart.MandateLandReplacement);
+                rpLand.onValueSaved.AddListener(() => { KickStart.MandateLandReplacement = rpLand.SavedValue; });
+                rpSea = new OptionToggle("Force Sea Custom Block Replacement", RandomBlocks, KickStart.MandateSeaReplacement);
+                rpSea.onValueSaved.AddListener(() => { KickStart.MandateSeaReplacement = rpSea.SavedValue; });
+
+
                 var RandomControls = KickStart.ModName + " - Controls";
-                lockP_BoostProps = new OptionToggle("Lock Propellers Only When Prop Button is Pressed", RandomControls, KickStart.LockPropWhenPropBoostOnly);
+                lockP_BoostProps = new OptionToggle("Lock Propeller Steering Only When Pressing Prop Button", RandomControls, KickStart.LockPropWhenPropBoostOnly);
                 lockP_BoostProps.onValueSaved.AddListener(() => { KickStart.LockPropWhenPropBoostOnly = lockP_BoostProps.SavedValue; });
-                lockP_Pitch = new OptionToggle("Lock Propellers Pitch", RandomControls, KickStart.LockPropPitch);
+                lockP_Pitch = new OptionToggle("Lock Propellers Pitch Steering", RandomControls, KickStart.LockPropPitch);
                 lockP_Pitch.onValueSaved.AddListener(() => { KickStart.LockPropPitch = lockP_Pitch.SavedValue; });
-                lockP_Roll = new OptionToggle("Lock Propellers Roll", RandomControls, KickStart.LockPropRoll);
+                lockP_Roll = new OptionToggle("Lock Propellers Roll Steering", RandomControls, KickStart.LockPropRoll);
                 lockP_Roll.onValueSaved.AddListener(() => { KickStart.LockPropRoll = lockP_Roll.SavedValue; });
-                lockP_Yaw = new OptionToggle("Lock Propellers Yaw", RandomControls, KickStart.LockPropYaw);
+                lockP_Yaw = new OptionToggle("Lock Propellers Yaw Steering", RandomControls, KickStart.LockPropYaw);
                 lockP_Yaw.onValueSaved.AddListener(() => { KickStart.LockPropYaw = lockP_Yaw.SavedValue; });
 
                 hangarKey = new OptionKey("Hangar Docking Hotkey [+ Left Click]", RandomControls, KickStart.HangarButton);
@@ -852,6 +857,15 @@ namespace RandomAdditions
                 });
 
                 var RandomDev = KickStart.ModName + " - Development";
+                try
+                {
+                    KickStartOptionsSafeSaves.TryInitOptionAndConfig(RandomDev, thisModConfig);
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup SafeSaves");
+                    DebugRandAddi.Log(e);
+                }
                 allowPopups = new OptionToggle("Enable custom block debug popups", RandomDev, KickStart.DebugPopups);
                 allowPopups.onValueSaved.AddListener(() => { KickStart.DebugPopups = allowPopups.SavedValue; });
                 blockSnap = new OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomDev, KickStart.SnapBlockButton);
@@ -891,8 +905,6 @@ namespace RandomAdditions
                     ManTrainPathing.QueueStepRepeatTimes = Mathf.FloorToInt(RailPathingUpdateSpeed.SavedValue);
                 });
 
-
-
                 NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
             }
             catch (Exception e)
@@ -919,52 +931,30 @@ namespace RandomAdditions
 
     }
 
+    public class KickStartOptionsSafeSaves
+    {
+        public static OptionToggle saveExternal;
+        public static void TryInitOptionAndConfig(string RandomDev, ModConfig thisModConfig)
+        {
+            //Initiate the madness
+            try
+            {
+                thisModConfig.BindConfig<SafeSaves.ManSafeSaves>(null, "DisableExternalBackupSaving");
+                saveExternal = new OptionToggle("Save Mod Information in External File", RandomDev, SafeSaves.ManSafeSaves.DisableExternalBackupSaving);
+                saveExternal.onValueSaved.AddListener(() => { SafeSaves.ManSafeSaves.DisableExternalBackupSaving = saveExternal.SavedValue; });
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup SafeSaves");
+                DebugRandAddi.Log(e);
+            }
+
+        }
+
+    }
 
     internal static class ExtraExtensions
     {
-        public static bool IsServerManaged(this Tank tank)
-        {
-            return ManNetwork.IsNetworked && tank.netTech && tank.netTech.isServer;
-        }
-        public static bool CanRunPhysics(this Tank tank)
-        {
-            if (!ManNetwork.IsNetworked || tank.netTech == null)
-                return true;
-            return tank.netTech.hasAuthority;
-        }
-
-        public static int GetBlockIndexOnTank(this TankBlock block)
-        {
-            if (block == null || block.tank == null)
-                return -1;
-            int index = 0;
-            foreach (var item in block.tank.blockman.IterateBlocks())
-            {
-                if (item == block)
-                    return index;
-                index++;
-            }
-            return -1;
-        }
-
-        public static int GetBlockIndexAndTechNetID(this TankBlock block, out uint netID)
-        {
-            netID = 0;
-            if (block == null || block.tank == null)
-                return -1;
-            int index = 0;
-            foreach (var item in block.tank.blockman.IterateBlocks())
-            {
-                if (item == block)
-                {
-                    netID = block.tank.netTech.netId.Value;
-                    return index;
-                }
-                index++;
-            }
-            return -1;
-        }
-
         public static T[] GetComponentsLowestFirst<T>(this GameObject GO) where T : MonoBehaviour
         {
             List<KeyValuePair<int, T>> depthTracker = new List<KeyValuePair<int, T>>();
@@ -1121,26 +1111,26 @@ namespace RandomAdditions
         }
 
 
-        public static bool SubToLogicReceiverCircuitUpdate(this ExtModule module, Action<Circuits.Charge> OnRec, bool unsub)
+        public static bool SubToLogicReceiverCircuitUpdate(this ExtModule module, Action<Circuits.BlockChargeData> OnRec, bool unsub)
         {
-            if (module.block.CircuitNode?.Receiver && CircuitExt.LogicEnabled)
+            if (module.block.CircuitNode?.Receiver)
             {
                 if (unsub)
-                    module.block.CircuitNode.Receiver.ChargeChangedEvent.Unsubscribe(OnRec);
+                    module.block.CircuitNode?.Receiver.UnSubscribeFromChargeData(null, OnRec, null, null);
                 else
-                    module.block.CircuitNode.Receiver.ChargeChangedEvent.Subscribe(OnRec);
+                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, OnRec, null, null, false);
                 return true;
             }
             return false;
         }
-        public static bool SubToLogicReceiverFrameUpdate(this ExtModule module, Action<Circuits.Charge> OnRec, bool unsub)
+        public static bool SubToLogicReceiverFrameUpdate(this ExtModule module, Action<Circuits.BlockChargeData> OnRec, bool unsub)
         {
-            if (module.block.CircuitNode?.Receiver && CircuitExt.LogicEnabled)
+            if (module.block.CircuitNode?.Receiver)
             {
                 if (unsub)
-                    module.block.CircuitNode?.Receiver.FrameChargeChangedEvent.Unsubscribe(OnRec);
+                    module.block.CircuitNode?.Receiver.UnSubscribeFromChargeData(null, null, null, OnRec);
                 else
-                    module.block.CircuitNode?.Receiver.FrameChargeChangedEvent.Subscribe(OnRec);
+                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, null, null, OnRec, false);
                 return true;
             }
             return false;

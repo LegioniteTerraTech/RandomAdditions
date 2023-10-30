@@ -44,6 +44,9 @@ namespace RandomAdditions
             }
         }
 
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleClock",
+             AltUI.HighlightString("Clocks") + " display the world time.\n" + 
+            AltUI.HintString("Never be late again prospector!"));
         public override void OnAttach()
         {
             GlobalClock.ClockManager.AddClock(this);
@@ -58,7 +61,7 @@ namespace RandomAdditions
                 if (tank.PlayerFocused)
                     GUIClock.LaunchGUI(block);
             }
-            ExtUsageHint.ShowExistingHint(4001);
+            hint.Show();
         }
 
         public override void OnDetach()

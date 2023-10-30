@@ -20,7 +20,7 @@ namespace RandomAdditions
                 var train = __instance.GetComponent<TankLocomotive>();
                 if (train && train.BogieMaxDriveForce > 0)
                 {
-                    cache.wheelsTotalNum += train.BogieCount;
+                    cache.wheelsTotalNum += train.ModuleBogiesCount;
                     cache.wheelsGroundedNum += train.EngineBlockCount;
                     cache.wheelsGroundedPerType[(int)TechAudio.WheelTypes.MetalWheel] += train.ActiveBogieCount;
                 }

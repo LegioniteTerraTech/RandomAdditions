@@ -139,9 +139,8 @@ namespace RandomAdditions
                         }
                         else
                         {
-                            List<KeyValuePair<Damageable, RaycastHit>> damagedL = damaged.OrderBy(x => x.Value.distance).ToList();
                             int max = PierceDepth;
-                            foreach (KeyValuePair<Damageable, RaycastHit> toDamage in damagedL)
+                            foreach (KeyValuePair<Damageable, RaycastHit> toDamage in damaged.OrderBy(x => x.Value.distance))
                             {
                                 PB.project.HandleCollision(toDamage.Key, toDamage.Value.point, toDamage.Value.collider, false);
                                 max--;

@@ -41,6 +41,28 @@ namespace RandomAdditions
             }
         }*/
 
+        /*
+        [HarmonyPatch(typeof(Button))]
+        [HarmonyPatch("Press")]
+        private static class TrackButtonPressesToFindThings
+        {
+            private static void Postfix(Button __instance)
+            {
+                DebugRandAddi.Log("--------------------------------------------");
+                if (__instance.transform.parent)
+                {
+                    DebugRandAddi.Log("Button " + __instance.name + " has parent, hierachy - " + 
+                        Nuterra.NativeOptions.UIUtilities.GetComponentTree(__instance.transform.parent.gameObject, "- "));
+                }
+                else
+                {
+                    DebugRandAddi.Log("Button " + __instance.name + " hierachy - " +
+                        Nuterra.NativeOptions.UIUtilities.GetComponentTree(__instance.gameObject, "- "));
+                }
+                DebugRandAddi.Log("--------------------------------------------\n");
+            }
+        }
+        //*/
 
 
 
