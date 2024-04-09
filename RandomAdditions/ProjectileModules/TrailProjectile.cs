@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using TerraTechETCUtil;
+using System.Reflection;
 
 public class TrailProjectile : RandomAdditions.TrailProjectile { }
 namespace RandomAdditions
@@ -28,11 +29,11 @@ namespace RandomAdditions
             }
         }
         private static Vector3[] transferArray = new Vector3[26];
-        private static void KeepTrailPresent(TrailProjectile TP)
+        private void KeepTrailPresent()
         {
-            var TRo = TP.trail;
-            var TR = latentPool.Spawn(null, TP.transform.position);
-            TR.time = TP.delay;
+            var TRo = trail;
+            var TR = latentPool.Spawn(null, transform.position);
+            TR.time = delay;
             TR.textureMode = TRo.textureMode;
             TR.sharedMaterial = TRo.sharedMaterial;
             TR.alignment = TRo.alignment;
@@ -45,12 +46,12 @@ namespace RandomAdditions
             TR.widthMultiplier = TRo.widthMultiplier;
             TR.numCapVertices = TRo.numCapVertices;
             TR.numCornerVertices = TRo.numCornerVertices;
-            if (TRo.positionCount > transferArray.Length)
+            if (TRo.positionCount != transferArray.Length)
                 Array.Resize(ref transferArray, TRo.positionCount);
-            TP.trail.GetPositions(transferArray);
-            TR.AddPositions(transferArray);
+            trail.GetPositions(transferArray);
+            TR.SetPositions(transferArray);
             TRo.Clear();
-            InvokeHelper.Invoke(TR.Recycle, TP.delay, true);
+            InvokeHelper.Invoke(TR.Recycle, delay, true);
         }
 
 
@@ -88,7 +89,7 @@ namespace RandomAdditions
 
             if (trail)
             {
-                KeepTrailPresent(this);
+                KeepTrailPresent();
                 trail.emitting = false;
             }
             foreach (var col in cols)
@@ -100,13 +101,15 @@ namespace RandomAdditions
             PB.rbody.useGravity = false;
             PB.rbody.velocity = Vector3.zero;
         }
+        static FieldInfo deathDis = typeof(Projectile).GetField("m_DieAfterDelay", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        private void OnPool()
+        public override void Pool()
         {
             InsureInit();
             cols = GetComponentsInChildren<Collider>();
             wasGrav = PB.rbody.useGravity;
             trail = GetComponent<TrailRenderer>();
+            //deathDis.SetValue(PB.project, false);
             var particles = GetComponentsInChildren<ParticleSystem>();
             if (particles != null)
             {

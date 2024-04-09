@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Reflection;
 using RandomAdditions.RailSystem;
+using HarmonyLib;
 
 namespace RandomAdditions
 {
@@ -15,6 +16,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchTankToAllowLocoEngine
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static void GetWheelParams_Postfix(TechAudio __instance, ref TechAudio.UpdateAudioCache cache)
             {
                 var train = __instance.GetComponent<TankLocomotive>();
@@ -28,6 +30,7 @@ namespace RandomAdditions
 
             private static FieldInfo dr = typeof(TechAudio).GetField("m_Drive", BindingFlags.NonPublic | BindingFlags.Instance);
             private static FieldInfo tr = typeof(TechAudio).GetField("m_Turn", BindingFlags.NonPublic | BindingFlags.Instance);
+            [HarmonyPriority(-9001)]
             private static bool OnControlInput_Prefix(TechAudio __instance, ref TankControl.ControlState data)
             {
                 dr.SetValue(__instance, (data.InputMovement + data.Throttle).magnitude);

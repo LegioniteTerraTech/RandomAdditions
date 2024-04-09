@@ -145,7 +145,7 @@ namespace RandomAdditions
                                     var tank = viss.block.tank;
                                     if (tank)
                                         tank.ApplyForceOverTime(Effector.forward * (Backforce 
-                                            * CurrentStrength * (viss.block.tank.blockman.blockTableSize / 2)), 
+                                            * CurrentStrength * 0.5f), 
                                             viss.block.centreOfMassWorld, DamageDelayCount * Time.deltaTime);
                                 }
                             }

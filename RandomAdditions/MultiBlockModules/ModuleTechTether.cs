@@ -689,7 +689,7 @@ namespace RandomAdditions.PhysicsTethers
 
 
 
-            internal void DisconnectX(TechSplitNamer unused)
+            internal void DisconnectX()
             {
                 if (IsConnected)
                 {

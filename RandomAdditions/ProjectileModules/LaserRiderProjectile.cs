@@ -7,6 +7,9 @@ using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
+    /// <summary>
+    /// WIP
+    /// </summary>
     public class LaserRiderProjectile : ExtProj
     {
         public Vector3 WorldGravitateDirection = Vector3.up;

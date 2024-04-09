@@ -468,7 +468,7 @@ namespace RandomAdditions
 
 
         // ModuleWeapon
-        public bool Deploy(bool Do)
+        public bool UpdateDeployment(bool Do)
         {
             return true; // no deployment animation!
             //throw new NotImplementedException("ModulePartWeaponGun - Deploy should not be called. This is handled automatically in Update().");
@@ -665,7 +665,7 @@ namespace RandomAdditions
                 if (!DP)
                     DP = weaponRound.gameObject.AddComponent<DynamicProjectile>();
                 DP.weap = partWeap;
-                weaponRound.Fire(Vector3.zero, altFireData, mainWeap, partWeap.block.tank, seeking, true);
+                weaponRound.Fire(Vector3.zero, trans, altFireData, mainWeap, partWeap.block.tank, seeking, true);
                 TechWeapon.RegisterWeaponRound(weaponRound, projectileUID);
             }
             ProcessFire();
@@ -748,7 +748,7 @@ namespace RandomAdditions
                         LR.endColor = partWeap.weaponTrail;
                     }
                 }
-                weaponRound.Fire(forward, altFireData, mainWeap, partWeap.block.tank, seeking, false);
+                weaponRound.Fire(forward, trans, altFireData, mainWeap, partWeap.block.tank, seeking, false);
                 var ST = weaponRound.GetComponent<SmokeTrail>();
                 if (ST)
                 {

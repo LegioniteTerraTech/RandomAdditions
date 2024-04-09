@@ -9,6 +9,7 @@ using TMPro;
 using System.Reflection;
 using TerraTechETCUtil;
 using RandomAdditions.Minimap;
+using HarmonyLib;
 
 namespace RandomAdditions
 {
@@ -29,6 +30,7 @@ namespace RandomAdditions
             /// AllowBypass
             /// IMPORTANT
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static void Show_Prefix(UIScreenBugReport __instance)
             {   //Custom error menu
 #if STEAM
@@ -53,6 +55,7 @@ namespace RandomAdditions
             /// DisableCrashTextMenu
             /// DO NEXT OF ABOVE
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static bool PostIt_Prefix(UIScreenBugReport __instance)
             {
                 //Custom error menu
@@ -64,6 +67,7 @@ namespace RandomAdditions
             /// OverhaulCrashPatch
             /// DO NEXT OF ABOVE
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static void Set_Postfix(UIScreenBugReport __instance)
             {
                 //Custom error menu
@@ -189,6 +193,7 @@ namespace RandomAdditions
             /// PatchAllBlocksForOHKOProjectile
             /// </summary>
             /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
             internal static void OnPool_Postfix(TankBlock __instance)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched TankBlock OnPool(ModuleOHKOInsurance & TankBlockScaler)");
@@ -208,6 +213,7 @@ namespace RandomAdditions
                     rp.Init(__instance);
                 InvokeHelper.Invoke(OnPool_Delayed, 3, __instance);
             }
+            [HarmonyPriority(-9001)]
             internal static void OnPool_Delayed(TankBlock block)
             {
                 new WikiPageBlock((int)block.GetComponent<Visible>().ItemType);
@@ -217,6 +223,7 @@ namespace RandomAdditions
             /// PatchAllBlocksForPainting
             /// </summary>
             /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
             internal static void OnSpawn_Postfix(TankBlock __instance)
             {
                 OptimizeOutline.FlagNonRendTrans(__instance.transform);
@@ -230,6 +237,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchVisibleForBlocksRescaleOnConveyor
             /// </summary>
+            [HarmonyPriority(-9001)]
             internal static void SetHolder_Prefix(Visible __instance, ref ModuleItemHolder.Stack stack)
             {
                 if ((bool)__instance.block)
@@ -327,6 +335,7 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(UIMiniMapDisplay);
             // Allow train tracks on UI
+            [HarmonyPriority(-9001)]
             internal static void Show_Postfix(UIMiniMapDisplay __instance)
             {
                 if ((bool)__instance)
@@ -345,6 +354,7 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(ObjectSpawner);
 
+            [HarmonyPriority(-9001)]
             private static void TrySpawn_Prefix(ref ManSpawn.ObjectSpawnParams objectSpawnParams, ref ManFreeSpace.FreeSpaceParams freeSpaceParams)
             {
                 if ((ManNetwork.IsHost || !ManNetwork.IsNetworked) && objectSpawnParams != null)
@@ -387,6 +397,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchDamageableRA
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static bool Damage_Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
@@ -403,6 +414,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchDamageableChange
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static void OnPool_Prefix(Damageable __instance)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Damageable OnPool(ModuleReinforced)");
@@ -433,6 +445,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchDamageableRA
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static bool OnDamaged_Prefix(ModuleDamage __instance, ref ManDamage.DamageInfo info)
             {
                 if (__instance.GetComponent<ModuleReinforced>() != null)
@@ -475,6 +488,7 @@ namespace RandomAdditions
             /// <summary>
             /// GetOutOfHereCameraShakeShack
             /// </summary>=
+            [HarmonyPriority(-9001)]
             private static bool SetCameraShake_Prefix(TankCamera __instance)
             {
                 if (KickStart.NoShake)
@@ -575,28 +589,63 @@ namespace RandomAdditions
             static FieldInfo name = typeof(UIDamageTypeDisplay).GetField("m_NameText", BindingFlags.NonPublic | BindingFlags.Instance); 
             static FieldInfo dispName = typeof(UIDamageTypeDisplay).GetField("m_Tooltip", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            private static void SetBlock_Postfix(UIDamageTypeDisplay __instance, ref BlockTypes blockType)
+            [HarmonyPriority(-9001)]
+            private static bool SetBlock_Prefix(UIDamageTypeDisplay __instance, ref BlockTypes blockType)
             {
-                if ((int)type.GetValue(__instance) != 2)
-                    return;
-                var blockInst = ManSpawn.inst.GetBlockPrefab(blockType);
-                if (blockInst)
+                if ((int)type.GetValue(__instance) == 2)
                 {
-                    var modDamageable = blockInst.GetComponent<ModuleReinforced>();
-                    if (modDamageable && !modDamageable.CustomDamagableName.NullOrEmpty())
+                    var blockInst = ManSpawn.inst.GetBlockPrefab(blockType);
+                    if (blockInst)
                     {
-                        __instance.Set(modDamageable.CustomDamagableIcon);
-                        var val = (TextMeshProUGUI)name.GetValue(__instance);
-                        if (val)
+                        //DebugRandAddi.Log("SetBlock_Prefix - set for " + blockType.ToString());
+
+                        try
                         {
-                            val.text = modDamageable.CustomDamagableName;
-                            //DebugRandAddi.Log("set damageable name to " + modDamageable.CustomDamagableName);
+                            var modDamageable = blockInst.GetComponent<ModuleReinforced>();
+                            if (modDamageable != null)
+                            {
+                                if (!modDamageable.CustomDamagableName.NullOrEmpty())
+                                {
+                                    __instance.Set(modDamageable.CustomDamagableIcon);
+                                    var val = (TextMeshProUGUI)name.GetValue(__instance);
+                                    if (val)
+                                    {
+                                        val.text = modDamageable.CustomDamagableName;
+                                        //DebugRandAddi.Log("set damageable name to " + modDamageable.CustomDamagableName);
+                                    }
+                                    else
+                                        DebugRandAddi.Log("set SetBlock_Prefix name failed because TextMeshProUGUI null");
+                                    var namD = (TooltipComponent)dispName.GetValue(__instance);
+                                    if (namD)
+                                    {
+                                        namD.SetText(modDamageable.CustomDamagableName);
+                                    }
+                                    else
+                                        DebugRandAddi.Log("set SetBlock_Prefix name failed because TooltipComponent null");
+                                    return false;
+                                }
+                                else
+                                    DebugRandAddi.Log("set SetBlock_Prefix name failed because CustomDamagableName null/empty");
+                            }
+                            /*
+                            else
+                            {
+                                DebugRandAddi.Log("SetBlock_Prefix - no ModuleReinforced for " + blockType.ToString());
+                                foreach (var item in blockInst.GetComponents<MonoBehaviour>())
+                                {
+                                    DebugRandAddi.Log(" - " + item.GetType().ToString());
+                                }
+                            }*/
                         }
-                        var namD = (TooltipComponent)dispName.GetValue(__instance);
-                        if (namD)
-                            namD.SetText(modDamageable.CustomDamagableName);
+                        catch (Exception e)
+                        {
+                            DebugRandAddi.Log("SetBlock_Prefix - ERROR ~ " + e);
+                        }
                     }
+                    else
+                        DebugRandAddi.Log("SetBlock_Prefix - not set for " + blockType.ToString() + ", no prefab!");
                 }
+                return true;
             }
         }
 
@@ -604,6 +653,7 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(ManHUD);
 
+            [HarmonyPriority(-9001)]
             private static bool AddRadialOpenRequest_Prefix(ManHUD __instance, ref ManHUD.HUDElementType elementType)
             {
                 return elementType != UIHelpersExt.customElement;

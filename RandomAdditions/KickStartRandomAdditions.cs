@@ -5,13 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using RandomAdditions.RailSystem;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
 #if STEAM
     public class KickStartRandomAdditions : ModBase
     {
-        internal static KickStartRandomAdditions oInst = null;
+        internal static ModDataHandle oInst;
 
         bool isInit = false;
         bool firstInit = false;
@@ -29,7 +30,7 @@ namespace RandomAdditions
             {
                 TerraTechETCUtil.ModStatusChecker.EncapsulateSafeInit("Random Additions",
                     KickStart.OfficialEarlyInit, KickStart.DeInitALL);
-                oInst = this;
+                oInst = new ModDataHandle(KickStart.ModID);
             }
         }
         public override void Init()
@@ -37,12 +38,11 @@ namespace RandomAdditions
             DebugRandAddi.Log("RandomAdditions: CALLED INIT");
             if (isInit)
                 return;
-            if (oInst == null)
-                oInst = this;
             try
             {
                 TerraTechETCUtil.ModStatusChecker.EncapsulateSafeInit("Random Additions", 
                     KickStart.MainOfficialInit, KickStart.DeInitALL);
+                oInst = new ModDataHandle(KickStart.ModID);
             }
             catch { }
             //ManRails.LateInit();

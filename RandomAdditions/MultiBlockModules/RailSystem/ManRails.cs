@@ -262,7 +262,7 @@ namespace RandomAdditions.RailSystem
                 RailSegmentGround.Init();
                 RailSegmentBeam.Init();
                 InitRailStops();
-                trainAttract = new SpecialAttract.AttractInfo("I Like Trains", 2000, null, StartTrainAd, EndTrainAd, true);
+                trainAttract = new SpecialAttract.AttractInfo("I Like Trains", 2, null, StartTrainAd, EndTrainAd, true);
             }
         }
         public static bool StartTrainAd(ModeAttract __instance)

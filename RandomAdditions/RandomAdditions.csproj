@@ -216,6 +216,7 @@
     <Compile Include="CircuitExt.cs" />
     <Compile Include="CraftingExt.cs" />
     <Compile Include="GeneralComponents\AOEField.cs" />
+    <Compile Include="GlobalChanges\ManCustomChunks.cs" />
     <Compile Include="GlobalChanges\ManPhysicsExt.cs" />
     <Compile Include="GlobalChanges\MinimapExt.cs" />
     <Compile Include="GlobalChanges\Pyromanic.cs" />
@@ -256,6 +257,7 @@
     <Compile Include="MultiBlockModules\RailSystem\RailTrackNode.cs" />
     <Compile Include="PatchBatch\CircuitPatches.cs" />
     <Compile Include="PatchBatch\ManRailsPatches.cs" />
+    <Compile Include="RandAddiWiki.cs" />
     <Compile Include="ReliantBlockModules\BlockScannerTarg.cs" />
     <Compile Include="ReliantBlockModules\ModuleCircuitExt.cs" />
     <Compile Include="ReliantBlockModules\ModuleCircuit_Scanner.cs" />

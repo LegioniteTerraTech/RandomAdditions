@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
@@ -59,7 +60,7 @@ namespace RandomAdditions
 
 
         // Events
-        private static bool allowQuickSnap = true;
+        internal static int allowQuickSnap = 0;
         private static bool cooldown = false;
         private static TankBlock target;
         public static void OnClick(ManPointer.Event mEvent, bool DOWN, bool yes2)
@@ -108,18 +109,31 @@ namespace RandomAdditions
                         }
                     }
                 }
-                if (allowQuickSnap && !cooldown && mEvent == ManPointer.Event.LMB && Input.GetKey(KickStart.SnapBlockButton))
+                if ((allowQuickSnap > 0 || Input.GetKey(KickStart.SnapBlockButton)) && !cooldown && mEvent == ManPointer.Event.LMB)
                 {
-                    if ((bool)targVis.block)
+                    if (allowQuickSnap != 2)
                     {
-                        target = targVis.block;
-                        ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
-                        inst.Invoke("BeforeSnap", 1f);
-                        cooldown = true;
+                        if ((bool)targVis.block)
+                        {
+                            target = targVis.block;
+                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AcceptMission);
+                            inst.Invoke("BeforeSnap", 1f);
+                            cooldown = true;
+                        }
+                        else
+                        {
+                            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.AnchorFailed);
+                        }
                     }
+                    if (allowQuickSnap > 0)
+                        allowQuickSnap--;
                 }
                 ModuleHangar.OnBlockSelect(targVis, mEvent, DOWN, yes2);
             }
+        }
+        public static void DoSnapBlock()
+        {
+            allowQuickSnap = 2;
         }
         internal void BeforeSnap()
         {
@@ -143,48 +157,12 @@ namespace RandomAdditions
 
             Vector3 blockOGPos = block.transform.position;
             Quaternion blockOGRot = block.transform.rotation;
-            Vector3 lookAngle = Camera.main.transform.position - (block.trans.position + (block.trans.rotation * bounds.center));
-            lookAngle *= 0.6f;
-            block.transform.position = new Vector3(0, 0, 2500);
-            //block.transform.rotation = Quaternion.LookRotation(Vector3.forward);
-
-            Vector3 OGPos = Camera.main.transform.position;
-            Camera.main.transform.position = lookAngle + block.trans.position;
-            //Vector3 lookAngle = new Vector3(Mathf.Clamp(UnityEngine.Random.Range(-10000, 10000), -1, 1), UnityEngine.Random.Range(-1.5f, 1.5f), 1f).normalized * Vector3.one.magnitude;
-            //Camera.main.transform.position = (bounds.center + lookAngle * maxDimension * 0.6f) + block.trans.position;
-            Camera.main.transform.LookAt((block.trans.rotation * bounds.center) + block.trans.position, Vector3.up);
-            float cache1 = Camera.main.farClipPlane;
-            float cache2 = Camera.main.nearClipPlane;
-
-            Camera.main.farClipPlane = 1000f;
-            Camera.main.nearClipPlane = 0.1f;
-            
-
-            // Give the camera a render texture of fixed size
-            RenderTexture rendTex = RenderTexture.GetTemporary(1024, 1024, 24, RenderTextureFormat.ARGB32);
-            RenderTexture.active = rendTex;
-            RenderTexture old = Camera.main.targetTexture;
-
-            // Render the block
-            Camera.main.targetTexture = rendTex;
-            Camera.main.Render();
-
-            // Copy it into our target texture
-            Texture2D preview = new Texture2D(1024, 1024);
-            preview.ReadPixels(new Rect(0, 0, 1024, 1024), 0, 0);
-
             // Write the target texture to disk
-            FileUtils.SaveTexture(preview, png);
+            FileUtils.SaveTexture(ResourcesHelper.GeneratePreviewForGameObject(block.gameObject, bounds), png);
 
             // Return the camera to its previous settings
-            Camera.main.targetTexture = old;
-            Camera.main.farClipPlane = cache1;
-            Camera.main.nearClipPlane = cache2;
-            Camera.main.transform.position = OGPos;
             block.transform.position = blockOGPos;
             block.transform.rotation = blockOGRot;
-            RenderTexture.active = null;
-            RenderTexture.ReleaseTemporary(rendTex);
         }
 
 

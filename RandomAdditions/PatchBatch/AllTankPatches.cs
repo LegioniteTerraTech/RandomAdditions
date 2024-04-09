@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using System.Reflection;
 using RandomAdditions.RailSystem;
+using HarmonyLib;
 
 namespace RandomAdditions
 {
@@ -16,6 +17,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchTankToHelpClocks
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static void OnPool_Postfix(Tank __instance)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Tank OnPool(TimeTank)");
@@ -23,6 +25,7 @@ namespace RandomAdditions
                 ModuleAdd2.Initiate();
             }
 
+            [HarmonyPriority(-9001)]
             private static void NotifyDamage_Postfix(Tank __instance, ref ManDamage.DamageInfo info, ref TankBlock blockDamaged)
             {
                 RandomTank.Insure(__instance).OnDamaged(info, blockDamaged);
@@ -35,6 +38,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchTankToHelpEvasion
             /// </summary>
+            [HarmonyPriority(-9001)]
             private static void GetWeaponTargetLocation_Postfix(TankControl __instance, ref Vector3 __result, ref Vector3 origin)
             {
                 if (origin == __result)

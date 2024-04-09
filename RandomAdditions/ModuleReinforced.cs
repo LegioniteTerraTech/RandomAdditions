@@ -33,7 +33,7 @@ namespace RandomAdditions
             //--------------------------------
         },
         */
-        public string CustomDamagableName = null;
+        public string CustomDamagableName = string.Empty;
         public ManDamage.DamageableType CustomDamagableIcon = ManDamage.DamageableType.Standard;
 
         public bool DoDamagableSwitch = false;
@@ -89,9 +89,6 @@ namespace RandomAdditions
             {
                 switch (newDMG.DamageType)
                 {
-                    case ManDamage.DamageType.Standard:
-                        newDMG.ApplyDamageMultiplier(Standard);
-                        break;
                     case (ManDamage.DamageType)1:
                         newDMG.ApplyDamageMultiplier(Bullet);
                         break;
@@ -112,6 +109,9 @@ namespace RandomAdditions
                         break;
                     case ManDamage.DamageType.Plasma:
                         newDMG.ApplyDamageMultiplier(Plasma);
+                        break;
+                    default:
+                        newDMG.ApplyDamageMultiplier(Standard);
                         break;
                 }
             }

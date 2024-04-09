@@ -1190,7 +1190,7 @@ namespace RandomAdditions
             private void Fire()
             {
                 WeaponRound WR = MA.fireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, bulletTrans.position, bulletTrans.rotation);
-                WR.Fire(bulletTrans.forward, MA.fireData, MA.MW, tank, seeking, false);
+                WR.Fire(bulletTrans.forward, bulletTrans, MA.fireData, MA.MW, tank, seeking, false);
                 /*
                 WeaponRound WR = MA.fireData.m_BulletPrefab.transform.UnpooledSpawnWithLocalTransform(null, bulletTrans.position, Quaternion.identity).GetComponent<WeaponRound>();
                 WR.transform.rotation = bulletTrans.rotation;

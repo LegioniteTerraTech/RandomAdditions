@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,7 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(ModuleCircuitDispensor);
 
+            [HarmonyPriority(-9001)]
             private static void SendChargeToOutputs_Prefix(ModuleCircuitDispensor __instance, ref int strength)
             {
                 var hook = __instance.GetComponent<ModuleCircuitExt>();

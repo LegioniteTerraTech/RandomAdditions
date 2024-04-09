@@ -11,7 +11,21 @@ namespace RandomAdditions
     internal static class Patches
     {
 
-
+        /*
+        [HarmonyPatch(typeof(StringLookup))]
+        [HarmonyPatch("GetString")]//
+        private class ShoehornText
+        {
+            private static bool Prefix(Localisation __instance, ref string bank, ref string id, ref string __result)
+            {
+                if (id == "MOD")
+                {
+                    __result = bank;
+                    return false;
+                }
+                return true;
+            }
+        }*/
 
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------

@@ -232,6 +232,10 @@ namespace RandomAdditions
             {
                 DebugRandAddi.Log("RandomAdditions: Error on Prepping Quick Start");
             }
+            if (!OfficialEarlyInited)
+            {
+                ManCustomChunks.RenewOldChunks();
+            }
             OfficialEarlyInited = true;
         }
 
@@ -252,6 +256,7 @@ namespace RandomAdditions
                 OfficialEarlyInit();
             }
             DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
+            RandAddiWiki.InitWiki();
             try
             { // init changes
                 LocalCorpAudioExt.ManExtendAudio.Subscribe();
@@ -304,6 +309,7 @@ namespace RandomAdditions
 
             // etc
             IngameQuit.Init();
+            ManIngameWiki.RecurseCheckWikiBlockExtModule<ModuleReinforced>();
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
 #endif
@@ -428,6 +434,7 @@ namespace RandomAdditions
         {
             if (Doing)
             {
+                ManCustomChunks.PrepareForSaving();
                 ManTileLoader.OnWorldSave();
                 ManRails.PrepareForSaving();
             }
@@ -435,14 +442,20 @@ namespace RandomAdditions
             {
                 ManRails.FinishedSaving();
                 ManTileLoader.OnWorldFinishSave();
+                ManCustomChunks.FinishedSaving();
             }
         }
         public static void OnLoadManagers(bool Doing)
         {
-            if (!Doing)
+            if (Doing)
+            {
+                ManCustomChunks.PrepareForLoading();
+            }
+            else
             {
                 ManTileLoader.OnWorldLoad();
                 ManRails.FinishedLoading();
+                ManCustomChunks.FinishedLoading();
             }
         }
 

@@ -185,7 +185,7 @@ namespace RandomAdditions
             targPos = scenePos;
             ReserveControlShoot = fire;
         }
-        public bool Deploy(bool Do)
+        public bool UpdateDeployment(bool Do)
         {
             return true; // no deployment animation!
             //throw new NotImplementedException("ChildModuleWeapon - Deploy should not be called. This is handled automatically in Update().");
@@ -653,7 +653,7 @@ namespace RandomAdditions
             {
                 WeaponRound weaponRound = altFireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, bulletTrans.position, trans.rotation);
                 weaponRound.SetVariationParameters(bulletTrans_forward, spin);
-                weaponRound.Fire(Vector3.zero, altFireData, mainWeap, childWeap.block.tank, seeking, true);
+                weaponRound.Fire(Vector3.zero, trans, altFireData, mainWeap, childWeap.block.tank, seeking, true);
                 TechWeapon.RegisterWeaponRound(weaponRound, projectileUID);
             }
             return ProcessFire();
@@ -731,7 +731,7 @@ namespace RandomAdditions
                 Vector3 position = bulletTrans.position;
                 Vector3 forward = bulletTrans.forward;
                 WeaponRound weaponRound = altFireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, position, trans.rotation);
-                weaponRound.Fire(forward, altFireData, mainWeap, childWeap.block.tank, seeking, false);
+                weaponRound.Fire(forward, trans, altFireData, mainWeap, childWeap.block.tank, seeking, false);
                 TechWeapon.RegisterWeaponRound(weaponRound, int.MinValue);
                 Vector3 force = -forward * altFireData.m_KickbackStrength;
                 childWeap.block.tank.rbody.AddForceAtPosition(force, position, ForceMode.Impulse);

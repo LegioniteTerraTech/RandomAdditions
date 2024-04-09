@@ -291,7 +291,7 @@ namespace RandomAdditions
                     break;
             }
         }
-        public void OnBolt(TechSplitNamer un)
+        public void OnBolt()
         {
             IgnoreAttachTime = Time.time + IgnoreAttachDelay;
             DoUnlock();
