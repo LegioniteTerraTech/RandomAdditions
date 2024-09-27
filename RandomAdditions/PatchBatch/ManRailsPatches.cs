@@ -8,7 +8,7 @@ using HarmonyLib;
 
 namespace RandomAdditions
 {
-    internal class ManRailsPatches : MassPatcherRA
+    internal class ManRailsPatches
     {
         internal static class TechAudioPatches
         {

@@ -411,10 +411,8 @@ namespace RandomAdditions
                             {
                                 foreach (var caseI in TankWantsToDock.blockman.IterateBlockComponents<ModuleBooster>())
                                 {
-                                    foreach (var caseII in caseI.GetComponentsInChildren<FanJet>())
-                                        caseII.SetSpin(1);
-                                    foreach (var caseII in caseI.GetComponentsInChildren<BoosterJet>())
-                                        caseII.SetFiring(true);
+                                    foreach (var caseII in caseI.GetComponentsInChildren<Thruster>())
+                                        caseII.SetThrustRate(1, false);
                                 }
                                 ForceAllAIsToEscort(LaunchAnimating);
                                 LaunchAnimating.control.TestBoostControl();

@@ -43,6 +43,7 @@ namespace RandomAdditions
         internal List<ExtGimbalAimer> gimbals = new List<ExtGimbalAimer>();       //
 
         private RACannonBarrel MainGun;       //
+        private bool autoFire => m_Automatic || (MW ? MW.m_AutoFire : false);
         public List<RACannonBarrel> BarrelsMain { get; private set; } = new List<RACannonBarrel>(); //
 
         public float m_ShotCooldown = 1f;
@@ -131,34 +132,53 @@ namespace RandomAdditions
                 aimFunc = GetAimDirection;
             }
             spoolAnim = KickStart.FetchAnimette(transform, "_spooler", AnimCondition.WeaponSpooling);
-
             enabled = false;
         }
 
-        protected override void PostPool()
+        protected override void PostPoolScenery()
         {
-            MW = block.GetComponent<ModuleWeapon>();
-            if (!(bool)MW)
+            OnAttach();
+            visible.RecycledEvent.Subscribe(OnRecycle);
+            FloraFauna.Insure(resdisp);
+            m_Automatic = true;
+        }
+        private void OnRecycle(Visible vis)
+        {
+            if (vis == visible)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
-                enabled = false;
-                block.damage.SelfDestruct(0.5f);
-                return;
+                OnDetach();
+                visible.RecycledEvent.Unsubscribe(OnRecycle);
             }
-            MWG = block.GetComponent<ModuleWeaponGun>();
-            if (!(bool)MWG)
+        }
+        protected override void PostPoolBlock()
+        {
+            if (block)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
-                enabled = false;
-                block.damage.SelfDestruct(0.5f);
-                return;
+                MW = block.GetComponent<ModuleWeapon>();
+                if (!(bool)MW)
+                {
+                    LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                    enabled = false;
+                    block.damage.SelfDestruct(0.5f);
+                    return;
+                }
+                MWG = block.GetComponent<ModuleWeaponGun>();
+                if (!(bool)MWG)
+                {
+                    LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                    enabled = false;
+                    block.damage.SelfDestruct(0.5f);
+                    return;
+                }
             }
-
         }
         public override void OnAttach()
         {
             enabled = true;
-            tank.TechAudio.AddModule(this);
+            if (tank)
+                tank.TechAudio.AddModule(this);
+            else
+                SFXHelpers.RegisterFloatingSFX(transform, this);
             foreach (ExtGimbalAimer gimbal in gimbals)
             {
                 gimbal.ResetAim();
@@ -174,7 +194,10 @@ namespace RandomAdditions
             {
                 barrel.Reset();
             }
-            tank.TechAudio.RemoveModule(this);
+            if (tank)
+                tank.TechAudio.RemoveModule(this);
+            else
+                SFXHelpers.UnregisterFloatingSFX(transform, this);
             enabled = false;
         }
 
@@ -255,7 +278,7 @@ namespace RandomAdditions
             if (Do)
             {
                 SpoolBarrels(true);
-                if (m_Automatic)
+                if (autoFire)
                 {
                     if (AllGimbalsCloseAim())
                         HandleFire();
@@ -284,7 +307,7 @@ namespace RandomAdditions
                         return false;
                     }
                 }
-                if (m_Automatic)
+                if (autoFire)
                 {
                     if (AllGimbalsCloseAim())
                         return true;
@@ -308,6 +331,11 @@ namespace RandomAdditions
             if (cooldown > 0)
                 cooldown -= Time.deltaTime;
             barrelsFired = 0;
+            if (resdisp)
+            {
+                FloraFauna FF = FloraFauna.Insure(resdisp);
+                OverrideAndAimAt(FF.target.boundsCentreWorldNoCheck, true);
+            }
             if (ReserveControl > 0)
             {
                 doSpool = true;
@@ -315,7 +343,7 @@ namespace RandomAdditions
                 SpoolBarrels(true);
                 if (ReserveControlShoot)
                 {
-                    if (m_Automatic)
+                    if (autoFire)
                     {
                         if (AllGimbalsCloseAim())
                             HandleFire();
@@ -329,11 +357,11 @@ namespace RandomAdditions
             }
             else
             {
-                doSpool = tank.control.FireControl || (m_Automatic && targ && !tank.beam.IsActive);
+                doSpool = tank.control.FireControl || (autoFire && targ && !tank.beam.IsActive);
                 if (doSpool)
                 {
                     SpoolBarrels(true);
-                    if (m_Automatic)
+                    if (autoFire)
                     {
                         if (AllGimbalsCloseAim())
                             HandleFire();
@@ -653,8 +681,8 @@ namespace RandomAdditions
             {
                 WeaponRound weaponRound = altFireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, bulletTrans.position, trans.rotation);
                 weaponRound.SetVariationParameters(bulletTrans_forward, spin);
-                weaponRound.Fire(Vector3.zero, trans, altFireData, mainWeap, childWeap.block.tank, seeking, true);
-                TechWeapon.RegisterWeaponRound(weaponRound, projectileUID);
+                weaponRound.Fire(Vector3.zero, trans, altFireData, mainWeap, childWeap.block?.tank, seeking, true);
+                ManCombat.Projectiles.RegisterWeaponRound(weaponRound, projectileUID);
             }
             return ProcessFire();
         }
@@ -732,7 +760,7 @@ namespace RandomAdditions
                 Vector3 forward = bulletTrans.forward;
                 WeaponRound weaponRound = altFireData.m_BulletPrefab.Spawn(Singleton.dynamicContainer, position, trans.rotation);
                 weaponRound.Fire(forward, trans, altFireData, mainWeap, childWeap.block.tank, seeking, false);
-                TechWeapon.RegisterWeaponRound(weaponRound, int.MinValue);
+                ManCombat.Projectiles.RegisterWeaponRound(weaponRound, int.MinValue);
                 Vector3 force = -forward * altFireData.m_KickbackStrength;
                 childWeap.block.tank.rbody.AddForceAtPosition(force, position, ForceMode.Impulse);
             }

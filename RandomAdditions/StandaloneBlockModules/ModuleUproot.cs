@@ -171,6 +171,7 @@ namespace RandomAdditions
             if (dmg.Health <= 0)
             {
                 resDisp.RemoveFromWorld(false, true, false, false);
+                ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.IntroExplosionHuge);
             }
         }
         private void DamageTarget(Damageable dmg, Vector3 impactPos, Vector3 impactVec, bool doLaunch = false)
@@ -236,7 +237,7 @@ namespace RandomAdditions
                     ST = SceneryTypes.ConeTree;
                     break;
             }
-            SpawnHelper.SpawnResourceNodeSnapTerrain(scenePos, ST, BT);
+            SpawnHelper.SpawnResourceNodeSnapTerrain(scenePos, ST, SpawnHelper.FirstBiomesByType[BT].name);
         }
     }
 }

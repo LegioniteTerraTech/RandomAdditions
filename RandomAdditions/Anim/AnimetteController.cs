@@ -87,9 +87,14 @@ namespace RandomAdditions
         {
             //DebugRandAddi.Log("RandomAdditions: AnimetteController - ON POOL");
         }
-        protected override void PostPool()
+        protected override void PostPoolScenery()
         {
-            //DebugRandAddi.Log("RandomAdditions: AnimetteController - ON POST POOL");
+            //DebugRandAddi.Log("RandomAdditions: AnimetteController - ON POST POOL(Scenery)");
+            GetAnimettes();
+        }
+        protected override void PostPoolBlock()
+        {
+            //DebugRandAddi.Log("RandomAdditions: AnimetteController - ON POST POOL(Block)");
 
             GetAnimettes();
         }

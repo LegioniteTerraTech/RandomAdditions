@@ -4,11 +4,86 @@ using System.Linq;
 using UnityEngine;
 using System.Reflection;
 using HarmonyLib;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
-    internal class ModulePatches : MassPatcherRA
+    internal class ModulePatches
     {
+        /*
+        internal static HashSet<ModuleFasteningLink> RequestedDetach = new HashSet<ModuleFasteningLink>();
+        internal static Dictionary<ModuleFasteningLink, int> DetachingFrame = new Dictionary<ModuleFasteningLink, int>();
+        internal static class ModuleFasteningLinkPatches
+        {
+            internal static Type target = typeof(ModuleFasteningLink);
+            private static FieldInfo isDetaching = typeof(BlockManager).GetField("m_RemoveBlockRecursionCounter", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static bool OnChargeChanged_Prefix(ModuleFasteningLink __instance, ref Circuits.BlockChargeData charge)
+            {
+                if (__instance?.block?.tank)
+                {
+                    int recurse = (int)isDetaching.GetValue(__instance.block.tank.blockman);
+                    if (recurse > 0)
+                    {
+                        DebugRandAddi.Log("Stopped Circuits.BlockChargeData update when blocks were being detached");
+                        if (DetachingFrame.ContainsKey(__instance))
+                        {
+                            if (charge > 0)
+                                RequestedDetach.Remove(__instance);
+                            else
+                                RequestedDetach.Add(__instance);
+                        }
+                        return false;
+                    }
+                }
+                return true;
+            }
+            private static void OnDetaching_Prefix(ModuleFasteningLink __instance)
+            {
+                if (__instance)
+                {
+                    DebugRandAddi.Log("DetachingFrame");
+                    if (!DetachingFrame.ContainsKey(__instance))
+                        DetachingFrame.Add(__instance, 3);
+                    else
+                        DetachingFrame[__instance] = 3;
+                }
+            }
+            private static bool Unlink_Prefix(ModuleFasteningLink __instance)
+            {
+                if (DetachingFrame.ContainsKey(__instance))
+                {
+                    DebugRandAddi.Log("Unlink blocked to prevent block detach recursion issues");
+                    return false;
+                }
+                else
+                {
+                    RequestedDetach.Remove(__instance);
+                    return true;
+                }
+            }
+            private static MethodInfo unlinkReq = typeof(ModuleFasteningLink).GetMethod("Unlink", BindingFlags.NonPublic | BindingFlags.Instance);
+            private static bool ContinuouslyTryLinkNearby_Prefix(ModuleFasteningLink __instance)
+            {
+                if (__instance && DetachingFrame.TryGetValue(__instance, out int val))
+                {
+                    //DebugRandAddi.Log("ContinuouslyTryLinkNearby - Countdown " + val);
+                    if (val == 0)
+                        DetachingFrame.Remove(__instance);
+                    else
+                        DetachingFrame[__instance] = val - 1;
+                    return false;
+                }
+                else if (RequestedDetach.Remove(__instance))
+                {
+                    DebugRandAddi.Log("ContinuouslyTryLinkNearby - Try Reform and Rebuild");
+                    unlinkReq.Invoke(__instance, new object[0]);
+                    return false;
+                }
+                return true;
+            }
+
+        }
+        */
         internal static class ModuleItemHolderBeamPatches
         {
             internal static Type target = typeof(ModuleItemHolderBeam);

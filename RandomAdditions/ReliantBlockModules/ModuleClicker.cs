@@ -14,8 +14,10 @@ namespace RandomAdditions
     /// Obsolete - use AnimetteManager instead
     /// </summary>
     [AutoSaveComponent]
-    public class ModuleClicker : ExtModule
+    public class ModuleClicker : ExtModuleClickable
     {
+        public override bool UseDefault => true;
+
         public bool UseUI = false;
         public bool AllowToggleAll = false;
         public string[] AnimNames;
@@ -28,9 +30,45 @@ namespace RandomAdditions
         private bool AllActive = false;
         private AnimetteController[] anim;
 
+        public override void OnShow()
+        {
+            if (!UseUI)
+            {
+                if (AllowToggleAll)
+                {
+                    AllActive = !AllActive;
+                    RunAllStates(AllActive);
+                }
+                else
+                {
+                    AnimetteController AC = GetComponentInParent<AnimetteController>();
+                    if (AC)
+                    {
+                        int index = anim.ToList().IndexOf(AC);
+                        if (index != -1)
+                        {
+                            ActiveState[index] = ActiveState[index] > 0 ? 0 : 1;
+                            anim[index].RunBool(ActiveState[index] > 0 ? true : false);
+                            return;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (!GUIWindow)
+                    Initiate();
+                playerSelected = this;
+                openTime = 1.35f;
+                MoveMenuToCursor(true);
+                GUIWindow.SetActive(true);
+            }
+        }
+
         // Events
         protected override void Pool()
         {
+            PoolInsure();
             anim = KickStart.FetchAnimettes(transform, AnimCondition.Clickable);
             if (anim != null)
             {
@@ -60,6 +98,11 @@ namespace RandomAdditions
             }
             else
                 LogHandler.ThrowWarning("ModuleClicker has no valid Animettes");
+            if (!block)
+                throw new NullReferenceException("ModuleClicker is present on a GameObject that is not a legitimate block.  This is illegal");
+            if (ModuleUIButtons.PropertyGrabber.GetMethod.Invoke(block, new object[0] { }) != null)
+                DebugRandAddi.LogError("ModuleClicker set a new menu to a block that already has a menu -  this is not recommended");
+            ModuleUIButtons.PropertyGrabber.SetMethod.Invoke(block, new object[] { this });
         }
         public void ForceUpdate()
         {
@@ -71,14 +114,12 @@ namespace RandomAdditions
 
         public override void OnAttach()
         {
-            Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
             block.serializeEvent.Subscribe(OnSerial);
             ForceUpdate();
         }
         public override void OnDetach()
         {
             block.serializeEvent.Unsubscribe(OnSerial);
-            Singleton.Manager<ManPointer>.inst.MouseEvent.Unsubscribe(OnClick);
         }
 
         public void OnSerial(bool saving, TankPreset.BlockSpec blockSpec)
@@ -108,46 +149,6 @@ namespace RandomAdditions
         }
 
 
-        public void OnClick(ManPointer.Event mEvent, bool down, bool clicked)
-        {
-            if (anim != null && mEvent == ManPointer.Event.LMB && Singleton.Manager<ManPointer>.inst.targetVisible?.block && down)
-            {
-                if (Singleton.Manager<ManPointer>.inst.targetVisible.block == block)
-                {
-                    if (!UseUI)
-                    {
-                        if (AllowToggleAll)
-                        {
-                            AllActive = !AllActive;
-                            RunAllStates(AllActive);
-                        }
-                        else
-                        {
-                            AnimetteController AC = Singleton.Manager<ManPointer>.inst.targetObject.GetComponentInParent<AnimetteController>();
-                            if (AC)
-                            {
-                                int index = anim.ToList().IndexOf(AC);
-                                if (index != -1)
-                                {
-                                    ActiveState[index] = ActiveState[index] > 0 ? 0 : 1;
-                                    anim[index].RunBool(ActiveState[index] > 0 ? true : false);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (!GUIWindow)
-                            Initiate();
-                        playerSelected = this;
-                        openTime = 1.35f;
-                        MoveMenuToCursor(true);
-                        GUIWindow.SetActive(true);
-                    }
-                }
-            }
-        }
         public void RunAllStates(bool state)
         {
             if (anim != null)
@@ -197,7 +198,7 @@ namespace RandomAdditions
         }
 
         private static GameObject GUIWindow;
-        private static Rect HotWindow = new Rect(0, 0, 350, 260);   // the "window"
+        private static Rect HotWindow = new Rect(0, 0, 360, 420);   // the "window"
         private const int GUIClikMenuID = 8036;
         private static float xMenu = 0;
         private static float yMenu = 0;
@@ -213,7 +214,7 @@ namespace RandomAdditions
                 if (KickStart.IsIngame && playerSelected?.block?.tank && (openTime > 0 || MouseIsOverSubMenu()))
                 {
                     Tank playerTank = playerSelected.block.tank;
-                    HotWindow = GUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "<b>Block Menu</b>");
+                    HotWindow = AltUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "<b>Block Menu</b>", CloseGUI);
                 }
                 else
                     CloseGUI();
@@ -223,18 +224,11 @@ namespace RandomAdditions
         private static float openTime = 0;
         private static ModuleClicker playerSelected;
         private static Vector2 scrolll = new Vector2(0, 0);
-        private static float scrolllSize = 50;
-        private const int ButtonWidth = 300;
-        private const int MaxCountWidth = 1;
-        private const int MaxWindowHeight = 500;
         private static void GUIHandler(int ID)
         {
             bool clicked = false;
-            int VertPosOff = 0;
-            bool MaxExtensionY = false;
-            int index = 0;
 
-            scrolll = GUI.BeginScrollView(new Rect(0, 30, HotWindow.width - 20, HotWindow.height - 40), scrolll, new Rect(0, 0, HotWindow.width - 50, scrolllSize));
+            scrolll = GUILayout.BeginScrollView(scrolll);
 
             int Entries = playerSelected.anim.Length;
             for (int step = 0; step < Entries; step++)
@@ -243,6 +237,7 @@ namespace RandomAdditions
                 {
                     try
                     {
+                        GUILayout.BeginHorizontal(AltUI.TextfieldBlackHuge, GUILayout.Height(60));
                         string disp;
                         if (playerSelected.AnimNames != null && playerSelected.AnimNames.Length >= (step - 1))
                             disp = "<color=#90ee90ff>" + playerSelected.AnimNames[step] + "</color>";
@@ -251,43 +246,27 @@ namespace RandomAdditions
 
                         if (playerSelected.IsSlider[step])
                         {
-                            int offset = ButtonWidth / 2;
-                            GUI.Label(new Rect(20, VertPosOff, offset, 30), disp);
+                            GUILayout.Label(disp);
                             float cache = playerSelected.ActiveState[step];
-                            playerSelected.ActiveState[step] = GUI.HorizontalSlider(new Rect(20 + offset, VertPosOff, offset, 30)
-                                , cache, 0, 1);
+                            playerSelected.ActiveState[step] = GUILayout.HorizontalSlider(cache, 0, 1, AltUI.ScrollHorizontal, AltUI.ScrollThumb);
                             if (!playerSelected.ActiveState[step].Approximately(cache))
                                 playerSelected.anim[step].SetState(playerSelected.ActiveState[step]);
                         }
-                        else if (GUI.Button(new Rect(20, VertPosOff, ButtonWidth, 30), disp))
+                        else if (GUILayout.Button(disp))
                         {
-                            index = step;
-                            clicked = true;
                             playerSelected.ActiveState[step] = playerSelected.ActiveState[step] > 0 ? 0 : 1;
                             playerSelected.anim[step].RunBool(playerSelected.ActiveState[step] > 0 ? true : false);
                         }
+                        GUILayout.EndHorizontal();
                     }
+                    catch (ExitGUIException e){ throw e; }
                     catch { }
-                    VertPosOff += 30;
-                    if (VertPosOff >= MaxWindowHeight)
-                        MaxExtensionY = true;
                 }
+                catch (ExitGUIException e) { throw e; }
                 catch { }// error on handling something
             }
 
-            GUI.EndScrollView();
-            scrolllSize = VertPosOff + 50;
-
-            if (MaxExtensionY)
-                HotWindow.height = MaxWindowHeight + 80;
-            else
-                HotWindow.height = VertPosOff + 80;
-
-            HotWindow.width = ButtonWidth + 60;
-            if (clicked)
-            {
-                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
-            }
+            GUILayout.EndScrollView();
 
             GUI.DragWindow();
         }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Networking;
 using TerraTechETCUtil;
 
 public class ModuleModeSwitch : RandomAdditions.ModuleModeSwitch { };
@@ -22,6 +23,7 @@ namespace RandomAdditions
         TargetHeightLow,            // - (Target is below SetValue altitude above terrain)
         TargetChargePercentAbove,   // - (Target has shields up)
         TargetChargePercentBelow,   // - (Target does not have shields or enemy batts out)
+        Ability,                    // - Toggle via hotbar ability!
     }
     public class ManModeSwitch : MonoBehaviour
     {
@@ -58,8 +60,36 @@ namespace RandomAdditions
             UpdateSwitchCheck.Send();
         }
     }
-    public class ModuleModeSwitch : ExtModule
+    public class ModuleModeSwitch : ExtModule, TechAudio.IModuleAudioProvider
     {
+        private static Dictionary<string, AbilityToggle> abilityToggles = new Dictionary<string, AbilityToggle>();
+        private static Dictionary<NetPlayer, HashSet<string>> playerEnabledStates = new Dictionary<NetPlayer, HashSet<string>>();
+
+        public class AbilityToggleCommand : MessageBase
+        {
+            public AbilityToggleCommand() { }
+            public AbilityToggleCommand(uint playerID, string blockName, bool state)
+            {
+                this.playerID = playerID;
+                this.blockName = blockName;
+                this.state = state;
+            }
+            public uint playerID;
+            public string blockName;
+            public bool state;
+        }
+        private static NetworkHook<AbilityToggleCommand> netHookAbility = new NetworkHook<AbilityToggleCommand>(OnReceiveAbilityRequest, NetMessageType.ToServerOnly);
+
+        internal static void InsureNetHooks()
+        {
+            netHookAbility.Register();
+        }
+        internal static bool OnReceiveAbilityRequest(AbilityToggleCommand command, bool isServer)
+        {
+
+            return true;
+        }
+
         private FireData FireDataAlt;       // 
         private ModuleWeapon MW;            //
         private ModuleWeaponGun MWG;        //
@@ -80,6 +110,7 @@ namespace RandomAdditions
         public int AuxillaryBarrelsStartIndex = 0; //The indexes of barrels after which
         //  should be used for the Auxillary weapon. Leave at 0 to use all barrels for both types.
 
+        public string m_AbilityName = "Unknown";
         public float m_ShotCooldown = 1f;
         public float m_CooldownVariancePct = 0.05f;
         public int m_BurstShotCount = 0;
@@ -89,6 +120,9 @@ namespace RandomAdditions
         public ModuleWeaponGun.FireControlMode m_FireControlMode = ModuleWeaponGun.FireControlMode.Sequenced;
 
         // Audio
+        public TechAudio.SFXType SFXType => m_SwitchSFXType;
+        public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
+        public TechAudio.SFXType m_SwitchSFXType = TechAudio.SFXType.BFLaserGatlingDeploy;
         public TechAudio.SFXType m_FireSFXType = TechAudio.SFXType.Default;
         // AudioETC
         public bool m_DisableMainAudioLoop = false;
@@ -180,11 +214,11 @@ namespace RandomAdditions
                 var FD2 = FireDataAlt;
                 foreach (CannonBarrel CB in BarrelsMain)
                 {
-                    CB.Setup(FD, MW);
+                    CB.InitOnGun(MWG, FD, MW);
                 }
                 foreach (CannonBarrel CB in BarrelsAux)
                 {
-                    CB.Setup(FD2, MW);
+                    CB.InitOnGun(MWG, FD2, MW);
                 }
             }
             else
@@ -193,6 +227,20 @@ namespace RandomAdditions
                 BarrelsAux = BarrelsFetched.ToArray();
             }
             anims = KickStart.FetchAnimettes(transform, AnimCondition.WeaponSwitch);
+            if (ModeSwitch == ModeSwitchCondition.Ability)
+            {
+                if (!abilityToggles.ContainsKey(m_AbilityName))
+                {
+                    int blockType = GetComponent<Visible>().ItemType;
+                    Sprite icon = null;
+                    if (ResourcesHelper.TryGetModContainer(ManMods.inst.GetModNameForBlockID((BlockTypes)blockType), out var MC))
+                        icon = UIHelpersExt.GetIconFromBundle(MC, m_AbilityName);
+                    if (icon == null)
+                        icon = ManUI.inst.m_SpriteFetcher.GetSprite(ObjectTypes.Block, GetComponent<Visible>().ItemType);
+                    abilityToggles.Add(m_AbilityName, new AbilityToggle(m_AbilityName.NullOrEmpty() ? "<NULL>" : m_AbilityName,
+                        icon, (bool x) => { OnAbilitySwitch(block.name, x); }, 0.5f));
+                }
+            }
             //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
 
@@ -205,10 +253,12 @@ namespace RandomAdditions
                 ManModeSwitch.inst.UpdateSwitchCheck.Subscribe(OnCheckUpdate);
             else
                 ManModeSwitch.inst.UpdateSwitchCheckFast.Subscribe(OnCheckUpdateFast);
+            tank.TechAudio.AddModule(this);
             hint.Show();
         }
         public override void OnDetach()
         {
+            tank.TechAudio.RemoveModule(this);
             if ((int)ModeSwitch > (int)ModeSwitchCondition.PrimarySecondarySalvo)
                 ManModeSwitch.inst.UpdateSwitchCheck.Unsubscribe(OnCheckUpdate);
             else
@@ -216,6 +266,20 @@ namespace RandomAdditions
             if (working) 
             {
                 SwitchMode();
+            }
+        }
+
+        public static void OnAbilitySwitch(string nameID, bool input)
+        {
+            if (Singleton.playerTank)
+            {
+                foreach (var item in Singleton.playerTank.blockman.IterateExtModules<ModuleModeSwitch>())
+                {
+                    if (item.block.name == nameID)
+                    {
+                        item.SetMode(input);
+                    }
+                }
             }
         }
 
@@ -250,7 +314,20 @@ namespace RandomAdditions
             return 0;
         }
 
-
+        private bool IsPlayerAbilityActive()
+        {
+            if (ManNetwork.IsNetworked)
+            {
+                NetPlayer player = tank?.netTech?.NetPlayer;
+                if (player != null && playerEnabledStates.TryGetValue(player, out HashSet<string> val))
+                {
+                    return val.Contains(m_AbilityName);
+                }
+            }
+            else if (tank == Singleton.playerTank && abilityToggles.TryGetValue(block.name, out var toggle))
+                return toggle.toggle.isOn;
+            return false;
+        }
         public void OnCheckUpdateFast()
         {
             float num = Time.deltaTime;
@@ -325,6 +402,10 @@ namespace RandomAdditions
                 default:
                     break;
             }
+
+            TechAudio.AudioTickData value = TechAudio.AudioTickData.ConfigureLoopedADSR(
+                this, block, SFXType, working, 0.99f, 0f, 0);
+            OnAudioTickUpdate.Send(value, FMODEvent.FMODParams.empty);
         }
         public void OnCheckUpdate()
         {
@@ -432,6 +513,10 @@ namespace RandomAdditions
                         SetMode(false);
                     break;
 
+                case ModeSwitchCondition.Ability:
+                    SetMode(IsPlayerAbilityActive());
+                    break;
+
                 // Cases handled elsewhere
                 //case ModeSwitchCondition.PrimarySecondary:
                 //case ModeSwitchCondition.PrimarySecondarySalvo:
@@ -478,6 +563,7 @@ namespace RandomAdditions
             {
                 working = !working;
                 SwitchModeModuleWeapon();
+
             }
         }
         private void SwitchModeModuleWeapon()
@@ -541,7 +627,7 @@ namespace RandomAdditions
                     MWGMunitions.SetValue(MWG, FD);
                     foreach (CannonBarrel CB in BarrelsMain)
                     {
-                        CB.Setup(FD, MW);
+                        CB.InitOnGun(MWG, FD, MW);
                     }
                 }
                 else
@@ -549,7 +635,7 @@ namespace RandomAdditions
                     MWGMunitions.SetValue(MWG, FD2);
                     foreach (CannonBarrel CB in BarrelsMain)
                     {
-                        CB.Setup(FD2, MW);
+                        CB.InitOnGun(MWG, FD2, MW);
                     }
                 }
             }

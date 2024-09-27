@@ -53,15 +53,15 @@ namespace RandomAdditions.RailSystem
 		private static Color trackColorBase = new Color(1f, 1f, 1f, 0.8f);
 		private static Color trackColorDefault = new Color(0.1f, 0.1f, 0.1f, 1);
 		private static Color trackColorDefaultC = new Color(0.1f, 0.1f, 0.1f, 0.325f);
-		private HashSet<RailTrack> fetchedTracks = null;
+        private HashSet<RailTrack> fetchedTracks = null;
 		private int trainRouteStep = 0;
 		private void UpdateTrainRoutesImmedeate()
 		{
 			if (WorldMap && ManRails.fakeNodeStart != null)
-				UpdateTrainRouteStep(ManRails.fakeNodeStart, false);
+				UpdateTrainRouteStep(ManRails.fakeNodeStart, false, true);
 			while (trainRouteStep < ManRails.AllRailNodes.Count)
 			{
-				UpdateTrainRouteStep(ManRails.AllRailNodes.ToList().ElementAt(trainRouteStep).Value, WorldMap);
+				UpdateTrainRouteStep(ManRails.AllRailNodes.Values.ToList().ElementAt(trainRouteStep), WorldMap, false);
 				trainRouteStep++;
 			}
 			ClearUnusedIcons();
@@ -71,7 +71,7 @@ namespace RandomAdditions.RailSystem
 		{
 			if (trainRouteStep < ManRails.AllRailNodes.Count)
 			{
-				UpdateTrainRouteStep(ManRails.AllRailNodes.ToList().ElementAt(trainRouteStep).Value, WorldMap);
+				UpdateTrainRouteStep(ManRails.AllRailNodes.Values.ToList().ElementAt(trainRouteStep), WorldMap, false);
 				trainRouteStep++;
 			}
 			else
@@ -87,7 +87,7 @@ namespace RandomAdditions.RailSystem
 		}
 
 		private static List<Vector3> RailSegIterateCache = new List<Vector3>();
-		private void UpdateTrainRouteStep(RailTrackNode node, bool useThick)
+		private void UpdateTrainRouteStep(RailTrackNode node, bool useThick, bool isFake)
 		{
 			//float scaleMap = m_MapDisplay.WorldToUIUnitRatio * m_MapDisplay.CurrentZoomLevel;
 			float rad = Singleton.playerTank ? Singleton.playerTank.Radar.GetRange(ModuleRadar.RadarScanType.Techs) : 50f;
@@ -116,7 +116,7 @@ namespace RandomAdditions.RailSystem
 						{
 							float dist = (posNext - posPrev).magnitude;
 							float rot = Vector2.SignedAngle(Vector2.up, (posNext - posPrev).normalized);
-							var icon = SpawnTrackIconFromCache(track.Type, (posNext + posPrev) / 2, dist, rot, useThick);
+							var icon = SpawnTrackIconFromCache(track.Type, (posNext + posPrev) / 2, dist, rot, useThick, isFake);
 							icon.EnableTooltip(startNodeID + " <-> " + endNodeID, UITooltipOptions.Default);
 							//DebugRandAddi.Log("MinimapExtended: Placed " + startNodeID + " <-> " + endNodeID + " railtrack section number "
 							//	+ step + " with magnitude " + dist);
@@ -127,35 +127,41 @@ namespace RandomAdditions.RailSystem
 			}
 		}
 
-		private UIMiniMapElement SpawnTrackIconFromCache(RailType type, Vector2 pos, float length, float rotation, bool useThick)
+		private UIMiniMapElement SpawnTrackIconFromCache(RailType type, Vector2 pos, float length, float rotation, bool useThick, bool useFake)
 		{
-			InsureIcons();
+            InsureIcons();
 			if (iconCache.TryGetValue(type, out var val))
 			{
 				var prefab = val.ReuseOrSpawn(m_RectTrans);
+				Color colorSet = new Color(0, 0, 0, 1f);
                 switch (type)
                 {
                     case RailType.LandGauge2:
-						prefab.Icon.color = new Color(1, 0.1f, 0.1f, 1);
+                        colorSet = new Color(1, 0.1f, 0.1f, 1);
 						break;
                     case RailType.LandGauge3:
-						prefab.Icon.color = trackColorDefault;
+                        colorSet = trackColorDefault;
 						break;
                     case RailType.LandGauge4:
-						prefab.Icon.color = new Color(1, 1f, 0.1f, 1);
+                        colorSet = new Color(1, 1f, 0.1f, 1);
 						break;
                     case RailType.BeamRail:
-						prefab.Icon.color = new Color(0.1f, 0.1f, 1f, 1);
+                        colorSet = new Color(0.1f, 0.1f, 1f, 1);
 						break;
                     case RailType.Revolver:
                         break;
                     case RailType.Funicular:
                         break;
                     default:
-						prefab.Icon.color = trackColorDefault;
+                        colorSet = trackColorDefault;
 						break;
                 }
-				prefab.RectTrans.localRotation = Quaternion.Euler(0, 0, rotation);
+				if (useFake)
+					colorSet = Color.Lerp(colorSet, new Color(0, 0, 0, 0), 0.5f);
+
+                prefab.Icon.color = colorSet;
+
+                prefab.RectTrans.localRotation = Quaternion.Euler(0, 0, rotation);
 				if (useThick)
 				{
 					prefab.RectTrans.localScale = new Vector3(railIconWidthRescaleWorldMap, length * railIconLengthRescale, railIconWidthRescaleWorldMap);

@@ -123,7 +123,7 @@ namespace RandomAdditions
                 if (KickStart.IsIngame && isCurrentlyOpen)
                 {
                     AltUI.StartUI();
-                    TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>");
+                    TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>", AltUI.MenuCenter);
                     AltUI.EndUI();
                 }
             }

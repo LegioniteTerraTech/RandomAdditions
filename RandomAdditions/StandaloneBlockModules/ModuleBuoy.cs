@@ -13,6 +13,7 @@ namespace RandomAdditions
     /// </summary>
     public class ModuleBuoy : ExtModule
     {
+        public override BlockDetails.Flags BlockDetailFlags => BlockDetails.Flags.Floats;
         private bool singleCell;
         private List<Vector3> cellsCache = new List<Vector3>();
         private float cellFloatForce = 0;

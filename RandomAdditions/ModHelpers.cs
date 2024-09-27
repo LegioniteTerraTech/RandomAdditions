@@ -18,11 +18,12 @@ namespace RandomAdditions
         // Startup
         private static ModHelpers inst;
         private static bool hooked = false;
+        private const int MaxCommandDistance = 9001;//500;
         /// <summary>
         /// True (Right, Left) False,
         /// True   (Down, Up)  False
         /// </summary>
-        public static Event<bool, bool> ClickNoCheckEvent = new Event<bool, bool>();
+        public static Event<bool, bool, RaycastHit> ClickEventSimple = new Event<bool, bool, RaycastHit>();
         public static bool MouseLeftDown => mouseLeftDown;
         private static bool mouseLeftDown = false;
         public static bool MouseRightDown => mouseRightDown;
@@ -38,23 +39,38 @@ namespace RandomAdditions
         }
         public static void UpdateThis()
         {
-            bool lD = Input.GetMouseButton(0);
-            if (lD != mouseLeftDown)
+            if (!ManPauseGame.inst.IsPaused)
             {
-                mouseLeftDown = lD;
-                if (lD)
-                    ClickNoCheckEvent.Send(false, true);
-                else
-                    ClickNoCheckEvent.Send(false, false);
-            }
-            bool RD = Input.GetMouseButton(1);
-            if (RD != mouseRightDown)
-            {
-                mouseRightDown = RD;
-                if (RD)
-                    ClickNoCheckEvent.Send(true, true);
-                else
-                    ClickNoCheckEvent.Send(true, false);
+                bool lD = Input.GetMouseButton(0);
+                if (lD != mouseLeftDown)
+                {
+                    mouseLeftDown = lD;
+                    if (lD)
+                    {
+                        int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerTankIgnoreTerrain.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerLandmark.mask | Globals.inst.layerScenery.mask;
+
+                        RaycastHit rayman;
+                        Physics.Raycast(ManUI.inst.ScreenPointToRay(Input.mousePosition), out rayman, MaxCommandDistance, layerMask, QueryTriggerInteraction.Ignore);
+                        ClickEventSimple.Send(false, true, rayman);
+                    }
+                    else
+                        ClickEventSimple.Send(false, false, default);
+                }
+                bool RD = Input.GetMouseButton(1);
+                if (RD != mouseRightDown)
+                {
+                    mouseRightDown = RD;
+                    if (RD)
+                    {
+                        int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerTankIgnoreTerrain.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerLandmark.mask | Globals.inst.layerScenery.mask;
+
+                        RaycastHit rayman;
+                        Physics.Raycast(ManUI.inst.ScreenPointToRay(Input.mousePosition), out rayman, MaxCommandDistance, layerMask, QueryTriggerInteraction.Ignore);
+                        ClickEventSimple.Send(true, true, rayman);
+                    }
+                    else
+                        ClickEventSimple.Send(true, false, default);
+                }
             }
         }
 
@@ -155,16 +171,12 @@ namespace RandomAdditions
             Bounds bounds = block.BlockCellBounds;
             //float maxDimension = UnityEngine.Random.Range(1f, 3f) * Mathf.RoundToInt(Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z, 0.5f) + 0.5f);
 
-            Vector3 blockOGPos = block.transform.position;
-            Quaternion blockOGRot = block.transform.rotation;
             // Write the target texture to disk
-            FileUtils.SaveTexture(ResourcesHelper.GeneratePreviewForGameObject(block.gameObject, bounds), png);
-
-            // Return the camera to its previous settings
-            block.transform.position = blockOGPos;
-            block.transform.rotation = blockOGRot;
+            ResourcesHelper.GeneratePreviewForGameObject((Texture2D tex) =>
+            {
+                // Return the camera to its previous settings
+                FileUtils.SaveTexture(tex, png);
+            }, block.gameObject, bounds, new List<Globals.ObjectLayer>());
         }
-
-
     }
 }

@@ -61,9 +61,6 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Ionic.Zlib.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="LocalCorpAudioExt">
-      <HintPath>..\..\..\..\Desktop\Advanced AI\Assets\Mods\Random Additions\LocalCorpAudioExt.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -208,20 +205,34 @@
   <ItemGroup>
     <Compile Include="Anim\AniAnalog.cs" />
     <Compile Include="Anim\AniLinear.cs" />
+    <Compile Include="Anim\AnimetteAsset.cs" />
     <Compile Include="Anim\AnimetteManager.cs" />
     <Compile Include="Anim\AnimetteOps.cs" />
     <Compile Include="Anim\AnimetteScaler.cs" />
     <Compile Include="Anim\AnimetteController.cs" />
     <Compile Include="Anim\AnimetteMover.cs" />
+    <Compile Include="Audio\CorpExtAudio.cs" />
+    <Compile Include="Audio\CorpExtAudioJSON.cs" />
+    <Compile Include="Audio\ManMusicEnginesExt.cs" />
+    <Compile Include="Audio\ManSFXExtRand.cs" />
+    <Compile Include="Audio\TechExtAudio.cs" />
+    <Compile Include="Audio\TechExtAudioState.cs" />
+    <Compile Include="Audio\TechExtEngine.cs" />
     <Compile Include="CircuitExt.cs" />
     <Compile Include="CraftingExt.cs" />
+    <Compile Include="CustomChunk.cs" />
+    <Compile Include="CustomScenery.cs" />
     <Compile Include="GeneralComponents\AOEField.cs" />
-    <Compile Include="GlobalChanges\ManCustomChunks.cs" />
+    <Compile Include="Audio\SFXAddition.cs" />
+    <Compile Include="GlobalChanges\RandomWorld.cs" />
+    <Compile Include="ManModScenery.cs" />
+    <Compile Include="ManModChunks.cs" />
     <Compile Include="GlobalChanges\ManPhysicsExt.cs" />
     <Compile Include="GlobalChanges\MinimapExt.cs" />
     <Compile Include="GlobalChanges\Pyromanic.cs" />
     <Compile Include="GlobalChanges\ITankCompAuto.cs" />
     <Compile Include="GlobalChanges\IngameQuit.cs" />
+    <Compile Include="ModLoaderSystem.cs" />
     <Compile Include="MultiBlockModules\RailSystem\PrefabTrain.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailMeshBuilder.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailSegmentGround.cs" />
@@ -229,6 +240,8 @@
     <Compile Include="MultiBlockModules\RailSystem\RailType.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTypeStats.cs" />
     <Compile Include="MultiBlockModules\RailSystem\UnstableTrack.cs" />
+    <Compile Include="Optimax.cs" />
+    <Compile Include="PatchBatch\OptimaxPatches.cs" />
     <Compile Include="ProjectileModules\AdvProjectile.cs" />
     <Compile Include="ProjectileModules\LaserRiderProjectile.cs" />
     <Compile Include="RandAddDebugGUI.cs" />
@@ -266,7 +279,9 @@
     <Compile Include="ReliantBlockModules\ModuleItemGiver.cs" />
     <Compile Include="ReliantBlockModules\ModuleStickyWheels.cs" />
     <Compile Include="ReliantBlockModules\ModuleUIButtons.cs" />
+    <None Include="SceneryModules\SceneryWeaponGun.cs" />
     <Compile Include="StandaloneBlockModules\ModuleBuoy.cs" />
+    <Compile Include="StandaloneBlockModules\ExtModuleClickable.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
     <Compile Include="StandaloneBlockModules\ModuleJumpDrive.cs" />
@@ -289,7 +304,7 @@
     <Compile Include="DebugRandAddi.cs" />
     <Compile Include="Anim\AnimetteRotator.cs" />
     <Compile Include="Anim\AnimetteNumber.cs" />
-    <Compile Include="GlobalChanges\ManExtSounds.cs" />
+    <Compile Include="Audio\ManExtSounds.cs" />
     <Compile Include="GlobalChanges\MirageDestraction.cs" />
     <Compile Include="GlobalChanges\RandomTank.cs" />
     <Compile Include="GlobalChanges\TankDistraction.cs" />
@@ -327,7 +342,7 @@
     <Compile Include="ReliantBlockModules\ModuleItemSilo.cs" />
     <Compile Include="ProjectileModules\OHKOProjectile.cs" />
     <Compile Include="ModuleReinforced.cs" />
-    <Compile Include="PatchBatch.cs" />
+    <Compile Include="PatchBatch\Patches.cs" />
     <Compile Include="ProjectileModules\SeekingProjectileIgnoreLock.cs" />
     <Compile Include="ReliantBlockModules\SiloDisplay.cs" />
     <Compile Include="ReliantBlockModules\SiloGauge.cs" />

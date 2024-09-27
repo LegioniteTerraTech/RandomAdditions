@@ -127,7 +127,7 @@ namespace RandomAdditions
                     WeaponRound weaponRound = SplitPayload.Spawn(Singleton.dynamicContainer, direct.position, direct.rotation);
 
                     weaponRound.Fire(fireVelo, transform, fire, weap, PB.shooter, UseSeeking);
-                    TechWeapon.RegisterWeaponRound(weaponRound);
+                    ManCombat.Projectiles.RegisterWeaponRound(weaponRound);
                 }
             }
             else

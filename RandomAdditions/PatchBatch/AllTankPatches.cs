@@ -8,8 +8,9 @@ using HarmonyLib;
 
 namespace RandomAdditions
 {
-    internal class AllTankPatches : MassPatcherRA
+    internal class AllTankPatches
     {
+
         // Major Patches
         internal static class TankPatches
         {
@@ -29,6 +30,12 @@ namespace RandomAdditions
             private static void NotifyDamage_Postfix(Tank __instance, ref ManDamage.DamageInfo info, ref TankBlock blockDamaged)
             {
                 RandomTank.Insure(__instance).OnDamaged(info, blockDamaged);
+            }
+
+            [HarmonyPriority(-9001)]
+            private static void OnSpawn_Postfix(Tank __instance)
+            {
+                RandomTank.Insure(__instance);
             }
         }
 

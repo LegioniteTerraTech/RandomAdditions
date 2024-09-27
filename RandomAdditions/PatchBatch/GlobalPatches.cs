@@ -13,7 +13,7 @@ using HarmonyLib;
 
 namespace RandomAdditions
 {
-    internal class GlobalPatches : MassPatcherRA
+    internal class GlobalPatches
     {
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
@@ -504,7 +504,7 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(PlayerFreeCamera);
 
-            const float newMaxFreeCamRange = 95000;// 250
+            const float newMaxFreeCamRange = 2950;// 250
             const float newMPMaxFreeCamRange = 250;
 
             /// <summary>
@@ -659,5 +659,34 @@ namespace RandomAdditions
                 return elementType != UIHelpersExt.customElement;
             }
         }
+
+
+        internal static class TechAudioPatches
+        {
+            internal static Type target = typeof(TechAudio);
+
+            [HarmonyPriority(-9001)]
+            private static bool OnModuleTickData_Prefix(ref TechAudio.AudioTickData tickData, ref FMODEvent.FMODParams additionalParam)
+            {
+                if ((int)tickData.sfxType < 0)
+                {
+                    ManSFXExtRand.PlaySound(tickData);
+                    return false;
+                }
+                return true;
+            }
+        }
+        internal static class ManModsPatches
+        {
+            internal static Type target = typeof(ManMods);
+
+            [HarmonyPriority(-9001)]
+            private static void RequestReloadAllMods_Postfix(ManMods __instance)
+            {
+                KickStart.didQuickstart = false;
+            }
+        }
+
+
     }
 }

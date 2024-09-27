@@ -43,9 +43,7 @@ namespace RandomAdditions
         private float nextUpdateTime = 0;
 
         private MoveGimbal[] gimbals;
-        private FanJet[] fans;
-        private BoosterJet[] boosts;
-
+        private Thruster[] thrusters;
 
         public float DriveControlStrength = 1.0f;
         public IdlePoint IdlePointing = IdlePoint.CabFacing;
@@ -83,8 +81,7 @@ namespace RandomAdditions
                 }
                 if (UseBoostAndProps)
                 {
-                    fans = GetComponentsInChildren<FanJet>();
-                    boosts = GetComponentsInChildren<BoosterJet>();
+                    thrusters = GetComponentsInChildren<Thruster>();
                 }
             }
         }
@@ -153,18 +150,11 @@ namespace RandomAdditions
         }
         private void DelayedUpdate()
         {
-            if (fans != null)
+            if (thrusters != null)
             {
-                foreach (var jet in fans)
+                foreach (var jet in thrusters)
                 {
-                    jet.ResetTechPhysics(tank);
-                }
-            }
-            if (boosts != null)
-            {
-                foreach (var jet in boosts)
-                {
-                    jet.ResetTechPhysics(tank);
+                    jet.RecalculateThrustDirection();
                 }
             }
             nextUpdateTime = Time.time + updateDelay;

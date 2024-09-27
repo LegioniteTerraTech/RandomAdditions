@@ -22,7 +22,7 @@ namespace RandomAdditions
 
         public void OnPool()
         {
-            if (AimedDownscale < 0 || AimedDownscale > 0.5)
+            if (AimedDownscale < 0.01f || AimedDownscale > 0.5f)
             {
                 //DebugRandAddi.Log("RandomAdditions: TankBlockScaler value is invalid on block " + gameObject.name + "!  Overriding to 0.5!");
                 AimedDownscale = 0.5f;
@@ -31,8 +31,12 @@ namespace RandomAdditions
 
         public void Rescale(bool downscale)
         {
-            Downscale = downscale;
-            pending.Add(this);
+            if (Downscale != downscale)
+            {
+                Downscale = downscale;
+                enabled = true;
+                pending.Add(this);
+            }
         }
 
         private static List<TankBlockScaler> pending = new List<TankBlockScaler>();

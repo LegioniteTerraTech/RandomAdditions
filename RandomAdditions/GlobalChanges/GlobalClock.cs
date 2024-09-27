@@ -157,7 +157,7 @@ namespace RandomAdditions
             {
                 PlayerTechUpdate();
                 ModHelpers.UpdateThis();
-                ModuleUIButtons.UpdateThis();
+                ExtModuleClickable.UpdateThis();
                 if (ManTimeOfDay.inst.TimeOfDay != SavedTime)
                 {
                     DebugRandAddi.Info("RandomAdditions: Time Changed!");

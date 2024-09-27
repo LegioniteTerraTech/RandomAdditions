@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TerraTechETCUtil;
 using UnityEngine;
 
 public class ModuleReplace : RandomAdditions.ModuleReplace { };
@@ -42,7 +43,7 @@ namespace RandomAdditions
         public Vector3 ReplaceOffsetPosition = Vector3.zero;
         public Vector3 ReplaceOffsetRotationF = Vector3.forward;
         public Vector3 ReplaceOffsetRotationT = Vector3.up;
-        public List<BlockTypes> CanReplace = new List<BlockTypes>();
+        public List<string> CanReplace = new List<string>();
         public ReplaceCondition ReplaceCondition = ReplaceCondition.Any;
 
         internal Quaternion offsetRot = default;
@@ -96,7 +97,7 @@ namespace RandomAdditions
                 LogHandler.ThrowWarning("ModuleReplace: Block " + block.name + " has too low of a WeightedChance - 1 is minimum");
                 WeightedChance = 1;
             }
-            List<BlockTypes> check = CanReplace.Distinct().ToList();
+            List<string> check = CanReplace.Distinct().ToList();
             if (check.Count < CanReplace.Count)
             {
                 LogHandler.ThrowWarning("ModuleReplace: Block " + block.name + " has duplicate Blocktypes in CanReplace!");
@@ -146,7 +147,7 @@ namespace RandomAdditions
             {
                 LogHandler.ThrowWarning("ModuleReplace: Instance is not attached to a valid block!");
             }
-            foreach (BlockTypes bloc in CanReplace)
+            foreach (BlockTypes bloc in CanReplace.Select(x => BlockIndexer.StringToBlockType(x)))
             {
                 TankBlock blockCompare =  Singleton.Manager<ManSpawn>.inst.GetBlockPrefab(bloc);
                 //OrthoRotation oRot = new OrthoRotation(offsetRot);
@@ -244,7 +245,7 @@ namespace RandomAdditions
             {
                 Replacables.Add(rp);
                 DebugRandAddi.Log("RandomAdditions: ReplaceManager - Registered " + rp.name);
-                foreach (BlockTypes add in rp.CanReplace)
+                foreach (BlockTypes add in rp.CanReplace.Select(x => BlockIndexer.StringToBlockType(x)))
                 {
                     if (Supported.TryGetValue(add, out List<ModuleReplace> listRp))
                     {
@@ -256,7 +257,7 @@ namespace RandomAdditions
             }
             else
             {
-                foreach (BlockTypes add in rp.CanReplace)
+                foreach (BlockTypes add in rp.CanReplace.Select(x => BlockIndexer.StringToBlockType(x)))
                 {
                     if (Supported.TryGetValue(add, out List<ModuleReplace> listRp))
                     {
@@ -308,7 +309,7 @@ namespace RandomAdditions
                 return;
             int attempts = 0;
             List<TankBlock> blocks = tank.blockman.IterateBlocks().ToList();
-            List<ModuleReplace> ignore = new List<ModuleReplace>();
+            HashSet<ModuleReplace> ignore = new HashSet<ModuleReplace>();
             int bCount = blocks.Count();
             DebugRandAddi.Log("RandomAdditions: ReplaceManager(LIVE) - Launched for Tech " + tank.name + ", total blocks " + bCount);
 
@@ -407,6 +408,8 @@ namespace RandomAdditions
         {
             if (!ManNetwork.IsHost && ManNetwork.IsNetworked)
                 return;
+            if (!Supported.Any())
+                return;
             int attempts = 0;
             List<TankPreset.BlockSpec> blocks = tank.m_BlockSpecs;
             if (blocks == null)
@@ -414,7 +417,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: ReplaceManager(TechData) NULL blocks given!");
                 return;
             }
-            List<ModuleReplace> ignore = new List<ModuleReplace>();
+            HashSet<ModuleReplace> ignore = new HashSet<ModuleReplace>();
             int bCount = blocks.Count();
             DebugRandAddi.Log("RandomAdditions: ReplaceManager(TechData) - Launched for Tech " + tank.Name + ", total blocks " + bCount);
 
@@ -687,7 +690,7 @@ namespace RandomAdditions
             }
             return removedBlock;
         }
-        public static ModuleReplace WeightedRAND(List<ModuleReplace> replaced, ref List<ModuleReplace> ignored, bool TankIsOverSea)
+        public static ModuleReplace WeightedRAND(List<ModuleReplace> replaced, ref HashSet<ModuleReplace> ignored, bool TankIsOverSea)
         {
             float totalWeight = 0;
             List<ModuleReplace> checkBatch = new List<ModuleReplace>();

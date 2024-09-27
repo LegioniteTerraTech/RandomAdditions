@@ -29,6 +29,7 @@ namespace RandomAdditions
     /// </summary>
     public class ModuleOmniCore : ExtModule
     {
+        public override BlockDetails.Flags BlockDetailFlags => BlockDetails.Flags.OmniDirectional;
         public float TranslationalThrust = 500;   //
         public float TranslationalDamper = 500;   //
         public float TranslationalAccel = 1250;   //

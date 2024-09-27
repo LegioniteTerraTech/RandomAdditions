@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using DevCommands;
 using UnityEngine;
 using TerraTechETCUtil;
 using RandomAdditions.RailSystem;
@@ -11,6 +12,18 @@ namespace RandomAdditions
 {
     internal class RandAddDebugGUI : MonoBehaviour
     {
+
+        [DevCommand(Name = "RandomAdditions.ReloadCorpAudio", Access = Access.Public, Users = User.Host)]
+        public static ManDevCommands.CommandReturn Reload()
+        {
+            ManMusicEnginesExt.inst.RefreshModCorpAudio();
+            return new ManDevCommands.CommandReturn
+            {
+                message = "Reloaded SFX",
+                success = true,
+            };
+        }
+
         private static RandAddDebugGUI inst;
         private static GameObject debugGUI;
         private static bool UIIsCurrentlyOpen = false;

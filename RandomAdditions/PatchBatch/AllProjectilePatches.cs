@@ -7,12 +7,13 @@ using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
-    internal class AllProjectilePatches : MassPatcherRA
+    internal class AllProjectilePatches
     {
         internal static class ProjectilePatches
         {
             internal static Type target = typeof(Projectile);
             static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
+
 
             /// <summary>
             /// PatchProjectileCollisionForOverride

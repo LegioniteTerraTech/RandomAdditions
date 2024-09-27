@@ -57,18 +57,11 @@ namespace RandomAdditions
         */
 
         //AutoCollection
-        public float floatHeight 
-        {
-            get {
-                if (WorldUseTerrainOffset)
-                    return GetOffsetFromGround();
-                return WorldHeightBias;
-            }
-        }
         private float movementDampening = 10;
         private float heightModifier = 1;
         private bool hasFiredOnce = false;
         private Transform thisTrans;
+        private Rigidbody rbody => PB.rbody;
 
 
         public override void Pool()
@@ -83,11 +76,11 @@ namespace RandomAdditions
                 movementDampening = MovementDampening;
             hasFiredOnce = true;
         }
-        public float GetOffsetFromGround()
+        public float GetOffsetFromGround(Vector3 pos)
         {
             float final_y;
             float input = thisTrans.position.y;
-            bool terrain = Singleton.Manager<ManWorld>.inst.GetTerrainHeight(thisTrans.position, out float height);
+            bool terrain = Singleton.Manager<ManWorld>.inst.GetTerrainHeight(pos, out float height);
             if (terrain)
                 final_y = height + WorldHeightBias;
             else
@@ -106,34 +99,44 @@ namespace RandomAdditions
             return input;
         }
 
-
-        private void FixedUpdate()
+        private float PredictHeightAtPoint(Vector3 pos)
         {
-            if (!hasFiredOnce)
-                Pool();
-
+            if (WorldUseTerrainOffset)
+                return GetOffsetFromGround(pos);
+            return WorldHeightBias;
+        }
+        internal Vector3 PredictPosVelo(Vector3 pos)
+        {
             if (AffectedByWater && KickStart.isWaterModPresent)
             {
-                if (KickStart.WaterHeight > gameObject.transform.position.y)
+                if (KickStart.WaterHeight > pos.y)
                 {
-                    heightModifier = Mathf.Clamp((KickStart.WaterHeight - WaterDepth - gameObject.transform.position.y) / movementDampening, -1, 1) * WaterDepthSeekingStrength;
+                    heightModifier = Mathf.Clamp((KickStart.WaterHeight - WaterDepth - pos.y) / movementDampening, -1, 1) * WaterDepthSeekingStrength;
                 }
                 else if (WorldHeightBiasEnabled)
                 {
-                    heightModifier = Mathf.Clamp((floatHeight - transform.position.y) / movementDampening, -1, 1);
+                    heightModifier = Mathf.Clamp((PredictHeightAtPoint(pos) - pos.y) / movementDampening, -1, 1);
                 }
                 else
                     heightModifier = 1;
             }
             else if (WorldHeightBiasEnabled)
             {
-                heightModifier = Mathf.Clamp((floatHeight - transform.position.y) / movementDampening, -1, 1);
+                heightModifier = Mathf.Clamp((PredictHeightAtPoint(pos) - pos.y) / movementDampening, -1, 1);
             }
             else
                 heightModifier = 1;
 
             Vector3 directionalForce = WorldGravitateDirection.normalized * WorldGravitateStrength;
             directionalForce.y *= heightModifier;
+            return directionalForce;
+        }
+
+        private void FixedUpdate()
+        {
+            if (!hasFiredOnce)
+                Pool();
+            Vector3 directionalForce = PredictPosVelo(rbody.position);
             PB.rbody.AddForceAtPosition(directionalForce, thisTrans.TransformPoint(GravitateCenter), ForceMode.Impulse);
             
             if (WorldAugmentedDragEnabled)

@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using TerraTechETCUtil;
+using System.Collections.Generic;
 
 public class ModuleReinforced : RandomAdditions.ModuleReinforced { };
 namespace RandomAdditions
@@ -58,8 +59,14 @@ namespace RandomAdditions
         {
             try
             {
-                if (DenyExplosion)
-                    gameObject.GetComponent<TankBlock>().SubToBlockAttachConnected(OnAttach, null);
+                if (!CustomDamagableName.NullOrEmpty())
+                    WikiPageDamageStats.AddCustomDamageable(CustomDamagableName, CustomDamagableIcon, RecalcDamageDelta);
+                TankBlock TB = GetComponent<TankBlock>();
+                if (TB)
+                {
+                    if (DenyExplosion)
+                        TB.SubToBlockAttachConnected(OnAttach, null);
+                }
             }
             catch { }
         }
@@ -75,46 +82,61 @@ namespace RandomAdditions
         }
 
         private ManDamage.DamageInfo newDMG;
+        public KeyValuePair<float, string> RecalcDamageDelta(ManDamage.DamageType damageT)
+        {
+            var DMG = GetComponent<Damageable>();
+            if (DMG)
+            {
+                float outcome = WikiPageDamageStats.GetDamageLookup(damageT, DMG.m_DamageableType);
+
+                if (UseMultipliers)
+                    outcome *= GetDamageMod(damageT);
+                if (ModifyAoEDamage)
+                {
+                    if (ExplosionMultiplier == 0)
+                        return new KeyValuePair<float, string>(outcome, "*Explosions deal NO damage!");
+                    else
+                        return new KeyValuePair<float, string>(outcome, "*Explosions only deal " + (outcome * ExplosionMultiplier).ToString("0.00"));
+                }
+                else
+                    return new KeyValuePair<float, string>(outcome, null);
+            }
+            else
+                return new KeyValuePair<float, string>(0, null);
+        }
+        public float GetDamageMod(ManDamage.DamageType damageT)
+        {
+            switch (damageT)
+            {
+                case (ManDamage.DamageType)1:
+                    return Bullet;
+                case ManDamage.DamageType.Energy:
+                    return Energy;
+                case (ManDamage.DamageType)3:// Blast
+                    return Explosive;
+                case ManDamage.DamageType.Impact:
+                    return Impact;
+                case ManDamage.DamageType.Cutting:
+                    return Cutting;
+                case ManDamage.DamageType.Fire:
+                    return Fire;
+                case ManDamage.DamageType.Plasma:
+                    return Plasma;
+                default:
+                    return Standard;
+            }
+        }
         public ManDamage.DamageInfo RecalcDamage(ref ManDamage.DamageInfo info)
         {
             newDMG = info;// Clone it here
             if ((bool)info.Source)
             {
                 if (ModifyAoEDamage && info.Source.GetComponent<Explosion>())
-                {
                     newDMG.ApplyDamageMultiplier(ExplosionMultiplier);
-                }
             }
             if (UseMultipliers)
-            {
-                switch (newDMG.DamageType)
-                {
-                    case (ManDamage.DamageType)1:
-                        newDMG.ApplyDamageMultiplier(Bullet);
-                        break;
-                    case ManDamage.DamageType.Energy:
-                        newDMG.ApplyDamageMultiplier(Energy);
-                        break;
-                    case (ManDamage.DamageType)3:// Blast
-                        newDMG.ApplyDamageMultiplier(Explosive);
-                        break;
-                    case ManDamage.DamageType.Impact:
-                        newDMG.ApplyDamageMultiplier(Impact);
-                        break;
-                    case ManDamage.DamageType.Cutting:
-                        newDMG.ApplyDamageMultiplier(Cutting);
-                        break;
-                    case ManDamage.DamageType.Fire:
-                        newDMG.ApplyDamageMultiplier(Fire);
-                        break;
-                    case ManDamage.DamageType.Plasma:
-                        newDMG.ApplyDamageMultiplier(Plasma);
-                        break;
-                    default:
-                        newDMG.ApplyDamageMultiplier(Standard);
-                        break;
-                }
-            }
+                newDMG.ApplyDamageMultiplier(GetDamageMod(newDMG.DamageType));
+
             return newDMG;
         }
 

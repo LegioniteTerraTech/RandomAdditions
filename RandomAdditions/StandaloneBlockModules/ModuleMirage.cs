@@ -28,7 +28,7 @@ namespace RandomAdditions
         public MirageType MirageType = MirageType.Circle;
         public float MiragePower = 10;
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleJumpDrive",
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleMirage",
             AltUI.HighlightString("Mirage Cores") + " can distract " + AltUI.EnemyString("Enemy") + 
             " weapons.");
         public override void OnGrabbed()

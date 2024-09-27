@@ -666,7 +666,7 @@ namespace RandomAdditions
                     DP = weaponRound.gameObject.AddComponent<DynamicProjectile>();
                 DP.weap = partWeap;
                 weaponRound.Fire(Vector3.zero, trans, altFireData, mainWeap, partWeap.block.tank, seeking, true);
-                TechWeapon.RegisterWeaponRound(weaponRound, projectileUID);
+                ManCombat.Projectiles.RegisterWeaponRound(weaponRound, projectileUID);
             }
             ProcessFire();
             return true;
@@ -755,7 +755,7 @@ namespace RandomAdditions
                     ST.Reset();
                     ST.numberOfPoints = Mathf.Clamp(Mathf.RoundToInt(partWeap.shellScale * 12), 3, 12);
                 }
-                TechWeapon.RegisterWeaponRound(weaponRound, int.MinValue);
+                ManCombat.Projectiles.RegisterWeaponRound(weaponRound, int.MinValue);
                 Vector3 force = -forward * altFireData.m_KickbackStrength;
                 partWeap.block.tank.rbody.AddForceAtPosition(force, position, ForceMode.Impulse);
                 weaponRound.transform.SetLocalScaleIfChanged(Vector3.one * partWeap.shellScale * partWeap.m_ShellSizeMulti);

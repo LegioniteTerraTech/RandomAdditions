@@ -7,16 +7,13 @@ using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
-    public class ModuleUIButtons : ExtModule, ManPointer.OpenMenuEventConsumer
+    public class ModuleUIButtons : ExtModuleClickable
     {
-        private static FieldInfo cont = typeof(TankBlock).GetField("m_ContextMenuType", BindingFlags.NonPublic | BindingFlags.Instance);
-
+        public override bool UseDefault => true;
 
         public string Title = "[Title]";
-        public bool UseClick = true;
 
         public EventNoParams OnGUIOpenAttemptEvent = new EventNoParams();
-        private bool Pooled = false;
         private GUI_BM_Element[] madnessElements = new GUI_BM_Element[0];
         private static GUIButtonMadness ModularMenu;
         private const int IDGUI = 8037;
@@ -29,74 +26,11 @@ namespace RandomAdditions
             DebugRandAddi.Log("ModuleUIButtons.InitMenu()");
             ModularMenu = GUIButtonMadness.Initiate(IDGUI, "ERROR", new GUI_BM_Element[0] { });
         }
-        public bool CanOpenMenu(bool radial)
-        {
-            bool can = tank != null && ManPlayer.inst.PlayerTeam == tank.Team && CanShow();
-            //DebugRandAddi.Log("CanOpenMenu() - " + Time.time + " Can: " + can);
-            return can;
-        }
-        /// <summary>
-        /// Impossible to figure out why it's soo slow - OnOpenMenuEvent is delayed for non-native DLLs and I can't find any reason for it to do so.
-        /// </summary>
-        /// <param name="OMED"></param>
-        /// <returns></returns>
-        public bool OnOpenMenuEvent(OpenMenuEventData OMED)
-        {
-            if (OMED.m_AllowRadialMenu)
-            {
-                //DebugRandAddi.Log("OnOpenMenuEvent() - " + Time.time);
-                if (UseClick)
-                    ShowDelayedNoCheck();
-                return true;
-            }
-            else
-                return false;
-        }
+       
 
         private static ModuleUIButtons openMouseStartTarg = null;
         private static Vector2 openMouseStart = Vector2.zero;
         private static float openMouseTime = 0;
-        public static void OnMouseDown(bool rmb, bool down)
-        {
-            if (rmb && down)
-            {
-                openMouseStart = ManHUD.inst.GetMousePositionOnScreen();
-                openMouseTime = Time.time;
-                //DebugRandAddi.Log("OnMouseDown " + Time.time);
-            }
-        }
-        public void ShowDelayedNoCheck()
-        {
-            if (openMouseStartTarg == null)
-            {
-                openMouseStartTarg = this;
-                openMouseStart = ManHUD.inst.GetMousePositionOnScreen();
-                openMouseTime = Time.time + UIHelpersExt.ROROpenTimeDelay;
-                DebugRandAddi.Info("ShowDelayedNoCheck() - " + Time.time);
-                //ManSFX.inst.PlayUISFX(ManSFX.UISfxType.LockOn);
-            }
-        }
-        internal static void QueueDelayedOpen(ModuleUIButtons inst)
-        {
-            if (openMouseStartTarg == null)
-            {
-                openMouseStartTarg = inst;
-                openMouseStart = ManHUD.inst.GetMousePositionOnScreen();
-                openMouseTime = Time.time + UIHelpersExt.ROROpenTimeDelay;
-                //DebugRandAddi.Log("QueueDelayedOpen() - " + Time.time);
-            }
-        }
-        internal static void UpdateThis()
-        {
-            if (openMouseStartTarg != null && Time.time > openMouseTime)
-            {
-                if ((openMouseStart - ManHUD.inst.GetMousePositionOnScreen()).sqrMagnitude < UIHelpersExt.ROROpenAllowedMouseDeltaSqr
-                && ManInput.inst.GetRadialInputController(ManInput.RadialInputController.Mouse).IsSelecting())
-                    openMouseStartTarg.ShowImmedeateNoCheck();
-                openMouseStartTarg = null;
-                //DebugRandAddi.Log("QueueDelayedOpen(end) - " + Time.time);
-            }
-        }
 
 
         protected override void Pool()
@@ -130,16 +64,12 @@ namespace RandomAdditions
             return buttons;
         }
 
-        private void PoolInsure()
+        protected override void PoolInsure()
         {
             if (Pooled)
                 return;
-            Pooled = true;
-            block.TrySetBlockFlag(TankBlock.Flags.HasContextMenu, true);
-            DebugRandAddi.Info("PoolInsure() Has HasContextMenu value: " + block.HasContextMenu);
             InitSharedMenu();
-            block.m_ContextMenuForPlayerTechOnly = false;
-            cont.SetValue(block, UIHelpersExt.customElement);
+            base.PoolInsure();
             DebugRandAddi.Info("SetupButtons() - Init Buttons for " + block.name);
         }
 
@@ -187,7 +117,7 @@ namespace RandomAdditions
             }
             return false;
         }
-        public bool ShowImmedeate()
+        public bool ShowImmedeate_LEGACY()
         {
             if (CanShow())
             {
@@ -198,10 +128,10 @@ namespace RandomAdditions
             }
             return false;
         }
-        public void ShowImmedeateNoCheck()
+        public override void OnShow()
         {
-            DebugRandAddi.Info("ShowImmedeateNoCheck() - Call button for " + block.name);
-            DebugRandAddi.Log("ShowImmedeateNoCheck() - " + Time.time);
+            DebugRandAddi.Info("OnShow() - Call button for " + block.name);
+            //DebugRandAddi.Log("OnShow() - " + Time.time);
             ModularMenu.ReInitiate(IDGUI, Title, madnessElements, CanContinueShow);
             ModularMenu.OpenGUI(block);
         }

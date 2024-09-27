@@ -14,7 +14,7 @@ namespace RandomAdditions
     {
         private const int ModdedHintsRange = 5001;
 
-        private int BlockID { get { return (int)block.BlockType; } }
+        private int BlockID => GetComponent<Visible>().ItemType;
         public string HintDescription = "HintDescription IS UNSET";
 
 
@@ -22,6 +22,7 @@ namespace RandomAdditions
         {
             if (HintDescription != null && ModdedHintsRange <= BlockID)
             {
+                //Debug_TTExt.LogAll = true;
                 ExtUsageHint.EditHint(gameObject.name, BlockID, HintDescription);
             }
             else
@@ -32,7 +33,7 @@ namespace RandomAdditions
         {
             try
             {
-                ExtUsageHint.ShowBlockHint(BlockID);
+                ExtUsageHint.ShowBlockHint(gameObject.name, BlockID);
             }
             catch
             {

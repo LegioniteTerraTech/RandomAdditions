@@ -15,6 +15,9 @@ using Nuterra.NativeOptions;
 using RandomAdditions.RailSystem;
 using RandomAdditions.PhysicsTethers;
 using RandomAdditions.Minimap;
+using UnityEngine.Events;
+using UnityEngine.UI;
+using System.Text;
 
 
 namespace RandomAdditions
@@ -50,6 +53,10 @@ namespace RandomAdditions
         public static bool MandateLandReplacement = false;
         public static int ForceIntoModeStartup = 0;
         public static bool AllowIngameQuitToDesktop = false;
+        public static bool FastestPhysics = false;
+        public static bool ColliderDisable2 = false;
+
+        // CHEATS
 
 
         // CONTROLS
@@ -151,6 +158,7 @@ namespace RandomAdditions
             return true;
         }
 
+
         private static bool OfficialEarlyInited = false;
         public static void OfficialEarlyInit()
         {
@@ -163,14 +171,15 @@ namespace RandomAdditions
             }
             try
             { // init changes
-                LocalCorpAudioExt.ManExtendAudio.Subscribe();
-                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - Sub");
+                ManMusicEnginesExt.Subscribe();
+                DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt - Sub");
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
+                DebugRandAddi.Log("RandomAdditions: Error on ManMusicEnginesExt");
                 DebugRandAddi.Log(e);
             }
+            Optimax.PrematureOptimization(FastestPhysics);
 #endif
 
             //Initiate the madness
@@ -234,8 +243,9 @@ namespace RandomAdditions
             }
             if (!OfficialEarlyInited)
             {
-                ManCustomChunks.RenewOldChunks();
+                ManModChunks.RenewOldChunks();
             }
+            PrepExternalChunksAndScenery();
             OfficialEarlyInited = true;
         }
 
@@ -259,12 +269,12 @@ namespace RandomAdditions
             RandAddiWiki.InitWiki();
             try
             { // init changes
-                LocalCorpAudioExt.ManExtendAudio.Subscribe();
-                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - Sub");
+                ManMusicEnginesExt.Subscribe();
+                DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt - Sub");
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
+                DebugRandAddi.Log("RandomAdditions: Error on ManMusicEnginesExt");
                 DebugRandAddi.Log(e);
             }
 #else
@@ -302,18 +312,46 @@ namespace RandomAdditions
             ManPhysicsExt.InsureInit();
             ManRails.Initiate();
             RandAddDebugGUI.Initiate();
+            ModHelpers.ClickEventSimple.Subscribe(ExtModuleClickable.OnClick);
 
             // Net hooks
             ModuleHangar.InsureNetHooks();
+            ModuleModeSwitch.InsureNetHooks();
             ManRails.InsureNetHooks();
 
             // etc
             IngameQuit.Init();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<ModuleReinforced>();
+            ManIngameWiki.RecurseCheckWikiBlockExtModule<SFXAddition>();
+            ResourcesHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
+            //PrintDataBase();
 #endif
+            //ResourcesHelper.PostBlocksLoadEvent.Subscribe(ManSFXExtRand.GetAllSoundsRegistered);
         }
+        public static void PrepExternalChunksAndScenery(bool reload = false)
+        {
+            ManModChunks.PrepareAllChunks(reload);
+            ManModScenery.PrepareAllScenery(reload);
+        }
+
+#if DEBUG
+        public static void PrintSoundDataBase()
+        {
+            var m_ParamDatabase = typeof(FMODEventInstance).GetField("m_ParamDatabase", BindingFlags.Static | BindingFlags.NonPublic);
+            var database = (Dictionary<string, Dictionary<string, int>>)m_ParamDatabase.GetValue(null);
+            DebugRandAddi.Log("FMODEventInstance");
+            foreach (var item in database)
+            {
+                DebugRandAddi.Log(" " + item.Key);
+                foreach (var item2 in item.Value)
+                {
+                    DebugRandAddi.Log(" - " + item2.Key + ", [" + item2.Value + "]");
+                }
+            }
+        }
+#endif
 
 #if STEAM
         public static void DeInitALL()
@@ -339,14 +377,15 @@ namespace RandomAdditions
             }
             try
             { // init changes
-                LocalCorpAudioExt.ManExtendAudio.UnSub();
-                DebugRandAddi.Log("RandomAdditions: ManExtendAudio - UnSub");
+                ManMusicEnginesExt.UnSub();
+                DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt - UnSub");
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log("RandomAdditions: Error on ManExtendAudio");
+                DebugRandAddi.Log("RandomAdditions: Error on ManMusicEnginesExt");
                 DebugRandAddi.Log(e);
             }
+            ModHelpers.ClickEventSimple.Unsubscribe(ExtModuleClickable.OnClick);
             RandAddDebugGUI.DeInit();
             ManRadio.DeInit();
             CircuitExt.Unload();
@@ -357,6 +396,7 @@ namespace RandomAdditions
             ManModeSwitch.DeInit();
             ManTethers.DeInit();
             ReplaceManager.RemoveAllBlocks();
+            ResourcesHelper.ModsPreLoadEvent.Unsubscribe(ReplaceManager.RemoveAllBlocks);
             GlobalClock.ClockManager.DeInit();
         }
 
@@ -434,28 +474,36 @@ namespace RandomAdditions
         {
             if (Doing)
             {
-                ManCustomChunks.PrepareForSaving();
+                ManModChunks.inst.PrepareForSaving();
+                ManModChunks.inst.PrepareForSaving();
+                ManModScenery.inst.PrepareForSaving();
                 ManTileLoader.OnWorldSave();
                 ManRails.PrepareForSaving();
+                RandomWorld.PrepareForSaving();
             }
             else
             {
                 ManRails.FinishedSaving();
                 ManTileLoader.OnWorldFinishSave();
-                ManCustomChunks.FinishedSaving();
+                ManModChunks.inst.FinishedSaving();
+                ManModScenery.inst.FinishedSaving();
+                RandomWorld.FinishedSaving();
             }
         }
         public static void OnLoadManagers(bool Doing)
         {
             if (Doing)
             {
-                ManCustomChunks.PrepareForLoading();
+                ManModChunks.inst.PrepareForLoading();
+                ManModScenery.inst.PrepareForLoading();
             }
             else
             {
                 ManTileLoader.OnWorldLoad();
                 ManRails.FinishedLoading();
-                ManCustomChunks.FinishedLoading();
+                ManModChunks.inst.FinishedLoading();
+                ManModScenery.inst.FinishedLoading();
+                RandomWorld.FinishedLoading();
             }
         }
 
@@ -511,12 +559,12 @@ namespace RandomAdditions
         }
 
         // Additional section for immedeate game entering
-        private static bool forcedToGame = false;
+        public static bool didQuickstart = false;
         public static bool QuickStartGame()
         {
-            if (forcedToGame)
+            if (didQuickstart)
                 return true;
-            forcedToGame = true;
+            didQuickstart = true;
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
 #endif
@@ -763,6 +811,12 @@ namespace RandomAdditions
         public static OptionToggle rpSea;
         public static OptionToggle rpLand;
 
+        // CHEATS
+        public static OptionToggle AlteredVanilla;
+        public static OptionRange XpMulti;
+        public static OptionRange BBMulti;
+        public static OptionRange BlocksMulti;
+
         // CONTROLS
         public static OptionToggle lockP_BoostProps;
         public static OptionToggle lockP_Pitch;
@@ -775,6 +829,8 @@ namespace RandomAdditions
         public static OptionToggle allowQuitFromIngameMenu;
         public static OptionToggle allowPopups;
         public static OptionList<string> startup;
+        public static OptionToggle fastPhysics;
+        public static OptionToggle disColliders;
 
         // Tony Rails
         public static OptionRange RailRenderRange;
@@ -782,6 +838,39 @@ namespace RandomAdditions
 
 
         private static bool launched = false;
+
+        public static void ResetValues()
+        {
+            AlteredVanilla.Value = RandomWorld.inst.WorldAltered;
+            BBMulti.Value = RandomWorld.inst.LootBBMulti;
+            XpMulti.Value = RandomWorld.inst.LootXpMulti;
+            BlocksMulti.Value = RandomWorld.inst.LootBlocksMulti;
+        }
+
+        public static void ResyncValues()
+        {
+            AlteredVanilla.Value = RandomWorld.inst.WorldAltered;
+            if (RandomWorld.inst.WorldAltered)
+            {
+                RandomWorld.BeginCheating();
+            }
+            else
+            {
+                AlteredVanilla.SetExtraTextUIOnly("Off");
+            }
+            if (RandomWorld.inst.LootBBMulti > 1f)
+                BBMulti.Value = ((RandomWorld.inst.LootBBMulti - 1) / 4) + 1;
+            else
+                BBMulti.Value = RandomWorld.inst.LootBBMulti;
+            if (RandomWorld.inst.LootXpMulti > 1f)
+                XpMulti.Value = ((RandomWorld.inst.LootXpMulti - 1) / 4) + 1;
+            else
+                XpMulti.Value = RandomWorld.inst.LootXpMulti;
+            if (RandomWorld.inst.LootBlocksMulti > 1f)
+                BlocksMulti.Value = ((RandomWorld.inst.LootBlocksMulti - 1) / 4) + 1;
+            else
+                BlocksMulti.Value = RandomWorld.inst.LootBlocksMulti;
+        }
 
         public static void TryInitOptionAndConfig()
         {
@@ -816,6 +905,8 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
                 thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
                 thisModConfig.BindConfig<KickStart>(null, "AllowIngameQuitToDesktop");
+                thisModConfig.BindConfig<KickStart>(null, "FastestPhysics");
+                thisModConfig.BindConfig<KickStart>(null, "ColliderDisable2");
 
                 // Tony Rails
                 thisModConfig.BindConfig<ManRails>(null, "MaxRailLoadRange");
@@ -845,7 +936,11 @@ namespace RandomAdditions
                 });
 
                 var RandomBlocks = KickStart.ModName + " - Population Tweaks";
-                replaceChance = new OptionRange("Chance for Custom Block replacement", RandomBlocks, KickStart.GlobalBlockReplaceChance, 0, 100, 10);
+                replaceChance = SuperNativeOptions.OptionRangeAutoDisplay("Chance for Custom Block replacement", 
+                    RandomBlocks, KickStart.GlobalBlockReplaceChance, 0, 100, 10, (float value) =>
+                    {
+                        return value.ToString("0") + "%";
+                    });
                 replaceChance.onValueSaved.AddListener(() => { KickStart.GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
                 rpLand = new OptionToggle("Force Land Custom Block", RandomBlocks, KickStart.MandateLandReplacement);
                 rpLand.onValueSaved.AddListener(() => { KickStart.MandateLandReplacement = rpLand.SavedValue; });
@@ -870,6 +965,19 @@ namespace RandomAdditions
                 });
 
                 var RandomDev = KickStart.ModName + " - Development";
+               
+                fastPhysics = new OptionToggle("Fast Physics (MIGHT BREAK GAME)", RandomDev, KickStart.FastestPhysics);
+                fastPhysics.onValueSaved.AddListener(() =>
+                {
+                    KickStart.FastestPhysics = fastPhysics.SavedValue;
+                    Optimax.PrematureOptimization(KickStart.FastestPhysics);
+                });
+                disColliders = new OptionToggle("Disable Tech Colliders", RandomDev, KickStart.ColliderDisable2);
+                disColliders.onValueSaved.AddListener(() =>
+                {
+                    KickStart.ColliderDisable2 = disColliders.SavedValue;
+                    Optimax.UpdateColliders();
+                }); 
                 try
                 {
                     KickStartOptionsSafeSaves.TryInitOptionAndConfig(RandomDev, thisModConfig);
@@ -906,19 +1014,83 @@ namespace RandomAdditions
                 });
 
                 var TonyRails = KickStart.ModName + " - Tony Rails";
-                RailRenderRange = new OptionRange("Rail Render Range", TonyRails, ManRails.MaxRailLoadRange, 250, 750, 50);
+                RailRenderRange = SuperNativeOptions.OptionRangeAutoDisplay("Rail Render Range", TonyRails, 
+                    ManRails.MaxRailLoadRange, 250, 750, 50, (float value) =>
+                    {
+                        return value.ToString("0") + "m";
+                    });
                 RailRenderRange.onValueSaved.AddListener(() =>
                 {
                     ManRails.MaxRailLoadRange = RailRenderRange.SavedValue;
                     ManRails.MaxRailLoadRangeSqr = ManRails.MaxRailLoadRange * ManRails.MaxRailLoadRange;
                 });
-                RailPathingUpdateSpeed = new OptionRange("Train Pathing Speed", TonyRails, ManTrainPathing.QueueStepRepeatTimes, 1, 6, 1);
+                RailPathingUpdateSpeed = SuperNativeOptions.OptionRangeAutoDisplay("Train Pathing Speed", TonyRails, 
+                    ManTrainPathing.QueueStepRepeatTimes, 1, 6, 1, (float value) =>
+                    {
+                        return value.ToString("0") + "x";
+                    });
                 RailPathingUpdateSpeed.onValueSaved.AddListener(() =>
                 {
                     ManTrainPathing.QueueStepRepeatTimes = Mathf.FloorToInt(RailPathingUpdateSpeed.SavedValue);
                 });
 
+                var Cheats = KickStart.ModName + " - Host World Tweaks";
+                AlteredVanilla = new OptionToggle("Enable (CANNOT BE UNDONE)", Cheats, RandomWorld.inst.WorldAltered);
+                AlteredVanilla.onValueSaved.AddListener(() =>
+                {
+                    if (AlteredVanilla.Value)
+                    {
+                        RandomWorld.BeginCheating();
+                        RandomWorld.inst.WorldAltered = true;
+                    }
+                });
+                AlteredVanilla.SetExtraTextUIOnly("Off");
+                BlocksMulti = SuperNativeOptions.OptionRangeAutoDisplay("Mission Random Blocks Multiplier [0-1-40x]", 
+                    Cheats, RandomWorld.inst.LootBlocksMulti, 0, 10.75f, 0.25f,
+                    (float value) => {
+                        if (value > 1f)
+                            return (((value - 1) * 4) + 1);
+                        else
+                            return value;
+                    });
+                BlocksMulti.onValueSaved.AddListener(() => { 
+                    if (BlocksMulti.SavedValue > 1f)
+                        RandomWorld.inst.LootBlocksMulti = ((BlocksMulti.SavedValue - 1) * 4) + 1;
+                    else
+                        RandomWorld.inst.LootBlocksMulti = BlocksMulti.SavedValue;
+                });
+                XpMulti = SuperNativeOptions.OptionRangeAutoDisplay("Mission Xp Multiplier [0-1-40x]", Cheats, 
+                    RandomWorld.inst.LootXpMulti, 0, 10.75f, 0.25f,
+                    (float value) => {
+                        if (value > 1f)
+                            return (((value - 1) * 4) + 1);
+                        else
+                            return value;
+                    });
+                XpMulti.onValueSaved.AddListener(() => {
+                    if (XpMulti.SavedValue > 1f)
+                        RandomWorld.inst.LootXpMulti = ((XpMulti.SavedValue - 1) * 4) + 1;
+                    else
+                        RandomWorld.inst.LootXpMulti = XpMulti.SavedValue;
+                });
+                BBMulti = SuperNativeOptions.OptionRangeAutoDisplay("Mission Build Bucks Multiplier [0-1-40x]", Cheats,
+                    RandomWorld.inst.LootBBMulti, 0, 10.75f, 0.25f,
+                    (float value) => {
+                        if (value > 1f)
+                            return (((value - 1) * 4) + 1);
+                        else
+                            return value;
+                    });
+                BBMulti.onValueSaved.AddListener(() => {
+                    if (BBMulti.SavedValue > 1f)
+                        RandomWorld.inst.LootBBMulti = ((BBMulti.SavedValue - 1) * 4) + 1;
+                    else
+                        RandomWorld.inst.LootBBMulti = BBMulti.SavedValue; 
+                });
+
                 NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
+                if (KickStart.ColliderDisable2)
+                    Optimax.UpdateColliders();
             }
             catch (Exception e)
             {
@@ -997,6 +1169,30 @@ namespace RandomAdditions
             }
         }
 
+        public static IEnumerable<T> IterateExtModules<T>(this BlockManager BM) where T : ExtModule
+        {
+            foreach (var item in BM.IterateBlocks())
+            {
+                T get = item.GetComponent<T>();
+                if (get)
+                    yield return get;
+            }
+        }
+        public static IEnumerable<T> IterateChildModules<T>(this BlockManager BM) where T : ExtModule
+        {
+            foreach (var item in BM.IterateBlocks())
+            {
+                T[] get = item.GetComponentsInChildren<T>();
+                if (get != null)
+                {
+                    foreach (var child in get)
+                    {
+                        if (child)
+                            yield return child;
+                    }
+                }
+            }
+        }
         public static List<T> GetExtModules<T>(this BlockManager BM) where T : ExtModule
         {
             List<T> got = new List<T>();
@@ -1078,28 +1274,13 @@ namespace RandomAdditions
             if (block == null)
                 throw new NullReferenceException("TrySetBlockFlag was given a NULL block to handle!");
             TankBlock.Flags val = (TankBlock.Flags)blockFlags.GetValue(block);
-            if (GetSetFlag(ref val, flag, trueState))
+            if (val.GetSetFlag(flag, trueState))
             {
                 blockFlags.SetValue(block, val);
                 DebugRandAddi.Log("TrySetBlockFlag " + val + ", value: " + trueState);
             }
         }
-        public static bool GetSetFlag<T>(ref T val, T flagBit, bool trueState) where T : Enum
-        {
-            int valM = (int)Enum.Parse(typeof(T), val.ToString());
-            int valF = (int)Enum.Parse(typeof(T), flagBit.ToString());
-            bool curState = (valM & valF) != 0;
-            if (curState != trueState)
-            {
-                if (curState)
-                    valM = valM - valF;
-                if (trueState)
-                    valM = valM + valF;
-                val = (T)Enum.ToObject(typeof(T), valM);
-                return true;
-            }
-            return false;
-        }
+       
 
         public static ManSaveGame.StoredTech GetUnloadedTech(this TrackedVisible TV)
         {
@@ -1124,7 +1305,7 @@ namespace RandomAdditions
         }
 
 
-        public static bool SubToLogicReceiverCircuitUpdate(this ExtModule module, Action<Circuits.BlockChargeData> OnRec, bool unsub)
+        public static bool SubToLogicReceiverCircuitUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, bool unsub) where T : ExtModule
         {
             if (module.block.CircuitNode?.Receiver)
             {
@@ -1136,7 +1317,7 @@ namespace RandomAdditions
             }
             return false;
         }
-        public static bool SubToLogicReceiverFrameUpdate(this ExtModule module, Action<Circuits.BlockChargeData> OnRec, bool unsub)
+        public static bool SubToLogicReceiverFrameUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, bool unsub) where T : ExtModule
         {
             if (module.block.CircuitNode?.Receiver)
             {

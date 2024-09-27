@@ -17,6 +17,7 @@ namespace RandomAdditions
     [AutoSaveComponent]
     internal class ModuleJumpDrive : ExtModule, IWorldTreadmill
     {
+        public override BlockDetails.Flags BlockDetailFlags => BlockDetails.Flags.OmniDirectional;
         public float IdealJumpHeightAboveGround = 0;
         public float EndJumpHeightAboveGround = 64;
         public bool CarryOtherMobileTechs = false;

@@ -11,7 +11,7 @@ namespace RandomAdditions.Anim
     {
         public static void BatteryUpdate(AnimetteManager m)
         {
-            if (m.display.Count > 0)
+            if (m.display != null && m.display.Count > 0)
             {
                 //DebugRandAddi.Log("ANIMATION NUMBERS UPDATING");
                 int val;

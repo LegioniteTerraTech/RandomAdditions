@@ -44,7 +44,7 @@ namespace RandomAdditions
         private Transform Effector;
         private List<TankBlock> InArea = new List<TankBlock>();
 
-        private float CurrentStrength => Jet.FireRateCurrent;
+        private float CurrentStrength => Jet.ThrustRateCurrent_Abs;
         private float CalcBoost;
         private int TimeStep = 0;
         private bool Burning = false;

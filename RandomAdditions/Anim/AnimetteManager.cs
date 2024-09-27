@@ -22,8 +22,9 @@ namespace RandomAdditions
     /// <summary>
     /// Runs COMPOUND block animations by controlling AnimetteControllers in Children
     /// </summary>
-    public class AnimetteManager : ExtModule
+    public class AnimetteManager : ExtModuleClickable
     {
+        public override bool UseDefault => true;
         // Standalone
         public AnimManagerType type = AnimManagerType.Default;
 
@@ -50,6 +51,7 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
+            PoolInsure();
             List<AnimetteController> AC = new List<AnimetteController>();
             AnimetteController AC0 = KickStart.FetchAnimette(transform, "_segDisplay0", AnimCondition.ManagerManaged);
             if (AC0)
@@ -129,14 +131,12 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             block.serializeEvent.Subscribe(OnSerial);
-            Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
             enabled = true;
         }
 
         public override void OnDetach()
         {
             enabled = false;
-            Singleton.Manager<ManPointer>.inst.MouseEvent.Unsubscribe(OnClick);
             block.serializeEvent.Unsubscribe(OnSerial);
         }
 
@@ -161,43 +161,37 @@ namespace RandomAdditions
             catch { }
         }
 
-        public void OnClick(ManPointer.Event mEvent, bool down, bool clicked)
+        public override void OnShow()
         {
-            if (mEvent == ManPointer.Event.LMB && Singleton.Manager<ManPointer>.inst.targetVisible?.block && down)
+            if (!UseUI)
             {
-                if (Singleton.Manager<ManPointer>.inst.targetVisible.block == block)
+                if (AllowToggleAll)
                 {
-                    if (!UseUI)
+                    AllActive = !AllActive;
+                    SetBoolAll(AllActive);
+                }
+                else
+                {
+                    AnimetteController AC = Singleton.Manager<ManPointer>.inst.targetObject.GetComponentInParent<AnimetteController>();
+                    if (AC)
                     {
-                        if (AllowToggleAll)
+                        int index = controllers.IndexOf(AC);
+                        if (index != -1)
                         {
-                            AllActive = !AllActive;
-                            SetBoolAll(AllActive);
+                            controllers[index].RunBool(ActiveState[index] > 0 ? true : false);
+                            return;
                         }
-                        else
-                        {
-                            AnimetteController AC = Singleton.Manager<ManPointer>.inst.targetObject.GetComponentInParent<AnimetteController>();
-                            if (AC)
-                            {
-                                int index = controllers.IndexOf(AC);
-                                if (index != -1)
-                                {
-                                    controllers[index].RunBool(ActiveState[index] > 0 ? true : false);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (!GUIWindow)
-                            Initiate();
-                        playerSelected = this;
-                        openTime = 1.35f;
-                        UIHelpersExt.ClampMenuToScreen(ref HotWindow, true);
-                        GUIWindow.SetActive(true);
                     }
                 }
+            }
+            else
+            {
+                if (!GUIWindow)
+                    Initiate();
+                playerSelected = this;
+                openTime = 1.35f;
+                UIHelpersExt.ClampMenuToScreen(ref HotWindow, true);
+                GUIWindow.SetActive(true);
             }
         }
 
@@ -291,7 +285,7 @@ namespace RandomAdditions
         }
 
         private static GameObject GUIWindow;
-        private static Rect HotWindow = new Rect(0, 0, 350, 260);   // the "window"
+        private static Rect HotWindow = new Rect(0, 0, 360, 420);   // the "window"
         private const int GUIClikMenuID = 8036;
         internal class GUIDisplayClickUI : MonoBehaviour
         {
@@ -319,16 +313,9 @@ namespace RandomAdditions
         private static float openTime = 0;
         private static AnimetteManager playerSelected;
         private static Vector2 scrolll = new Vector2(0, 0);
-        private static float scrolllSize = 50;
-        private const int ButtonWidth = 300;
-        private const int MaxWindowHeight = 500;
         private static void GUIHandler(int ID)
         {
-            bool clicked = false;
-            int VertPosOff = 0;
-            bool MaxExtensionY = false;
-
-            scrolll = GUI.BeginScrollView(new Rect(0, 30, HotWindow.width - 20, HotWindow.height - 40), scrolll, new Rect(0, 0, HotWindow.width - 50, scrolllSize));
+            scrolll = GUILayout.BeginScrollView(scrolll);
 
             int Entries = playerSelected.controllers.Count;
             for (int step = 0; step < Entries; step++)
@@ -337,6 +324,7 @@ namespace RandomAdditions
                 {
                     try
                     {
+                        GUILayout.BeginHorizontal(AltUI.TextfieldBlackHuge, GUILayout.Height(60));
                         string disp;
                         AnimetteController controller = playerSelected.controllers[step];
 
@@ -347,44 +335,30 @@ namespace RandomAdditions
 
                         if (playerSelected.IsSlider[step])
                         {
-                            int offset = ButtonWidth / 2;
-                            GUI.Label(new Rect(20, VertPosOff, offset, 30), disp);
-                            float cache = GUI.HorizontalSlider(new Rect(20 + offset, VertPosOff, offset, 30)
-                                , controller.CurrentTime, 0, 1);
+                            GUILayout.Label(disp);
+                            float cache = GUILayout.HorizontalSlider(controller.CurrentTime, 0, 1, AltUI.ScrollHorizontal, AltUI.ScrollThumb);
                             if (!controller.CurrentTime.Approximately(cache))
                             {
                                 controller.SetState(cache);
                                 ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Slider);
                             }
                         }
-                        else if (GUI.Button(new Rect(20, VertPosOff, ButtonWidth, 30), disp))
+                        else if (GUILayout.Button(disp))
                         {
-                            clicked = true;
                             controller.RunBool(controller.IsReversing);
                             ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Button);
                         }
+                        GUILayout.EndHorizontal();
                     }
+                    catch (ExitGUIException e) { throw e; }
                     catch { }
-                    VertPosOff += 30;
-                    if (VertPosOff >= MaxWindowHeight)
-                        MaxExtensionY = true;
                 }
+                catch (ExitGUIException e) { throw e; }
                 catch { }// error on handling something
             }
 
-            GUI.EndScrollView();
-            scrolllSize = VertPosOff + 50;
+            GUILayout.EndScrollView();
 
-            if (MaxExtensionY)
-                HotWindow.height = MaxWindowHeight + 80;
-            else
-                HotWindow.height = VertPosOff + 80;
-
-            HotWindow.width = ButtonWidth + 60;
-            if (clicked)
-            {
-                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
-            }
 
             GUI.DragWindow();
         }

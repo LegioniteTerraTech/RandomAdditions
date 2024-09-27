@@ -11,46 +11,54 @@ using TerraTechETCUtil;
 using SafeSaves;
 using Newtonsoft.Json;
 using static LocalisationEnums;
+using System.IO;
 
 /// <summary>
 /// Makes the EXISTING chunks usuable again yay
 /// </summary>
 [AutoSaveManager]
-public class ManCustomChunks
+public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChunk>
 {
+    protected override string leadingFileName { get; } = "Res_";
     [SSManagerInst]
-    public static ManCustomChunks inst;
+    public static ManModChunks inst = new ManModChunks();
     public static HashSet<ChunkTypes> Resurrected = new HashSet<ChunkTypes>();
+    public static Dictionary<int, string> modChunksModNames = new Dictionary<int, string>();
 
-    public const int StartChunkID = 420;
-    public Dictionary<string, CustomChunk> Active = new Dictionary<string, CustomChunk>();
-    [SSaveField]
-    public Dictionary<string, ChunkTypes> Registered = new Dictionary<string, ChunkTypes>();
-    [SSaveField]
-    public int RegisteredIDIterator = StartChunkID;
     public static int ChunkPrice(ChunkTypes CT) => ResourceManager.inst.GetResourceDef(CT).saleValue;
-
-    public static void Init()
+    public ManModChunks()
     {
-        Init_Internal();
-
+        WikiPageChunk.GetChunkModName = ChunkModNameWrapper;
     }
-    private static void Init_Internal()
+    protected override void Init_Internal()
     {
-        if (inst == null)
-        {
-            inst = new ManCustomChunks();
-            WikiPageChunk.GetChunkModName = ChunkModNameWrapper;
-        }
     }
     public static string ChunkModNameWrapper(int CT)
     {
+        if (modChunksModNames.TryGetValue(CT, out string ModName))
+            return ModName;
         if (Resurrected.Contains((ChunkTypes)CT))
             return KickStart.ModID;
         return WikiPageChunk.GetChunkModNameDefault(CT);
     }
+    public static void PrepareAllChunks(bool reload)
+    {
+        DebugRandAddi.Log("ManModChunks: Loading all modded!");
+        string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "Custom Chunks");
+        if (!Directory.Exists(path))
+            Directory.CreateDirectory(path);
+        DebugRandAddi.Log("Path in: " + path);
+        inst.CreateAll(reload, path);
+        DebugRandAddi.Log("ManModChunks: finished!");
+    }
 
 
+    private const BindingFlags spamFlags = BindingFlags.NonPublic | BindingFlags.Instance;
+    private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_ChunkNames", BindingFlags.NonPublic | BindingFlags.Static);
+    private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_ChunkDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
+    private static readonly FieldInfo ResData = typeof(ResourceManager).GetField("m_DefinitionTable", spamFlags);
+    private static readonly FieldInfo ResRare = typeof(ResourcePickup).GetField("m_ChunkRarity", spamFlags);
+    private static readonly MethodInfo poolStart2 = typeof(ResourcePickup).GetMethod("OnPool", spamFlags);
     public static void RenewOldChunks()
     {
         DebugRandAddi.Log("FindOldChunks - Renewing unused Chunks...");
@@ -80,7 +88,7 @@ public class ManCustomChunks
                 {
                     case ChunkTypes._deprecated_TerreriaIngot:
                         LocalisationExt.Register(StringBanks.ChunkName, stepper, "Terreria Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper, 
+                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
                             "Makes up tough, explosive-absorbing armor." +
                             "\nA very sturdy alloy fused from the best-bonding matchup out there: Plumbite and Titania!");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -129,7 +137,7 @@ public class ManCustomChunks
                             "Used in the creation of highly intelligent blocks." +
                             "\nAn alloy capable of building advanced neural pathways.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
-                        def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) + 
+                        def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             5 * ChunkPrice(ChunkTypes.ErudianCrystal);
                         break;
                     case ChunkTypes._deprecated_ChristmasPresent1:
@@ -206,8 +214,8 @@ public class ManCustomChunks
                         LocalisationExt.Register(StringBanks.ChunkName, stepper, "Comm Crystal");//Magellus Compound
                         LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
                             "The basis for excessively powerful energy manipulation weapons like E.P.M.C." +
-                            "\nComm Crystals have very fine-grained command over the spectrum of energy." +
-                            "\nThe bandwidth of energy types this can control seemingly appears limitless.");
+                            "\nComm Crystals have the most fine-grained command over the wide spectrum of energies." +
+                            "\nThe reach of energy types this can control appears seemingly limitless.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Refined);
                         if (def.saleValue == 0)
                             def.saleValue = 442;
@@ -273,14 +281,6 @@ public class ManCustomChunks
     }
 
 
-    private static readonly BindingFlags spamFlags = BindingFlags.NonPublic | BindingFlags.Instance;
-    private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_ChunkNames", BindingFlags.NonPublic | BindingFlags.Static);
-    private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_ChunkDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
-    private static readonly FieldInfo ResData = typeof(ResourceManager).GetField("m_DefinitionTable", spamFlags);
-    private static readonly FieldInfo ResRare = typeof(ResourcePickup).GetField("m_ChunkRarity", spamFlags);
-    private static readonly FieldInfo healthMain = typeof(Damageable).GetField("m_MaxHealthFixed", spamFlags);
-    private static readonly MethodInfo poolStart = typeof(Visible).GetMethod("OnPool", spamFlags);
-    private static readonly MethodInfo poolStart2 = typeof(ResourcePickup).GetMethod("OnPool", spamFlags);
     public void FindOldChunks()
     {
         DebugRandAddi.Log("FindOldChunks - Getting unused Chunks...");
@@ -290,126 +290,238 @@ public class ManCustomChunks
             ChunkTypes CT = (ChunkTypes)i;
             if (CT.ToString().StartsWith("_deprecated"))
             {
-                var nameLoc = StringLookup.GetItemName(ObjectTypes.Chunk,i);
+                var nameLoc = StringLookup.GetItemName(ObjectTypes.Chunk, i);
                 var sprite = ManUI.inst.m_SpriteFetcher.GetSprite(ObjectTypes.Chunk, i);
                 ResourceTable.Definition def = ResourceManager.inst.GetResourceDef(CT);
-                DebugRandAddi.Log(CT.ToString() + " - Name: " + def.name + ",  Prefab: " + (def.basePrefab ? "True" : " False") + 
-                    ",  Sprite: " + (sprite != defaultS ? "True" : " False") + ",  LOC Name: " + 
-                    ("ERROR: String Not Found" != nameLoc ? nameLoc : "No_Name") + 
+                DebugRandAddi.Log(CT.ToString() + " - Name: " + def.name + ",  Prefab: " + (def.basePrefab ? "True" : " False") +
+                    ",  Sprite: " + (sprite != defaultS ? "True" : " False") + ",  LOC Name: " +
+                    ("ERROR: String Not Found" != nameLoc ? nameLoc : "No_Name") +
                     "\n  Value: " + def.saleValue + ",  Mass: " + def.mass);
                 ManUI.inst.m_SpriteFetcher.GetSprite(ObjectTypes.Chunk, i);
             }
         }
     }
 
-
-    public static void PrepareForSaving()
+    internal static CustomChunk ExtractFromExisting(ResourceTable.Definition objTarget)
     {
-        Init_Internal();
-    }
-    public static void FinishedSaving()
-    {
-    }
-    public static void PrepareForLoading()
-    {
-        Init_Internal();
-    }
-    public static void FinishedLoading()
-    {
-        foreach (var item in inst.Registered)
+        try
         {
-            if (inst.Active.TryGetValue(item.Key, out var val))
-                inst.AssignCustomChunk(val, item.Value);
-            else
-                DebugRandAddi.Log("Resource Chunk \"" + item.Key + "\" is not available!  " +
-                    "Will not be able to load it into game world!");
+            return inst.ExtractFromExisting((object)objTarget);
         }
-        foreach (var item in inst.Active)
+        catch (Exception e)
         {
-            if (!inst.Registered.ContainsKey(item.Key))
-            { 
-                inst.AssignCustomChunk(item.Value, (ChunkTypes)inst.RegisteredIDIterator);
-                inst.RegisteredIDIterator++;
-            }
+            DebugRandAddi.Log("Failed to fetch " +
+                (objTarget.name.NullOrEmpty() ? "<NULL>" : objTarget.name) + " - " + e);
+            return null;
         }
     }
 
-    public void AssignCustomChunk(CustomChunk chunk, ChunkTypes ID)
+    protected override CustomChunk ExtractFromExisting(object objTarget)
     {
-        int IDi = (int)ID;
+        if (objTarget == null)
+            throw new NullReferenceException("objTarget IS NULL");
+        ResourceTable.Definition def = objTarget as ResourceTable.Definition;
+        if (def == null)
+            throw new NullReferenceException("ResourceTable.Definition IS NULL");
+        Transform target = def.basePrefab;
+        if (!target)
+            throw new NullReferenceException("basePrefab IS NULL");
+        Visible vis = target.GetComponent<Visible>();
+        if (!vis)
+            throw new NullReferenceException("visible IS NULL");
+        Damageable dmg = target.GetComponent<Damageable>();
+        if (!dmg)
+            throw new NullReferenceException("Damageable IS NULL");
+        ResourcePickup RP = target.GetComponent<ResourcePickup>();
+        if (!RP)
+            throw new NullReferenceException("ResourcePickup IS NULL");
+
+        //Collider Col = target.GetComponent<Collider>();
+        var CT = (ChunkTypes)vis.ItemType;
+        var MR = target.GetComponentInChildren<MeshRenderer>(true);
+        var MF = target.GetComponentInChildren<MeshFilter>(true);
+        return new CustomChunk()
+        {
+            Name = target.name,
+            Description = StringLookup.GetItemDescription(ObjectTypes.Chunk, vis.ItemType),
+            PrefabName = target.name,
+            TextureName = MR.sharedMaterial ?
+                MR.sharedMaterial.name : MR.material.name,
+            MeshName = MF.sharedMesh ?
+                MF.sharedMesh.name : MF.mesh.name,
+            Cost = def.saleValue,
+            Health = (float)healthMain.GetValue(dmg),
+            Mass = def.mass,
+            Rarity = RP.ChunkRarity,
+            DynamicFriction = def.frictionDynamic,
+            StaticFriction = def.frictionStatic,
+            Restitution = def.restitution,
+            JSONData = new Dictionary<string, object>(),
+        };
+    }
+
+    protected override void FinalAssignment(CustomChunk chunk, ChunkTypes AssignedID)
+    {
         Visible vis = chunk.prefab.GetComponent<Visible>();
-        if (vis.m_ItemType.ItemType == IDi)
+        int AssignedIDInt = (int)AssignedID;
+        int PreviousIDInt = vis.m_ItemType.ItemType;
+        if (PreviousIDInt == AssignedIDInt)
             return;
-        Dictionary<int, int> vars = (Dictionary<int, int>)ResLook.GetValue(null);
-        int prevEnd = IDi;
-        if (vis.m_ItemType.ItemType == -1)
+        Dictionary<int, int> IdToNameIndexLookup = (Dictionary<int, int>)ResLook.GetValue(null);
+        int defRedirect = AssignedIDInt;
+        if (PreviousIDInt == -1)
         {
-            LocalisationExt.Register(StringBanks.ChunkName, IDi, chunk.Name);
-            LocalisationExt.Register(StringBanks.ChunkDescription, IDi, chunk.Description);
+            LocalisationExt.Register(StringBanks.ChunkName, AssignedIDInt, chunk.Name);
+            LocalisationExt.Register(StringBanks.ChunkDescription, AssignedIDInt, chunk.Description);
         }
         else
-            prevEnd = vars[IDi];
-        if (vis.m_ItemType.ItemType != IDi)
+            defRedirect = IdToNameIndexLookup[AssignedIDInt];
+        if (PreviousIDInt != AssignedIDInt)
+        { // We resync this with our new ID
+            try
+            {
+                modChunksModNames.Remove(PreviousIDInt);
+                IdToNameIndexLookup.Remove(PreviousIDInt);
+                chunk.prefab.DeletePool();
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log(typeof(ManModChunks).Name + ": Error when assigning \"" + chunk.Name + ", (" +
+                    vis.m_ItemType.ItemType + ")\" to (" + AssignedIDInt + "): " + e);
+            }
+        }
+        if (!modChunksModNames.ContainsKey(AssignedIDInt))
         {
             try
             {
-                vars.Remove(vis.m_ItemType.ItemType);
-                chunk.prefab.DeletePool();
+                Registered.Add(chunk.fileName, AssignedID);
             }
-            catch { }
+            catch (Exception e)
+            {
+                throw new Exception(typeof(ManModChunks).Name + ": Error when registering \"" + chunk.Name +
+                    ", (" + AssignedIDInt + ")", e);
+            }
+            chunk.prefabBase.def.m_ChunkType = AssignedID;
+            var List = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
+            List.Add(AssignedID, chunk.prefabBase);
+            vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, AssignedIDInt);
+            try
+            {
+                IdToNameIndexLookup.Add(AssignedIDInt, defRedirect);
+            }
+            catch (Exception e)
+            {
+                throw new Exception(typeof(ManModChunks).Name + ": Error when registering the name and description of \"" + 
+                    chunk.Name + ", (" + AssignedIDInt + ")", e);
+            }
+            try
+            {
+                modChunksModNames.Add(AssignedIDInt, chunk.mod.ModID);
+            }
+            catch (Exception e)
+            {
+                throw new Exception(typeof(ManModChunks).Name + ": Error when registering the mod name of \"" +
+                    chunk.Name + ", (" + AssignedIDInt + ")", e);
+            }
+            new WikiPageChunk(AssignedIDInt);
+            chunk.prefab.CreatePool(4);
+            DebugRandAddi.Log("ManModChunks: Assigned Custom Chunk " + chunk.Name + " to ID " + AssignedIDInt);
         }
-        Registered.Add(chunk.Name, ID);
-        chunk.prefabBase.def.m_ChunkType = ID;
-        var List = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
-        List.Add(ID, chunk.prefabBase);
-        vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, IDi);
-        vars.Add(IDi, prevEnd);
-        chunk.prefab.CreatePool(4);
     }
 
-    public void CreateNewChunk(ModContainer Mod, CustomChunk chunk, bool Reload = false)
+    protected override void CreateInstanceFile(ModContainer Mod, string path, bool Reload = false)
     {
+        string fileName = Path.GetFileName(path);
+        string text;
+        Active.TryGetValue(fileName, out CustomChunk chunk);
+        if (chunk == null || Reload)
+        {
+            JSONConverterUniversal.Foundation = null;
+            JSONConverterUniversal.CreateNew = true;
+            text = File.ReadAllText(path);
+            chunk = JsonConvert.DeserializeObject<CustomChunk>(text);//, new JSONConverterUniversal());
+            if (chunk == null)
+                throw new NullReferenceException("Chunk file " + fileName + " is corrupted!");
+            chunk.mod = Mod;
+        }
         if (!Reload && chunk.prefab != null)
             return;
+        Active.Remove(fileName);
+        if (ResourceManager.inst == null)
+            throw new NullReferenceException("ResourceManager.inst is NULL - cannot continue!");
         var Prefabs = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
-
+        if (Prefabs == null)
+            throw new NullReferenceException("Chunk lookup is NULL - cannot continue!");
+        ChunkTypes prefabType;
         if (chunk.PrefabName == null)
         {
-            Debug.Log("Chunk PrefabName <FIELD IS NULL> does not exists!" +
+            throw new NullReferenceException("Chunk PrefabName for file " + fileName + " does not exists!" +
                 "  A chunk NEEDS a valid prefab to exist!");
         }
         else if (chunk.Mass <= 0)
         {
-            Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" cannot have Mass of " + chunk.Mass.ToString() + ", " +
+            throw new NullReferenceException("Chunk PrefabName \"" + chunk.PrefabName + "\" cannot have Mass of " + chunk.Mass.ToString() + ", " +
                 "  A chunk NEEDS Mass greater than 0!");
         }
-        else if (Enum.TryParse<ChunkTypes>(chunk.PrefabName, out var prefabName))
+        else if (!EnumTryGetTypeFlexable(chunk.PrefabName, out prefabType))
+            prefabType = ChunkTypes.Wood;
+        if (Prefabs.TryGetValue(prefabType, out ResourceManager.ResourceDefWrapper PrefabOutter) &&
+            PrefabOutter?.def?.basePrefab != null)
         {
-            if (Prefabs.TryGetValue(prefabName, out ResourceManager.ResourceDefWrapper PrefabOutter) &&
-                PrefabOutter.def != null && PrefabOutter.def.basePrefab != null)
+            Transform Prefab = PrefabOutter.def.basePrefab;
+            Transform Instance = Prefab.UnpooledSpawn();
+            if (!Instance)
+                throw new NullReferenceException("Instance is null");
+
+            try
             {
-
-                Transform Prefab = PrefabOutter.def.basePrefab;
-                Transform Instance = Prefab.UnpooledSpawn();
-
+                chunk.fileName = fileName;
                 Visible vis = Instance.GetComponent<Visible>();
+                if (!vis)
+                    throw new NullReferenceException("Vis is null");
+
                 vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, -1);
                 Rigidbody rbody = Instance.GetComponent<Rigidbody>();
+                if (!rbody)
+                    throw new NullReferenceException("rbody is null");
                 rbody.mass = chunk.Mass;
                 ResourcePickup RP = Instance.GetComponent<ResourcePickup>();
+                if (!RP)
+                    throw new NullReferenceException("ResourcePickup is null");
                 ResRare.SetValue(RP, chunk.Rarity);
 
-                Instance.GetComponent<MeshRenderer>().sharedMaterial = 
-                    Mod.GetMaterialFromModAssetBundle(chunk.TextureName);
-                Instance.GetComponent<MeshFilter>().sharedMesh =
-                    Mod.GetMeshFromModAssetBundle(chunk.MeshName);
-                healthMain.SetValue(Instance.GetComponent<Damageable>(), (int)(chunk.Health * 4096));
+                try
+                {
+                    var meshR = Mod.GetMaterialFromModAssetBundle(chunk.TextureName, false);
+                    if (!meshR)
+                        meshR = ResourcesHelper.GetMaterialFromBaseGameAllDeep(chunk.TextureName, false);
+                    Instance.GetComponent<MeshRenderer>().sharedMaterial = meshR;
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("MeshRenderer null");
+                }
+                try
+                {
+                    var meshF = Mod.GetMeshFromModAssetBundle(chunk.MeshName, false);
+                    if (meshF)
+                        Instance.GetComponent<MeshFilter>().sharedMesh = meshF;
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("MeshFilter null");
+                }
+                var dmg = Instance.GetComponent<Damageable>();
+                if (!dmg)
+                    throw new NullReferenceException("Damageable is null");
+                healthMain.SetValue(dmg, (int)(chunk.Health * 4096));
 
 
                 poolStart.Invoke(vis, new object[] { });
                 poolStart2.Invoke(RP, new object[] { });
 
                 chunk.prefab = Instance;
+                Instance.gameObject.SetActive(false);
                 ResourceTable.Definition InstanceDef = new ResourceTable.Definition
                 {
                     basePrefab = Instance,
@@ -427,37 +539,125 @@ public class ManCustomChunks
                 };
                 InstanceOutter.InitMaterials();
                 chunk.prefabBase = InstanceOutter;
-                
-                Active.Add(chunk.Name, chunk);
+
+                Active.Add(fileName, chunk);
+                DebugRandAddi.Log("Created " + chunk.Name + " instance.");
+
             }
-            else
-                Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" does not have a valid prefab instance!" +
-                    "  A chunk NEEDS a valid prefab to exist!");
+            catch (Exception e)
+            {
+                UnityEngine.Object.Destroy(Instance.gameObject);
+                DebugRandAddi.Log("Failed to create " + chunk.Name + " instance - " + e);
+            }
         }
         else
-            Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" does not exists!" +
+            throw new NullReferenceException("Chunk PrefabName \"" + chunk.PrefabName + "\" does not have a valid prefab instance!" +
                 "  A chunk NEEDS a valid prefab to exist!");
+
     }
-}
+    protected override void CreateInstanceAsset(ModContainer Mod, TextAsset path, bool Reload = false)
+    {
+        string fileName = path.name;
+        string text = null;
+        Active.TryGetValue(fileName, out CustomChunk chunk);
+        if (chunk == null || Reload)
+        {
+            JSONConverterUniversal.Foundation = null;
+            JSONConverterUniversal.CreateNew = true;
+            text = path.text;
+            JsonConvert.DeserializeObject<CustomChunk>(text, new JSONConverterUniversal());
+        }
+        if (!Reload && chunk.prefab != null)
+            return;
+        var Prefabs = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
+        ChunkTypes prefabType;
+        if (chunk.PrefabName == null)
+        {
+            Debug.Log("Chunk PrefabName <FIELD IS NULL> does not exists!" +
+                "  A chunk NEEDS a valid prefab to exist!");
+            return;
+        }
+        else if (chunk.Mass <= 0)
+        {
+            Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" cannot have Mass of " + chunk.Mass.ToString() + ", " +
+                "  A chunk NEEDS Mass greater than 0!");
+            return;
+        }
+        else if (!EnumTryGetTypeFlexable(chunk.PrefabName, out prefabType))
+            prefabType = ChunkTypes.Wood;
+        if (Prefabs.TryGetValue(prefabType, out ResourceManager.ResourceDefWrapper PrefabOutter) &&
+            PrefabOutter.def != null && PrefabOutter.def.basePrefab != null)
+        {
+            Transform Prefab = PrefabOutter.def.basePrefab;
+            Transform Instance = Prefab.UnpooledSpawn();
+            try
+            {
+                chunk.fileName = fileName;
+                Visible vis = Instance.GetComponent<Visible>();
+                vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, -1);
+                Rigidbody rbody = Instance.GetComponent<Rigidbody>();
+                rbody.mass = chunk.Mass;
+                ResourcePickup RP = Instance.GetComponent<ResourcePickup>();
+                ResRare.SetValue(RP, chunk.Rarity);
+                try
+                {
+                    var meshR = Mod.GetMaterialFromModAssetBundle(chunk.TextureName, false);
+                    if (!meshR)
+                        meshR = ResourcesHelper.GetMaterialFromBaseGameAllDeep(chunk.TextureName, false);
+                    Instance.GetComponent<MeshRenderer>().sharedMaterial = meshR;
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("MeshRenderer null");
+                }
+                try
+                {
+                    var meshF = Mod.GetMeshFromModAssetBundle(chunk.MeshName, false);
+                    if (meshF)
+                        Instance.GetComponent<MeshFilter>().sharedMesh = meshF;
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("MeshFilter null");
+                }
+                healthMain.SetValue(Instance.GetComponent<Damageable>(), (int)(chunk.Health * 4096));
 
-public class CustomChunk
-{
 
-    [JsonIgnore]
-    internal Transform prefab;
-    [JsonIgnore]
-    internal ResourceManager.ResourceDefWrapper prefabBase;
+                poolStart.Invoke(vis, new object[] { });
+                poolStart2.Invoke(RP, new object[] { });
 
-    public string Name = "Terry";
-    public string Description = "A basic resource chunk";
-    public string PrefabName = ChunkTypes.Wood.ToString();
-    public string MeshName = "TerryMesh";
-    public string TextureName = "TerryTex";
-    public float Health = 50;
-    public ChunkRarity Rarity = ChunkRarity.Common;
-    public float Mass = 0.25f;
-    public int Cost = 8;
-    public float DynamicFriction = 0.8f;
-    public float StaticFriction = 0.8f;
-    public float Restitution = 1;
+                chunk.prefab = Instance;
+                Instance.gameObject.SetActive(false);
+                ResourceTable.Definition InstanceDef = new ResourceTable.Definition
+                {
+                    basePrefab = Instance,
+                    frictionDynamic = chunk.DynamicFriction,
+                    frictionStatic = chunk.StaticFriction,
+                    mass = chunk.Mass,
+                    saleValue = chunk.Cost,
+                    m_ChunkType = (ChunkTypes)(-1),
+                    name = chunk.Name,
+                    restitution = chunk.Restitution,
+                };
+                ResourceManager.ResourceDefWrapper InstanceOutter = new ResourceManager.ResourceDefWrapper()
+                {
+                    def = InstanceDef,
+                };
+                InstanceOutter.InitMaterials();
+                chunk.prefabBase = InstanceOutter;
+
+                Active.Add(fileName, chunk);
+
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Object.Destroy(Instance.gameObject);
+                DebugRandAddi.Log("Failed to create " + chunk.Name + " instance - " + e);
+            }
+        }
+        else
+            Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" does not have a valid prefab instance!" +
+                "  A chunk NEEDS a valid prefab to exist!");
+
+    }
 }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RandomAdditions
 {
-    internal class CircuitPatches : MassPatcherRA
+    internal class CircuitPatches
     {
         internal static class ModuleCircuitDispensorPatches
         {

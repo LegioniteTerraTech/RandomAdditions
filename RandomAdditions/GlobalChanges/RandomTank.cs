@@ -43,6 +43,7 @@ namespace RandomAdditions
             tank.AnchorEvent.Subscribe(OnAnchor);
             tank.DetachEvent.Subscribe(OnDetach);
             enabled = true;
+            InsureSolverIterations();
         }
 
         public void OnDamaged(ManDamage.DamageInfo dmg, TankBlock damagedBlock)
@@ -56,6 +57,11 @@ namespace RandomAdditions
         {
             if (damagedBlocks.Contains(damagedBlock))
                 damagedBlocks.Remove(damagedBlock);
+            /*
+            var fastener = GetComponent<ModuleFasteningLink>();
+            if (fastener)
+                ModulePatches.DetachingFrame.Remove(fastener);
+            */
         }
 
         public void GetDamagedBlocks(List<TankBlock> toAddTo)
@@ -80,7 +86,35 @@ namespace RandomAdditions
         public void OnAnchor(ModuleAnchor anchor, bool anchored, bool force)
         {
             ReevaluateLoadingDiameter();
+            InsureSolverIterations();
         }
+
+        public void UpdateColliderToggle()
+        {
+            foreach (var item in tank.blockman.IterateBlocks())
+            {
+                var CS = item.visible.ColliderSwapper;
+                if (CS)
+                {
+                    CS.EnableCollision(!KickStart.ColliderDisable2);
+                }
+            }
+        }
+        public void InsureSolverIterations()
+        {
+            if (!Optimax.optimize)
+                return;
+            var rbody = GetComponent<Rigidbody>();
+            if (rbody && rbody.solverIterations != Optimax.ColTankIterations)
+            {
+                DebugRandAddi.Log("Rbody for tank altered - [" + 
+                    rbody.solverIterations + " -> " + Optimax.ColTankIterations + "], [" +
+                    rbody.solverVelocityIterations + " -> "+ Optimax.ColTankIterations + "]");
+                rbody.solverIterations = Optimax.ColTankIterations;
+                rbody.solverVelocityIterations = Optimax.VelTankIterations;
+            }
+        }
+
 
         internal void ResetUIValid()
         {

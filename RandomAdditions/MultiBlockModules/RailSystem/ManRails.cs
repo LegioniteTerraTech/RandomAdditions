@@ -133,7 +133,6 @@ namespace RandomAdditions.RailSystem
         internal const float RailEndOverflow = 0.5f;
 
         internal const int RailStopPoolSize = 4;
-        private const int MaxCommandDistance = 9001;//500;
         internal const float NotifyPlayerDistance = 75;
 
         // UI
@@ -228,6 +227,7 @@ namespace RandomAdditions.RailSystem
             MassPatcherRA.harmonyInst.MassPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
             ManMinimapExt.AddMinimapLayer(typeof(UIMiniMapLayerTrain), RailMapPriority);
             ManMinimapExt.MiniMapElementSelectEvent.Subscribe(inst.OnWorldMapElementSelect);
+            ModHelpers.ClickEventSimple.Subscribe(inst.OnClick);
 
             MaxRailLoadRangeSqr = MaxRailLoadRange * MaxRailLoadRange;
             DebugRandAddi.Log("RandomAdditions: Init ManRails");
@@ -338,6 +338,7 @@ namespace RandomAdditions.RailSystem
                 {
                     inst.gameObject.SetActive(false);
                     DebugRandAddi.Log("RandomAdditions: De-Init ManRails");
+                    ModHelpers.ClickEventSimple.Unsubscribe(inst.OnClick);
                     UIMiniMapLayerTrain.RemoveAllPre();
                     ManMinimapExt.RemoveMinimapLayer(typeof(UIMiniMapLayerTrain), RailMapPriority);
                     MassPatcherRA.harmonyInst.MassUnPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
@@ -360,15 +361,12 @@ namespace RandomAdditions.RailSystem
         }
         private static int onNodeSearchStep = 0;
         /// <summary> We make our own since the default OpenMenuEventConsumer does not have enough range for our use cases </summary>
-        public void OnClickRMB(bool down)
+        public void OnClick(bool RMB, bool down, RaycastHit rayman)
         {
-            int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerTankIgnoreTerrain.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerLandmark.mask | Globals.inst.layerScenery.mask;
-
-            Vector3 pos = Camera.main.transform.position;
-            Vector3 posD = Singleton.camera.ScreenPointToRay(Input.mousePosition).direction.normalized;
-            RaycastHit rayman;
-            Physics.Raycast(new Ray(pos, posD), out rayman, MaxCommandDistance, layerMask, QueryTriggerInteraction.Ignore);
-
+            if (!RMB)
+                return;
+            if (down && UIClicked)
+                return;
             if (rayman.collider)
             {
                 var vis = ManVisible.inst.FindVisible(rayman.collider);
@@ -561,7 +559,7 @@ namespace RandomAdditions.RailSystem
         {
             float bestDist = float.MaxValue;
             ModuleRailPoint bestPoint = null;
-            foreach (ModuleRailPoint point in search.blockman.GetExtModules<ModuleRailPoint>())
+            foreach (ModuleRailPoint point in search.blockman.IterateExtModules<ModuleRailPoint>())
             {
                 float dist = (point.block.trans.position - scenePos).sqrMagnitude;
                 if (dist < bestDist)
@@ -1194,7 +1192,7 @@ namespace RandomAdditions.RailSystem
                 DebugRandAddi.Assert(ModelNameNoExt + " could not be found!  Unable to make track stop visual");
                 return;
             }
-            Material mat = ResourcesHelper.GetMaterialFromBaseGame(MaterialName);
+            Material mat = ResourcesHelper.GetMaterialFromBaseGameAllFast(MaterialName);
             if (mat == null)
             {
                 DebugRandAddi.Assert(MaterialName + " could not be found!  Unable to load track stop visual texture");
@@ -1444,10 +1442,6 @@ namespace RandomAdditions.RailSystem
             }
             if (!ManPauseGame.inst.IsPaused)
             {
-                if (Input.GetMouseButtonDown(1))
-                    OnClickRMB(true);
-                else if (!UIClicked && Input.GetMouseButtonUp(1))
-                    OnClickRMB(false);
                 UIClicked = false;
             }
 
