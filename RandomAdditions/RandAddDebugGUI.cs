@@ -14,10 +14,10 @@ namespace RandomAdditions
     {
 
         [DevCommand(Name = "RandomAdditions.ReloadCorpAudio", Access = Access.Public, Users = User.Host)]
-        public static ManDevCommands.CommandReturn Reload()
+        public static CommandReturn Reload()
         {
             ManMusicEnginesExt.inst.RefreshModCorpAudio();
-            return new ManDevCommands.CommandReturn
+            return new CommandReturn
             {
                 message = "Reloaded SFX",
                 success = true,

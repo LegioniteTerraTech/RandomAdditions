@@ -296,6 +296,7 @@
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailPoint.cs" />
     <Compile Include="ReliantBlockModules\ModuleRepairAimer.cs" />
     <Compile Include="ReliantBlockModules\ModuleSimpleLegs.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleSelfDestruct.cs" />
     <Compile Include="StandaloneBlockModules\ModuleTileLoader.cs" />
     <Compile Include="ReliantBlockModules\ModuleTractorBeam.cs" />
     <Compile Include="ReliantBlockModules\ModuleTrajectory.cs" />

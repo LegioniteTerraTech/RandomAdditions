@@ -610,7 +610,7 @@ namespace RandomAdditions
                         else
                             ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
                         ManGameMode.inst.NextModeSetting.SwitchToMode();
-                        ManUI.inst.FadeToBlack(0, true);
+                        //ManUI.inst.FadeToBlack(0.25f, false);
                         DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
                         return false;
                     }
