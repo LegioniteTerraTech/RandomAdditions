@@ -115,21 +115,31 @@ namespace RandomAdditions
         {
             if (threwForceEnd)
                 return;
+            threwForceEnd = true;
 #if STEAM
-            if (Crashed)
-                DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
-                    "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
-                    " Forcing crash screen!");
+            if (Crashed && !KickStart.isNoBugReporterPresent)
+                    DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
+                        "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
+                        " Forcing crash screen!");
 #if !DEBUG
-            UIScreenBugReport UISBR = Singleton.Manager<ManUI>.inst.GetScreen(ManUI.ScreenType.BugReport) as UIScreenBugReport;
-            crsh.Invoke(UISBR, new object[] { });
-            ManGameMode.inst.TriggerSwitch<ModeAttract>();
+            if (KickStart.isNoBugReporterPresent)
+                DebugRandAddi.Log("RandomAdditions: NoBugReporter is present and it is clear the user does not care about " +
+                    "the risks of crashing, we shall NOT stop them or trigger the attract switch");
+            else
+            {
+                UIScreenBugReport UISBR = Singleton.Manager<ManUI>.inst.GetScreen(ManUI.ScreenType.BugReport) as UIScreenBugReport;
+                crsh.Invoke(UISBR, new object[] { });
+                ManGameMode.inst.TriggerSwitch<ModeAttract>();
+            }
+#else
+            DebugRandAddi.Log("RandomAdditions: This is the development version of RandomAdditions.  " +
+                "You should not be seeing this if you aren't Legionite, but you are because Legionite forgot to exit dev mode" +
+                " when uploading to Steam!");
 #endif
 #else
             DebugRandAddi.Log("RandomAdditions: Unofficial Modding will let you continue, but do AT YOUR OWN RISK");
             Singleton.Manager<ManUI>.inst.ShowErrorPopup("The server pool for Unofficial Modding will\nlet you continue, but do so AT YOUR OWN RISK");
 #endif
-            threwForceEnd = true;
         }
 
         private void SaveLatestIncursion(string logString, string stackTrace, LogType type)
@@ -142,7 +152,7 @@ namespace RandomAdditions
                 logFinal += "\n" + logString;
             }
             */
-            if (type == LogType.Exception)
+            if (!KickStart.isNoBugReporterPresent && type == LogType.Exception)
             {
                 logFinal = logString;
                 logFilterNed = "\n" + stackTrace;

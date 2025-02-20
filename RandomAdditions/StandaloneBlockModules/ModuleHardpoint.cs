@@ -20,11 +20,13 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
-            Invoke("ValidateHardpoints", 0.001f);
+            //Invoke("ValidateHardpoints", 0.001f);
         }
 
         private void ValidateHardpoints()
         {
+            if (Hardpoints != null)
+                return;
             Hardpoints = GetComponentsInChildren<Hardpoint>(true);
 
             if (Hardpoints == null || Hardpoints.Length == 0)
@@ -61,7 +63,8 @@ namespace RandomAdditions
 
         public override void OnAttach()
         {
-            enabled = true;
+            ValidateHardpoints();
+            //enabled = true;
             block.NeighbourAttachedEvent.Subscribe(AdjacentBlockChanges);
             block.NeighbourDetachedEvent.Subscribe(AdjacentBlockChanges);
             AdjacentBlockChanges();
@@ -74,8 +77,11 @@ namespace RandomAdditions
         }
         private void AdjacentBlockChanges(TankBlock TB = null)
         {
+            UpdateAttached();
+            /*
             CancelInvoke();
             Invoke("UpdateAttached", 0.001f);
+            */
         }
         private void UpdateAttached()
         {

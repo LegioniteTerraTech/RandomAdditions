@@ -114,9 +114,10 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
                 throw new Exception(typeof(ManModScenery).Name + ": Error when registering the mod name for \"" +
                     scenery.Name + ", (" + AssignedIDInt + ")", e);
             }
-            new WikiPageScenery(AssignedIDInt);
             scenery.prefab.CreatePool(4);
             DebugRandAddi.Log("ManModScenery: Assigned Custom Scenery " + scenery.Name + " to ID " + AssignedIDInt);
+            var group = ManIngameWiki.InsureWikiGroup(scenery.mod.ModID, "Resources", ManIngameWiki.ScenerySprite);
+            new WikiPageScenery(AssignedIDInt, group);
         }
     }
 
@@ -221,6 +222,7 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
         {
             try
             {
+                scenery.mod = Mod;
                 scenery.fileName = fileName;
                 Transform Prefab = PrefabTO.transform;
                 Transform Instance = Prefab.UnpooledSpawn();
@@ -308,6 +310,7 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
         {
             try
             {
+                scenery.mod = Mod;
                 scenery.fileName = fileName;
                 Transform Prefab = PrefabTO.transform;
                 Transform Instance = Prefab.UnpooledSpawn();

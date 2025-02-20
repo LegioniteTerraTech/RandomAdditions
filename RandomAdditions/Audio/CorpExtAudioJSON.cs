@@ -10,6 +10,9 @@ namespace RandomAdditions
     public class CorpExtAudioJSON
     {
         public FactionSubTypes CorpFallbackMusic = FactionSubTypes.GSO;
+        public float[] MusicLoopStartOffset = new float[0];
+
+
         public FactionSubTypes CorpEngine = FactionSubTypes.GSO;
         public float EnginePitchDeepMulti = 1;
         public float EnginePitchMax = float.MaxValue;

@@ -10,6 +10,8 @@ public class CustomScenery : ModLoadable
 {
     [JsonIgnore]
     internal Transform prefab;
+    [JsonIgnore]
+    internal ModContainer mod;
 
     public string Name = "Barry";
     public string Description = "A basic tree scenery";

@@ -9,6 +9,7 @@ using UnityEngine;
 using Newtonsoft.Json;
 using FMODUnity;
 using TerraTechETCUtil;
+using FMOD;
 
 namespace RandomAdditions
 {
@@ -19,7 +20,19 @@ namespace RandomAdditions
 
         public static Dictionary<int, CorpExtAudio> corps;
 
-        
+
+        internal void RefreshModCorpAudio_Queued(Mode mode)
+        {
+            RefreshModCorpAudio();
+        }
+        public static AudioInst FetchSoundFast(ModContainer MC, string wavNameWithExt)
+        {
+            if (MC != null && ManAudioExt.AllSounds.TryGetValue(MC, out var value) && value != null && value.TryGetValue(wavNameWithExt, out var value2))
+            {
+                return value2.main[0];
+            }
+            return null;
+        }
         /// <summary>
         /// Credit to Exund for looking to FMOD!
         /// </summary>
@@ -28,12 +41,13 @@ namespace RandomAdditions
             sys = RuntimeManager.LowlevelSystem;
             TechExtAudio.ResetAll();
             corps.Clear();
-
+            int count = 0;
             foreach (var item in ResourcesHelper.IterateAllMods())
             {
                 ModContainer MC = item.Value;
                 if (MC != null)
                 {
+                    count++;
                     if (MC.Contents?.m_Corps != null)
                     {
                         foreach (var corp in MC.Contents.m_Corps)
@@ -47,11 +61,14 @@ namespace RandomAdditions
                                     combatMusicLoaded = new List<FMOD.Sound>()
                                 };
                                 string shortName = corp.m_ShortName;
+                                DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Attempting to register " + shortName + ".");
                                 try
                                 {
                                     string fileData = ResourcesHelper.FetchTextData(MC, shortName + ".json", MC.AssetBundlePath);
 
                                     CorpExtAudioJSON ext = JsonConvert.DeserializeObject<CorpExtAudioJSON>(fileData);
+                                    if (ext.MusicLoopStartOffset != null)
+                                        newCase.MusicLoopStartOffset = ext.MusicLoopStartOffset;
                                     newCase.CorpEngine = ext.CorpEngine;
                                     newCase.EnginePitchDeepMulti = ext.EnginePitchDeepMulti;
                                     newCase.FallbackMusic = ext.CorpFallbackMusic;
@@ -66,21 +83,21 @@ namespace RandomAdditions
                                 }
                                 FMOD.Sound addSound;
                                 if (!newCase.CorpEngineAudioIdle.hasHandle() &&
-                                    GetSound2(MC.AssetBundlePath, shortName, "EngineIdle", true, out addSound))
+                                    GetSound2(MC, shortName, "EngineIdle", true, out addSound))
                                     newCase.CorpEngineAudioIdle = addSound;
 
                                 if (!newCase.CorpEngineAudioRunning.hasHandle() &&
-                                    GetSound2(MC.AssetBundlePath, shortName, "EngineRun", true, out addSound))
+                                    GetSound2(MC, shortName, "EngineRun", true, out addSound))
                                     newCase.CorpEngineAudioRunning = addSound;
 
                                 if (!newCase.CorpEngineAudioStart.hasHandle() &&
-                                    GetSound2(MC.AssetBundlePath, shortName, "EngineStart", false, out addSound))
+                                    GetSound2(MC, shortName, "EngineStart", false, out addSound))
                                     newCase.CorpEngineAudioStart = addSound;
 
                                 if (!newCase.CorpEngineAudioStop.hasHandle() &&
-                                    GetSound2(MC.AssetBundlePath, shortName, "EngineStop", false, out addSound))
+                                    GetSound2(MC, shortName, "EngineStop", false, out addSound))
                                     newCase.CorpEngineAudioStop = addSound;
-
+                                DebugRandAddi.LogDevOnly("RandomAdditions: RegisterModCorpAudio - Looking in " + MC.AssetBundlePath);
                                 newCase.hasEngineAudio = newCase.CorpEngineAudioIdle.hasHandle() && newCase.CorpEngineAudioRunning.hasHandle() &&
                                     newCase.CorpEngineAudioStart.hasHandle() && newCase.CorpEngineAudioStop.hasHandle();
                                 int attempts = 0;
@@ -89,11 +106,29 @@ namespace RandomAdditions
                                     try
                                     {
                                         string fileName = shortName + (attempts == 0 ? "" : attempts.ToString()) + ".wav";
-                                        var newSound = ResourcesHelper.FetchSound(KickStartRandomAdditions.oInst.GetModContainer(), fileName, MC.AssetBundlePath);
+                                        var newSound = FetchSoundFast(MC, fileName);
                                         if (newSound != null)
                                         {
-                                            newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
-                                            DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly");
+                                            if (newCase.MusicLoopStartOffset.Length > attempts)
+                                            {
+                                                newSound.SoundAdvanced.setLoopCount(-1);
+                                                newSound.SoundAdvanced.getLength(out uint pos, FMOD.TIMEUNIT.MS);
+                                                uint loopStart = (uint)Mathf.RoundToInt(Mathf.Clamp(newCase.MusicLoopStartOffset[attempts] * 1000f, 0, pos - 2));
+                                                newSound.SoundAdvanced.setLoopPoints(loopStart, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
+                                                newSound.SoundAdvanced.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
+                                                newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
+                                                DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly with special loop [" +
+                                                    loopStart + " ~ " + (pos - 1) + "]ms");
+                                            }
+                                            else
+                                            {
+                                                newSound.SoundAdvanced.setLoopCount(-1);
+                                                newSound.SoundAdvanced.getLength(out uint pos, FMOD.TIMEUNIT.MS);
+                                                newSound.SoundAdvanced.setLoopPoints(0, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
+                                                newSound.SoundAdvanced.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
+                                                newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
+                                                DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly");
+                                            }
                                             attempts++;
                                         }
                                         else
@@ -117,15 +152,16 @@ namespace RandomAdditions
                     }
                 }
             }
+            DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - searched (" + count + ") available mods");
 
             OnProfileDelta(ManProfile.inst.GetCurrentUser());
             TechExtAudio.CalibrateAll();
         }
-        private bool GetSound2(string directoryLoc, string shortName, string searchName, bool looping, out FMOD.Sound newSound)
+        private bool GetSound2(ModContainer MC, string shortName, string searchName, bool looping, out FMOD.Sound newSound)
         {
             try
             {
-                var sound = ResourcesHelper.FetchSound(KickStartRandomAdditions.oInst.GetModContainer(), shortName + searchName + ".wav", directoryLoc);
+                var sound = FetchSoundFast(MC, shortName + searchName + ".wav");
                 //DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Trying at " + GO);
                 if (sound != null)
                 {
@@ -212,6 +248,7 @@ namespace RandomAdditions
                                 //DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Trying at " + GO);
                                 if (File.Exists(GO))
                                 {
+                                    // FMOD.MODE.CREATESTREAM removed because it was stuttering
                                     sys.createSound(GO, FMOD.MODE.CREATESTREAM | FMOD.MODE.LOOP_NORMAL, out FMOD.Sound newSound);
                                     newCase.combatMusicLoaded.Add(newSound);
                                     DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly");
@@ -281,14 +318,15 @@ namespace RandomAdditions
         }
 
         // AUDIO
+        public const float MusicOff = 0.00001f;
         public static bool MuteOGWhenPlayingMod = true;
-        private const float fadeINRatePreDelay = 0.04f;//0.02f;
+        private const float fadeINRatePreDelay = 0.14f;//0.04f;//0.02f;
         private const float fadeINRate = 1.2f;
         private const float fadeRate = 0.6f;
-        private static float currentVolPercent = 0; // the music from 0 to one
-        private static float currentMusicVol = 0;        // the player's settings
+        internal static float FadeoutTime = 7f;
+        private static float ModCombatMusicFaderPercent = 0; // the music from 0 to one
+        internal static float currentMusicVol = 0;        // the player's settings
         internal static float currentSFXVol = 0;        // the player's settings
-        public static bool musicOpening = false;
 
         public static ManMusicEnginesExt inst = null;
         internal static FMOD.System sys;
@@ -297,8 +335,9 @@ namespace RandomAdditions
         internal FMOD.Channel ActiveMusic;
         internal int enemyBlockCountCurrent = 0;
         internal int enemyID = int.MinValue;
-        public FactionSubTypes faction = FactionSubTypes.NULL;
+        public FactionSubTypes currentFaction = FactionSubTypes.NULL;
         public static bool isModCorpDangerValid = false;
+        public static bool isVanillaCorpDangerValid = false;
         private bool queuedChange = false;
         private float justAssignedTime = 0;
         private static bool GameIsPaused = false;
@@ -323,12 +362,16 @@ namespace RandomAdditions
             Singleton.Manager<ManPauseGame>.inst.PauseEvent.Subscribe(inst.OnPause);
             Singleton.Manager<ManProfile>.inst.OnProfileSaved.Subscribe(inst.OnProfileDelta);
             ManAudioExt.OnRebuildSounds.Subscribe(inst.RefreshModCorpAudio);
+            ManGameMode.inst.ModeStartEvent.Subscribe(inst.RefreshModCorpAudio_Queued);
+            FadeoutTime = Mathf.Max(FadeoutTime, (float)typeof(ManMusic).GetField("m_DangerMusicHoldTime", 
+                BindingFlags.NonPublic | BindingFlags.Instance).GetValue(ManMusic.inst));
         }
         public static void UnSub()
         {
             if (!inst)
                 return;
             ForceHalt();
+            ManGameMode.inst.ModeStartEvent.Unsubscribe(inst.RefreshModCorpAudio_Queued);
             ManAudioExt.OnRebuildSounds.Unsubscribe(inst.RefreshModCorpAudio);
             Singleton.Manager<ManProfile>.inst.OnProfileSaved.Unsubscribe(inst.OnProfileDelta);
             Singleton.Manager<ManPauseGame>.inst.PauseEvent.Unsubscribe(inst.OnPause);
@@ -342,6 +385,19 @@ namespace RandomAdditions
             currentMusicVol = prof.m_SoundSettings.m_MusicVolume;
             currentSFXVol = prof.m_SoundSettings.m_SFXVolume;
         }
+        private static FieldInfo vca = typeof(ManMusic).GetField("m_MusicVCA", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static MethodInfo vcaSet = typeof(ManMusic).GetMethod("SetVCAFaderLevel", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        private static object vcaInst;
+        private static object[] tempSounder = new object[2];
+        private static void SetBaseGameVolume(float value)
+        {
+            if (vcaInst == null)
+                vcaInst = vca.GetValue(ManMusic.inst);
+            tempSounder[0] = vcaInst;
+            tempSounder[1] = value;
+            vcaSet.Invoke(ManMusic.inst, tempSounder);
+        }
         public void OnPause(bool paused)
         {
             if (paused)
@@ -354,7 +410,7 @@ namespace RandomAdditions
                 if (currentlyPlaying)
                     ActiveMusic.setPaused(true);
                 if (MuteOGWhenPlayingMod)
-                    ManMusic.inst.SetMusicMixerVolume(currentMusicVol);
+                    SetBaseGameVolume(currentMusicVol);
             }
             else
             {
@@ -371,48 +427,71 @@ namespace RandomAdditions
                         ActiveMusic.setPaused(false);
                     }
                     if (MuteOGWhenPlayingMod)
-                        ManMusic.inst.SetMusicMixerVolume(0);
+                        SetBaseGameVolume(MusicOff);
                 }
                 else if (MuteOGWhenPlayingMod)
-                    ManMusic.inst.SetMusicMixerVolume(currentMusicVol);
+                    SetBaseGameVolume(currentMusicVol);
             }
             GameIsPaused = paused;
         }
 
+        public static void SetDangerContextVanilla()
+        {
+            isVanillaCorpDangerValid = true;
+            inst.justAssignedTime = FadeoutTime;
+        }
 
         public static void SetDangerContext(CorpExtAudio CL, int enemyBlockCount, int enemyVisID)
         {
             inst.SetDangerContextInternal(CL, enemyBlockCount, enemyVisID);
         }
-        private void SetDangerContextInternal(CorpExtAudio CL, int enemyBlockCount, int enemyVisID)
+        private void SetDangerContextInternal(CorpExtAudio CL, int enemyBlockCountNew, int enemyVisID)
         {
-            FactionSubTypes FST = (FactionSubTypes)CL.ID;
+            FactionSubTypes newFaction = (FactionSubTypes)CL.ID;
+            if (justAssignedTime <= 0)
+            {   // Set the music
+                MusicCurrent = CL.combatMusicLoaded.GetRandomEntry();
+                isModCorpDangerValid = true;
+                currentFaction = newFaction;
+                enemyBlockCountCurrent = enemyBlockCountNew;
+                enemyID = enemyVisID;
+                ModCombatMusicFaderPercent = 0.01f;
+                ForceReboot();
+                DebugRandAddi.Info("RandomAdditions: ManMusicEnginesExt Playing danger music for " + CL.ID);
+                if (MuteOGWhenPlayingMod)
+                    SetBaseGameVolume(MusicOff);
+            }
+
+            justAssignedTime = FadeoutTime;
+            /*
             if (queuedChange)
             {
-                if (!isModCorpDangerValid && faction != FST)
+                //if (!isModCorpDangerValid && currentFaction != newFaction)
+                if (justAssignedTime <= 0 && currentFaction != newFaction)
                 {
                     MusicCurrent = CL.combatMusicLoaded.GetRandomEntry();
                     isModCorpDangerValid = true;
-                    faction = FST;
-                    enemyBlockCountCurrent = enemyBlockCount;
+                    currentFaction = newFaction;
+                    enemyBlockCountCurrent = enemyBlockCountNew;
                     enemyID = enemyVisID;
-                    currentVolPercent = 0.01f;
+                    ModCombatMusicFaderPercent = 0.01f;
                     ForceReboot();
                     DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Playing danger music (Transition) for " + CL.ID);
                     if (MuteOGWhenPlayingMod)
-                        ManMusic.inst.SetMusicMixerVolume(0);
+                        SetBaseGameVolume(MusicOff);
                     queuedChange = false;
                 }
-                else if (musicOpening)
+                else if (justAssignedTime > 0)
                     queuedChange = false;
             }
-            else if ((musicOpening || enemyBlockCount > enemyBlockCountCurrent) && (faction != FST || enemyID != enemyVisID))
+            else if ((justAssignedTime > 0 || enemyBlockCountNew > enemyBlockCountCurrent) && 
+                (currentFaction != newFaction || enemyID != enemyVisID))
             {   // Set the music
                 if (isModCorpDangerValid)
                 {
                     if (!queuedChange)
                     {
-                        DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Transitioning danger music...");
+                        DebugRandAddi.Info("RandomAdditions: ManMusicEnginesExt Transitioning danger music...");
                         queuedChange = true;
                     }
                 }
@@ -420,34 +499,35 @@ namespace RandomAdditions
                 {
                     MusicCurrent = CL.combatMusicLoaded.GetRandomEntry();
                     isModCorpDangerValid = true;
-                    faction = FST;
-                    enemyBlockCountCurrent = enemyBlockCount;
+                    currentFaction = newFaction;
+                    enemyBlockCountCurrent = enemyBlockCountNew;
                     enemyID = enemyVisID;
-                    currentVolPercent = 0.01f;
+                    ModCombatMusicFaderPercent = 0.01f;
                     ForceReboot();
-                    DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Playing danger music for " + CL.ID);
+                    DebugRandAddi.Info("RandomAdditions: ManMusicEnginesExt Playing danger music for " + CL.ID);
                     if (MuteOGWhenPlayingMod)
-                        ManMusic.inst.SetMusicMixerVolume(0);
+                        SetBaseGameVolume(MusicOff);
                 }
             }
-            if (faction == FST && !queuedChange)
+            if (currentFaction == newFaction && !queuedChange)
             {   // Sustain the music
                 //DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Sustaining danger music for " + CL.ID);
-                justAssignedTime = 3;
+                justAssignedTime = FadeoutTime;
             }
+            */
         }
         public static void ForceHalt()
         {
             if (!inst)
                 return;
             isModCorpDangerValid = false;
-            inst.faction = FactionSubTypes.NULL;
+            inst.currentFaction = FactionSubTypes.NULL;
             inst.enemyBlockCountCurrent = 0;
             inst.enemyID = -1;
             inst.ActiveMusic.stop();
             DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Stopping danger music");
             if (MuteOGWhenPlayingMod)
-                ManMusic.inst.SetMusicMixerVolume(ManPauseGame.inst.IsPaused ? 0 : currentMusicVol);
+                SetBaseGameVolume(ManPauseGame.inst.IsPaused ? MusicOff : currentMusicVol);
         }
         public static void HaltDanger()
         {
@@ -456,14 +536,14 @@ namespace RandomAdditions
             if (isModCorpDangerValid && inst.justAssignedTime <= 0)
             {
                 isModCorpDangerValid = false;
-                inst.faction = FactionSubTypes.NULL;
+                inst.currentFaction = FactionSubTypes.NULL;
                 inst.enemyBlockCountCurrent = 0;
                 inst.enemyID = -1;
                 inst.ActiveMusic.stop();
                 DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Stopping danger music");
                 ManProfile.Profile Prof = ManProfile.inst.GetCurrentUser();
                 if (MuteOGWhenPlayingMod)
-                    ManMusic.inst.SetMusicMixerVolume(ManPauseGame.inst.IsPaused ? 0 : Prof.m_SoundSettings.m_MusicVolume);
+                    SetBaseGameVolume(ManPauseGame.inst.IsPaused ? MusicOff : Prof.m_SoundSettings.m_MusicVolume);
             }
         }
 
@@ -472,21 +552,13 @@ namespace RandomAdditions
             sys.getMasterChannelGroup(out CG);
             if (!GameIsPaused)
             {
-                try
-                {
-                    sound.setLoopCount(-1);
-                    sound.getLength(out uint pos, FMOD.TIMEUNIT.MS);
-                    sound.setLoopPoints(0, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
-                    sys.playSound(sound, CG, false, out ActiveMusic);
+                sys.playSound(sound, CG, false, out ActiveMusic);
 
-                    ActiveMusic.setMode(FMOD.MODE.LOOP_NORMAL);
-                    ActiveMusic.setPosition(0, FMOD.TIMEUNIT.MS);
-                    ActiveMusic.setVolume(currentMusicVol);
-                    DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Playing danger music at " + currentMusicVol);
-                    ActiveMusic.setLoopCount(-1);
-                    ActiveMusic.setLoopPoints(1, FMOD.TIMEUNIT.MS, pos - 2, FMOD.TIMEUNIT.MS);
-                }
-                catch { }
+                ActiveMusic.set3DMinMaxDistance(9001000000f, 90010000000f);
+                ActiveMusic.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
+                ActiveMusic.setPosition(0, FMOD.TIMEUNIT.MS);
+                ActiveMusic.setVolume(currentMusicVol);
+                DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt Playing danger music at " + currentMusicVol);
             }
         }
 
@@ -555,23 +627,22 @@ namespace RandomAdditions
         private void ForceReboot()
         {
             sys.getMasterChannelGroup(out CG);
-            try
-            {
-                ActiveMusic.stop();
-                StartMusic(MusicCurrent);
-            }
-            catch { }
+
+            ActiveMusic.stop();
+            StartMusic(MusicCurrent);
         }
-        private void Update()
+        internal void Update()
         {
             RunMusic();
             if (inst.justAssignedTime < 1f)
             {
-                if (currentVolPercent > 0)
-                    currentVolPercent -= fadeRate * Time.deltaTime;
+                if (ModCombatMusicFaderPercent > 0)
+                    ModCombatMusicFaderPercent -= fadeRate * Time.deltaTime;
             }
             if (justAssignedTime > 0)
                 justAssignedTime -= Time.deltaTime;
+            else
+                isVanillaCorpDangerValid = false;
         }
 
 
@@ -579,14 +650,14 @@ namespace RandomAdditions
         {
             if (isModCorpDangerValid)
             {
-                if (!musicOpening)
+                if (justAssignedTime > 0)
                 {
-                    if (currentVolPercent < 0.03f)
-                        currentVolPercent += fadeINRatePreDelay;
-                    else if (currentVolPercent < 1)
-                        currentVolPercent += Time.deltaTime * fadeINRate;
+                    if (ModCombatMusicFaderPercent < 0.03f)
+                        ModCombatMusicFaderPercent += fadeINRatePreDelay;
+                    else if (ModCombatMusicFaderPercent < 1)
+                        ModCombatMusicFaderPercent += Time.deltaTime * fadeINRate;
                     else
-                        currentVolPercent = 1;
+                        ModCombatMusicFaderPercent = 1;
                     /*
                     if (currentVolPercent < 0.03f)
                         currentVolPercent += Time.deltaTime * fadeINRatePreDelay;
@@ -595,7 +666,6 @@ namespace RandomAdditions
                     else
                         currentVolPercent = 1;
                     */
-                    justAssignedTime = 3;
                 }
                 ActiveMusic.isPlaying(out bool currentlyPlaying);
                 try
@@ -607,7 +677,7 @@ namespace RandomAdditions
                         {
                             ForceReboot();
                         }
-                        ActiveMusic.setVolume(currentVolPercent * currentMusicVol);
+                        ActiveMusic.setVolume(ModCombatMusicFaderPercent * currentMusicVol);
                     }
                     else
                     {
@@ -615,7 +685,7 @@ namespace RandomAdditions
                     }
                 }
                 catch { }
-                if (currentVolPercent <= 0)
+                if (ModCombatMusicFaderPercent <= 0)
                     HaltDanger();
                 return;
             }

@@ -43,7 +43,7 @@ namespace RandomAdditions
         public void Initiate()
         {
             tank = gameObject.GetComponent<Tank>();
-            //debugEncapsulated("Added TechExtAudio to Tech - " + tank.name);
+            DebugRandAddi.Log("Added TechExtAudio to Tech - " + tank.name);
             Cache = (TechAudio.UpdateAudioCache)cache.GetValue(tank.TechAudio);
             if (Cache == null)
                 throw new NullReferenceException("Initiate() - cache is null");
@@ -98,7 +98,7 @@ namespace RandomAdditions
             VolumeUpdate(ManMusicEnginesExt.currentSFXVol);
             float Speed = 0;
             if (tank.rbody)
-                Speed = tank.rbody.velocity.magnitude;
+                Speed = (tank.rbody.velocity.SetY(0)).magnitude;
             float Drive = (float)drive.GetValue(tank.TechAudio);
             float Throttle = (float)throttle.GetValue(tank.TechAudio);
             //if (Throttle != 0) debugEncapsulated("engine throttle - " + Throttle);

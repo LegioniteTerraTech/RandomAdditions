@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine;
 using System.Reflection;
 using TerraTechETCUtil;
+using RandomAdditions.PatchBatch;
 
 namespace RandomAdditions
 {
@@ -26,10 +27,14 @@ namespace RandomAdditions
         {
             try
             {
+                if (!KickStart.isNoBugReporterPresent)
+                    harmonyInst.MassPatchAllWithin(typeof(BugReportPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(GlobalPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(AllTankPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(AllProjectilePatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(ModulePatches), modName);
+                if (KickStart.isNuterraSteamPresent)
+                    harmonyInst.MassPatchAllWithin(typeof(NuterraPatches), modName);
                 try
                 {
                     harmonyInst.PatchAll(Assembly.GetExecutingAssembly());
@@ -55,6 +60,10 @@ namespace RandomAdditions
                 harmonyInst.MassUnPatchAllWithin(typeof(AllTankPatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(AllProjectilePatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(ModulePatches), modName);
+                if (KickStart.isNuterraSteamPresent)
+                    harmonyInst.MassUnPatchAllWithin(typeof(NuterraPatches), modName);
+                if (!KickStart.isNoBugReporterPresent)
+                    harmonyInst.MassUnPatchAllWithin(typeof(BugReportPatches), modName);
                 try
                 {
                     harmonyInst.UnpatchAll(harmonyInst.Id);

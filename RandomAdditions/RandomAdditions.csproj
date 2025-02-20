@@ -85,6 +85,10 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UnityEngine.ClusterRendererModule">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.ClusterRendererModule.dll</HintPath>
       <Private>False</Private>
@@ -232,6 +236,7 @@
     <Compile Include="GlobalChanges\Pyromanic.cs" />
     <Compile Include="GlobalChanges\ITankCompAuto.cs" />
     <Compile Include="GlobalChanges\IngameQuit.cs" />
+    <None Include="ManRapidModReloader.cs" />
     <Compile Include="ModLoaderSystem.cs" />
     <Compile Include="MultiBlockModules\RailSystem\PrefabTrain.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailMeshBuilder.cs" />
@@ -241,6 +246,8 @@
     <Compile Include="MultiBlockModules\RailSystem\RailTypeStats.cs" />
     <Compile Include="MultiBlockModules\RailSystem\UnstableTrack.cs" />
     <Compile Include="Optimax.cs" />
+    <Compile Include="PatchBatch\BugReportPatches.cs" />
+    <Compile Include="PatchBatch\NuterraPatches.cs" />
     <Compile Include="PatchBatch\OptimaxPatches.cs" />
     <Compile Include="ProjectileModules\AdvProjectile.cs" />
     <Compile Include="ProjectileModules\LaserRiderProjectile.cs" />

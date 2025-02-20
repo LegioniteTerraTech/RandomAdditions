@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using TerraTechETCUtil;
 using UnityEngine;
 using UnityEngine.UI;
-using static UnityEngine.Experimental.UIElements.EventDispatcher;
+using static TerraTechETCUtil.ManIngameWiki;
 
 namespace RandomAdditions
 {
@@ -22,11 +22,20 @@ namespace RandomAdditions
         internal static void InitWiki()
         {
             nullSprite = ManUI.inst.GetSprite(ObjectTypes.Block, -1);
+            InitChunks();
             InitMechanics();
         }
         internal static void InitMechanics()
         {
-            new WikiPageInfo(modID, "Tools", ManIngameWiki.ToolsSprite, PageTools);
+            new WikiPageInfo(modID, "Tools", ToolsSprite, PageTools);
+        }
+        internal static void InitChunks()
+        {
+            var group = InsureWikiGroup(modID, "Chunks", ChunksSprite);
+            foreach (var item in ManModChunks.Resurrected)
+            {
+                new WikiPageChunk((int)item, group);
+            }
         }
         internal static void OpenInExplorer(string directory)
         {

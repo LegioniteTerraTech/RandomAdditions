@@ -14,6 +14,7 @@ namespace RandomAdditions
         public FactionSubTypes CorpEngine = FactionSubTypes.NULL;
         public float EnginePitchDeepMulti = 1;
         public float EnginePitchMax = float.MaxValue;
+        public float[] MusicLoopStartOffset = new float[0];
         public List<FMOD.Sound> combatMusicLoaded;
 
         public bool hasEngineAudio = false;

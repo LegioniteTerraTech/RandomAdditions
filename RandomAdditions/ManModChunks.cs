@@ -203,7 +203,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
                             "A mysterious material bursting with tiny explosive electrical sparks.  Looks alien in origin." +
                             "\nAffectionately known as \"Plasmite\" amongst many nations out there, this ore posesses " +
-                            "impressive quantum energy funneling properties and is very volitile in nature.\n" +
+                            "impressive quantum energy funneling properties and is very volatile in nature.\n" +
                             "Rumors say of a planet made almost entirely of it lie somewhere in the cosmos, waiting to be plundered " +
                             "(or 'poloded).");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Raw);
@@ -423,9 +423,10 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                 throw new Exception(typeof(ManModChunks).Name + ": Error when registering the mod name of \"" +
                     chunk.Name + ", (" + AssignedIDInt + ")", e);
             }
-            new WikiPageChunk(AssignedIDInt);
             chunk.prefab.CreatePool(4);
             DebugRandAddi.Log("ManModChunks: Assigned Custom Chunk " + chunk.Name + " to ID " + AssignedIDInt);
+            var group = ManIngameWiki.InsureWikiGroup(chunk.mod.ModID, "Chunks", ManIngameWiki.ChunksSprite);
+            new WikiPageChunk(AssignedIDInt, group);
         }
     }
 
@@ -476,6 +477,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             try
             {
                 chunk.fileName = fileName;
+                chunk.mod = Mod;
                 Visible vis = Instance.GetComponent<Visible>();
                 if (!vis)
                     throw new NullReferenceException("Vis is null");
@@ -592,6 +594,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             Transform Instance = Prefab.UnpooledSpawn();
             try
             {
+                chunk.mod = Mod;
                 chunk.fileName = fileName;
                 Visible vis = Instance.GetComponent<Visible>();
                 vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, -1);

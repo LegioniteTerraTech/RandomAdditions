@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using TerraTechETCUtil;
+using static Singleton;
 
 public class TorpedoProjectile : RandomAdditions.TorpedoProjectile { };
 namespace RandomAdditions
@@ -65,29 +66,22 @@ namespace RandomAdditions
                                 if (item.name == "t_sph_Liquid_oil_01")
                                     image = item;
                             }
-                            //var shader = Shader.Find("Standard");
-                            Shader shader = Shader.Find(name);
-                            //var shader = Shader.Find("Shield");
-                            //var shader = Shader.Find("Unlit/Transparent");
-                            //var shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply");
-                            if (shader == null)
-                            {
-                                IEnumerable<Shader> shaders = Resources.FindObjectsOfTypeAll<Shader>();
-                                /*
-                                foreach (var item in shaders)
-                                {
-                                    if (item && !item.name.NullOrEmpty())
-                                        DebugWater.Log(item.name);
-                                }
-                                */
-                                shaders = shaders.Where(s2 => s2.name == name); ////Standard
-                                shader = shaders.ElementAt(0);
-                                if (shader == null)
-                                    DebugRandAddi.Log("RandomAdditions: failed to get shader");
-                            }
 
                             if (image != null)
                             {
+                                var shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+                                if (shader == null)
+                                {
+                                    IEnumerable<Shader> shaders = Resources.FindObjectsOfTypeAll<Shader>();
+                                    shaders = shaders.Where(s2 => s2.name == "Legacy Shaders/Particles/Alpha Blended"); ////Standard
+                                    shader = shaders.ElementAt(0);
+                                    if (shader == null)
+                                        DebugRandAddi.Log("TorpedoProjectile: failed to get shader");
+                                }
+                                //var shader = Shader.Find("Shield");
+                                //var shader = Shader.Find("Unlit/Transparent");
+                                //var shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply");
+
                                 bubbleMaterial = new Material(shader)
                                 {
                                     mainTexture = image,

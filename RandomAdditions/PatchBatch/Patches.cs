@@ -192,41 +192,90 @@ namespace RandomAdditions
         [HarmonyPatch("SetDanger", new Type[] { typeof(ManMusic.DangerContext), typeof(Tank), })]//
         private static class VeryyScary
         {
-            private static readonly FieldInfo
-                dangerFactor = typeof(ManMusic).GetField("m_DangerHistory", BindingFlags.NonPublic | BindingFlags.Instance);
-            private static void Prefix(ManMusic __instance, ref ManMusic.DangerContext context, ref Tank friendlyTech)
+            private static readonly FieldInfo dangerFactor = typeof(ManMusic).GetField(
+                "m_DangerHistory", BindingFlags.NonPublic | BindingFlags.Instance);
+            internal static bool Prefix(ManMusic __instance, ref ManMusic.DangerContext context, ref Tank friendlyTech)
             {
                 int corpIndex = (int)context.m_Corporation;
                 if (corpIndex >= corpsVanilla)
                 {
                     if (ManMusicEnginesExt.corps.TryGetValue(corpIndex, out CorpExtAudio CL))
                     {
-                        //Debug.Log("SetDanger - " + corpIndex + " playing...");
-                        if (CL.combatMusicLoaded.Count > 0)
+                        if (ManMusicEnginesExt.isVanillaCorpDangerValid)
                         {
-                            context.m_Corporation = FactionSubTypes.NULL;
-                            ManMusicEnginesExt.SetDangerContext(CL, context.m_BlockCount, context.m_VisibleID);
-                            return;
+                            context.m_Corporation = CL.FallbackMusic;
+                            ManMusicEnginesExt.SetDangerContextVanilla();
+                            return true;
+                        }
+                        else
+                        {
+                            //Debug.Log("SetDanger - " + corpIndex + " playing...");
+                            if (CL.combatMusicLoaded.Count > 0)
+                            {
+                                __instance.FadeDownAll();
+                                //context.m_Corporation = FactionSubTypes.NULL;
+                                ManMusicEnginesExt.SetDangerContext(CL, context.m_BlockCount, context.m_VisibleID);
+                                return false;
+                            }
                         }
                     }
+                    if (ManMusicEnginesExt.isVanillaCorpDangerValid)
+                    {
+                        context.m_Corporation = FactionSubTypes.GSO;
+                        ManMusicEnginesExt.SetDangerContextVanilla();
+                        return true;
+                    }
                     //ManMusic.inst.SetDangerMusicOverride(ManMusic.MiscDangerMusicType.None);
-                    context.m_Corporation = CL.FallbackMusic;
+                    //context.m_Corporation = CL.FallbackMusic;
+                    return !ManMusicEnginesExt.isModCorpDangerValid;
+                }
+                else
+                {
+                    ManMusicEnginesExt.SetDangerContextVanilla();
+                    return !ManMusicEnginesExt.isModCorpDangerValid;
                 }
             }
         }
-
-
+        /*
         [HarmonyPatch(typeof(ManMusic))]
         [HarmonyPatch("IsDangerous")]//
         private static class VeryyScary2
         {
-            private static void Postfix(ManMusic __instance, ref bool __result)
+            internal static void Postfix(ManMusic __instance, ref bool __result)
             {
-                ManMusicEnginesExt.musicOpening = !__result;
                 //if (__result)
                 //    Debug.Log("Dangerous");
             }
+        }*/
+        [HarmonyPatch(typeof(ManMusic))]
+        [HarmonyPatch("SetMusicMixerVolume")]//
+        private static class RedirectAudioControl
+        {
+            internal static bool Prefix(ManMusic __instance, ref float value)
+            {
+                ManMusicEnginesExt.currentMusicVol = value;
+                if (ManMusicEnginesExt.isModCorpDangerValid)
+                {
+                    return false;
+                }
+                return true;
+            }
         }
+        [HarmonyPatch(typeof(ManMusic))]
+        [HarmonyPatch("GetMusicMixerVolume")]//
+        private static class RedirectAudioControl2
+        {
+            internal static bool Prefix(ManMusic __instance, ref float __result)
+            {
+                if (ManMusicEnginesExt.isModCorpDangerValid)
+                {
+                    __result = ManMusicEnginesExt.currentMusicVol;
+                    return false;
+                }
+                return true;
+            }
+        }
+
 
 
         [HarmonyPatch(typeof(Tank))]

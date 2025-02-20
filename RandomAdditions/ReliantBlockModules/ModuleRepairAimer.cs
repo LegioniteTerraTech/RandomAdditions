@@ -300,7 +300,7 @@ namespace RandomAdditions
         public void StartManagingPost()
         {
             primary = Modules.FirstOrDefault();
-            primary.Energy.UpdateConsumeEvent.Unsubscribe(UpdatePower);
+            primary.Energy.UpdateConsumeEvent.Subscribe(UpdatePower);
         }
         public void StopManaging()
         {
@@ -339,7 +339,7 @@ namespace RandomAdditions
                 {
                     if (tech.isActive && (bool)tech.tank)
                     {
-                        if (tech.tank.IsFriendly(tank.Team))
+                        if (tech.tank.Team == tank.Team)
                         {
                             techsCollect.Push(tech.tank);
                         }

@@ -35,6 +35,7 @@ namespace RandomAdditions
         internal static bool isWaterModPresent = false;
         internal static bool isTweakTechPresent = false;
         internal static bool isNuterraSteamPresent = false;
+        internal static bool isNoBugReporterPresent = false;
 
         public static GameObject logMan;
 
@@ -155,6 +156,13 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
                 isNuterraSteamPresent = true;
             }
+            if (LookForMod("NoBugReporter"))
+            {
+                DebugRandAddi.Log("RandomAdditions: Found NoBugReporter!  Holding back on bug report popup..." + 
+                    "\n  I do not endorse this but I respect the player's decision to ignore the bug report, " +
+                    "just note that mod makers will be reluctant to troubleshoot long MP sessions with the error");
+                isNoBugReporterPresent = true;
+            }
             return true;
         }
 
@@ -266,7 +274,6 @@ namespace RandomAdditions
                 OfficialEarlyInit();
             }
             DebugRandAddi.Log("RandomAdditions: MainOfficialInit");
-            RandAddiWiki.InitWiki();
             try
             { // init changes
                 ManMusicEnginesExt.Subscribe();
@@ -324,6 +331,7 @@ namespace RandomAdditions
             ManIngameWiki.RecurseCheckWikiBlockExtModule<ModuleReinforced>();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<SFXAddition>();
             ResourcesHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
+            RandAddiWiki.InitWiki();
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
             //PrintDataBase();
@@ -920,8 +928,9 @@ namespace RandomAdditions
                 realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
                 realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
 #endif
-                altDateFormat = new OptionToggle("Clock Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
-                altDateFormat.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = altDateFormat.SavedValue; });
+                OptionToggle togTest = new OptionToggle("Clock Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
+                togTest.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = togTest.SavedValue; });
+                altDateFormat = togTest;
                 noCameraShake = new OptionToggle("Disable Damage Feedback Rattle", RandomProperties, KickStart.NoShake);
                 noCameraShake.onValueSaved.AddListener(() => { KickStart.NoShake = noCameraShake.SavedValue; });
                 scaleBlocksInSCU = new OptionToggle("Shrink Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);

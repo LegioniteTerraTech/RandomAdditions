@@ -39,7 +39,7 @@ namespace RandomAdditions
         {
         { "m_BoosterAudioType", new KeyValuePair<Func<Transform, object, FieldInfo, ManSFXExtRand.ExtSound, int>,
             Action<Transform, ManSFXExtRand.ExtSound>> (ManSFXExtRand.AssignSoundBooster, ManSFXExtRand.UnassignSoundBooster) },
-        
+
         };
         private static Dictionary<Type, KeyValuePair<Func<Transform, object, FieldInfo, ManSFXExtRand.ExtSound, int>, Action<Transform, ManSFXExtRand.ExtSound>>> ValidTypesWithAssigners =
             new Dictionary<Type, KeyValuePair<Func<Transform, object, FieldInfo, ManSFXExtRand.ExtSound, int>, Action<Transform, ManSFXExtRand.ExtSound>>>()
@@ -123,6 +123,9 @@ namespace RandomAdditions
                 DebugRandAddi.Info("Block " + (transform.name.NullOrEmpty() ? "<NULL>" : transform.name) + " has SFXAddition");
             enabled = true;
         }
+        /// <summary>
+        /// Only should fire once per block!
+        /// </summary>
         public void Update()
         {
             OnSpawn();
@@ -132,45 +135,49 @@ namespace RandomAdditions
             {
                 if (block.tank)
                     OnAttach();
-                else
-                    block.AttachedEvent.Subscribe(OnAttach);
+                block.AttachedEvent.Subscribe(OnAttach);
                 block.DetachingEvent.Subscribe(OnDetach);
             }
-            Projectile proj = GetComponent<Projectile>();
-            if (proj)
+            else
             {
-                OnFire();
+                Projectile proj = GetComponent<Projectile>();
+                if (proj)
+                {
+                    OnFire();
+                }
             }
             enabled = false;
         }
         private void DoAssign()
         {
-            if (Assigned)
-                return;
-            Assigned = true;
-            if (Additions == null || Additions.Length == 0)
-            {  // Display every possible canidate for sound in logs
-                DebugRandAddi.Log("Block " + (transform.name.NullOrEmpty() ? "<NULL>" : transform.name) + " has Addition but it is not set.");
-                DebugRandAddi.Log("Possible canidates include:");
-                foreach (var item in GetComponents<MonoBehaviour>())
-                {
-                    Type type = item.GetType();
-                    if (!ValidSFXHooks.TryGetValue(type, out var FIs))
+            try
+            {
+                if (Assigned)
+                    return;
+                //Assigned = true;
+                if (Additions == null || Additions.Length == 0)
+                {  // Display every possible canidate for sound in logs
+                    DebugRandAddi.Log("Block " + (transform.name.NullOrEmpty() ? "<NULL>" : transform.name) + " has Addition but it is not set.");
+                    DebugRandAddi.Log("Possible canidates include:");
+                    foreach (var item in GetComponents<MonoBehaviour>())
                     {
-                        FIs = new Dictionary<string, FieldInfo>();
-                        ValidSFXHooks.Add(type, FIs);
-                    }
-                    foreach (var fieldC in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
-                    {
-                        if (ValidTypesWithAssigners.ContainsKey(fieldC.FieldType))
+                        Type type = item.GetType();
+                        if (!ValidSFXHooks.TryGetValue(type, out var FIs))
                         {
-                            if (!FIs.ContainsKey(fieldC.Name))
-                                FIs.Add(fieldC.Name, fieldC);
-                            DebugRandAddi.Log("\t\"" + type.FullName + "\", \"" + fieldC.Name + "\"");
+                            FIs = new Dictionary<string, FieldInfo>();
+                            ValidSFXHooks.Add(type, FIs);
+                        }
+                        foreach (var fieldC in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+                        {
+                            if (ValidTypesWithAssigners.ContainsKey(fieldC.FieldType))
+                            {
+                                if (!FIs.ContainsKey(fieldC.Name))
+                                    FIs.Add(fieldC.Name, fieldC);
+                                DebugRandAddi.Log("\t\"" + type.FullName + "\", \"" + fieldC.Name + "\"");
+                            }
                         }
                     }
-                }
-                ManSFXExtRand.ExtSound[] soundsTemp = new ManSFXExtRand.ExtSound[]{
+                    ManSFXExtRand.ExtSound[] soundsTemp = new ManSFXExtRand.ExtSound[]{
                     new ManSFXExtRand.ExtSound(){
                         Name = "basic",
                         MaxInstances = 1,
@@ -181,65 +188,18 @@ namespace RandomAdditions
                         },
                     }
                 };
-                DebugRandAddi.Log(JsonConvert.SerializeObject(soundsTemp, Formatting.Indented));
-                return;
-            }
-            for (int i = 0; i < Additions.Length; i++)
-            {
-                var adder = Additions[i];
-                var targs = adder.Targets;
-                if (targs != null && targs.Count > 0)
+                    DebugRandAddi.Log(JsonConvert.SerializeObject(soundsTemp, Formatting.Indented));
+                    return;
+                }
+                for (int i = 0; i < Additions.Length; i++)
                 {
-                    foreach (var targetComponents in targs)
+                    var adder = Additions[i];
+                    var targs = adder.Targets;
+                    if (targs != null && targs.Count > 0)
                     {
-                        if (ValidSFXHooks.TryGetValue(KickStart.LookForType(targetComponents.Key), out var vals))
+                        foreach (var targetComponents in targs)
                         {
-                            if (vals != null && targetComponents.Value != null)
-                            {
-                                foreach (var fieldName in targetComponents.Value)
-                                {
-                                    var comp = GetComponent(targetComponents.Key);
-                                    if (comp != null && vals.TryGetValue(fieldName, out FieldInfo FI))
-                                    {
-                                        if (ValidNamesWithAssigners.TryGetValue(FI.Name, out var funcN))
-                                        {
-                                            Assigned = true;
-                                            funcN.Key.Invoke(transform, comp, FI, adder);
-                                        }
-                                        else if(ValidTypesWithAssigners.TryGetValue(FI.FieldType, out var funcC))
-                                        {
-                                            Assigned = true;
-                                            funcC.Key.Invoke(transform, comp, FI, adder);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {   // Get all possible hooks in GameObject
-                            foreach (var item in GetComponents<Component>())
-                            {
-                                Type type = item.GetType();
-                                if (!ValidSFXHooks.TryGetValue(type, out var FIs))
-                                {
-                                    FIs = new Dictionary<string, FieldInfo>();
-                                    ValidSFXHooks.Add(type, FIs);
-                                }
-                                foreach (var fieldC in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
-                                {
-                                    if (ValidNamesWithAssigners.ContainsKey(fieldC.Name))
-                                    {
-                                        if (!FIs.ContainsKey(fieldC.Name))
-                                            FIs.Add(fieldC.Name, fieldC);
-                                    }
-                                    else if (ValidTypesWithAssigners.ContainsKey(fieldC.FieldType))
-                                    {
-                                        if (!FIs.ContainsKey(fieldC.Name))
-                                            FIs.Add(fieldC.Name, fieldC);
-                                    }
-                                }
-                            }
-                            if (ValidSFXHooks.TryGetValue(KickStart.LookForType(targetComponents.Key), out vals))
+                            if (ValidSFXHooks.TryGetValue(KickStart.LookForType(targetComponents.Key), out var vals))
                             {
                                 if (vals != null && targetComponents.Value != null)
                                 {
@@ -262,35 +222,93 @@ namespace RandomAdditions
                                     }
                                 }
                             }
+                            else
+                            {   // Get all possible hooks in GameObject
+                                foreach (var item in GetComponents<Component>())
+                                {
+                                    Type type = item.GetType();
+                                    if (!ValidSFXHooks.TryGetValue(type, out var FIs))
+                                    {
+                                        FIs = new Dictionary<string, FieldInfo>();
+                                        ValidSFXHooks.Add(type, FIs);
+                                    }
+                                    foreach (var fieldC in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+                                    {
+                                        if (ValidNamesWithAssigners.ContainsKey(fieldC.Name))
+                                        {
+                                            if (!FIs.ContainsKey(fieldC.Name))
+                                                FIs.Add(fieldC.Name, fieldC);
+                                        }
+                                        else if (ValidTypesWithAssigners.ContainsKey(fieldC.FieldType))
+                                        {
+                                            if (!FIs.ContainsKey(fieldC.Name))
+                                                FIs.Add(fieldC.Name, fieldC);
+                                        }
+                                    }
+                                }
+                                if (ValidSFXHooks.TryGetValue(KickStart.LookForType(targetComponents.Key), out vals))
+                                {
+                                    if (vals != null && targetComponents.Value != null)
+                                    {
+                                        foreach (var fieldName in targetComponents.Value)
+                                        {
+                                            var comp = GetComponent(targetComponents.Key);
+                                            if (comp != null && vals.TryGetValue(fieldName, out FieldInfo FI))
+                                            {
+                                                if (ValidNamesWithAssigners.TryGetValue(FI.Name, out var funcN))
+                                                {
+                                                    Assigned = true;
+                                                    funcN.Key.Invoke(transform, comp, FI, adder);
+                                                }
+                                                else if (ValidTypesWithAssigners.TryGetValue(FI.FieldType, out var funcC))
+                                                {
+                                                    Assigned = true;
+                                                    funcC.Key.Invoke(transform, comp, FI, adder);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                if (!Assigned)
+                    DebugRandAddi.Assert("Failed to assign sounds for block " + name);
             }
-            if (!Assigned)
-                DebugRandAddi.Assert("Failed to assign sounds for block " + name);
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("Failed to assign sounds for block due to exception: " + e);
+            }
         }
         private void DoUnassign()
         {
-            if (!Assigned)
-                return;
-            for (int i = 0; i < Additions.Length; i++)
+            try
             {
-                var adder = Additions[i];
-                var targs = adder.Targets;
-                if (targs != null && targs.Count > 0)
+                if (!Assigned)
+                    return;
+                for (int i = 0; i < Additions.Length; i++)
                 {
-                    foreach (var targetComponents in targs)
+                    var adder = Additions[i];
+                    var targs = adder.Targets;
+                    if (targs != null && targs.Count > 0)
                     {
-                        if (ValidSFXHooks.TryGetValue(KickStart.LookForType(targetComponents.Key), out var vals))
+                        foreach (var targetComponents in targs)
                         {
-                            if (vals != null && targetComponents.Value != null)
+                            if (ValidSFXHooks.TryGetValue(KickStart.LookForType(targetComponents.Key), out var vals) &&
+                                vals != null && targetComponents.Value != null)
                             {
                                 foreach (var fieldName in targetComponents.Value)
                                 {
                                     var comp = GetComponent(targetComponents.Key);
                                     if (comp != null && vals.TryGetValue(fieldName, out FieldInfo FI))
                                     {
-                                        if (ValidTypesWithAssigners.TryGetValue(FI.FieldType, out var funcC))
+                                        if (ValidNamesWithAssigners.TryGetValue(FI.Name, out var funcN))
+                                        {
+                                            Assigned = false;
+                                            funcN.Value.Invoke(transform, adder);
+                                        }
+                                        else if (ValidTypesWithAssigners.TryGetValue(FI.FieldType, out var funcC))
                                         {
                                             Assigned = false;
                                             funcC.Value.Invoke(transform, adder);
@@ -301,9 +319,13 @@ namespace RandomAdditions
                         }
                     }
                 }
+                if (Assigned)
+                    DebugRandAddi.Assert("Failed to un-assign sounds for block " + name);
             }
-            if (Assigned)
-                DebugRandAddi.Assert("Failed to un-assign sounds for block " + name);
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("Failed to un-assign sounds for block due to exception: " + e);
+            }
         }
         public void OnFire()
         {
