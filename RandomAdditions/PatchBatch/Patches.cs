@@ -6,11 +6,79 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
 using FMOD.Studio;
+using RandomAdditions.Minimap;
+using static CompoundExpression;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
     internal static class Patches
     {
+
+        [HarmonyPatch(typeof(FmodGvrAudioRoom))]
+        [HarmonyPatch("Update")]//
+        internal static class EatEscapeKeypress
+        {
+            internal static void Prefix(FmodGvrAudioRoom __instance)
+            {
+                DebugRandAddi.Log("FmodGvrAudioRoom ACTIVE");
+            }
+        }
+
+        [HarmonyPatch(typeof(ManRadar))]
+        [HarmonyPatch("IconTypeCount", MethodType.Getter)]//
+        internal static class ExtendRadarIconsCount
+        {
+            internal static bool Prefix(TooltipComponent __instance, ref int __result)
+            {
+                if (ManMinimapExt.AddedMinimapIndexes < ManMinimapExt.VanillaMapIconCount)
+                    __result = ManMinimapExt.VanillaMapIconCount;
+                else
+                    __result = ManMinimapExt.AddedMinimapIndexes;
+                //DebugRandAddi.Log("IconTypeCount returned " + __result);
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(TooltipComponent))]
+        [HarmonyPatch("OnPointerEnter")]//
+        internal static class CatchHoverInMapUI
+        {
+            internal static void Prefix(TooltipComponent __instance)
+            {
+                if (__instance?.gameObject && __instance.gameObject.GetComponent<UIMiniMapElement>())
+                    ManMinimapExt.LastModaledTarget = __instance.gameObject.GetComponent<UIMiniMapElement>();
+            }
+        }
+        [HarmonyPatch(typeof(TooltipComponent))]
+        [HarmonyPatch("OnPointerExit")]//
+        internal static class CatchHoverInMapUI2
+        {
+            internal static void Prefix(TooltipComponent __instance)
+            {
+                if (__instance?.gameObject && __instance.gameObject.GetComponent<UIMiniMapElement>())
+                    if (ManMinimapExt.LastModaledTarget == __instance.gameObject.GetComponent<UIMiniMapElement>())
+                        ManMinimapExt.LastModaledTarget = null;
+            }
+        }
+        /*
+        [HarmonyPatch(typeof(UIHUDWorldMap))]
+        [HarmonyPatch("TryGetWaypoint")]//
+        internal static class LaunchModalOnMap
+        {
+            internal static void Prefix(GameObject cursorGO)
+            {
+                if (cursorGO != null)
+                {
+                    UIMiniMapElement uiminiMapElement = cursorGO.GetComponent<UIMiniMapElement>();
+                    if (uiminiMapElement?.TrackedVis != null && 
+                        !(uiminiMapElement.TrackedVis.ObjectType == ObjectTypes.Waypoint || 
+                        uiminiMapElement.TrackedVis.RadarType == RadarTypes.MapNavTarget))
+                    {
+                        ManMinimapExt.BringUpMinimapModal(uiminiMapElement);
+                    }
+                }
+            }
+        }*/
         [HarmonyPatch(typeof(EncounterDetails))]
         [HarmonyPatch("AmountToAwardFromPool", MethodType.Getter)]//
         internal static class AllowAdjustableLoot

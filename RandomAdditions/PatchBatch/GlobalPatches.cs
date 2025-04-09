@@ -11,12 +11,14 @@ using TerraTechETCUtil;
 using RandomAdditions.Minimap;
 using HarmonyLib;
 using FMOD;
+using System.Timers;
+using System.Diagnostics;
+using RandomAdditions.RailSystem;
 
 namespace RandomAdditions
 {
     internal class GlobalPatches
     {
-
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         // Game tweaks
@@ -45,6 +47,7 @@ namespace RandomAdditions
                 var rp = block.GetComponent<ModuleReplace>();
                 if ((bool)rp)
                     rp.Init(__instance);
+
                 InvokeHelper.Invoke(OnPool_Delayed, 3, __instance);
             }
             [HarmonyPriority(-9001)]
@@ -164,26 +167,6 @@ namespace RandomAdditions
             }
 
         }
-
-        internal static class UIMiniMapDisplayPatches
-        {
-            internal static Type target = typeof(UIMiniMapDisplay);
-            // Allow train tracks on UI
-            [HarmonyPriority(-9001)]
-            internal static void Show_Postfix(UIMiniMapDisplay __instance)
-            {
-                if ((bool)__instance)
-                {
-                    if (__instance.GetComponent<ManMinimapExt.MinimapExt>())
-                        return;
-                    var instWorld = __instance.gameObject.AddComponent<ManMinimapExt.MinimapExt>();
-                    instWorld.InitInst(__instance);
-                }
-            }
-
-        }
-
-
         internal static class ObjectSpawnerPatches
         {
             internal static Type target = typeof(ObjectSpawner);
@@ -313,50 +296,6 @@ namespace RandomAdditions
             }
 
         }
-
-        internal static class TankCameraPatches
-        {
-            internal static Type target = typeof(TankCamera);
-
-            static FieldInfo shaker = typeof(TankCamera).GetField("m_CameraShakeTimeRemaining", BindingFlags.NonPublic | BindingFlags.Instance);
-            /// <summary>
-            /// GetOutOfHereCameraShakeShack
-            /// </summary>=
-            [HarmonyPriority(-9001)]
-            private static bool SetCameraShake_Prefix(TankCamera __instance)
-            {
-                if (KickStart.NoShake)
-                {
-                    //DebugRandAddi.Log("RandomAdditions: Stopping irritation.");
-                    shaker.SetValue(__instance, 0);
-                    return false;
-                }
-                return true;
-            }
-        }
-        internal static class PlayerFreeCameraPatches
-        {
-            internal static Type target = typeof(PlayerFreeCamera);
-
-            const float newMaxFreeCamRange = 2950;// 250
-            const float newMPMaxFreeCamRange = 250;
-
-            /// <summary>
-            /// MORE_RANGE
-            /// </summary>
-            static FieldInfo overr = typeof(PlayerFreeCamera).GetField("maxDistanceFromTank", BindingFlags.NonPublic | BindingFlags.Instance);
-            static FieldInfo underr = typeof(PlayerFreeCamera).GetField("groundClearance", BindingFlags.NonPublic | BindingFlags.Instance);
-            private static void Enable_Prefix(PlayerFreeCamera __instance)
-            {
-                if (ManNetwork.IsNetworked)
-                    overr.SetValue(__instance, newMPMaxFreeCamRange);    // max "safe" range - 2.5x vanilla
-                else
-                    overr.SetValue(__instance, newMaxFreeCamRange);    // max "safe" range - You are unlikely to hit the limit
-                underr.SetValue(__instance, -25f);   // cool fights underground - You can do this in Build Beam so it makes sense
-                DebugRandAddi.Log("RandomAdditions: EXTENDED Free cam range");
-            }
-
-        }
         /*
         static MethodInfo audo = typeof(TechAudio).GetMethod("PlayOneShotClamped", BindingFlags.NonPublic | BindingFlags.Instance);
 
@@ -415,86 +354,6 @@ namespace RandomAdditions
             }
         }
 
-        internal static class UIDamageTypeDisplayPatches
-        {
-            internal static Type target = typeof(UIDamageTypeDisplay);
-
-            static FieldInfo type = typeof(UIDamageTypeDisplay).GetField("m_DisplayType", BindingFlags.NonPublic | BindingFlags.Instance);
-            static FieldInfo name = typeof(UIDamageTypeDisplay).GetField("m_NameText", BindingFlags.NonPublic | BindingFlags.Instance); 
-            static FieldInfo dispName = typeof(UIDamageTypeDisplay).GetField("m_Tooltip", BindingFlags.NonPublic | BindingFlags.Instance);
-
-            [HarmonyPriority(-9001)]
-            private static bool SetBlock_Prefix(UIDamageTypeDisplay __instance, ref BlockTypes blockType)
-            {
-                if ((int)type.GetValue(__instance) == 2)
-                {
-                    var blockInst = ManSpawn.inst.GetBlockPrefab(blockType);
-                    if (blockInst)
-                    {
-                        //DebugRandAddi.Log("SetBlock_Prefix - set for " + blockType.ToString());
-
-                        try
-                        {
-                            var modDamageable = blockInst.GetComponent<ModuleReinforced>();
-                            if (modDamageable != null)
-                            {
-                                if (!modDamageable.CustomDamagableName.NullOrEmpty())
-                                {
-                                    __instance.Set(modDamageable.CustomDamagableIcon);
-                                    var val = (TextMeshProUGUI)name.GetValue(__instance);
-                                    if (val)
-                                    {
-                                        val.text = modDamageable.CustomDamagableName;
-                                        //DebugRandAddi.Log("set damageable name to " + modDamageable.CustomDamagableName);
-                                    }
-                                    else
-                                        DebugRandAddi.Log("set SetBlock_Prefix name failed because TextMeshProUGUI null");
-                                    var namD = (TooltipComponent)dispName.GetValue(__instance);
-                                    if (namD)
-                                    {
-                                        namD.SetText(modDamageable.CustomDamagableName);
-                                    }
-                                    else
-                                        DebugRandAddi.Log("set SetBlock_Prefix name failed because TooltipComponent null");
-                                    return false;
-                                }
-                                else
-                                    DebugRandAddi.Log("set SetBlock_Prefix name failed because CustomDamagableName null/empty");
-                            }
-                            /*
-                            else
-                            {
-                                DebugRandAddi.Log("SetBlock_Prefix - no ModuleReinforced for " + blockType.ToString());
-                                foreach (var item in blockInst.GetComponents<MonoBehaviour>())
-                                {
-                                    DebugRandAddi.Log(" - " + item.GetType().ToString());
-                                }
-                            }*/
-                        }
-                        catch (Exception e)
-                        {
-                            DebugRandAddi.Log("SetBlock_Prefix - ERROR ~ " + e);
-                        }
-                    }
-                    else
-                        DebugRandAddi.Log("SetBlock_Prefix - not set for " + blockType.ToString() + ", no prefab!");
-                }
-                return true;
-            }
-        }
-
-        internal static class ManHUDPatches
-        {
-            internal static Type target = typeof(ManHUD);
-
-            [HarmonyPriority(-9001)]
-            private static bool AddRadialOpenRequest_Prefix(ManHUD __instance, ref ManHUD.HUDElementType elementType)
-            {
-                return elementType != UIHelpersExt.customElement;
-            }
-        }
-
-
         internal static class TechAudioPatches
         {
             internal static Type target = typeof(TechAudio);
@@ -528,6 +387,30 @@ namespace RandomAdditions
             {
                 ManMusicEnginesExt.inst.RefreshModCorpAudio();
             }
+
+
+            /*
+            internal static Stopwatch TimeToLoadAllBlocks = new Stopwatch();
+            [HarmonyPriority(-9001)]
+            internal static void InjectModdedBlocks_Prefix(ManMods __instance)
+            {
+                if (DebugRandAddi.ShouldLog)
+                {
+                    TimeToLoadAllBlocks.Reset();
+                    DebugRandAddi.Log("Started loading blocks");
+                    TimeToLoadAllBlocks.Start();
+                }
+            }
+            [HarmonyPriority(-9001)]
+            internal static void InjectModdedBlocks_Postfix(ManMods __instance)
+            {
+                if (DebugRandAddi.ShouldLog)
+                {
+                    TimeToLoadAllBlocks.Stop();
+                    DebugRandAddi.Log("Finished loading all blocks.  Took " + TimeToLoadAllBlocks.ElapsedMilliseconds + " Milisecond(s)");
+                }
+            }
+            */
         }
 
 

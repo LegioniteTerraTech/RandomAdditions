@@ -136,7 +136,7 @@ namespace RandomAdditions
                 {
                     use100 = true;
                 }
-                DebugRandAddi.Log("AnimetteController in " + name + " has grabbed " + lin.Length + " Linear Animettes");
+                DebugRandAddi.Info("AnimetteController in " + name + " has grabbed " + lin.Length + " Linear Animettes");
                 DefaultPosition = Mathf.Clamp01(DefaultPosition);
                 SetState(DefaultPosition);
                 enabled = false;
@@ -150,7 +150,7 @@ namespace RandomAdditions
 
         public override void OnAttach()
         {
-            DebugRandAddi.Log("RandomAdditions: AnimetteController - ON ATTACH");
+            DebugRandAddi.Info("RandomAdditions: AnimetteController - ON ATTACH");
             switch (Condition)
             {
                 case AnimCondition.Attached:
@@ -168,7 +168,7 @@ namespace RandomAdditions
 
         public override void OnDetach()
         {
-            DebugRandAddi.Log("RandomAdditions: AnimetteController - ON DETACH");
+            DebugRandAddi.Info("RandomAdditions: AnimetteController - ON DETACH");
             switch (Condition)
             {
                 case AnimCondition.Attached:
@@ -188,7 +188,7 @@ namespace RandomAdditions
 
         public void RunAnchor(ModuleAnchor module, bool anchored, bool unused)
         {
-            DebugRandAddi.Log("RandomAdditions: AnimetteController - RUN ANCHOR " + anchored);
+            DebugRandAddi.Info("RandomAdditions: AnimetteController - RUN ANCHOR " + anchored);
             RunBool(anchored);
         }
 
@@ -209,7 +209,7 @@ namespace RandomAdditions
 
         public void Run()
         {
-            DebugRandAddi.Log("RUNNING ANIMATION");
+            DebugRandAddi.Info("RUNNING ANIMATION");
             if (DefaultOnStart)
                 SetState(DefaultPosition);
             returning = Way == AnimLoopWay.BackAndForth;

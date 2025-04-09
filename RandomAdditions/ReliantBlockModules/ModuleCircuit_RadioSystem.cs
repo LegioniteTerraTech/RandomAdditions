@@ -105,9 +105,12 @@ namespace RandomAdditions
                 {
                     if (inst.ChannelsNeedReload.TryGetValue(radio.RadioChannel, out HashSet<IntVector2> val2))
                     {
-                        foreach (var item in val2)
+                        if (ManNetwork.IsHost)
                         {
-                            ManWorldTileExt.TempLoadTile(item, 3);
+                            foreach (var item in val2)
+                            {
+                                ManWorldTileExt.HostTempLoadTile(item, false, 3);
+                            }
                         }
                     }
                 }

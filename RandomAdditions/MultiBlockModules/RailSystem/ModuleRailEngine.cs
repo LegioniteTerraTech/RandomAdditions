@@ -1,6 +1,7 @@
 ﻿using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 using UnityEngine;
+using static OrthoRotation;
 
 public class ModuleRailEngine : RandomAdditions.ModuleRailEngine { };
 namespace RandomAdditions
@@ -17,6 +18,7 @@ namespace RandomAdditions
         internal TankLocomotive engine;
         private Spinner[] spinners;
         private ParticleSystem[] particles;
+        private float[] particleSize;
         public int DriveSignal { get; private set; }  = 0;
 
 
@@ -28,6 +30,7 @@ namespace RandomAdditions
         public float DriveForceAcceleration = 7500;
 
         // Visuals
+        public bool AutoSetParticles = true;
         public float IdleSpinnerSpeed = 0.5f;
         public float MaxActiveSpinnerSpeed = 3.4f;
         public float MinParticleEmission = 1f;
@@ -53,11 +56,38 @@ namespace RandomAdditions
             catch { }
             try
             {
-                particles = KickStart.HeavyTransformSearch(transform, "_particles").GetComponentsInChildren<ParticleSystem>();
-                foreach (var item in particles)
+                particles = KickStart.HeavyTransformSearch(transform, "_particles").GetComponentsInChildren<ParticleSystem>(true);
+                particleSize = new float[particles.Length];
+                for (int i = 0; i < particles.Length; i++)
                 {
-                    var m = item.main;
+                    ParticleSystem PS = particles[i];
+                    var m = PS.main;
                     m.loop = true;
+                    if (m.startSize.mode == ParticleSystemCurveMode.Constant)
+                        particleSize[i] = m.startSize.Evaluate(0);
+                    else
+                        particleSize[i] = 1f;
+
+                    if (AutoSetParticles)
+                    {
+                        m.startSize3D = false;
+                        m.startRotation = new ParticleSystem.MinMaxCurve(0, Mathf.Deg2Rad * 360);
+
+                        var s = PS.sizeOverLifetime;
+                        s.enabled = true;
+                        s.size = new ParticleSystem.MinMaxCurve(1, new AnimationCurve(
+                                new Keyframe(0f, 0.25f, 0f, 2f),
+                                new Keyframe(1f, 1f)
+                            ));
+
+                        var l = PS.inheritVelocity;
+                        l.enabled = true;
+                        l.curve = new ParticleSystem.MinMaxCurve(1, new AnimationCurve(
+                                new Keyframe(0f, 0.15f),
+                                new Keyframe(0.25f, 0f),
+                                new Keyframe(1f, 0f)
+                            ));
+                    }
                 }
             }
             catch { }
@@ -162,14 +192,18 @@ namespace RandomAdditions
                 }
                 if (particles != null)
                 {
-                    foreach (var item in particles)
+                    for (int i = 0; i < particles.Length; i++)
                     {
+                        var item = particles[i];
+                        var ma = item.main;
+                        ma.startSize = particleSize[i];
+                        ma.startSpeedMultiplier = 0.1f;
                         var m = item.emission;
                         m.rateOverTimeMultiplier = MinParticleEmission;
-                        var v = item.velocityOverLifetime;
-                        v.speedModifierMultiplier = 0.1f;
-                        var s = item.sizeOverLifetime;
-                        s.sizeMultiplier = MinParticleScale;
+                        //var v = item.velocityOverLifetime;
+                        //v.speedModifierMultiplier = 0.1f;
+                        //var s = item.sizeOverLifetime;
+                        //s.sizeMultiplier = MinParticleScale;
                     }
                 }
             }
@@ -187,14 +221,18 @@ namespace RandomAdditions
                 {
                     float rate = Mathf.Lerp(MinParticleEmission, MaxParticleEmission, percentSpeed);
                     float scale = Mathf.Lerp(MinParticleScale, MaxParticleScale, percentSpeed);
-                    foreach (var item in particles)
+                    for (int i = 0; i < particles.Length; i++)
                     {
+                        var item = particles[i];
+                        var ma = item.main;
+                        ma.startSize = particleSize[i] * scale;
+                        ma.startSpeedMultiplier = Mathf.Max(0.1f, percentSpeed);
                         var m = item.emission;
                         m.rateOverTimeMultiplier = rate;
-                        var v = item.velocityOverLifetime;
-                        v.speedModifierMultiplier = percentSpeed;
-                        var s = item.sizeOverLifetime;
-                        s.sizeMultiplier = scale;
+                        //var v = item.velocityOverLifetime;
+                        //v.speedModifierMultiplier = percentSpeed;
+                        //var s = item.sizeOverLifetime;
+                        //s.sizeMultiplier = scale;
                     }
                 }
             }

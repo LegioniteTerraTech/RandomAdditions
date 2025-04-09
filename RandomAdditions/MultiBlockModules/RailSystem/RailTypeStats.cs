@@ -71,12 +71,12 @@ namespace RandomAdditions.RailSystem
             foreach (var item in Enum.GetValues(typeof(RailTieType)))
             {
                 RailTies.Add((RailTieType)item, new RailTieVisual<T>(AssembleSegmentGroundInstance(MC, type, Name,
-                    ModelNameNoExt, Corp)));
+                    ModelNameNoExt, Corp, out var light), light));
             }
         }
 
 
-        internal static Transform AssembleSegmentGroundInstance(ModContainer MC, RailType Type, string Name, string ModelNameNoExt, FactionSubTypes faction)
+        internal static Transform AssembleSegmentGroundInstance(ModContainer MC, RailType Type, string Name, string ModelNameNoExt, FactionSubTypes faction, out Transform lightInst)
         {
             DebugRandAddi.Log("Making Track for " + Name);
             GameObject GO = UnityEngine.Object.Instantiate(new GameObject(Name + "_Seg"), null);
@@ -91,7 +91,7 @@ namespace RandomAdditions.RailSystem
             Mesh mesh = ResourcesHelper.GetMeshFromModAssetBundle(MC, ModelNameNoExt);
             if (mesh == null)
             {
-                DebugRandAddi.Assert(ModelNameNoExt + "Unable to make track cross visual");
+                DebugRandAddi.Assert(ModelNameNoExt + " - Unable to make track cross visual for world rail");
                 //return;
             }
             if (!ManTechMaterialSwap.inst.m_FinalCorpMaterials.TryGetValue((int)faction, out Material mat))
@@ -108,23 +108,45 @@ namespace RandomAdditions.RailSystem
             Transform transC = prefab.transform;
             transC.CreatePool(RailMeshBuilder.crossPoolInitSize);
             prefab.SetActive(false);
+
+            mesh = ResourcesHelper.GetMeshFromModAssetBundle(MC, ModelNameNoExt + "_light");
+            if (mesh == null)
+            {
+                DebugRandAddi.Log(ModelNameNoExt + "_light - Unable to make track cross visual for light rail");
+                lightInst = transC;
+                return transC;
+            }
+
+            GameObject prefab2 = new GameObject(Name);
+            MF = prefab2.AddComponent<MeshFilter>();
+            MF.sharedMesh = mesh;
+            MR = prefab2.AddComponent<MeshRenderer>();
+            MR.sharedMaterial = mat;
+            Transform transL = prefab2.transform;
+            transL.CreatePool(RailMeshBuilder.crossPoolInitSize);
+            prefab2.SetActive(false);
+            lightInst = transL;
+
             return transC;
         }
-
     }
 
     internal interface RailTieVisual
     {
-        Transform prefab { get; }
+        Transform prefabWorld { get; }
+        Transform prefabLight { get; }
     }
 
     internal struct RailTieVisual<T> : RailTieVisual where T : RailSegment
     {
-        private Transform railPrefab;
-        public Transform prefab => railPrefab;
-        internal RailTieVisual(Transform toPrefab)
+        private Transform railPrefabWorld;
+        private Transform railPrefabLight;
+        public Transform prefabWorld => railPrefabWorld;
+        public Transform prefabLight => railPrefabLight;
+        internal RailTieVisual(Transform toPrefab, Transform toPrefabLight)
         {
-            railPrefab = toPrefab;
+            railPrefabWorld = toPrefab;
+            railPrefabLight = toPrefabLight;
         }
     }
 }

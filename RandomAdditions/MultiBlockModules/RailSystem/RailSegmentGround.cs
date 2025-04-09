@@ -77,6 +77,23 @@ namespace RandomAdditions.RailSystem
                 if (ManRails.railTypeStats.TryGetValue(Type, out var RSS) &&
                     RSS.RailTies.TryGetValue(TieType, out var prefab))
                 {
+                    Transform railCrossPrefab; 
+                    switch (Track.Space)
+                    {
+                        case RailSpace.WorldFloat:
+                        case RailSpace.WorldAngled:
+                        case RailSpace.LocalUnstable:
+                        case RailSpace.Local:
+                        case RailSpace.LocalAngled:
+                            // Make lightweight rail track cross
+                            railCrossPrefab = prefab.prefabLight;
+                            break;
+                        case RailSpace.World:
+                        default:
+                            // Make heavy rail track cross
+                            railCrossPrefab = prefab.prefabWorld;
+                            break;
+                    }
                     leftIronPoints.Clear();
                     rightIronPoints.Clear();
                     foundationPoints.Clear();
@@ -105,7 +122,7 @@ namespace RandomAdditions.RailSystem
                         leftIronPoints.Add(pos + ironOffset);
                         rightIronPoints.Add(pos - ironOffset);
                         foundationPoints.Add(pos);
-                        CreateTrackCross(prefab.prefab, pos, quat);
+                        CreateTrackCross(railCrossPrefab, pos, quat);
                     }
                     posPrev = EvaluateSegmentAtPositionFastLocal(0.99f);
                     pos = EvaluateSegmentAtPositionFastLocal(1);

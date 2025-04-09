@@ -22,7 +22,7 @@ namespace RandomAdditions.RailSystem
 
         internal RailConnectInfo(int hostNodeID, byte index)
         {
-            if (ManRails.AllRailNodes.TryGetValue(hostNodeID, out var val))
+            if (!ManRails.AllRailNodes.TryGetValue(hostNodeID, out var val))
                 throw new NullReferenceException("ManRails - LoadingSave attempted loading a track with " +
                     "unregistered node ID " + hostNodeID + " from memory!");
             HostNode = val;
@@ -31,6 +31,8 @@ namespace RandomAdditions.RailSystem
 
         internal void Connect(RailTrack track, bool lowTrackConnection)
         {
+            if (track == null)
+                throw new NullReferenceException("ManRails - Connect() called with NULL track!");
             LinkTrack = track;
             LowTrackConnection = lowTrackConnection;
         }
@@ -48,6 +50,8 @@ namespace RandomAdditions.RailSystem
 
         internal Vector3 RailEndPositionOnRailScene()
         {
+            if (LinkTrack == null)
+                throw new NullReferenceException("Apparently we called RailEndPositionOnRailScene() but LinkTrack isn't even hooked up to anything");
             return LinkTrack.GetRailEndPositionScene(LinkTrack.StartNode == HostNode);
         }
         internal WorldPosition RailEndPosOnNode()
@@ -69,12 +73,12 @@ namespace RandomAdditions.RailSystem
             if (LinkTrack != null)
             {
                 var track = LinkTrack;
-                if (!DisconnectLinkedTrackFromNode(track.StartNode, track))
+                if (!TryDisconnectLinkedTrackFromNode(track.StartNode, track))
                 {
                     DebugRandAddi.Assert("RandomAdditions: DisconnectLinkedTrack - Could not find RailConnectInfo, start node");
                 }
 
-                if (!DisconnectLinkedTrackFromNode(track.EndNode, track))
+                if (!TryDisconnectLinkedTrackFromNode(track.EndNode, track))
                 {
                     DebugRandAddi.Assert("RandomAdditions: DisconnectLinkedTrack - Could not find RailConnectInfo, end node");
                 }
@@ -88,7 +92,7 @@ namespace RandomAdditions.RailSystem
                     DebugRandAddi.Assert("RandomAdditions: DisconnectLinkedTrack - Could not destroy assigned RailTrack");
             }
         }
-        private static bool DisconnectLinkedTrackFromNode(RailTrackNode node, RailTrack link)
+        private static bool TryDisconnectLinkedTrackFromNode(RailTrackNode node, RailTrack link)
         {
             int index = GetLinkTrackIndex(node, link);
             if (index == -1)

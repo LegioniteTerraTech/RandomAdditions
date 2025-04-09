@@ -43,7 +43,7 @@ namespace RandomAdditions
         public void Initiate()
         {
             tank = gameObject.GetComponent<Tank>();
-            DebugRandAddi.Log("Added TechExtAudio to Tech - " + tank.name);
+            DebugRandAddi.Info("Added TechExtAudio to Tech - " + tank.name);
             Cache = (TechAudio.UpdateAudioCache)cache.GetValue(tank.TechAudio);
             if (Cache == null)
                 throw new NullReferenceException("Initiate() - cache is null");

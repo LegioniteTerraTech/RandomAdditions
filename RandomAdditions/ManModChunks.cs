@@ -20,6 +20,7 @@ using System.IO;
 public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChunk>
 {
     protected override string leadingFileName { get; } = "Res_";
+    public override string LogDirectoryName { get; } = "Chunks";
     [SSManagerInst]
     public static ManModChunks inst = new ManModChunks();
     public static HashSet<ChunkTypes> Resurrected = new HashSet<ChunkTypes>();

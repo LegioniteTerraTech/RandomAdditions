@@ -48,6 +48,7 @@ namespace RandomAdditions
         private Sound sound;
         internal Channel ActiveAudio;
         private float Freq;
+        private bool drivePaused = false;
 
         public TechExtAudioStateWithLoopedFrequency(Sound sfx)
         {
@@ -124,6 +125,13 @@ namespace RandomAdditions
         public void Stop()
         {
             ActiveAudio.stop();
+        }
+        public void Pause(bool paused)
+        {
+            if (paused)
+                ActiveAudio.setPaused(paused);
+            else if (!drivePaused)
+                ActiveAudio.setPaused(false);
         }
     }
     public class TechExtAudioState
@@ -211,6 +219,10 @@ namespace RandomAdditions
         public void Stop()
         {
             ActiveAudio.stop();
+        }
+        public void Pause(bool paused)
+        {
+            ActiveAudio.setPaused(paused);
         }
     }
 }

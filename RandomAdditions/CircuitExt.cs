@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 
 namespace RandomAdditions
 {
@@ -19,11 +20,12 @@ namespace RandomAdditions
         {
             get
             {
-                return !ManNetwork.IsNetworked;
+                return true;//!ManNetwork.IsNetworked;
             }
         }
         private static bool tried = false;
         private static bool logicEnabled = false;
+
 
         private static void TryGetTypes()
         {

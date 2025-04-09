@@ -56,7 +56,7 @@ namespace RandomAdditions
         }*/
 
         private static readonly float EmergencyTileLoad = 0.4f; // In seconds
-        public static void MaintainPlayerTech()
+        public static void HostMaintainPlayerTech()
         {
             int error = 0;
             try
@@ -82,7 +82,7 @@ namespace RandomAdditions
                                     {
                                         if (tech.m_ID == lastTechID)
                                         {
-                                            ManWorldTileExt.TempLoadTile(tile);
+                                            ManWorldTileExt.HostTempLoadTile(tile, false);
                                             DebugRandAddi.Log("Fetched last player Tech");
                                             lastTechUpdateTime = Time.time + EmergencyTileLoad;
                                         }
@@ -182,11 +182,11 @@ namespace RandomAdditions
             {
                 ToDictionary(inst.LoadedTileCoords, ManWorldTileExt.LoadedTileCoords);
                 ToDictionary(inst.PerimeterTileSubLoaded, ManWorldTileExt.PerimeterTileSubLoaded);
-                if (inst.TilesNeedLoadedNextLoad == null)
+                if (inst.TilesNeedLoadedNextLoad == null || !ManNetwork.IsHost)
                     return;
                 foreach (var tile in inst.TilesNeedLoadedNextLoad)
                 {
-                    ManWorldTileExt.TempLoadTile(tile);
+                    ManWorldTileExt.HostTempLoadTile(tile, false);
                     //tileLoaderActive = true;
                     /*
                     if (MTL.AnchorOnly)

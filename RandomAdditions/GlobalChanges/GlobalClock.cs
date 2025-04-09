@@ -59,7 +59,7 @@ namespace RandomAdditions
             private static Tank prevPlayerTank = null;
             public void PlayerTechUpdate()
             {
-                if (prevPlayerTank != Singleton.playerTank)
+                if (prevPlayerTank != Singleton.playerTank && ManNetwork.IsHost)
                 {
                     foreach (var item in ManTechs.inst.IterateTechs())
                     {

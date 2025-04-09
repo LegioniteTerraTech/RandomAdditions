@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using TerraTechETCUtil;
+using static CheckpointChallenge;
 
 namespace RandomAdditions.RailSystem
 {
@@ -19,7 +20,7 @@ namespace RandomAdditions.RailSystem
 
         public const float segmentPhysicsMaxTime = 4;
 
-        private static bool showDebug = false;
+        internal static bool showDebug = false;
         public static HashSet<RailSegment> ALLSegments = new HashSet<RailSegment>();
         public static Dictionary<RailSegment, float> PhysicsSegments = new Dictionary<RailSegment, float>();
 
@@ -103,18 +104,57 @@ namespace RandomAdditions.RailSystem
 
             return RS;
         }
-
+        public void AttachSetupSegment(Transform parent)
+        {
+            transform.SetParent(parent);
+            transform.localRotation = Quaternion.identity;
+            transform.localPosition = Vector3.zero;
+        }
+        public void DetachSetupSegment()
+        {
+            /*
+            if (transform == null)
+                throw new NullReferenceException("transform IS NULL!!! HOW!?!?!");
+            if (Track == null)
+                throw new NullReferenceException("Track IS NULL!!! HOW!?!?!");
+            */
+            int error = 0;
+            try
+            {
+                transform.SetParent(null);
+                error++;
+                Transform refTrans = Track.GenerateTransformRef();
+                error++;
+                transform.rotation = refTrans.rotation;
+                error++;
+                transform.position = refTrans.position;
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Failed error " + error, e);
+            }
+        }
         public static RailSegment PlaceSegment(RailTrack track, int railIndex, Vector3 start, Vector3 startFacing, Vector3 end, Vector3 endFacing)
         {
             RailSegment RS;
             if (track == null)
                 throw new NullReferenceException("RailSegment track cannot be null");
-            if (track.Space == RailSpace.Local && track.Parent != null)
+            if (ManRails.HasLocalSpace(track.Space))
             {
-                RS = ManRails.prefabTracks[track.Type].Spawn(track.Parent, start, Quaternion.identity).GetComponent<RailSegment>();
-                RS.transform.localRotation = Quaternion.identity;
-                RS.transform.localPosition = Vector3.zero;
-                DebugRandAddi.Log("PlaceSegment: Placed segment attached to " + RS.gameObject.transform.parent.gameObject.name);
+                if (track.GetAttachTransform() != null)
+                {
+                    RS = ManRails.prefabTracks[track.Type].Spawn(track.GetAttachTransform(), start, Quaternion.identity).GetComponent<RailSegment>();
+                    RS.transform.localRotation = Quaternion.identity;
+                    RS.transform.localPosition = Vector3.zero;
+                    DebugRandAddi.Log("PlaceSegment: Placed LOCAL segment attached to " + RS.gameObject.transform.parent.gameObject.name);
+                }
+                else
+                {
+                    RS = ManRails.prefabTracks[track.Type].Spawn(null, start, Quaternion.identity).GetComponent<RailSegment>();
+                    RS.Track = track;
+                    RS.DetachSetupSegment();
+                    DebugRandAddi.Log("PlaceSegment: Placed LOCAL segment that is waiting for it's GameObject");
+                }
             }
             else
                 RS = ManRails.prefabTracks[track.Type].Spawn(null, start, Quaternion.identity).GetComponent<RailSegment>();
@@ -245,8 +285,7 @@ namespace RandomAdditions.RailSystem
             return (segPointsLocal[index] * lerpInv) + (segPointsLocal[index + 1] * lerp);
         }
 
-
-        protected Vector3 EvaluateSegmentUprightAtPositionFastWorld(float percentRailPos)
+        public Vector3 EvaluateSegmentUprightAtPositionFastWorld(float percentRailPos)
         {
             return transform.TransformVector(EvaluateSegmentUprightAtPositionFastLocal(percentRailPos));
         }
@@ -296,8 +335,9 @@ namespace RandomAdditions.RailSystem
             segPointsUpright = new Vector3[Track.RailResolution + 2]; // two additional due to track overlap issues
             segPointsUpright[0] = startUp;
 
-            if (Space != RailSpace.Local && RSS.bankLevel != 0 && (startPoint - endPoint).sqrMagnitude >= ManRails.RailMinStretchForBankingSqr)
-            {
+            ///Add banking
+            if (ManRails.DoesTurnBanking(Space) && RSS.bankLevel != 0 && (startPoint - endPoint).sqrMagnitude >= ManRails.RailMinStretchForBankingSqr)
+            {   // Bank in relation to the world and our turns
                 float halfWidthHeightModifier = RSS.railCrossHalfWidth / 3;
                 float[] angleForce = new float[segPointsUpright.Length];
 
@@ -340,7 +380,7 @@ namespace RandomAdditions.RailSystem
                 }
             }
             else
-            {
+            {   // Only interpoliate between our two given start and end points
                 segPointsUpright[segPointsUpright.Length - 1] = endUp;
                 // Smooth them out
                 for (int attempts = 0; attempts < ManRails.RailAngleSmoothingAttempts; attempts++)
@@ -356,44 +396,48 @@ namespace RandomAdditions.RailSystem
                 }
             }
 
-            // Try remove dips
-            int railSmoothHalf = ManRails.RailHeightSmoothingAttempts / 2;
-            for (int attempts = 0; attempts < railSmoothHalf; attempts++)
-            {
-                for (int step = 1; step < segPointsLocal.Length - 1; step++)
+            if (ManRails.DoesAggressiveSmoothing(Space))
+            { // Try remove dips
+                int railSmoothHalf = ManRails.RailHeightSmoothingAttempts / 2;
+                int startOffsetSpacing = 1;// This must be greater than 0!
+                int segEnd = segPointsLocal.Length - (1 + startOffsetSpacing);
+                for (int attempts = 0; attempts < railSmoothHalf; attempts++)
                 {
-                    if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
-                        segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                    for (int step = startOffsetSpacing; step <= segEnd; step++)
                     {
-                        segPointsLocal[step].y = (segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2;
+                        if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
+                            segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                        {
+                            segPointsLocal[step].y = (segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2;
+                        }
+                    }
+                    for (int step = segEnd; step >= startOffsetSpacing; step--)
+                    {
+                        if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
+                            segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                        {
+                            segPointsLocal[step].y = (segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2;
+                        }
                     }
                 }
-                for (int step = segPointsLocal.Length - 2; step > 1; step--)
-                {
-                    if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
-                        segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
-                    {
-                        segPointsLocal[step].y = (segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2;
-                    }
-                }
-            }
 
-            for (int attempts = 0; attempts < railSmoothHalf; attempts++)
-            {
-                for (int step = 1; step < segPointsLocal.Length - 1; step++)
+                for (int attempts = 0; attempts < railSmoothHalf; attempts++)
                 {
-                    if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
-                        segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                    for (int step = startOffsetSpacing; step <= segEnd; step++)
                     {
-                        segPointsLocal[step] = segPointsLocal[step].SetY((segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2);
+                        if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
+                            segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                        {
+                            segPointsLocal[step] = segPointsLocal[step].SetY((segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2);
+                        }
                     }
-                }
-                for (int step = segPointsLocal.Length - 2; step > 1; step--)
-                {
-                    if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
-                        segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                    for (int step = segEnd; step >= startOffsetSpacing; step--)
                     {
-                        segPointsLocal[step] = segPointsLocal[step].SetY((segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2);
+                        if (segPointsLocal[step].y < segPointsLocal[step - 1].y - RSS.MaxIdealHeightDeviance ||
+                            segPointsLocal[step].y < segPointsLocal[step + 1].y - RSS.MaxIdealHeightDeviance)
+                        {
+                            segPointsLocal[step] = segPointsLocal[step].SetY((segPointsLocal[step - 1].y + segPointsLocal[step + 1].y) / 2);
+                        }
                     }
                 }
             }
@@ -493,22 +537,48 @@ namespace RandomAdditions.RailSystem
             AdjustHeightIfNeeded(type, space, ref Pos);
             return Pos;
         }
-        public static void AdjustHeightIfNeeded(RailType type, RailSpace space, ref Vector3 Pos)
+        internal static void AdjustHeightIfNeeded(RailType type, RailSpace space, ref Vector3 Pos)
         {
             float Height;
+            RailTypeStats stats;
             switch (space)
             {
                 case RailSpace.Local:
+                case RailSpace.LocalAngled:
+                    // No change. Our track ends are exactly where we declared them
+                    return;
+                case RailSpace.WorldAngled:
+                    // Reposition so we are at least above terrain
+                    Height = ManWorld.inst.ProjectToGround(Pos, false).y;
+                    if (ManRails.railTypeStats.TryGetValue(type, out stats))
+                    {
+                        Height += stats.railMiniHeight;
+                        if (Height > Pos.y)
+                            Pos.y = Height;
+                    }
+                    else
+                        throw new IndexOutOfRangeException("AdjustHeightIfNeeded type is illegal and unsupported " + type.ToString());
                     return;
                 case RailSpace.LocalUnstable:
                 case RailSpace.WorldFloat:
+                    // Reposition so we are at least above terrain and blocks
                     ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Pos, out Height);
-                    if (Height > Pos.y)
-                        Pos.y = Height + ManRails.railTypeStats[type].railMiniHeight;
+                    if (ManRails.railTypeStats.TryGetValue(type, out stats))
+                    {
+                        Height += stats.railMiniHeight;
+                        if (Height > Pos.y)
+                            Pos.y = Height;
+                    }
+                    else
+                        throw new IndexOutOfRangeException("AdjustHeightIfNeeded type is illegal and unsupported " + type.ToString());
                     return;
                 default: // World
+                    // Reposition so we are at directly above terrain, while smoothing out where potholes are.
                     ManRails.GetTerrainOrAnchoredBlockHeightAtPos(Pos, out Height);
-                    Pos.y = Height + ManRails.railTypeStats[type].railMiniHeight;
+                    if (ManRails.railTypeStats.TryGetValue(type, out stats))
+                        Pos.y = Height + stats.railMiniHeight;
+                    else
+                        throw new IndexOutOfRangeException("AdjustHeightIfNeeded type is illegal and unsupported " + type.ToString());
                     return;
             }
         }

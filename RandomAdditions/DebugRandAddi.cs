@@ -11,6 +11,7 @@ namespace RandomAdditions
         private const string modName = "RandomAdditions";
 
         internal static bool ShouldLog = true;
+        internal static bool ShouldLogRails = true;
         internal const bool LogAll = false;
         private const bool LogDev = false;
 
@@ -31,6 +32,12 @@ namespace RandomAdditions
             if (!ShouldLog)
                 return;
             Debug.Log(e);
+        }
+        internal static void LogRails(string message)
+        {
+            if (!ShouldLogRails)
+                return;
+            Debug.Log(message);
         }
         internal static void Assert(string message)
         {

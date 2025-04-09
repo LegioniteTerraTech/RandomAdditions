@@ -109,7 +109,7 @@ namespace RandomAdditions.RailSystem
 					CalculateIconPosition(relVec, false, rad, 0, out Vector2 posPrev);
 					for (int step = 1; step < RailSegIterateCache.Count; step++)
 					{
-						vec = RailSegIterateCache[step] - this.m_MapDisplay.FocalPoint.ScenePosition;
+						vec = RailSegIterateCache[step] - m_MapDisplay.FocalPoint.ScenePosition;
 						relVec = vec.ToVector2XZ();
 						CalculateIconPosition(relVec, false, rad, 0, out Vector2 posNext);
 						if (WorldMap || relVec.sqrMagnitude <= rad)
@@ -196,7 +196,7 @@ namespace RandomAdditions.RailSystem
 					RailType item = (RailType)step;
 					UIMiniMapElement newPrefab = mainPrefab.UnpooledSpawn();
 					ModContainer MC = ManMods.inst.FindMod("Random Additions");
-					Texture2D Tex = ResourcesHelper.GetTextureFromModAssetBundle(MC, "MapTrack_" + item.ToString());
+					Texture2D Tex = ResourcesHelper.GetTextureFromModAssetBundle(MC, "MapTrack_" + item.ToString(), DebugRandAddi.ShouldLogRails);
 					if (Tex != null)
 					{
 						var im = newPrefab.GetComponent<Image>();

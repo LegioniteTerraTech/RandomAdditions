@@ -99,20 +99,20 @@ namespace RandomAdditions.RailSystem
 
 
         // Train Finder Async
-        private static List<TrainCallRequest> CallQueue = new List<TrainCallRequest>();
+        private static List<TrainFindRequest> CallQueue = new List<TrainFindRequest>();
         private static int finderQueueStep = 0;
         private static int finderQueueStepRepeater = 0;
         public static void QueueFindNearestTrainInRailNetworkAsync(RailTrackNode RTN, Action<TankLocomotive> Callback)
         {
             if (AllyTextStor == null)
                 AltUI.CreateCustomPopupInfo("TrainCall", new Color(0.85f, 0.65f, 0.65f), out AllyTextData);
-            CallQueue.Add(new TrainCallRequest(RTN, Callback));
+            CallQueue.Add(new TrainFindRequest(RTN, Callback));
         }
         public static void CancelFindNearestTrainInRailNetworkAsync(RailTrackNode RTN)
         {
             if (AllyTextStor == null)
                 AltUI.CreateCustomPopupInfo("TrainCall", new Color(0.85f, 0.65f, 0.65f), out AllyTextData);
-            CallQueue.Find(delegate (TrainCallRequest cand) {
+            CallQueue.Find(delegate (TrainFindRequest cand) {
                 return cand != null && cand.target == RTN;
             });
         }
@@ -252,7 +252,7 @@ namespace RandomAdditions.RailSystem
             private static bool displayBWD = false;
 
             private static TrainPathingType displayedPather = TrainPathingType.None;
-            private static TrainCallRequest dispCallPatherCache = null;
+            private static TrainFindRequest dispCallPatherCache = null;
             private static TrainPathRequest dispTrackPatherCache = default;
             private static RailPathRequest dispNodePatherCache = default;
             public static void GUIShowWorld()
@@ -442,7 +442,7 @@ namespace RandomAdditions.RailSystem
         }
 
 
-        public class TrainCallRequest
+        public class TrainFindRequest
         {
             private readonly float startTime;
             private readonly int requestTeam;
@@ -456,7 +456,7 @@ namespace RandomAdditions.RailSystem
             private TrainPathRequest trainPather;
             private int attempts;
 
-            public TrainCallRequest(RailTrackNode Target, Action<TankLocomotive> OnFinished)
+            public TrainFindRequest(RailTrackNode Target, Action<TankLocomotive> OnFinished)
             {
                 startTime = Time.time;
                 try

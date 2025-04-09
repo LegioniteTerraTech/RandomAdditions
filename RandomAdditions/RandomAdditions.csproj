@@ -224,6 +224,7 @@
     <Compile Include="Audio\TechExtEngine.cs" />
     <Compile Include="CircuitExt.cs" />
     <Compile Include="CraftingExt.cs" />
+    <Compile Include="CursorChanger.cs" />
     <Compile Include="CustomChunk.cs" />
     <Compile Include="CustomScenery.cs" />
     <Compile Include="GeneralComponents\AOEField.cs" />
@@ -248,7 +249,8 @@
     <Compile Include="Optimax.cs" />
     <Compile Include="PatchBatch\BugReportPatches.cs" />
     <Compile Include="PatchBatch\NuterraPatches.cs" />
-    <Compile Include="PatchBatch\OptimaxPatches.cs" />
+    <Compile Include="PatchBatch\ModOptimizationPatches.cs" />
+    <Compile Include="PatchBatch\UIPatches.cs" />
     <Compile Include="ProjectileModules\AdvProjectile.cs" />
     <Compile Include="ProjectileModules\LaserRiderProjectile.cs" />
     <Compile Include="RandAddDebugGUI.cs" />

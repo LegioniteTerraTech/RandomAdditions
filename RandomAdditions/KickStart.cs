@@ -18,6 +18,7 @@ using RandomAdditions.Minimap;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Text;
+using TerraTech.Network;
 
 
 namespace RandomAdditions
@@ -30,6 +31,14 @@ namespace RandomAdditions
         internal const string ModName = "RandomAdditions";
         internal const string ModID = "Random Additions";
         internal const float TerrainLowestAlt = -50;
+
+        public class KickStartRAData : TinySettings
+        {
+            public string DirectoryInExtModSettings => "RandomAdditions";
+            public string lastMPSaveName;
+            public int gameMode = 0;
+        }
+        internal static KickStartRAData quickData = new KickStartRAData();
 
         // MOD SUPPORT
         internal static bool isWaterModPresent = false;
@@ -243,6 +252,8 @@ namespace RandomAdditions
                     // FORCE STARTUP SWITCH
                     DebugRandAddi.Log("RandomAdditions: Prepping Quick Start...");
                     harmonyInstance.MassPatchAllWithin(typeof(PatchStartup), ModName);
+                    Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
+                    doQuickstart = true;
                 }
             }
             catch (Exception e)
@@ -309,6 +320,7 @@ namespace RandomAdditions
                     DebugRandAddi.Log(e);
                 }
             }
+            CursorChanger.AddNewCursors();
             GlobalClock.ClockManager.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
@@ -332,6 +344,13 @@ namespace RandomAdditions
             ManIngameWiki.RecurseCheckWikiBlockExtModule<SFXAddition>();
             ResourcesHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
             RandAddiWiki.InitWiki();
+            quickData.TryLoadFromDisk(ref quickData);
+
+            if (ForceIntoModeStartup > 0)
+            {
+                DebugRandAddi.Log("RandomAdditions: Blocking attract loading...(2)");
+                Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
+            }
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
             //PrintDataBase();
@@ -488,6 +507,23 @@ namespace RandomAdditions
                 ManTileLoader.OnWorldSave();
                 ManRails.PrepareForSaving();
                 RandomWorld.PrepareForSaving();
+                string prevName = quickData.lastMPSaveName;
+                int prevMode = quickData.gameMode;
+                if (ManNetwork.IsNetworked)
+                {
+                    quickData.lastMPSaveName = ManSaveGame.inst.GetCurrentSaveName(false);
+                    quickData.gameMode = (int)ManGameMode.inst.GetCurrentGameType();
+                }
+                else
+                {
+                    quickData.lastMPSaveName = null;
+                    quickData.gameMode = 0;
+                }
+                if (prevName != quickData.lastMPSaveName || prevMode != quickData.gameMode)
+                {
+                    if (!quickData.TrySaveToDisk())
+                        DebugRandAddi.Assert("Failed to save RandomAdditions data to disk.");
+                }
             }
             else
             {
@@ -568,6 +604,8 @@ namespace RandomAdditions
 
         // Additional section for immedeate game entering
         public static bool didQuickstart = false;
+        private static bool doQuickstart = false;
+        public static bool ShouldQuickStartGame() => doQuickstart;
         public static bool QuickStartGame()
         {
             if (didQuickstart)
@@ -576,18 +614,22 @@ namespace RandomAdditions
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
 #endif
-            if (Input.GetKey(KeyCode.Backspace) || Input.GetKey(KeyCode.Escape))
+            if (Input.GetKey(KeyCode.Backspace) || Input.GetKey(KeyCode.Escape) || Environment.CommandLine.Contains("NoQuickStart"))
+            {
                 return true;
+            }
             try
             {
                 if (ForceIntoModeStartup > 0)
                 {
+                    InvokeHelper.Invoke(PostQuickstart, 2f);
                     ManProfile.Profile prof = ManProfile.inst.GetCurrentUser();
                     if (prof != null)
                     {
                         DebugRandAddi.Log("RandomAdditions: Quick-Starting...");
+                        Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
                         ManGameMode.GameType GT = ManGameMode.GameType.Creative;
-                        bool hasSaveName = false;
+                        string saveName = null;
                         switch (ForceIntoModeStartup)
                         {
                             case 1:
@@ -595,8 +637,13 @@ namespace RandomAdditions
                                 {
                                     if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
                                         break;
-                                    hasSaveName = true;
+                                    saveName = prof.m_LastUsedSaveName;
                                     GT = prof.m_LastUsedSaveType;
+                                }
+                                else
+                                {
+                                    DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
+                                    Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
                                 }
                                 break;
                             case 2:
@@ -607,16 +654,35 @@ namespace RandomAdditions
                                     break;
                                 GT = ManGameMode.GameType.RaD;
                                 break;
+                            case 4:
+                                if (quickData.lastMPSaveName != null)
+                                {
+                                    TryMakeMPSaveLobby((ManGameMode.GameType)quickData.gameMode, quickData.lastMPSaveName);
+                                    return false;
+                                }
+                                else if (prof.m_LastUsedSaveName != null)
+                                {
+                                    if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                                        break;
+                                    saveName = prof.m_LastUsedSaveName;
+                                    GT = prof.m_LastUsedSaveType;
+                                }
+                                else
+                                {
+                                    DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
+                                    Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
+                                }
+                                break;
                             default:
                                 break;
                         }
                         DebugRandAddi.Log("RandomAdditions: Next mode, " + GT.ToString());
                         ManUI.inst.ExitAllScreens();
                         ManGameMode.inst.ClearModeInitSettings();
-                        if (hasSaveName)
-                            ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
-                        else
+                        if (saveName.NullOrEmpty())
                             ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
+                        else
+                            ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
                         ManGameMode.inst.NextModeSetting.SwitchToMode();
                         //ManUI.inst.FadeToBlack(0.25f, false);
                         DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
@@ -633,11 +699,69 @@ namespace RandomAdditions
             ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
             return true;
         }
+        private static void PostQuickstart()
+        {
+            doQuickstart = false;
+        }
+        private static void OnJoinLobby(Lobby lobby)
+        {
+            ManNetworkLobby.inst.LobbySystem.TriggerGameStart();
+            ManNetworkLobby.inst.LobbySystem.LobbyJoinedEvent.Unsubscribe(OnJoinLobby);
+            ManNetworkLobby.inst.LobbySystem.LobbyCreateFailedEvent.Unsubscribe(OnLobbyFail);
+        }
+        private static bool triedWithCrappyEOS = false;
+        private static void OnLobbyFail(LobbySystem.LobbyErrorCode lobbyError)
+        {
+            ManNetworkLobby.inst.LobbySystem.LobbyJoinedEvent.Unsubscribe(OnJoinLobby);
+            ManNetworkLobby.inst.LobbySystem.LobbyCreateFailedEvent.Unsubscribe(OnLobbyFail);
+            DebugRandAddi.Assert("FAILED on startup boot to lobby - " + lobbyError.ToString());
+            ManUI.inst.ClearFade(0.25f);
+            Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
+            if (!triedWithCrappyEOS && lobbyError == LobbySystem.LobbyErrorCode.FailedToConnect)
+            {
+                DebugRandAddi.Log("SCREW CRAPPY EOS - Bypassing BY FORCE.  Epic DOES NOT SUPPORT MODS ANYWAYS");
+                triedWithCrappyEOS = true;
+                ManEOS.inst.SetEOSCrossplayRequested(false);
+                TryMakeMPSaveLobby((ManGameMode.GameType)quickData.gameMode, quickData.lastMPSaveName);
+            }
+        }
+        private static void TryMakeMPSaveLobby(ManGameMode.GameType mode, string saveName)
+        {
+            Singleton.Manager<ManUI>.inst.ExitAllScreens();
+            ManSaveGame.LoadSaveDataInfoAsync(mode, saveName, (ManSaveGame.SaveInfo info) =>
+            {
+                if (info == null)
+                    return;
+                ManGameMode.inst.SetupSaveGameToLoad(info.m_GameType, info.m_SaveName, info.WorldGenVersion);
+                ManNetwork.inst.WorldSeed = info.m_WorldSeed;
+                ManNetwork.inst.BiomeChoice = info.m_BiomeChoice;
+                ManNetwork.inst.SetPiecePlacements = null;
+                ManNetwork.inst.WorldGenVersionID = info.m_WorldGenVersionID;
+                ManNetwork.inst.WorldGenVersionType = info.m_WorldGenVersioningType;
+                ManNetworkLobby.inst.LobbySystem.LobbyJoinedEvent.Subscribe(OnJoinLobby);
+                ManNetworkLobby.inst.LobbySystem.LobbyCreateFailedEvent.Subscribe(OnLobbyFail);
+                switch (info.m_GameType)
+                {
+                    case ManGameMode.GameType.CoOpCreative:
+                        ManNetworkLobby.inst.LobbySystem.CreateLobby(MultiplayerModeType.CoOpCreative, info.m_LobbyVisibility);
+                        break;
+                    case ManGameMode.GameType.CoOpCampaign:
+                        ManNetworkLobby.inst.LobbySystem.CreateLobby(MultiplayerModeType.CoOpCampaign, info.m_LobbyVisibility);
+                        break;
+                    default:
+                        ManNetworkLobby.inst.LobbySystem.CreateLobby(MultiplayerModeType.Deathmatch, info.m_LobbyVisibility);
+                        break;
+                }
+                //ManUI.inst.FadeToBlack(0.25f, false);
+            });
+        }
         public static void OnFinishedQuickstart(Mode unused)
         {
             ManUI.inst.ClearFade(1);
             harmonyInstance.MassUnPatchAllWithin(typeof(PatchStartup), ModName);
             ManGameMode.inst.ModeStartEvent.Unsubscribe(OnFinishedQuickstart);
+            doQuickstart = false;
+            Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
         }
 
         public static BlockTypes GetProperBlockType(BlockTypes BTVanilla, string blockTypeString)
@@ -712,7 +836,7 @@ namespace RandomAdditions
                     }
                     if (MAs.Count > 0)
                     {
-                        DebugRandAddi.Log("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
+                        DebugRandAddi.Info("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
                         return MAs.ToArray();
                     }
                 }
@@ -735,7 +859,7 @@ namespace RandomAdditions
                     {
                         if (item.Condition == condition || item.Condition == AnimCondition.Any)
                         {
-                            DebugRandAddi.Log("RandomAdditions: FetchAnimette - fetched animette in " + item.name);
+                            DebugRandAddi.Info("RandomAdditions: FetchAnimette - fetched animette in " + item.name);
                             return item;
                         }
                     }
@@ -1010,6 +1134,7 @@ namespace RandomAdditions
                 };
                 if (ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
                     gamemodeSwitch.Add("R&D");
+                gamemodeSwitch.Add("Last Save & MP");
                 startup = new OptionList<string>("Skip Title Screen", RandomDev, gamemodeSwitch, KickStart.ForceIntoModeStartup);
                 startup.onValueSaved.AddListener(() =>
                 {
@@ -1286,7 +1411,7 @@ namespace RandomAdditions
             if (val.GetSetFlag(flag, trueState))
             {
                 blockFlags.SetValue(block, val);
-                DebugRandAddi.Log("TrySetBlockFlag " + val + ", value: " + trueState);
+                DebugRandAddi.Info("TrySetBlockFlag " + val + ", value: " + trueState);
             }
         }
        
@@ -1397,6 +1522,26 @@ namespace RandomAdditions
             private static bool UpdateMode_Prefix()
             {
                 return KickStart.QuickStartGame();
+            }
+        }
+        internal static class ModeAttractPatches
+        {
+            internal static Type target = typeof(ModeAttract);
+            private static bool EnterGenerateTerrain_Prefix()
+            {
+                return !KickStart.ShouldQuickStartGame();
+            }
+            private static bool UpdateModeImpl_Prefix()
+            {
+                return !KickStart.ShouldQuickStartGame();
+            }
+            /// <summary>
+            /// Startup tech spawn blocker
+            /// </summary>
+            //[HarmonyPatch(MethodType.Normal, new Type[1] { typeof(Type)})]
+            private static bool ExitModeImpl_Prefix()
+            {
+                return !KickStart.ShouldQuickStartGame();
             }
         }
     }

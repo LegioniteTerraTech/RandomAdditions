@@ -9,7 +9,7 @@ namespace RandomAdditions
 {
     /// <summary>
     /// ON HIATUS
-    /// The main purpose of this is to reload NuterraSteam Custom Blocks to make them easier to change
+    /// The main purpose of this is to make blocks load FAR faster for big mods
     /// </summary>
     internal static class ManRapidModReloader
     {
@@ -31,11 +31,6 @@ namespace RandomAdditions
         }
         public static void ReloadForMod()
         {
-        }
-        public class AssetBundleWatcher
-        { 
-            public AssetBundle bundle;
-            public file
         }
     }
 }

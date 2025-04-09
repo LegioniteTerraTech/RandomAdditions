@@ -493,6 +493,8 @@ namespace RandomAdditions.PhysicsTethers
             public bool IsConnected => Connection != null;
 
             [SSaveField]
+            public bool AutoLink = true;
+            [SSaveField]
             public int lastConnectedID = -1;
             [SSaveField]
             public int lastConnectedBlockPos = -1;
@@ -583,6 +585,8 @@ namespace RandomAdditions.PhysicsTethers
                     }
                 }
                 animette = KickStart.FetchAnimette(transform, "_Tether", AnimCondition.Tether);
+                if (animette != null)
+                    animette.RunBool(false);
                 block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
                 InsureGUI();
             }
@@ -612,6 +616,9 @@ namespace RandomAdditions.PhysicsTethers
                 tank.TechAudio.RemoveModule(this);
                 if (Connection != null)
                     Connection.TryDisconnect(true, true);
+
+                if (animette != null)
+                    animette.RunBool(false);
                 UpdateTether(tetherConnectorStartLocal);
                 ActiveTethers.Remove(this);
                 block.visible.EnableOutlineGlow(false, cakeslice.Outline.OutlineEnableReason.ScriptHighlight);
@@ -636,6 +643,7 @@ namespace RandomAdditions.PhysicsTethers
                 if (buttonGUI == null)
                 {
                     buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Tether", true);
+                    buttonGUI.AddElement(AutoLinkStatus, ToggleAutoLink, AutoLinkIcon);
                     buttonGUI.AddElement(ConnectionStatus, RequestConnection, ConnectionIcon);
                 }
             }
@@ -685,6 +693,26 @@ namespace RandomAdditions.PhysicsTethers
                     return 0;
                 }
                 return 0;
+            }
+            public string AutoLinkStatus()
+            {
+                if (AutoLink)
+                    return "Auto Enabled";
+                else
+                    return "Auto Disabled";
+            }
+            public Sprite AutoLinkIcon()
+            {
+                ModContainer MC = ManMods.inst.FindMod("Random Additions");
+                if (AutoLink)
+                    return UIHelpersExt.GetIconFromBundle(MC, "GUI_Reset");
+                return UIHelpersExt.GetIconFromBundle(MC, "GUI_Power");
+            }
+            public float ToggleAutoLink(float unused)
+            {
+                AutoLink = !AutoLink;
+                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.CheckBox);
+                return AutoLink ? 1 : 0;
             }
 
 

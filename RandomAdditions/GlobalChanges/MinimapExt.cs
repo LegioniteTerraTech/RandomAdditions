@@ -5,14 +5,45 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using TerraTechETCUtil;
+using System.Xml.Linq;
+using static MapGenerator;
+using RandomAdditions.RailSystem;
+using UnityEngine.Networking;
 
 namespace RandomAdditions.Minimap
 {
     public class ManMinimapExt
     {
-        public const bool PermitPlayerMapJumpInAllNonMPModes = false;
+        public class NetFarPlayerSwapTechMessage : MessageBase
+        {
+            public NetFarPlayerSwapTechMessage() { }
+            public NetFarPlayerSwapTechMessage(IntVector2 coords)
+            {
+                x = coords.x; y = coords.y;
+            }
+
+            public int x;
+            public int y;
+        }
+        private static NetworkHook<NetFarPlayerSwapTechMessage> nethook = new NetworkHook<NetFarPlayerSwapTechMessage>(OnPlayerSwapRequestNetwork, NetMessageType.ToServerOnly);
+
+        public static bool OnPlayerSwapRequestNetwork(NetFarPlayerSwapTechMessage command, bool isServer)
+        {
+            MinimapExt.HostLoadAllTilesOverlapped(new IntVector2(command.x, command.y));
+            return true;
+        }
+
+
+
+        public const bool PermitPlayerMapJumpInAllNonMPModes = true;// false;
         public const int layerPrioritySpacing = 1000;
         public const float MouseDeltaTillButtonIgnored = 9;
+
+        public static int VanillaMapIconCount { get; } = EnumValuesIterator<ManRadar.IconType>.Count;
+        private static int LatestAddedMinimapIndex = VanillaMapIconCount - 1;
+        public static int AddedMinimapIndexes = LatestAddedMinimapIndex;
+        public static Dictionary<Func<TrackedVisible, bool>, ManRadar.IconType> iconConditions = new Dictionary<Func<TrackedVisible, bool>, ManRadar.IconType>();
+        public static Dictionary<ManRadar.IconType, ManRadar.IconEntry> addedIcons = new Dictionary<ManRadar.IconType, ManRadar.IconEntry>();
 
         public static Event<int, UIMiniMapElement> MiniMapElementSelectEvent = new Event<int, UIMiniMapElement>();
         public static bool WorldMapActive => instWorld != null ? instWorld.gameObject.activeInHierarchy : false;
@@ -20,14 +51,61 @@ namespace RandomAdditions.Minimap
         internal static MinimapExt instWorld;
         internal static MinimapExt instMini;
 
-        internal static LoadingHintsExt.LoadingHint newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, "CREATIVE HINT",
+        internal static LoadingHintsExt.LoadingHint newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, "GENERAL HINT",
             "Using the " + AltUI.HighlightString("Map") + ", you can quick-jump to another " + 
-            AltUI.BlueString("Tech") + " by " +  AltUI.HighlightString("Double Right-Clicking") + " on it's icon");
+            AltUI.BlueString("Tech") + " by " +  AltUI.HighlightString("Shift Right-Clicking") + " on it's icon");
 
 
         private static Dictionary<int, Type> LayersIndexedCached = new Dictionary<int, Type>();
 
         private static FieldInfo layers = typeof(UIMiniMapDisplay).GetField("m_ContentLayers", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        private static bool CanTeleportSafely()
+        {
+            return CanTeleportSafely(ModaledSelectTarget);
+        }
+        private static bool CanTeleportSafely(UIMiniMapElement element)
+        {
+            if (element != null && (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes))
+            {
+                var tonk = element.TrackedVis;
+                return tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam &&
+                    tonk.ObjectType == ObjectTypes.Vehicle && CanPlayerControl(tonk);
+            }
+            return false;
+        }
+        private static bool CanTeleportSafelyMap(UIMiniMapElement element)
+        {
+            if (Input.GetKey(KeyCode.LeftShift) && element != null &&
+                (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes))
+            {
+                var tonk = element.TrackedVis;
+                return tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam &&
+                    tonk.ObjectType == ObjectTypes.Vehicle && CanPlayerControl(tonk);
+            }
+            return false;
+        }
+        private static string StringCanTeleport()
+        {
+            if (CanTeleportSafely())
+                return "Teleport To Tech";
+            return "Cannot Teleport To Tech";
+        }
+        private static Sprite ShowCanTeleport()
+        {
+            if (CanTeleportSafely())
+                return UIHelpersExt.GetGUIIcon("Icon_AI_SCU");
+            return UIHelpersExt.GetGUIIcon("ICON_NAV_CLOSE");
+        }
+        private static void InitAll()
+        {
+            //UIHelpersExt.LogCachedIcons();
+            AddMinimapInteractable(ObjectTypes.Vehicle, StringCanTeleport, CanTeleportSafelyMap, (float val1) => {
+                instWorld.TryJumpPlayer(ModaledSelectTarget);
+                return 0;
+            }, ShowCanTeleport);
+            nethook.Register();
+        }
         public static void DeInitAll()
         {
             if (instWorld)
@@ -42,14 +120,22 @@ namespace RandomAdditions.Minimap
                 DebugRandAddi.Log("MinimapExtended DeInit MinimapExtended for " + instMini.gameObject.name);
                 instMini = null;
             }
+            MenuSelectables = null;
         }
         internal static UIMiniMapElement lastElementLMB;
         internal static Vector2 startPosLMB;
         internal static UIMiniMapElement lastElementMMB;
         internal static Vector2 startPosMMB;
+        internal static UIMiniMapElement lastElementRMB;
+        public static UIMiniMapElement LastModaledTarget { get; internal set; } = null;
+        public static UIMiniMapElement ModaledSelectTarget { get; private set; } = null;
+        internal static Vector2 startPosRMB;
         internal static float lastClickTime = 0;
         internal static TrackedVisible nextPlayerTech;
         internal static bool transferInProgress = false;
+        internal static Dictionary<ObjectTypes, List<KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>>> MenuSelectables = 
+            new Dictionary<ObjectTypes, List<KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>>>();
+
         internal static bool CanPlayerControl(TrackedVisible TV)
         {
             if (TV.visible == null)
@@ -95,6 +181,143 @@ namespace RandomAdditions.Minimap
                 UpdateAll();
             }
         }
+
+        private static FieldInfo iconClose = typeof(UIMiniMapLayerTech).GetField("m_ClosestIcons", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static FieldInfo iconCache = typeof(UIMiniMapLayerTech).GetField("m_IconCache", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static Type iconCloseInst = typeof(UIMiniMapLayerTech).GetNestedType("ClosestIcons", BindingFlags.NonPublic);
+        private static Type iconCacheInst = typeof(UIMiniMapLayerTech).GetNestedType("IconCache", BindingFlags.NonPublic);
+        private static FieldInfo iconList = iconCacheInst.GetField("icons", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static void RebuildClosestIcons()
+        {
+            try
+            {
+                AddedMinimapIndexes = LatestAddedMinimapIndex;
+                if (instWorld != null)
+                {
+                    UIMiniMapLayerTech layer = instWorld.GetComponentInChildren<UIMiniMapLayerTech>(true);
+                    object cache = Activator.CreateInstance(iconCacheInst, true);
+                    iconList.SetValue(cache, new List<UIMiniMapElement>());
+                    iconCache.SetValue(layer, cache);
+                    iconClose.SetValue(layer, Activator.CreateInstance(iconCloseInst, true));
+                }
+                if (instMini != null)
+                {
+                    UIMiniMapLayerTech layer = instMini.GetComponentInChildren<UIMiniMapLayerTech>(true);
+                    object cache = Activator.CreateInstance(iconCacheInst, true);
+                    iconList.SetValue(cache, new List<UIMiniMapElement>());
+                    iconCache.SetValue(layer, cache);
+                    iconClose.SetValue(layer, Activator.CreateInstance(iconCloseInst, true));
+                }
+            }
+            catch (Exception e)
+            {
+                DebugUtil.inst.ReRaiseException = e;
+            }
+        }
+        /// <summary>
+        /// YOU MUST CALL THIS BEFORE ANYTHING INITS
+        /// </summary>
+        /// <param name="ShouldShow"></param>
+        /// <param name="texture"></param>
+        /// <param name="color"></param>
+        /// <param name="visibleBeyondMapBorder"></param>
+        /// <param name="maxCountVisibleBeyondMapBorder"></param>
+        /// <param name="visiblePriority"></param>
+        /// <returns>0 if failed, otherwise a non-zero value that is the RadarType it is assigned to</returns>
+        public static ManRadar.IconType AddCustomMinimapTechIconType(Func<TrackedVisible,bool> ShouldShow, Sprite sprite, Color color, 
+            bool visibleBeyondMapBorder, int maxCountVisibleBeyondMapBorder, float visiblePriority)
+        {
+            if (iconConditions.ContainsKey(ShouldShow))
+                return 0;
+            AddedMinimapIndexes = 0;
+            LatestAddedMinimapIndex++;
+            iconConditions.Add(ShouldShow, (ManRadar.IconType)LatestAddedMinimapIndex);
+            var prefabBase = ManRadar.inst.GetIconElementPrefab(ManRadar.IconType.FriendlyVehicle);
+            var prefab = prefabBase.transform.UnpooledSpawn(prefabBase.transform.parent, true).GetComponent<UIMiniMapElement>();
+            if (prefab == null)
+                throw new InvalidOperationException("Failed to create prefab");
+            var element = prefab.GetComponent<UIMiniMapElement>();
+            element.Icon.sprite = sprite;
+            element.Icon.color = color;
+            prefab.CreatePool(8);
+            addedIcons.Add((ManRadar.IconType)LatestAddedMinimapIndex, new ManRadar.IconEntry()
+            {
+                mesh = null,
+                canBeRadarMarkerIcon = false,
+                colour = color,
+                mapIconPrefab = prefab,
+                numDisplayingAtRange = maxCountVisibleBeyondMapBorder,
+                offMapRotates = visibleBeyondMapBorder,
+                priority = visiblePriority,
+            });
+            if (!addedIcons.TryGetValue((ManRadar.IconType)LatestAddedMinimapIndex, out var val))
+                throw new NullReferenceException("Stored " + ((ManRadar.IconType)LatestAddedMinimapIndex).ToString() + " but didn't get it back???");
+            if(val.mapIconPrefab == null)
+                throw new NullReferenceException("Stored " + ((ManRadar.IconType)LatestAddedMinimapIndex).ToString() +
+                    " but failed to fetch instance?!?");
+            InvokeHelper.CancelInvoke(RebuildClosestIcons);
+            InvokeHelper.InvokeNextUpdate(RebuildClosestIcons);
+            return (ManRadar.IconType)LatestAddedMinimapIndex;
+        }
+
+        public static void AddMinimapInteractable(ObjectTypes type, string Name, Func<UIMiniMapElement, bool> canShow, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
+        {
+            if (MenuSelectables.TryGetValue(type, out var vals))
+            {
+                vals.Add(new KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>(canShow, ModuleUIButtons.MakeElement(
+                    Name, onTriggered, sprite, sliderDescIfIsSlider, numClampSteps)));
+            }
+            else
+                MenuSelectables.Add(type, new List<KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>> { 
+                    new KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>(canShow,
+                    ModuleUIButtons.MakeElement(Name, onTriggered, sprite, sliderDescIfIsSlider, numClampSteps)) });
+        }
+        public static void AddMinimapInteractable(ObjectTypes type, Func<string> Name, Func<UIMiniMapElement, bool> canShow, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
+        {
+            if (MenuSelectables.TryGetValue(type, out var vals))
+            {
+                vals.Add(new KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>(canShow, ModuleUIButtons.MakeElement(
+                    Name, onTriggered, sprite, sliderDescIfIsSlider, numClampSteps)));
+            }
+            else
+                MenuSelectables.Add(type, new List<KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>> {
+                    new KeyValuePair<Func<UIMiniMapElement, bool>, GUI_BM_Element>(canShow,
+                    ModuleUIButtons.MakeElement(Name, onTriggered, sprite, sliderDescIfIsSlider, numClampSteps)) });
+        }
+        public static void RemoveMinimapInteractable(ObjectTypes type, string Name)
+        {
+            if (MenuSelectables.TryGetValue(type, out var vals))
+            {
+                vals.RemoveAll(x => x.Value.GetName == Name);
+            }
+        }
+
+        private static List<GUI_BM_Element> tempCollect = new List<GUI_BM_Element>();
+        internal static void BringUpMinimapModal()
+        {
+            DebugRandAddi.Log("MinimapExtended - MiniMapElementSelectEvent " + (LastModaledTarget?.TrackedVis != null));
+            if (LastModaledTarget?.TrackedVis == null)
+                return;
+            DebugRandAddi.Log("   Type: " + LastModaledTarget.TrackedVis.ObjectType.ToString());
+            ModaledSelectTarget = LastModaledTarget;
+            var tracked = ModaledSelectTarget.TrackedVis;
+            if (tracked != null && MenuSelectables.TryGetValue(tracked.ObjectType, out var vals))
+            {
+                tempCollect.Clear();
+                foreach (var val in vals)
+                { 
+                    if (val.Key(ModaledSelectTarget))
+                        tempCollect.Add(val.Value);
+                }
+                if (tempCollect.Any())
+                    GUIModModal.OpenModal(tracked.ObjectType.ToString(), tempCollect.ToArray(), CanDisplayModal);
+            }
+        }
+        private static bool CanDisplayModal()
+        {
+            return GUIModModal.CanContinueDisplayOverlap();
+        }
+
 
         public static void UpdateAll()
         {
@@ -147,6 +370,7 @@ namespace RandomAdditions.Minimap
                     disp.PointerDownEvent.Subscribe(OnClick);
                     disp.PointerUpEvent.Subscribe(OnRelease);
                     instWorld = this;
+                    InitAll();
                     DebugRandAddi.Log("MinimapExtended Init MinimapExtended for " + disp.gameObject.name + " in mode World");
                 }
                 else
@@ -172,6 +396,34 @@ namespace RandomAdditions.Minimap
             }
 
 
+            public void TryJumpPlayer(UIMiniMapElement element)
+            {
+                if (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes)
+                {
+                    var tonk = element.TrackedVis;
+                    if (tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam && tonk.ObjectType == ObjectTypes.Vehicle)
+                    {// WE SWITCH TECHS
+                        BeginPlayerTransfer(tonk);
+                        lastClickTime = 0;
+                    }
+                    return;
+                    /*
+                    if (lastClickTime > Time.time - Globals.inst.doubleTapDelay)
+                    {
+                        var tonk = element.TrackedVis;
+                        if (tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam && tonk.ObjectType == ObjectTypes.Vehicle)
+                        {// WE SWITCH TECHS
+                            BeginPlayerTransfer(tonk);
+                            lastClickTime = 0;
+                        }
+                        return;
+                    }
+                    else
+                        lastClickTime = Time.time;
+                    */
+                }
+            }
+
             public void OnHide()
             {
                 CancelInvoke();
@@ -179,25 +431,56 @@ namespace RandomAdditions.Minimap
 
             public void OnClick(PointerEventData PED)
             {
-                if (gameObject.activeInHierarchy && PED.hovered.Count > 0)
+                if (gameObject.activeInHierarchy)
                 {
-                    var list = PED.hovered.FindAll(x => x != null && x.GetComponent<UIMiniMapElement>()).Select(x => x.GetComponent<UIMiniMapElement>());
-                    if (list.Any())
+                    UIMiniMapElement selected = null;
+                    if (PED.pointerPress != null)
                     {
+                        selected = PED.pointerPress.GetComponent<UIMiniMapElement>();
+                        if (selected?.TrackedVis == null || selected.TrackedVis.ObjectType == ObjectTypes.Waypoint)
+                            selected = null;
+                    }
+                    if (selected == null && PED.rawPointerPress != null)
+                    {
+                        selected = PED.rawPointerPress.GetComponent<UIMiniMapElement>();
+                        if (selected?.TrackedVis == null || selected.TrackedVis.ObjectType == ObjectTypes.Waypoint)
+                            selected = null;
+                    }
+                    if (selected == null && PED.selectedObject != null)
+                    {
+                        selected = PED.selectedObject.GetComponent<UIMiniMapElement>();
+                        if (selected?.TrackedVis == null || selected.TrackedVis.ObjectType == ObjectTypes.Waypoint)
+                            selected = null;
+                    }
+                    if (selected == null)
+                    {
+                        var list = PED.hovered.FindAll(x => x != null && x.GetComponent<UIMiniMapElement>()).Select(x => x.GetComponent<UIMiniMapElement>());
+                        if (list.Any())
+                            selected = list.FirstOrDefault(x => x.TrackedVis != null && x.TrackedVis.ObjectType != ObjectTypes.Waypoint);
+                    }
+                    if (selected != null)
+                    {
+                        DebugRandAddi.Log("MinimapExtended - OnClick " + PED.button + " | " + selected.name);
                         switch (PED.button)
                         {
                             case PointerEventData.InputButton.Left:
-                                lastElementLMB = list.FirstOrDefault();
+                                lastElementLMB = selected;
                                 startPosLMB = PED.position;
                                 break;
                             case PointerEventData.InputButton.Middle:
-                                lastElementMMB = list.FirstOrDefault();
+                                lastElementMMB = selected;
                                 startPosMMB = PED.position;
+                                break;
+                            case PointerEventData.InputButton.Right: 
+                                // Unreliable, doesn't work most of the time
+                                lastElementRMB = selected;
+                                startPosRMB = PED.position;
                                 break;
                         }
                     }
                     else
                     {
+                        DebugRandAddi.Log("MinimapExtended - OnClick " + PED.button + " | None");
                         switch (PED.button)
                         {
                             case PointerEventData.InputButton.Left:
@@ -206,16 +489,46 @@ namespace RandomAdditions.Minimap
                             case PointerEventData.InputButton.Middle:
                                 lastElementMMB = null;
                                 break;
+                            case PointerEventData.InputButton.Right:
+                                // Unreliable, doesn't work most of the time
+                                lastElementRMB = null;
+                                if (LastModaledTarget != null)
+                                    BringUpMinimapModal();
+                                break;
                         }
                     }
                 }
             }
             public void OnRelease(PointerEventData PED)
             {
-                if (gameObject.activeInHierarchy && PED.hovered.Count > 0)
+                if (gameObject.activeInHierarchy)
                 {
-                    var list = PED.hovered.FindAll(x => x != null && x.GetComponent<UIMiniMapElement>()).Select(x => x.GetComponent<UIMiniMapElement>());
-                    if (list.Any())
+                    UIMiniMapElement selected = null;
+                    if (PED.pointerPress != null)
+                    {
+                        selected = PED.pointerPress.GetComponent<UIMiniMapElement>();
+                        if (selected?.TrackedVis == null || selected.TrackedVis.ObjectType == ObjectTypes.Waypoint)
+                            selected = null;
+                    }
+                    if (selected == null && PED.rawPointerPress != null)
+                    {
+                        selected = PED.rawPointerPress.GetComponent<UIMiniMapElement>();
+                        if (selected?.TrackedVis == null || selected.TrackedVis.ObjectType == ObjectTypes.Waypoint)
+                            selected = null;
+                    }
+                    if (selected == null && PED.selectedObject != null)
+                    {
+                        selected = PED.selectedObject.GetComponent<UIMiniMapElement>();
+                        if (selected?.TrackedVis == null || selected.TrackedVis.ObjectType == ObjectTypes.Waypoint)
+                            selected = null;
+                    }
+                    if (selected == null)
+                    {
+                        var list = PED.hovered.FindAll(x => x != null && x.GetComponent<UIMiniMapElement>()).Select(x => x.GetComponent<UIMiniMapElement>());
+                        if (list.Any())
+                            selected = list.FirstOrDefault(x => x.TrackedVis != null && x.TrackedVis.ObjectType != ObjectTypes.Waypoint);
+                    }
+                    if (selected != null)
                     {
                         UIMiniMapElement lastElement = null;
                         Vector2 startPos = Vector2.zero;
@@ -225,37 +538,49 @@ namespace RandomAdditions.Minimap
                                 lastElement = lastElementLMB;
                                 lastElementLMB = null;
                                 startPos = startPosLMB;
-                                if (!ManNetwork.IsNetworked && (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes))
-                                {
-                                    if (lastClickTime > Time.time - Globals.inst.doubleTapDelay)
-                                    {
-                                        var tonk = list.FirstOrDefault().TrackedVis;
-                                        if (tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam && tonk.ObjectType == ObjectTypes.Vehicle)
-                                        {// WE SWITCH TECHS
-                                            BeginPlayerTransfer(tonk);
-                                            lastClickTime = 0;
-                                        }
-                                        return;
-                                    }
-                                    else
-                                        lastClickTime = Time.time;
-                                }
                                 break;
                             case PointerEventData.InputButton.Middle:
                                 lastElement = lastElementMMB;
                                 lastElementMMB = null;
                                 startPos = startPosMMB;
                                 break;
+                            case PointerEventData.InputButton.Right:
+                                // Unreliable, doesn't work most of the time
+                                lastElement = lastElementRMB;
+                                lastElementRMB = null;
+                                startPos = startPosRMB;
+                                break;
                         }
                         if (lastElement != null && (startPos - PED.position).sqrMagnitude < MouseDeltaTillButtonIgnored)
                         {
-                            DebugRandAddi.Log("MinimapExtended - MiniMapElementSelectEvent " + PED.button + " | " + list.FirstOrDefault().name);
-                            MiniMapElementSelectEvent.Send((int)PED.button, list.FirstOrDefault());
+                            //DebugRandAddi.Log("MinimapExtended - MiniMapElementSelectEvent " + PED.button + " | " + list.FirstOrDefault().name);
+                            MiniMapElementSelectEvent.Send((int)PED.button, selected);
                         }
                     }
                 }
             }
 
+            private static void LoadAllTilesOverlapped(TrackedVisible TV)
+            {
+                if (ManNetwork.IsHost)
+                {
+                    HostLoadAllTilesOverlapped(TV.GetWorldPosition().TileCoord);
+                }
+                else
+                {
+                    nethook.TryBroadcast(new NetFarPlayerSwapTechMessage(TV.GetWorldPosition().TileCoord));
+                }
+            }
+            internal static void HostLoadAllTilesOverlapped(IntVector2 tilePos)
+            {
+                for (int x = tilePos.x - 1; x < tilePos.x + 1; x++)
+                {
+                    for (int y = tilePos.y - 1; y < tilePos.y + 1; y++)
+                    {
+                        ManWorldTileExt.HostTempLoadTile(new IntVector2(x,y), false, 2.5f);
+                    }
+                }
+            }
             public void BeginPlayerTransfer(TrackedVisible TV)
             {
                 if (!CanPlayerControl(TV))
@@ -263,34 +588,99 @@ namespace RandomAdditions.Minimap
                     DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer - fail as no cab exists");
                     return;
                 }
-                DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer");
                 nextPlayerTech = TV;
-                transferInProgress = true;
-                ManWorldTileExt.TempLoadTile(TV.GetWorldPosition().TileCoord);
-                ManUI.inst.FadeToColour(Color.black, 1f);
-                Invoke("DoPlayerTransfer", 1f);
+                if (nextPlayerTech?.visible?.tank == null || !nextPlayerTech.visible.tank.ControllableByLocalPlayer)
+                {
+                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer");
+                    transferInProgress = true;
+                    LoadAllTilesOverlapped(TV);
+                    ManUI.inst.FadeToColour(Color.black, 0.5f);
+                    Invoke("DoPlayerTransfer", 0.5f);
+                    return;
+                }
+                if ((TV.GetWorldPosition().ScenePosition - Singleton.cameraTrans.position).magnitude > 420)
+                {
+                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer - Far-ranged (loaded)");
+                    Quaternion camRot = Singleton.cameraTrans.rotation;
+                    Vector3 look = Singleton.cameraTrans.position - Singleton.playerTank.boundsCentreWorld;
+                    CameraManager.inst.ResetCamera(nextPlayerTech.GetWorldPosition().ScenePosition + look, camRot);
+                    ManTechs.inst.RequestSetPlayerTank(nextPlayerTech.visible.tank, true);
+                }
+                else
+                {
+                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer - Close-ranged");
+                    ManTechs.inst.RequestSetPlayerTank(nextPlayerTech.visible.tank, true);
+                }
+                Invoke("FinishPlayerTransfer", 0.5f);
             }
             public void DoPlayerTransfer()
             {
                 if (nextPlayerTech?.visible?.tank == null || !nextPlayerTech.visible.tank.ControllableByLocalPlayer)
                 {
-                    ManUI.inst.ClearFade(0.35f);
-                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer Failed");
-                    nextPlayerTech = null;
-                    transferInProgress = false;
+                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer not finished yet, continuing attempt!");
+                    Invoke("DoPlayerTransfer2", 0.5f);
                     return;
                 }
-                ManWorldTileExt.TempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord);
+                ManWorldTileExt.HostTempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord, false);
                 Quaternion camRot = Singleton.cameraTrans.rotation;
                 Vector3 look = Singleton.cameraTrans.position - Singleton.playerTank.boundsCentreWorld;
                 CameraManager.inst.ResetCamera(nextPlayerTech.GetWorldPosition().ScenePosition + look, camRot);
                 ManTechs.inst.RequestSetPlayerTank(nextPlayerTech.visible.tank, true);
-                Invoke("FinishPlayerTransfer", 1f);
+                Invoke("FinishPlayerTransfer", 0.5f);
+            }
+            public void DoPlayerTransfer2()
+            {
+                if (nextPlayerTech?.visible?.tank == null || !nextPlayerTech.visible.tank.ControllableByLocalPlayer)
+                {
+                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer not finished yet, continuing attempt for longer!");
+                    Invoke("DoPlayerTransfer3", 1f);
+                    return;
+                }
+                LoadAllTilesOverlapped(nextPlayerTech);
+                Quaternion camRot = Singleton.cameraTrans.rotation;
+                Vector3 look = Singleton.cameraTrans.position - Singleton.playerTank.boundsCentreWorld;
+                CameraManager.inst.ResetCamera(nextPlayerTech.GetWorldPosition().ScenePosition + look, camRot);
+                ManTechs.inst.RequestSetPlayerTank(nextPlayerTech.visible.tank, true);
+                Invoke("FinishPlayerTransfer", 0.5f);
+            }
+            public void DoPlayerTransfer3()
+            {
+                if (nextPlayerTech?.visible?.tank == null || !nextPlayerTech.visible.tank.ControllableByLocalPlayer)
+                {
+                    ManUI.inst.ClearFade(0.35f);
+                    DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer Failed");
+                    if (nextPlayerTech == null)
+                        DebugRandAddi.Log("nextPlayerTech IS NULL!!!");
+                    else if (!ManWorld.inst.CheckIsTileAtPositionLoaded(nextPlayerTech.GetWorldPosition().ScenePosition))
+                        DebugRandAddi.Log("Tile NEVER LOADED!!!");
+                    else if (nextPlayerTech?.visible?.tank == null)
+                    {
+                        WorldTile tile = ManWorld.inst.TileManager.LookupTile(nextPlayerTech.GetWorldPosition().ScenePosition);
+                        DebugRandAddi.Log("Tank is NULL, tile request: " + tile.m_RequestState.ToString() + ", loading: " + tile.m_LoadStep.ToString());
+                        foreach (var item in ManTechs.inst.IteratePlayerTechsControllable())
+                        {
+                            if (item != null && item.visible.ID == nextPlayerTech.ID)
+                                DebugRandAddi.Log("Found the Tech but it was not attached to the TrackedVisible.  How?!?");
+                        }
+                    }
+                    else
+                        DebugRandAddi.Log("Not controllable!?!");
+                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.MissionFailed);
+                    nextPlayerTech = null;
+                    transferInProgress = false;
+                    return;
+                }
+                LoadAllTilesOverlapped(nextPlayerTech);
+                Quaternion camRot = Singleton.cameraTrans.rotation;
+                Vector3 look = Singleton.cameraTrans.position - Singleton.playerTank.boundsCentreWorld;
+                CameraManager.inst.ResetCamera(nextPlayerTech.GetWorldPosition().ScenePosition + look, camRot);
+                ManTechs.inst.RequestSetPlayerTank(nextPlayerTech.visible.tank, true);
+                Invoke("FinishPlayerTransfer", 0.5f);
             }
             public void FinishPlayerTransfer()
             {
                 if (nextPlayerTech != null)
-                    ManWorldTileExt.TempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord);
+                    LoadAllTilesOverlapped(nextPlayerTech);
                 nextPlayerTech = null;
                 transferInProgress = false;
                 ManUI.inst.ClearFade(1f);
@@ -460,6 +850,7 @@ namespace RandomAdditions.Minimap
                 {
                     var ele = elementsUnused.Pop();
                     ele.RectTrans.SetParent(null);
+                    ele.gameObject.SetActive(false);
                     ele.Recycle(false);
                 }
             }
@@ -475,6 +866,7 @@ namespace RandomAdditions.Minimap
                 {
                     var ele = elementsUsed.Pop();
                     ele.RectTrans.SetParent(null);
+                    ele.gameObject.SetActive(false);
                     ele.Recycle(false);
                 }
                 prefab.DeletePool();

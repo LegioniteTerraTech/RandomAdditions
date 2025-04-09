@@ -107,6 +107,7 @@ namespace RandomAdditions.RailSystem
                 };
         private const int prefabFrameEndIndexCount = 6;
         // 12 frameSection vertices
+        /// <summary> Generates 12 faces connecting 6 points to the next 6 points </summary>
         private static readonly int[] prefabFrameSectionIndexes = new int[]
                 {
                     12,1,0,  1,12,13,
@@ -170,6 +171,7 @@ namespace RandomAdditions.RailSystem
             prefabFrameStart[4] = new Vector3(-LowSide, heightL, 0);
             prefabFrameStart[5] = new Vector3(-widthHalf, TLSide, 0);
 
+            
             prefabFrameEnd[0] = new Vector3(-widthHalf, bottom, 0);
             prefabFrameEnd[1] = new Vector3(widthHalf, bottom, 0);
             prefabFrameEnd[2] = new Vector3(widthHalf, TLSide, 0);
@@ -354,11 +356,11 @@ namespace RandomAdditions.RailSystem
                 }
                 indiceIndexPos += frameSectionIndexCount;
             }
-            //indiceIndexPos += frameSectionIndexCount;
+            indiceIndexPos += frameSectionIndexCount;
             // Set up end indices
             for (int step2 = 0; step2 < prefabFrameEndIndexes.Length; step2++)
             {
-                vertIndices.Add(prefabFrameSectionIndexes[step2] + indiceIndexPos);
+                vertIndices.Add(prefabFrameEndIndexes[step2] + indiceIndexPos);
             }
 
             // Push Triangles

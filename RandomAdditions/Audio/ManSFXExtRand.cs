@@ -49,7 +49,8 @@ public static class ManSFXExtRand
     }
     internal static void OnRebuildSounds()
     {
-        ManWorldTileExt.ReloadENTIREScene();
+        if (ManWorldTileExt.HostCanCommandTileLoaderQuiet())
+            ManWorldTileExt.HostReloadENTIREScene(false);
         foreach (var item in libTechs.Values)
         {
             foreach (var item2 in item)
@@ -224,7 +225,11 @@ public static class ManSFXExtRand
                 {
                     item.Value.assignments--;
                     if (item.Value.sounders.TryGetValue(block.GetComponent<TankBlock>(), out int index))
-                        item.Value.Sounds[index].SilenceIfLooping();
+                    {
+                        ExtSoundGroup ESG = item.Value.Sounds[index];
+                        ESG.SilenceIfLooping();
+                        ESG.Active = false;
+                    }
                     if (item.Value.assignments == 0)
                     {
                         //DebugRandAddi.Info("Removed ENTIRE sound " + sound.Name);
@@ -570,7 +575,8 @@ public static class ManSFXExtRand
                             sound.stop.Stop();
                         if (sound.engage != null)
                         {
-                            sound.engage.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            //sound.engage.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            sound.engage.transform = data.block.trans;
                             sound.engage.PlayFromBeginning();
                             if (sound.startup != null)
                                 sound.startup.Stop();
@@ -585,7 +591,8 @@ public static class ManSFXExtRand
                                     sound.main[i][sound.step].Reset();
                             }
                             var sounder = sound.main[randomSelect][sound.step];
-                            sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            //sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            sounder.transform = data.block.trans;
                             sounder.PlayFromBeginning();
                             //sounder.Play(false, data.block.tank.boundsCentreWorldNoCheck);
                             sound.step++;
@@ -599,7 +606,8 @@ public static class ManSFXExtRand
                         if (data.isNoteOn && sound.startup != null)
                         {
                             sound.stop.Stop();
-                            sound.startup.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            //sound.startup.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            sound.startup.transform = data.block.trans;
                             sound.startup.PlayFromBeginning();
                         }
                         else if (!data.isNoteOn && sound.stop != null)
@@ -612,7 +620,8 @@ public static class ManSFXExtRand
                                 }
                             }
                             sound.startup.Stop();
-                            sound.stop.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            //sound.stop.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            sound.stop.transform = data.block.trans;
                             sound.stop.PlayFromBeginning();
                         }
                         sound.Active = data.isNoteOn;
@@ -630,7 +639,8 @@ public static class ManSFXExtRand
                                     var sounder = sound.main[i][j];
                                     if (sounder.IsPlaying)
                                     {
-                                        sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                                        //sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                                        sounder.transform = data.block.trans;
                                         playing = true;
                                         break;
                                     }
@@ -645,7 +655,8 @@ public static class ManSFXExtRand
                                         sound.main[i][sound.step].Reset();
                                 }
                                 var sounder = sound.main[randomSelect][sound.step];
-                                sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                                //sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                                sounder.transform = data.block.trans;
                                 sounder.PlayFromBeginning();
                                 //sounder.Play(false, data.block.tank.boundsCentreWorldNoCheck);
                                 sound.step++;
@@ -676,7 +687,8 @@ public static class ManSFXExtRand
                                     sound.main[i][sound.step].Reset();
                             }
                             var sounder = sound.main[randomSelect][sound.step];
-                            sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            //sounder.Position = data.block.tank.boundsCentreWorldNoCheck;
+                            sounder.transform = data.block.trans;
                             sounder.PlayFromBeginning();
                             //sounder.Play(false, data.block.tank.boundsCentreWorldNoCheck);
                             sound.step++;

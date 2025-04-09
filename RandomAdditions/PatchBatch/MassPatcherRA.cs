@@ -23,6 +23,8 @@ namespace RandomAdditions
             DebugRandAddi.Log(modName + ": Is " + SKU.DisplayVersion + " an Unstable? - " + IsUnstable);
         }
 
+        internal static bool TryOptimiseModLoadingSpeed = false;
+
         internal static bool MassPatchAll()
         {
             try
@@ -30,11 +32,14 @@ namespace RandomAdditions
                 if (!KickStart.isNoBugReporterPresent)
                     harmonyInst.MassPatchAllWithin(typeof(BugReportPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(GlobalPatches), modName);
+                harmonyInst.MassPatchAllWithin(typeof(UIPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(AllTankPatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(AllProjectilePatches), modName);
                 harmonyInst.MassPatchAllWithin(typeof(ModulePatches), modName);
                 if (KickStart.isNuterraSteamPresent)
                     harmonyInst.MassPatchAllWithin(typeof(NuterraPatches), modName);
+                if (TryOptimiseModLoadingSpeed)
+                    harmonyInst.MassPatchAllWithin(typeof(ModOptimizationPatches), modName);
                 try
                 {
                     harmonyInst.PatchAll(Assembly.GetExecutingAssembly());
@@ -56,7 +61,10 @@ namespace RandomAdditions
         {
             try
             {
+                if (TryOptimiseModLoadingSpeed)
+                    harmonyInst.MassUnPatchAllWithin(typeof(ModOptimizationPatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(GlobalPatches), modName);
+                harmonyInst.MassUnPatchAllWithin(typeof(UIPatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(AllTankPatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(AllProjectilePatches), modName);
                 harmonyInst.MassUnPatchAllWithin(typeof(ModulePatches), modName);

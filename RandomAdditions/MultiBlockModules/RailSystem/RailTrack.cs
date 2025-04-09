@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using static CheckpointChallenge;
+using static ManUpdate;
+using static WaterMod.SurfacePool;
 
 namespace RandomAdditions.RailSystem
 {
@@ -34,7 +37,6 @@ namespace RandomAdditions.RailSystem
         internal readonly RailConnectInfo EndConnection;
         internal RailTrackNode EndNode => EndConnection.HostNode;
         internal byte EndConnectionIndex => EndConnection.Index;
-        internal Transform Parent => GetTransformIfAny();
 
         public bool Fake => TrackID == -1;
         public float distance { get; private set; } = 0;
@@ -86,6 +88,7 @@ namespace RandomAdditions.RailSystem
 
 
         /// <summary>
+        /// Link Track
         /// DO NOT CALL THIS DIRECTLY - Use ManRails.SpawnRailTrack instead!
         /// </summary>
         internal RailTrack(RailConnectInfo lowValSide, RailConnectInfo highValSide, bool ForceLoad, bool fake, 
@@ -113,8 +116,11 @@ namespace RandomAdditions.RailSystem
             bool local = ManRails.HasLocalSpace(lowValSide.HostNode.Space) && ManRails.HasLocalSpace(highValSide.HostNode.Space);
             if (local && StartNode?.Point)
             {
-                DebugRandAddi.Info("FIXED TRACK");
-                Space = RailSpace.Local;
+                DebugRandAddi.LogRails("FIXED TRACK");
+                if (StartConnection.HostNode.Angled || EndConnection.HostNode.Angled)
+                    Space = RailSpace.LocalAngled;
+                else
+                    Space = RailSpace.Local;
             }
             else
             {
@@ -122,34 +128,49 @@ namespace RandomAdditions.RailSystem
                 {
                     //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but there was no transform provided!" +
                     //    "\n  Falling back to other options.");
-                    DebugRandAddi.Log("FIXED TRACK - ModuleNodePoints unloaded");
-                    Space = RailSpace.Local; 
+                    DebugRandAddi.LogRails("FIXED TRACK - ModuleNodePoints unloaded"); 
+                    if (StartConnection.HostNode.Angled || EndConnection.HostNode.Angled)
+                        Space = RailSpace.LocalAngled;
+                    else
+                        Space = RailSpace.Local; 
                     if (lowValSide.HostNode.Point != null && highValSide.HostNode.Point != null && 
                         lowValSide.HostNode.Point.tank != highValSide.HostNode.Point.tank)
                     {
                         ManRails.UnstableTracks.Add(this, new UnstableTrack(this));
-                        DebugRandAddi.Info("New Local Link track (" + lowValSide.HostNode.NodeID + " | " +
+                        DebugRandAddi.LogRails("New " + (fake ? "FAKE " : string.Empty) + Space.ToString() + " Link track (" + lowValSide.HostNode.NodeID + " | " +
                             highValSide.HostNode.NodeID + " | " + Space.ToString() + " | Unstable )");
                     }
                     else
-                        DebugRandAddi.Info("New Local Link track (" + lowValSide.HostNode.NodeID + " | " +
+                        DebugRandAddi.LogRails("New " + (fake ? "FAKE " : string.Empty) + Space.ToString() + " Link track (" + lowValSide.HostNode.NodeID + " | " +
                             highValSide.HostNode.NodeID + " | " + Space.ToString() + " | Stable )");
                 }
                 else if (ManRails.HasLocalSpace(lowValSide.HostNode.Space) || ManRails.HasLocalSpace(highValSide.HostNode.Space))
                 {
                     //DebugRandAddi.Assert("RailTrack.Constructor - Unstable Rail Track??");
-                    Space = RailSpace.WorldFloat;
-                    DebugRandAddi.Info("New Unstable Link track (" + lowValSide.HostNode.NodeID + " | " +
+                    Space = RailSpace.LocalUnstable;//RailSpace.WorldFloat;
+                    DebugRandAddi.LogRails("New " + (fake ? "FAKE " : string.Empty) + "Unstable Link track (" + lowValSide.HostNode.NodeID + " | " +
                         highValSide.HostNode.NodeID + " | " + Space.ToString() + ")");
                     ManRails.UnstableTracks.Add(this, new UnstableTrack(this));
+                }
+                else if (StartConnection.HostNode.Angled || EndConnection.HostNode.Angled)
+                {   // For sideways-mounted or angled world rails
+                    Space = RailSpace.WorldAngled;
+                    DebugRandAddi.LogRails("New " + (fake ? "FAKE " : string.Empty) + "World Angled Link track (" + lowValSide.HostNode.NodeID + " | " +
+                        highValSide.HostNode.NodeID + " | " + Space.ToString() + ")");
                 }
                 else
                 {
                     Space = (lowValSide.HostNode.Space == RailSpace.WorldFloat || highValSide.HostNode.Space == RailSpace.WorldFloat)
                         ? RailSpace.WorldFloat : RailSpace.World;
-                    DebugRandAddi.Info("New World Link track (" + lowValSide.HostNode.NodeID + " | " +
+                    DebugRandAddi.LogRails("New " + (fake ? "FAKE " : string.Empty) + Space.ToString() + " Link track (" + lowValSide.HostNode.NodeID + " | " +
                         highValSide.HostNode.NodeID + " | " + Space.ToString() + ")");
                 }
+            }
+
+            if (fake)
+            {
+                if (!lowValSide.HostNode.IsFake || !highValSide.HostNode.IsFake)
+                    throw new InvalidOperationException("Tried to spawn FAKE RailTrack for REAL RailTrackNodes");
             }
 
             RecalcRailSegmentsEnds();
@@ -159,6 +180,7 @@ namespace RandomAdditions.RailSystem
         }
 
         /// <summary>
+        /// Node Track
         /// DO NOT CALL THIS DIRECTLY - Use ManRails.SpawnRailTrack instead!
         /// </summary>
         internal RailTrack(RailTrackNode holder, RailConnectInfo lowValSide, RailConnectInfo highValSide, bool fake)
@@ -183,11 +205,14 @@ namespace RandomAdditions.RailSystem
             railFwds = new List<Vector3>();
             railUps = new List<Vector3>();
             Space = holder.Space;
-            bool local = lowValSide.HostNode.Space == RailSpace.Local && highValSide.HostNode.Space == RailSpace.Local;
+            bool local = ManRails.HasLocalSpace(lowValSide.HostNode.Space) && ManRails.HasLocalSpace(highValSide.HostNode.Space);
             if (local && StartNode?.Point)
             {
                 DebugRandAddi.Info("FIXED TRACK");
-                Space = RailSpace.Local;
+                if (StartConnection.HostNode.Angled || EndConnection.HostNode.Angled)
+                    Space = RailSpace.LocalAngled;
+                else
+                    Space = RailSpace.Local;
             }
             else
             {
@@ -196,12 +221,19 @@ namespace RandomAdditions.RailSystem
                     //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but there was no transform provided!" +
                     //    "\n  Falling back to other options.");
                     DebugRandAddi.Info("FIXED TRACK - ModuleNodePoints unloaded");
-                    Space = RailSpace.Local;
+                    if (StartConnection.HostNode.Angled || EndConnection.HostNode.Angled)
+                        Space = RailSpace.LocalAngled;
+                    else
+                        Space = RailSpace.Local;
                 }
-                else if (lowValSide.HostNode.Space == RailSpace.Local || highValSide.HostNode.Space == RailSpace.Local)
+                else if (ManRails.HasLocalSpace(lowValSide.HostNode.Space) || ManRails.HasLocalSpace(highValSide.HostNode.Space))
                 {
                     //DebugRandAddi.Assert("RailTrack.Constructor - a node was set as RailSpace.Local but the other side wasn't??");
                     Space = RailSpace.LocalUnstable;
+                }
+                else if (StartConnection.HostNode.GetLinkUp(0).y < 0.75f || EndConnection.HostNode.GetLinkUp(0).y < 0.75f)
+                {   // For sideways-mounted or angled world rails
+                    Space = RailSpace.WorldAngled;
                 }
                 else
                 {
@@ -209,7 +241,7 @@ namespace RandomAdditions.RailSystem
                         ? RailSpace.WorldFloat : RailSpace.World;
                 }
             }
-            DebugRandAddi.Info("New RailTrack(NodeTrack) from " + holder.NodeID + " (" + (bool)Parent + " | " + Space.ToString() + ")");
+            DebugRandAddi.Info("New RailTrack(NodeTrack) from " + holder.NodeID + " (" + (bool)GetTransformRef() + " | " + Space.ToString() + ")");
 
             RecalcRailSegmentsEnds();
         }
@@ -218,15 +250,41 @@ namespace RandomAdditions.RailSystem
         {
             return !Removing;
         }
-        public bool CanLoad => Space != RailSpace.Local || StartNode?.Point;
+        public bool CanLoad => !ManRails.HasLocalSpace(Space) || StartNode?.Point != null;
+        public bool CanUnload => !ManRails.HasLocalSpace(Space) || StartNode?.Point == null;
         public bool IsLoaded()
         {
             return ActiveSegments.Count > 0;
         }
 
-        public Transform GetTransformIfAny()
+        private static Transform dummyPositionerTrans;
+        /// <summary>
+        /// Use it IMMEDEATELY before calling again!
+        /// DO NOT USE FOR ACTUAL TRACK ATTACHMENT
+        /// </summary>
+        public Transform GetTransformRef()
         {
-            if (Space != RailSpace.Local || !StartNode?.Point)
+            if (Space < RailSpace.Local)
+                return null;
+            if (!StartNode?.Point)
+                return GenerateTransformRef();
+            return StartNode.Point.LinkHubs[StartConnectionIndex];
+        }
+        public Transform GenerateTransformRef()
+        {
+            if (dummyPositionerTrans == null)
+                dummyPositionerTrans = new GameObject("dummyPositionerTrans").transform;
+            dummyPositionerTrans.position = StartNode.GetLinkCenter(StartConnectionIndex).ScenePosition;
+            dummyPositionerTrans.rotation = Quaternion.LookRotation(
+                StartNode.GetLinkForward(StartConnectionIndex), StartNode.GetLinkUp(StartConnectionIndex));
+            return dummyPositionerTrans;
+        }
+
+        public Transform GetAttachTransform()
+        {
+            if (Space < RailSpace.Local)
+                return null;
+            if (!StartNode?.Point)
                 return null;
             return StartNode.Point.LinkHubs[StartConnectionIndex];
         }
@@ -239,6 +297,7 @@ namespace RandomAdditions.RailSystem
 
         private void AddRailSegment(Vector3 point, Vector3 forwards, Vector3 upright)
         {
+            Transform Parent = GetTransformRef();
             if (Parent)
             {
                 railPoints.Add(Parent.InverseTransformPoint(point));
@@ -252,6 +311,12 @@ namespace RandomAdditions.RailSystem
                 railUps.Add(upright);
             }
             railSegmentCount++;
+        }
+
+        internal void OnWorldTreadmill(IntVector3 delta)
+        {
+            for (int i = 0; i < railPoints.Count; i++)
+                railPoints[i] += delta;
         }
 
 
@@ -362,8 +427,12 @@ namespace RandomAdditions.RailSystem
             return StartNode.NodeID == NodeID || EndNode.NodeID == NodeID;
         }
 
+        /// <summary>
+        /// SLOW!!! Makes garbage but output is safely editable!
+        /// </summary>
         internal Vector3[] GetRailSegmentPositionsWorld()
         {
+            Transform Parent = GetTransformRef();
             if (Parent != null)
             {
                 Vector3[] points = new Vector3[railPoints.Count - 1];
@@ -386,12 +455,14 @@ namespace RandomAdditions.RailSystem
 
         internal Vector3 GetRailSegmentPosition(int railIndex)
         {
+            Transform Parent = GetTransformRef();
             if (Parent != null)
                 return Parent.TransformPoint((railPoints[railIndex] + railPoints[railIndex + 1]) / 2);
             return (railPoints[railIndex] + railPoints[railIndex + 1]) / 2;
         }
         internal void GetRailSegmentPositions(List<Vector3> cacheRailSegPos)
         {
+            Transform Parent = GetTransformRef();
             if (Parent != null)
             {
                 for (int step = 0; step < railPoints.Count - 1; step++)
@@ -416,6 +487,7 @@ namespace RandomAdditions.RailSystem
         }
         internal Vector3 GetRailEndPositionScene(bool StartOfTrack)
         {
+            Transform Parent = GetTransformRef();
             if (Parent)
             {
                 if (StartOfTrack)
@@ -431,6 +503,7 @@ namespace RandomAdditions.RailSystem
         }
         internal Vector3 GetRailEndPositionNormal(bool StartOfTrack)
         {
+            Transform Parent = GetTransformRef();
             if (Parent)
             {
                 if (StartOfTrack)
@@ -455,6 +528,7 @@ namespace RandomAdditions.RailSystem
                 add += item;
             }
             add /= GetTrackCenterPosCache.Count;
+            Transform Parent = GetTransformRef();
             if (Parent)
                 return Parent.TransformPoint(add);
             return add;
@@ -472,9 +546,15 @@ namespace RandomAdditions.RailSystem
             DebugRandAddi.Assert(EndConnection == null || EndNode == null, "RecalcRailSegmentsEnds - INVALID EndNode, connection " + (EndConnection == null));
 
             Vector3 Start = StartNode.GetLinkCenter(StartConnectionIndex).ScenePosition;
-            RailSegment.AdjustHeightIfNeeded(Type, StartNode.Space, ref Start);
+            if (StartNode.Angled)
+                RailSegment.AdjustHeightIfNeeded(Type, ManRails.HasLocalSpace(StartNode.Space) ? RailSpace.LocalAngled : RailSpace.WorldAngled, ref Start);
+            else
+                RailSegment.AdjustHeightIfNeeded(Type, StartNode.Space, ref Start);
             Vector3 End = EndNode.GetLinkCenter(EndConnectionIndex).ScenePosition;
-            RailSegment.AdjustHeightIfNeeded(Type, EndNode.Space, ref End);
+            if (EndNode.Angled)
+                RailSegment.AdjustHeightIfNeeded(Type, ManRails.HasLocalSpace(EndNode.Space) ? RailSpace.LocalAngled : RailSpace.WorldAngled, ref End);
+            else
+                RailSegment.AdjustHeightIfNeeded(Type, EndNode.Space, ref End);
             //DebugRandAddi.Log("RailTrack - Positioned");
 
             Vector3 StartF;
@@ -494,10 +574,11 @@ namespace RandomAdditions.RailSystem
 
             Vector3 StartU = StartNode.GetLinkUp(StartConnectionIndex);
             Vector3 EndU = EndNode.GetLinkUp(EndConnectionIndex);
-            DebugRandAddi.Exception(Parent == null && ManRails.HasLocalSpace(Space), 
-                "Local space track has no parent");
+            //DebugRandAddi.Exception(Parent == null && ManRails.HasLocalSpace(Space), "Local space track has no parent");
+
             if (distance > ManRails.RailIdealMaxStretch)
             {   // Build tracks according to terrain conditions
+                Transform Parent = GetTransformRef();
                 if (Parent)
                 {
                     railPoints.Add(Parent.InverseTransformPoint(Start));
@@ -596,6 +677,7 @@ namespace RandomAdditions.RailSystem
             {
                 // Needs to be altered in the future to accept multidirectional node attachments
                 //DebugRandAddi.Log("RailTrack - Single");
+                Transform Parent = GetTransformRef();
                 if (Parent)
                 {
                     railPoints.Add(Parent.InverseTransformPoint(Start));
@@ -617,11 +699,14 @@ namespace RandomAdditions.RailSystem
                 railSegmentCount = 1;
                 //DebugRandAddi.Log("RailTrack - Applied(1)");
             }
-            //*
-            for (int step = 0; step < railPoints.Count; step++)
+            
+            if (RailSegment.showDebug)
             {
-                DebugRandAddi.DrawDirIndicator(railPoints[step], railFwds[step] * 4, Color.green, 3);
-            }//*/
+                for (int step = 0; step < railPoints.Count; step++)
+                {
+                    DebugRandAddi.DrawDirIndicator(railPoints[step], railFwds[step] * 4, Color.green, 3);
+                }
+            }
         }
         internal void UpdateExistingShapeIfNeeded()
         {
@@ -670,6 +755,26 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+
+        internal void AttachToTransform()
+        {
+            Transform parent = GetAttachTransform();
+            foreach (var item in ActiveSegments)
+            {
+                if (item.Value != null)
+                    item.Value.AttachSetupSegment(parent);
+            }
+        }
+        internal void DetachFromTransform()
+        {
+            foreach (var item in ActiveSegments)
+            {
+                if (item.Value != null)
+                    item.Value.DetachSetupSegment();
+            }
+        }
+
+
         internal void OnWorldMovePre(IntVector3 move)
         {
             if (!ManRails.HasLocalSpace(Space))
@@ -681,8 +786,13 @@ namespace RandomAdditions.RailSystem
                 foreach (var rail in ActiveSegments)
                 {
                     rail.Value.startPoint = move + rail.Value.startPoint;
-                    rail.Value.OnSegmentDynamicShift();
+                    //rail.Value.OnSegmentDynamicShift();
                 }
+            }
+            else if (GetAttachTransform() == null)
+            {
+                foreach (var rail in ActiveSegments)
+                    rail.Value.transform.position += move;
             }
         }
         internal void OnWorldMovePost()
@@ -1533,10 +1643,11 @@ namespace RandomAdditions.RailSystem
             DebugRandAddi.Assert(railFwds.Count <= nRPos, "railFwds does not have enough stored values");
             DebugRandAddi.Assert(railUps.Count <= nRPos, "railUps does not have enough stored values");
             RailSegment RS;
+            Transform Parent = GetTransformRef();
             if (Parent)
             {
                 RS = RailSegment.PlaceSegment(this, rPos, Parent.TransformPoint(railPoints[rPos]),
-                    Parent.TransformDirection(railFwds[rPos]), Parent.TransformPoint(railPoints[nRPos]), 
+                    Parent.TransformDirection(railFwds[rPos]), Parent.TransformPoint(railPoints[nRPos]),
                     Parent.TransformDirection(-railFwds[nRPos]));
             }
             else
@@ -1786,6 +1897,8 @@ namespace RandomAdditions.RailSystem
         internal RailTrack PeekNextTrack(ref int railIndex, out RailConnectInfo entryInfo, 
             out RailConnectInfo exitInfo, out bool reversed, out bool EndOfTheLine, ModuleRailBogie.RailBogie MRB = null)
         {
+            if (Removing)
+                throw new InvalidOperationException("PeekNextTrack called on a RECYCLED track");
             int turnIndex;
             bool nodeTrack;
             switch (EndOfTrack(railIndex))
@@ -1874,6 +1987,8 @@ namespace RandomAdditions.RailSystem
 
         internal RailTrack PeekNextTrackObeyOneWay(ref int railIndex, out RailConnectInfo entryInfo, out RailConnectInfo exitInfo, out bool reversed, out bool EndOfTheLine, ModuleRailBogie.RailBogie MRB = null)
         {
+            if (Removing)
+                throw new InvalidOperationException("PeekNextTrackObeyOneWay called on a RECYCLED track");
             int turnIndex;
             bool nodeTrack;
             switch (EndOfTrack(railIndex))
@@ -2053,6 +2168,10 @@ namespace RandomAdditions.RailSystem
         public int HighIndex = 0;
         public int skin = 0;
         public int tie = 0;
+        /// <summary>
+        /// NEWTONSOFT ONLY
+        /// </summary>
+        public RailTrackJSON() { }
         internal RailTrackJSON(RailTrack track)
         {
             ID = track.TrackID;
@@ -2067,10 +2186,13 @@ namespace RandomAdditions.RailSystem
         {
             try
             {
-                var RCI = new RailConnectInfo(Low, (byte)LowIndex);
-                ManRails.SpawnLinkRailTrack(RCI, new RailConnectInfo(High, (byte)HighIndex),
-                    ManWorld.inst.TileManager.IsTileAtPositionLoaded(RCI.HostNode.GetLinkCenter(0).ScenePosition),
-                    (byte)skin, (RailTieType)tie);
+                if (!ManRails.AllRailNodes.TryGetValue(Low, out RailTrackNode nodeLow))
+                    throw new NullReferenceException("Could not find low side ID " + Low);
+                if (!ManRails.AllRailNodes.TryGetValue(High, out RailTrackNode nodeHigh))
+                    throw new NullReferenceException("Could not find high side ID " + High);
+                RailConnectInfo hubThis = nodeLow.GetConnection(LowIndex);
+                RailConnectInfo hubThat = nodeHigh.GetConnection(HighIndex);
+                nodeLow.DoConnectFromSaveData(nodeHigh, hubThis, hubThat, (byte)skin, (RailTieType)tie);
             }
             catch (Exception e)
             {

@@ -72,7 +72,7 @@ namespace RandomAdditions
                 {
                     item.Condition = AnimCondition.ManagerManaged;
                 }
-                DebugRandAddi.Log("ANIMATION NUMBERS HOOKED UP TO " + display.Count + " DIGITS");
+                DebugRandAddi.Info("ANIMATION NUMBERS HOOKED UP TO " + display.Count + " DIGITS");
                 //LogHandler.ThrowWarning("ManAnimette expects an AnimetteController in a GameObject named \"_digit0\", but there is none!");
             }
             var controlCache = GetComponentsInChildren<AnimetteController>();
@@ -112,14 +112,17 @@ namespace RandomAdditions
                 Array.Resize(ref IsSlider, controllers.Count);
             }
 
+            ResetAllToDefaultState();
+            Invoke("ForceUpdate", 0.01f);
+        }
+        public void ResetAllToDefaultState()
+        {
             for (int step = 0; step < controllers.Count; step++)
             {
                 ActiveState[step] = DefaultState[step];
                 controllers[step].SetState(DefaultState[step]);
             }
-            Invoke("ForceUpdate", 0.01f);
         }
-
         public void ForceUpdate()
         {
             for (int step = 0; step < controllers.Count; step++)
@@ -136,6 +139,7 @@ namespace RandomAdditions
 
         public override void OnDetach()
         {
+            ResetAllToDefaultState();
             enabled = false;
             block.serializeEvent.Unsubscribe(OnSerial);
         }

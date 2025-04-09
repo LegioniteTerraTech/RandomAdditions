@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 using RandomAdditions.PhysicsTethers;
+using TerraTechETCUtil;
 
 namespace RandomAdditions.RailSystem
 {
@@ -54,6 +55,7 @@ namespace RandomAdditions.RailSystem
         public const float CurveAngleSlowRestrictThreshold = 27.5f;
         public const float CurveSlowRestrictedSpeed = 20.0f;
 
+        private const float TrainRotationDampenerPercent = 0.35f;
         private const float TrainRollDampenerMultiplier = 2.75f;
         private const float TrainNonPrimarySidewaysSpringRedistributedPercent = 0.75f;
         private const float TrainUprightMultiplier = 4f;
@@ -79,6 +81,7 @@ namespace RandomAdditions.RailSystem
 
         /// <summary> should NEVER be zero </summary>
         public float BogieLimitedVelocity { get; private set; } = 1;
+        public float BogieExtraStickForce { get; private set; } = 0;
 
         public bool TankHasBrakes { get; private set; } = false;
 
@@ -93,17 +96,18 @@ namespace RandomAdditions.RailSystem
         private HashSet<ModuleRailBogie.RailBogie> Bogies { get; set; } = new HashSet<ModuleRailBogie.RailBogie>();
         public int BogiesCount => Bogies.Count;
 
-        internal readonly List<ModuleRailBogie.RailBogie> bogiesOnRails = new List<ModuleRailBogie.RailBogie>();
-        public int ActiveBogieCount => bogiesOnRails.Count;
+        internal readonly List<ModuleRailBogie.RailBogie> bogiesRailLock = new List<ModuleRailBogie.RailBogie>();
+        public int ActiveBogieCount => bogiesRailLock.Count;
 
-        public ModuleRailBogie.RailBogie FirstActiveBogie => ActiveBogieCount > 0 ? bogiesOnRails.FirstOrDefault() : null;
-        public List<ModuleRailBogie.RailBogie> AllActiveBogies => new List<ModuleRailBogie.RailBogie>(bogiesOnRails);
+        public ModuleRailBogie.RailBogie FirstActiveBogie => ActiveBogieCount > 0 ? bogiesRailLock.FirstOrDefault() : null;
+        public List<ModuleRailBogie.RailBogie> AllActiveBogies => new List<ModuleRailBogie.RailBogie>(bogiesRailLock);
 
-        public bool TrainOnRails => bogiesOnRails.Count > 0;
+        public bool TrainOnRails { get; private set; } = false;
+        public bool TrainRailLock => bogiesRailLock.Count > 0;
         public bool IsDriving => !drive.ApproxZero();
         public bool AutopilotActive => GetMaster().Autopilot;
 
-        private bool lastWasOnRails = false;
+        private bool lastWasRailLocked = false;
         private bool lastFireState = false;
         private float lastFailTime = 0;
         public float lastCenterSpeed { get; private set; } = 0;
@@ -164,7 +168,7 @@ namespace RandomAdditions.RailSystem
             ManPauseGame.inst.PauseEvent.Unsubscribe(OnPaused);
             tank.control.driveControlEvent.Unsubscribe(DriveCommand);
             tank.CollisionEvent.Unsubscribe(HandleCollision);
-            if (lastWasOnRails)
+            if (lastWasRailLocked)
                 tank.airSpeedDragFactor = defaultSpeedDrag;
             ManRails.AllTrainTechs.Remove(this);
             if (ManRails.AllTrainTechs.Count == 0)
@@ -172,6 +176,10 @@ namespace RandomAdditions.RailSystem
             }
             Destroy(this);
             RandomTank.Insure(tank).ReevaluateLoadingDiameter();
+        }
+        public void CancelAutopilot()
+        {
+            FinishPathing(TrainArrivalStatus.Cancelled);
         }
 
 
@@ -280,7 +288,7 @@ namespace RandomAdditions.RailSystem
         /// <param name="whack"></param>
         public void HandleCollision(Tank.CollisionInfo collide, Tank.CollisionInfo.Event whack)
         {
-            if (tank.rbody == null || whack != Tank.CollisionInfo.Event.Enter || !TrainOnRails 
+            if (tank.rbody == null || whack != Tank.CollisionInfo.Event.Enter || !TrainRailLock 
                 || lastCenterSpeed > TrainCollisionMinimumWorldSpeed)
                 return;
             Tank.CollisionInfo.Obj other;
@@ -556,7 +564,7 @@ namespace RandomAdditions.RailSystem
         {
             if (LocomotiveCarsOrdered.Count > 0)
             {
-                var list = LocomotiveCarsOrdered.SelectMany(x => x.bogiesOnRails);
+                var list = LocomotiveCarsOrdered.SelectMany(x => x.bogiesRailLock);
                 if (list.Any())
                     return list;
             }
@@ -591,7 +599,7 @@ namespace RandomAdditions.RailSystem
             if (Backwards)
             {
                best = float.MaxValue;
-                foreach (var item in bogiesOnRails)
+                foreach (var item in bogiesRailLock)
                 {
                     if (item)
                     {
@@ -607,7 +615,7 @@ namespace RandomAdditions.RailSystem
             else
             {
                 best = 0;
-                foreach (var item in bogiesOnRails)
+                foreach (var item in bogiesRailLock)
                 {
                     if (item)
                     {
@@ -631,7 +639,7 @@ namespace RandomAdditions.RailSystem
             TankLocomotive locoCur = bogie.engine;
             Vector3 fwd = locoCur.GetTankDriveForwardsInRelationToMaster();
             float bogiePos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * bogie.main.block.trans.localPosition).z;
-            foreach (var item in locoCur.bogiesOnRails)
+            foreach (var item in locoCur.bogiesRailLock)
             {
                 if (item)
                 {
@@ -648,7 +656,7 @@ namespace RandomAdditions.RailSystem
                 locoCur = locoCur.TryGetForwardsTether(iterate, true, true)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
                 if (!locoCur)
                     break;
-                bogiesCached.AddRange(locoCur.bogiesOnRails);
+                bogiesCached.AddRange(locoCur.bogiesRailLock);
             }
             return bogiesCached;
         }
@@ -657,7 +665,7 @@ namespace RandomAdditions.RailSystem
             TankLocomotive locoCur = bogie.engine;
             Vector3 fwd = locoCur.GetTankDriveForwardsInRelationToMaster();
             float bogiePos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * bogie.main.block.trans.localPosition).z;
-            foreach (var item in locoCur.bogiesOnRails)
+            foreach (var item in locoCur.bogiesRailLock)
             {
                 if (item)
                 {
@@ -674,7 +682,7 @@ namespace RandomAdditions.RailSystem
                 locoCur = locoCur.TryGetForwardsTether(iterate, true, false)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
                 if (!locoCur)
                     break;
-                bogiesCached.AddRange(locoCur.bogiesOnRails);
+                bogiesCached.AddRange(locoCur.bogiesRailLock);
             }
             return bogiesCached;
         }
@@ -828,6 +836,8 @@ namespace RandomAdditions.RailSystem
                 }
                 item.DriveCommand(null);
             }
+            if (Singleton.playerTank == tank)
+                ManModGUI.RemoveEscapeableCallback(ManRails.CancelPlayerTrainAutopilot, true);
             TrainDriveOverride = TrainDriveState.Halt;
             CancelInvoke("DoStop");
             Invoke("DoStop", 0.1f);
@@ -864,9 +874,14 @@ namespace RandomAdditions.RailSystem
         private void DriveCommand(TankControl.ControlState controlState)
         {
             if (DriveSignal.Approximately(0))
-                drive = Vector3.ClampMagnitude(controlState.InputMovement + controlState.Throttle, 1);
+            {
+                if (!controlState.Throttle.ApproxZero() && Vector3.Dot(controlState.InputMovement, controlState.Throttle) < 0)
+                    drive = Vector3.ClampMagnitude(controlState.Throttle, 1);
+                else
+                    drive = Vector3.ClampMagnitude(controlState.InputMovement + controlState.Throttle, 1);
+            }
             else
-                drive = new Vector3(0, 0, DriveSignal);
+                drive = new Vector3(0, 0, Mathf.Clamp01(DriveSignal));
             turn = controlState.InputRotation;
             lastFireState = controlState.Fire;
             if (AutopilotActive)
@@ -1126,6 +1141,7 @@ namespace RandomAdditions.RailSystem
                 BogieVelocityAcceleration = 1;
                 BogieMaxDriveForce = 0;
                 BogieForceAcceleration = 1;
+                BogieExtraStickForce = 0;
                 if (ModuleBogiesCount != 0)
                 {
                     foreach (var item in BogieBlocks)
@@ -1139,6 +1155,7 @@ namespace RandomAdditions.RailSystem
             BogieVelocityAcceleration = 0;
             BogieMaxDriveForce = 0;
             BogieForceAcceleration = 0;
+            BogieExtraStickForce = 0;
             TankHasBrakes = false;
             foreach (var item in EngineBlocks)
             {
@@ -1182,12 +1199,14 @@ namespace RandomAdditions.RailSystem
             bool hasEngie = BogieMaxDriveForce > 0;
             foreach (var item in BogieBlocks)
             {
+                BogieExtraStickForce += item.SuspensionStickForce;
                 item.ShowBogieMotors(hasEngie);
                 foreach (var item2 in item.HierachyBogies)
                 {
                     item2.IsCenterBogie = CentralBogies.Contains(item2);
                 }
             }
+            BogieExtraStickForce /= (Bogies.Count * 4);
             if (!CentralBogies.Any())
             {
                 throw new Exception("Failed to get any CentralBogies when there are bogies present on the Tech");
@@ -1260,7 +1279,7 @@ namespace RandomAdditions.RailSystem
         }
         public bool TakeControl()
         {
-            if (!ManPauseGame.inst.IsPaused && tank.rbody && !tank.beam.IsActive && TrainOnRails && 
+            if (!ManPauseGame.inst.IsPaused && tank.rbody && !tank.beam.IsActive && TrainRailLock && 
                 (AllowAutopilotToOverridePlayer || !tank.PlayerFocused))
             {
                 if (MasterCar)
@@ -1375,17 +1394,20 @@ namespace RandomAdditions.RailSystem
                 {
                     // Update bogeys in relation to rail
 
-                    bogiesOnRails.Clear();
+                    bogiesRailLock.Clear();
+                    TrainOnRails = false;
                     uprightSuggestion = Vector3.zero;
                     foreach (var item in BogieBlocks)
                     {
                         if (item.PreFixedUpdate())
                         {
-                            item.HierachyBogies.CollectAllBogies(bogiesOnRails);
+                            item.HierachyBogies.CollectAllBogies(bogiesRailLock);
                             movementDampening += item.BogeyKineticStiffPercent;
                             tankAlignForce += item.BogieAlignmentForce;
                             tankAlignDampener += item.BogieAlignmentDampener;
                             tankUprightAccelerationLimit += item.BogieAlignmentMaxRotation;
+                            if (item.AnyBogieNotAirtimed)
+                                TrainOnRails = true;
                             foreach (var item2 in item.HierachyBogies)
                             {
                                 uprightSuggestion += item2.bogiePhysicsNormal;
@@ -1397,7 +1419,7 @@ namespace RandomAdditions.RailSystem
                     else
                         uprightSuggestion = uprightSuggestion.normalized;
                     failLevel++;
-                    if (bogiesOnRails.Count > 0)
+                    if (bogiesRailLock.Count > 0)
                     {
                         movementDampening /= ActiveBogieCount;
                         tankUprightAccelerationLimit /= ActiveBogieCount;
@@ -1405,7 +1427,7 @@ namespace RandomAdditions.RailSystem
                         failLevel++;
                         float addedSuspensionForceUnused = 0;
                         float activeCentralBogies = 0;
-                        foreach (var item in bogiesOnRails)
+                        foreach (var item in bogiesRailLock)
                         {
                             if (CentralBogies.Contains(item))
                             {
@@ -1424,7 +1446,7 @@ namespace RandomAdditions.RailSystem
                             failLevel += 10;
                         }
                         failLevel++;
-                        if (bogiesOnRails.Count % 2 == 0)
+                        if (bogiesRailLock.Count % 2 == 0)
                         {
                             failLevel += 100;
                             if (CentralBogies.Any())
@@ -1449,7 +1471,7 @@ namespace RandomAdditions.RailSystem
                             else if (activeCentralBogies > 0)
                             {
                                 addedSuspensionForceUnused /= activeCentralBogies;
-                                foreach (var item in bogiesOnRails)
+                                foreach (var item in bogiesRailLock)
                                 {
                                     if (CentralBogies.Contains(item))
                                     {
@@ -1487,13 +1509,13 @@ namespace RandomAdditions.RailSystem
                 float worstAngle = 0;
                 if (LocomotiveCarsOrdered.Count > 1)
                 {
-                    foreach (var item in LocomotiveCarsOrdered.FirstOrDefault().bogiesOnRails)
+                    foreach (var item in LocomotiveCarsOrdered.FirstOrDefault().bogiesRailLock)
                     {
                         float worst = item.GetTurnSeverity();
                         if (worst > worstAngle)
                             worstAngle = worst;
                     }
-                    foreach (var item in LocomotiveCarsOrdered.Last().bogiesOnRails)
+                    foreach (var item in LocomotiveCarsOrdered.Last().bogiesRailLock)
                     {
                         float worst = item.GetTurnSeverity();
                         if (worst > worstAngle)
@@ -1502,7 +1524,7 @@ namespace RandomAdditions.RailSystem
                 }
                 else
                 {
-                    foreach (var item2 in bogiesOnRails)
+                    foreach (var item2 in bogiesRailLock)
                     {
                         float worst = item2.GetTurnSeverity();
                         if (worst > worstAngle)
@@ -1510,7 +1532,7 @@ namespace RandomAdditions.RailSystem
                     }
                     foreach (var item1 in LocomotiveCarsOrdered)
                     {
-                        foreach (var item2 in item1.bogiesOnRails)
+                        foreach (var item2 in item1.bogiesRailLock)
                         {
                             float worst = item2.GetTurnSeverity();
                             if (worst > worstAngle)
@@ -1555,19 +1577,20 @@ namespace RandomAdditions.RailSystem
                 }
                 // Apply rail-binding physics
                 Vector3 moveVeloWorld = (tank.boundsCentreWorldNoCheck - lastPos) / Time.fixedDeltaTime;
-                float invMass = 1 / tank.rbody.mass;
+                float invMass = 1f / tank.rbody.mass;
                 lastPos = tank.boundsCentreWorldNoCheck;
 
                 bool brakesApplied;
                 bool driveStopped = drive.ApproxZero();
                 if (!driveStopped)
                 {
-                    if (Vector3.Dot(drive.normalized, (tank.rootBlockTrans.InverseTransformDirection(moveVeloWorld) + (drive * TrainMinReverseVelocityBrakesOnly)).normalized) > 0)
+                    if (Vector3.Dot(drive.normalized, (tank.rootBlockTrans.InverseTransformDirection(moveVeloWorld) + 
+                        (drive * TrainMinReverseVelocityBrakesOnly)).normalized) > 0)
                     {
                         BogieCurrentDriveForce = Mathf.Clamp(BogieCurrentDriveForce + (BogieForceAcceleration * Time.fixedDeltaTime),
                             0, BogieMaxDriveForce);
                         BogieSpooledVelocity = Mathf.Clamp(BogieSpooledVelocity + (BogieVelocityAcceleration * Time.fixedDeltaTime),
-                            1, BogieMaxDriveVelocity);
+                            1, BogieMaxDriveVelocity * drive.magnitude);
                         brakesApplied = false;
                     }
                     else
@@ -1587,9 +1610,10 @@ namespace RandomAdditions.RailSystem
                 }
 
                 UpdateMaxVelocityRestriction();
+                float stickForce = (Bogies.Count > 1 && TrainOnRails) ? BogieExtraStickForce : 0f;
                 foreach (var item in BogieBlocks)
                 {
-                    item.PostFixedUpdate(moveVeloWorld, invMass, brakesApplied);
+                    item.PostFixedUpdate(moveVeloWorld, invMass, brakesApplied, stickForce);
                 }
             }
         }
@@ -1608,7 +1632,7 @@ namespace RandomAdditions.RailSystem
                     tank.grounded = true;
 
                     bool driveStopped = drive.ApproxZero();
-                    // Dampen the movement to stabilize it
+                    // Dampen the translational movement to stabilize it
                     Vector3 force = tank.rbody.velocity;
                     /*
                     force.x = force.x * Mathf.Abs(force.x);
@@ -1618,7 +1642,7 @@ namespace RandomAdditions.RailSystem
                     {
                         force.Scale(Vector3.one / ActiveBogieCount);
                         Vector3 addForce = Vector3.zero;
-                        foreach (var item in bogiesOnRails)
+                        foreach (var item in bogiesRailLock)
                         {
                             var forceLocal = item.BogieVisual.InverseTransformVector(force);
                             forceLocal.x *= movementDampening;
@@ -1631,11 +1655,15 @@ namespace RandomAdditions.RailSystem
                     else
                         tank.rbody.AddForce(force * -movementDampening, ForceMode.Acceleration);
 
+
+                    /// Rotation dampener
+                    Vector3 rotato = tank.rbody.angularVelocity;
+                    tank.rbody.AddTorque(-rotato * TrainRotationDampenerPercent, ForceMode.Acceleration);
                 }
             }
-            if (lastWasOnRails != TrainOnRails)
+            if (lastWasRailLocked != TrainRailLock)
             {
-                if (TrainOnRails)
+                if (TrainRailLock)
                 {
                     tank.airSpeedDragFactor = trainSpeedDrag;
                 }
@@ -1644,7 +1672,7 @@ namespace RandomAdditions.RailSystem
                     tank.airSpeedDragFactor = defaultSpeedDrag;
                 }
                 RandomTank.Insure(tank).ReevaluateLoadingDiameter();
-                lastWasOnRails = TrainOnRails;
+                lastWasRailLocked = TrainRailLock;
             }
         }
 
@@ -1715,7 +1743,7 @@ namespace RandomAdditions.RailSystem
         {
             enabled = !state;
         }
-        private void Update()
+        internal void Update()
         {
             if (!ManNetwork.IsHost)
                 return;
@@ -1777,6 +1805,7 @@ namespace RandomAdditions.RailSystem
 
 
         //private static float alignConst = Mathf.Deg2Rad * 90;
+        private Vector3 prevForce = Vector3.zero;
         private void PHYRotateAxis(Vector3 commandCab)
         {
             Vector3 IT = tank.rbody.inertiaTensor;
@@ -1827,6 +1856,9 @@ namespace RandomAdditions.RailSystem
                 localUprightingForce.x = Mathf.Clamp(localUprightingForce.x, -forceNeededToReachUp.x, forceNeededToReachUp.x);
                 localUprightingForce.y = Mathf.Clamp(localUprightingForce.y, -forceNeededToReachUp.y, forceNeededToReachUp.y);
                 localUprightingForce.z = Mathf.Clamp(localUprightingForce.z, -forceNeededToReachUp.z, forceNeededToReachUp.z);
+                if (Vector3.Dot(localUprightingForce, prevForce) > 0)
+                    localUprightingForce *= 0.5f;
+                prevForce = localUprightingForce;
             }
             tank.rbody.AddTorque(cab.TransformVector(localUprightingForce), ForceMode.Force);
         }

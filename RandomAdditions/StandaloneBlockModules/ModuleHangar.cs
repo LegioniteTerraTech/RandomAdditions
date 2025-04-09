@@ -107,8 +107,8 @@ namespace RandomAdditions
         private float HangarReturnRequestDelay = 0;
 
         private ModuleUIButtons buttonGUI;
-        private GUI_BM_Element[] GUILocal = new GUI_BM_Element[1];
-        private GUI_BM_Element[] GUIOther = new GUI_BM_Element[1];
+        private GUI_BM_Element[] GUILocal = new GUI_BM_Element[2];
+        private GUI_BM_Element[] GUIOther = new GUI_BM_Element[2];
 
         public bool IsDocking => TankWantsToDock;
         public bool HasRoom { get { return GarrisonTechs.Count < MaxTechCapacity; } }
@@ -149,8 +149,10 @@ namespace RandomAdditions
             {
                 buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Hangar", true);
                 buttonGUI.OnGUIOpenAttemptEvent.Subscribe(BeforeGUI);
-                GUILocal[0] = ModuleUIButtons.MakeElement("Release Tech", RequestLaunchTech, GetIconRelease);
-                GUIOther[0] = ModuleUIButtons.MakeElement("Dock", RequestDockingPlayer, GetIconGrab);
+                GUILocal[0] = ModuleUIButtons.MakeElement("Free Deployed Techs", RequestFreeLinkedTechs, GetIconEject);
+                GUILocal[1] = ModuleUIButtons.MakeElement("Release Tech", RequestLaunchTech, GetIconRelease);
+                GUIOther[0] = ModuleUIButtons.MakeElement("Free Deployed Techs", RequestFreeLinkedTechs, GetIconEject);
+                GUIOther[1] = ModuleUIButtons.MakeElement("Dock", RequestDockingPlayer, GetIconGrab);
             }
         }
         public Sprite GetIconRelease()
@@ -160,6 +162,10 @@ namespace RandomAdditions
         public Sprite GetIconGrab()
         {
             return UIHelpersExt.GetGUIIcon("Icon_AI_SCU");
+        }
+        public Sprite GetIconEject()
+        {
+            return UIHelpersExt.GetGUIIcon("GUI_Reset");
         }
         public void BeforeGUI()
         {
@@ -479,6 +485,13 @@ namespace RandomAdditions
         }
 
 
+        public float RequestFreeLinkedTechs(float unused)
+        {
+            if (LinkedTechs.Any())
+                ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Close);
+            LinkedTechs.Clear();
+            return 0;
+        }
         public float RequestLaunchTech(float unused)
         {
             TryLaunchTech();

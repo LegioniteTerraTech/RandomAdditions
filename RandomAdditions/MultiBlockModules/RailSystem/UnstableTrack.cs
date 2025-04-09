@@ -23,6 +23,8 @@ namespace RandomAdditions.RailSystem
         }
         internal bool CheckStillConnected()
         {
+            if (tracked.Fake)
+                return true; // Skip the checks since fake tracks are not real
             if (!setup)
             {
                 setup = true;

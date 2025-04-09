@@ -7,6 +7,9 @@ using UnityEngine;
 using TerraTechETCUtil;
 using SafeSaves;
 using RandomAdditions;
+using System.Runtime.InteropServices;
+using Newtonsoft.Json.Linq;
+using static CheckpointChallenge;
 
 namespace RandomAdditions.RailSystem
 {
@@ -22,6 +25,7 @@ namespace RandomAdditions.RailSystem
     ///   1 - Stop Train
     /// </summary>
     [AutoSaveComponent]
+    [RequireComponent(typeof(ModuleCircuitNode), typeof(ModuleCircuitReceiver), typeof(ModuleCircuitDispensor))]
     public class ModuleRailPoint : ExtModule, ICircuitDispensor
     {
 
@@ -73,6 +77,8 @@ namespace RandomAdditions.RailSystem
             if (TrainStopAPIndexes != null && TrainStopAPIndexes.Length == 0)
                 TrainStopAPIndexes = null;
             InsureGUI();
+            if (TrainCallAPIndexes != null || TrainStopAPIndexes != null)
+                block.CircuitNode.ConnexionsUpdatedEvent.Subscribe(OnConnexionsChanged);
         }
 
         public void InsureGUI()
@@ -80,7 +86,7 @@ namespace RandomAdditions.RailSystem
             if (buttonGUI == null)
             {
                 buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Rail Guide", false);
-                buttonGUI.AddElement("Connect", RequestConnect, null);
+                buttonGUI.AddElement("Connect", RequestConnect, GetIconRequestConnect);
                 if (AllowTrainCalling)
                     buttonGUI.AddElement(RequestTrainStatus, RequestTrain, GetIconCall);
                 buttonGUI.AddElement("Disconnect", RequestDisconnect, null);
@@ -99,8 +105,18 @@ namespace RandomAdditions.RailSystem
             if (buttonGUI != null)
                 buttonGUI.Hide();
         }
+        public Sprite GetIconRequestConnect()
+        {
+            if (Node == null)
+                return null;
+            ModContainer MC = ManMods.inst.FindMod("Random Additions");
+            if (ManRails.SelectedNode == Node)
+                return UIHelpersExt.GetIconFromBundle(MC, "GUI_Disconnect");
+            return UIHelpersExt.GetIconFromBundle(MC, "GUI_Connect");
+        }
         public float RequestConnect(float unused)
         {
+            DebugRandAddi.LogRails("OnClick RequestConnect " + block.name);
             ManRails.SetSelectedNode(this);
             HideGUI();
             return 0;
@@ -108,6 +124,7 @@ namespace RandomAdditions.RailSystem
 
         public float RequestDisconnect(float unused)
         {
+            DebugRandAddi.LogRails("OnClick RequestDisconnect " + block.name);
             DisconnectLinked(true, true);
             HideGUI();
             return 0;
@@ -212,11 +229,20 @@ namespace RandomAdditions.RailSystem
         public override void OnAttach()
         {
             InsureGUI();
-            //DebugRandAddi.Log("OnAttach");
             if (block.CircuitNode?.Receiver)
             {
-                LogicConnected = true;
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
+                if (TrainCallAPIndexes != null || TrainStopAPIndexes != null)
+                {
+                    LogicConnected = true;
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, false);
+                }
+            }
+            else
+            {
+                if (block.CircuitNode == null)
+                    DebugRandAddi.Assert("No block.CircuitNode when " + GetType().ToString() + " needs it");
+                else
+                    DebugRandAddi.Assert("No block.CircuitNode.Receiver when " + GetType().ToString() + " needs it");
             }
             tank.Anchors.AnchorEvent.Subscribe(OnAnchor);
             enabled = true;
@@ -242,7 +268,7 @@ namespace RandomAdditions.RailSystem
             SetAvailability(false, false);
             tank.Anchors.AnchorEvent.Unsubscribe(OnAnchor);
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, true);
             lastCachedConnections.Remove(this);
             LogicConnected = false;
         }
@@ -266,42 +292,36 @@ namespace RandomAdditions.RailSystem
         }
 
         private const float CallSignalQuickSignalTime = 0.75f;
-        private int PrevInVal = 0;
+        private int PrevTrainCallVal = 0;
         private float CallSignalLastCall = 0;
         private bool CallSignalQuick = false;
-        public void OnRecCharge(Circuits.BlockChargeData charge)
+        private void OnConnexionsChanged() => ReactToChargeDelta();
+        private void OnChargeChanged(Circuits.BlockChargeData charge) => ReactToChargeDelta();
+        private void ReactToChargeDelta()
         {
-            //DebugRandAddi.Log("OnRecCharge " + charge);
-            try
+            DebugRandAddi.Log("ReactToChargeDelta " + block.name);
+            int val;
+            if (TrainCallAPIndexes != null)
             {
-                int val;
-                bool SignalEvent = false;
-                bool trainCall = false;
-                if (TrainCallAPIndexes != null)
+                int highVal = 0;
+                foreach (var item in TrainCallAPIndexes)
                 {
-                    int highVal = 0;
-                    foreach (var item in TrainCallAPIndexes)
+                    Vector3 apPos = block.attachPoints[item];
+                    if (block.CircuitNode.HasConnectionOnAP(apPos, ModuleCircuitNode.ConnexionTypes.Input) &&
+                        block.CircuitNode.Receiver.CurrentChargeData.AllChargeAPsAndCharges.TryGetValue(
+                        apPos, out val))
                     {
-                        if (charge.AllChargeAPsAndCharges.TryGetValue(block.attachPoints[item], out val) && val != PrevInVal)
-                        {
-                            SignalEvent = true;
-                            PrevInVal = val;
-                            if (val > highVal)
-                                highVal = val;
-                        }
-                        if (highVal > 0)
-                            trainCall = true;
+                        if (val > highVal)
+                            highVal = val;
                     }
                 }
-                if (SignalEvent)
+                if (PrevTrainCallVal != highVal)
                 {
-                    if (trainCall)
+                    PrevTrainCallVal = highVal;
+                    if (highVal > 0)
                     {
-                        if (!Calling && trainEnRoute == null)
-                        {
-                            CallSignalLastCall = Time.time + CallSignalQuickSignalTime;
-                            TryCallTrain(true);
-                        }
+                        CallSignalLastCall = Time.time + CallSignalQuickSignalTime;
+                        CallTrainLogic();
                     }
                     else
                     {
@@ -314,19 +334,21 @@ namespace RandomAdditions.RailSystem
                             CallSignalQuick = true;
                     }
                 }
-                HaltSignal = false;
-                if (TrainStopAPIndexes != null)
+            }
+            HaltSignal = false;
+            if (TrainStopAPIndexes != null)
+            {
+                foreach (var item in TrainStopAPIndexes)
                 {
-                    foreach (var item in TrainStopAPIndexes)
-                    {
-                        if (charge.AllChargeAPsAndCharges.TryGetValue(block.attachPoints[item], out val) && val > 0)
-                            HaltSignal = true;
-                    }
+                    Vector3 apPos = block.attachPoints[item];
+                    if (block.CircuitNode.HasConnectionOnAP(apPos, ModuleCircuitNode.ConnexionTypes.Input) &&
+                        block.CircuitNode.Receiver.CurrentChargeData.AllChargeAPsAndCharges.TryGetValue(
+                            apPos, out val) && val > 0)
+                        HaltSignal = true;
                 }
             }
-            catch { }
         }
-        
+
 
         /// <summary>
         /// Directional!
@@ -392,7 +414,7 @@ namespace RandomAdditions.RailSystem
                     InsureConnectByAPs();
                     Node.AdjustAllTracksShape();
                 }
-                else if (RailSystemSpace == RailSpace.Local)
+                else if (ManRails.HasLocalSpace(RailSystemSpace))
                 {
                     Node.AdjustAllTracksShape();
                 }
@@ -449,7 +471,7 @@ namespace RandomAdditions.RailSystem
 
         private void SetAvailability(bool PartOfTech, bool AnchoredStatic)
         {
-            DebugRandAddi.Log("SetAvailability " + (bool)tank + "  PartOfTech: " + PartOfTech + "  AnchoredStatic: " + AnchoredStatic);
+            DebugRandAddi.Info("SetAvailability " + (bool)tank + "  PartOfTech: " + PartOfTech + "  AnchoredStatic: " + AnchoredStatic);
             if (PartOfTech)
             {
                 if (!AnchoredStatic)
@@ -496,7 +518,7 @@ namespace RandomAdditions.RailSystem
                 if (!Anchored && !ManSaveGame.Storing)
                     DisconnectLinked(false, false);
 
-                bool dynamicValid = !Anchored && Attached && RailSystemSpace != RailSpace.Local;
+                bool dynamicValid = !Anchored && Attached && !ManRails.HasLocalSpace(RailSystemSpace);
                 if (dynamicValid != wasDynamic)
                 {
                     wasDynamic = dynamicValid;
@@ -532,7 +554,7 @@ namespace RandomAdditions.RailSystem
                     }
                     else
                     {
-                        Node.ClearStation();
+                        Node.OnStationUnloaded();
                         NodeID = -1;
                         Node = null;
                     }
@@ -567,18 +589,24 @@ namespace RandomAdditions.RailSystem
         }
 
 
+        internal bool IsAngled()
+        {
+            if (ManRails.HasLocalSpace(RailSystemSpace))
+                return (block.trans.localRotation * Vector3.up).y < 0.75f;
+            return block.trans.up.y < 0.75f;
+        }
         internal bool CanReach(RailTrackNode otherNode)
         {
             //DebugRandAddi.Log("CanReach " + (bool)tank + " " + tank.Anchors.Fixed + " " + (Node != null) + " "
             //    + (Node.NumConnected() != AllowedConnectionCount));
-            return tank && (tank.Anchors.Fixed || RailSystemSpace == RailSpace.Local) && Node != null && otherNode != null && 
+            return tank && (tank.Anchors.Fixed || ManRails.HasLocalSpace(RailSystemSpace)) && Node != null && otherNode != null && 
                 Node.CanReach(otherNode);
         }
         internal bool CanConnect(RailTrackNode otherNode)
         {
             //DebugRandAddi.Log("CanConnect " + (bool)tank + " " + tank.Anchors.Fixed + " " + (Node != null) + " "
             //    + (Node.NumConnected() != AllowedConnectionCount));
-            return tank && (tank.Anchors.Fixed || RailSystemSpace == RailSpace.Local) && Node != null && otherNode != null && 
+            return tank && (tank.Anchors.Fixed || ManRails.HasLocalSpace(RailSystemSpace)) && Node != null && otherNode != null && 
                 Node.CanConnect(otherNode);
         }
         internal bool ConnectToOther(RailTrackNode Other, bool reconnect)
@@ -590,7 +618,7 @@ namespace RandomAdditions.RailSystem
             }
             if (reconnect)
             {
-                DebugRandAddi.Info("ModuleRailPoint Reconnect " + block.name);
+                DebugRandAddi.LogRails("ModuleRailPoint Reconnect " + block.name);
                 if (Node.CanReach(Other))
                 {
                     PlaySound(true);
@@ -602,7 +630,7 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                DebugRandAddi.Info("ModuleRailPoint Connect " + block.name);
+                DebugRandAddi.LogRails("ModuleRailPoint Connect " + block.name);
                 if (Node.CanConnectFreeLinks(Other))
                 {
                     PlaySound(true);
@@ -690,13 +718,27 @@ namespace RandomAdditions.RailSystem
         private TankLocomotive trainEnRoute = null;
 
 
-        public void TryCallTrain(bool logicCalled = false)
+        public void CallTrainLogic()
         {
-            if (trainEnRoute && !logicCalled)
+            if (!Calling)
+            {
+                DebugRandAddi.Log("\nStation \"" + block.tank.name + "\" requesting nearest train on network");
+                if ((Singleton.playerPos - block.centreOfMassWorld).WithinBox(ManRails.NotifyPlayerDistance))
+                {
+                    UIHelpersExt.GUIWarningPopup(block.tank, ref overlay, "Calling...", "Calling train to this station.", "Station");
+                    //ManTrainPathing.TrainStatusPopup("Calling...", WorldPosition.FromScenePosition(transform.position + Vector3.up));
+                }
+                ManTrainPathing.QueueFindNearestTrainInRailNetworkAsync(Node, OnTrainFound);
+                Calling = true;
+            }
+        }
+        public void TryCallTrain()
+        {
+            if (trainEnRoute)
             {
                 CancelTrainCall();
             }
-            else if (Calling && !logicCalled)
+            else if (Calling)
             {
                 CancelSearchRequest();
             }
@@ -732,7 +774,7 @@ namespace RandomAdditions.RailSystem
             if (trainEnRoute)
             {
                 Calling = false;
-                trainEnRoute.FinishPathing(TrainArrivalStatus.Cancelled);
+                trainEnRoute.CancelAutopilot();
                 trainEnRoute = null;
             }
         }

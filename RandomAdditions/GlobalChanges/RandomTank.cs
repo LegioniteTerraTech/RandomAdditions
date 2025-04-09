@@ -164,24 +164,24 @@ namespace RandomAdditions
             if (tank.PlayerFocused || (GetComponent<TankLocomotive>() && GetComponent<TankLocomotive>().ShouldLoadTiles()))
             {
                 MaxTileLoadingDiameter = 2;
-                TileLoadingToggle(true);
+                OnHostTileLoadingToggle(true);
             }
             else if (MaxTileLoadingDiameter > 0)
-                TileLoadingToggle(true);
+                OnHostTileLoadingToggle(true);
             else
-                TileLoadingToggle(false);
+                OnHostTileLoadingToggle(false);
         }
-        public void TileLoadingToggle(bool set)
+        public void OnHostTileLoadingToggle(bool set)
         {
             if (set != isLoading)
             {
                 if (set)
                 {
-                    ManWorldTileExt.RegisterDynamicTileLoader(this);
+                    ManWorldTileExt.HostRegisterDynamicTileLoader(this);
                 }
                 else
                 {
-                    ManWorldTileExt.UnregisterDynamicTileLoader(this);
+                    ManWorldTileExt.HostUnregisterDynamicTileLoader(this);
                 }
             }
         }

@@ -10,10 +10,15 @@ using RandomAdditions;
 using Newtonsoft.Json;
 using System.IO;
 
+/// <summary>
+/// Remember that Scenery is stored in the game by it's GameObject name, not by it's own SceneryType 
+///   (SceneryTypes is used by other utilities like Advanced AI to determine interactivity)
+/// </summary>
 [AutoSaveManager]
-internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, CustomScenery>
+public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, CustomScenery>
 {
     protected override string leadingFileName { get; } = "Sce_";
+    public override string LogDirectoryName { get; } = "Scenery";
     [SSManagerInst]
     public static ManModScenery inst = new ManModScenery();
     public static Dictionary<int, string> modSceneryModNames = new Dictionary<int, string>();
@@ -23,7 +28,8 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
         FieldInfo sce = typeof(ManSpawn).GetField("m_TerrainObjectTable", BindingFlags.NonPublic | BindingFlags.Instance);
         FieldInfo sce2 = typeof(TerrainObjectTable).GetField("m_GUIDToPrefabLookup", BindingFlags.NonPublic | BindingFlags.Instance);
         table = (TerrainObjectTable)sce.GetValue(ManSpawn.inst);
-        if (table == null) throw new NullReferenceException("ManModScenery: ManSpawn.inst has not allocated m_TerrainObjectTable for some reason and ManModScenery setup failed");
+        if (table == null) 
+            throw new NullReferenceException("ManModScenery: ManSpawn.inst has not allocated m_TerrainObjectTable for some reason and ManModScenery setup failed");
         WikiPageScenery.GetSceneryModName = SceneryModNameWrapper;
     }
     protected override void Init_Internal()
@@ -157,7 +163,8 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
         {
             return new CustomScenery()
             {
-                Name = target.name,
+                ID = target.name,
+                Name = StringLookup.GetItemName(ObjectTypes.Scenery, vis.ItemType),
                 Description = StringLookup.GetItemDescription(ObjectTypes.Scenery, vis.ItemType),
                 PrefabName = target.name,
                 TextureName = MR ? (MR.sharedMaterial ?
@@ -165,7 +172,7 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
                 MeshName = MF ? (MF.sharedMesh ?
                 MF.sharedMesh.name : MF.mesh.name) : null,
                 DamageableType = ManDamage.DamageableType.Standard,
-                Health = int.MaxValue / 2048f,
+                Health = -1,//int.MaxValue / 2048f,
                 GroundRadius = RD.GroundRadius,
                 HostileFlora = false,
                 MaxHeightOffset = 0,
@@ -177,7 +184,8 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
         {
             return new CustomScenery()
             {
-                Name = target.name,
+                ID = target.name,
+                Name = StringLookup.GetItemName(ObjectTypes.Scenery, vis.ItemType),
                 Description = StringLookup.GetItemDescription(ObjectTypes.Chunk, vis.ItemType),
                 PrefabName = target.name,
                 TextureName = MR ? (MR.sharedMaterial ?
@@ -235,7 +243,10 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
                     var meshR = Mod.GetMaterialFromModAssetBundle(scenery.TextureName, false);
                     if (!meshR)
                         meshR = ResourcesHelper.GetMaterialFromBaseGameAllDeep(scenery.TextureName, false);
-                    Instance.GetComponent<MeshRenderer>().sharedMaterial = meshR;
+                    if (meshR != null)
+                        Instance.GetComponent<MeshRenderer>().sharedMaterial = meshR;
+                    else
+                        DebugRandAddi.Assert("Texture null for " + fileName + "!!!");
                 }
                 catch (Exception e)
                 {
@@ -246,12 +257,25 @@ internal class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Cust
                     var meshF = Mod.GetMeshFromModAssetBundle(scenery.MeshName, false);
                     if (meshF)
                         Instance.GetComponent<MeshFilter>().sharedMesh = meshF;
+                    else
+                        DebugRandAddi.Assert("Mesh null for " + fileName + "!!!");
                 }
                 catch (Exception e)
                 {
                     DebugRandAddi.Log("MeshFilter null");
                 }
-                healthMain.SetValue(Instance.GetComponent<Damageable>(), (int)(scenery.Health * 4096));
+                var dmg = Instance.GetComponent<Damageable>();
+                if (dmg)
+                {
+                    if (scenery.Health <= 0)
+                        healthMain.SetValue(dmg, (int)(9001 * 4096));
+                    else
+                        healthMain.SetValue(dmg, (int)(scenery.Health * 4096));
+                    dmg.m_DamageableType = scenery.DamageableType;
+                }
+                else if (scenery.Health > 0)
+                    DebugRandAddi.Assert("Health set > 0 for " + fileName + ", but reference prefab has no Damageable!!!" +
+                        "\n Change to a prefab that has a Damageable (destructable scenery)");
 
                 TerrainObject TO = Instance.GetComponent<TerrainObject>();
                 ResourceDispenser RD = Instance.GetComponent<ResourceDispenser>();

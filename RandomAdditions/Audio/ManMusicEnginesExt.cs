@@ -405,6 +405,8 @@ namespace RandomAdditions
                 foreach (var item in TechExtAudio.techA)
                 {
                     item.VolumeUpdate(0);
+                    foreach (var item2 in item.engines)
+                        item2.Value.EnginePause(true);
                 }
                 ActiveMusic.isPlaying(out bool currentlyPlaying);
                 if (currentlyPlaying)
@@ -417,6 +419,8 @@ namespace RandomAdditions
                 foreach (var item in TechExtAudio.techA)
                 {
                     item.VolumeUpdate(currentSFXVol);
+                    foreach (var item2 in item.engines)
+                        item2.Value.EnginePause(false);
                 }
                 if (isModCorpDangerValid)
                 {

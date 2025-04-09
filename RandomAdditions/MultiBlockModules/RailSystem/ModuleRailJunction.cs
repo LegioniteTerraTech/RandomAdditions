@@ -59,7 +59,7 @@ namespace RandomAdditions
             InsureGUI();
             if (HubSelections.Length > 1)
             {
-                DebugRandAddi.Log("Assembling junction switch menu...");
+                //DebugRandAddi.Log("Assembling junction switch menu...");
                 GUI_BM_Element[] eles = buttonGUI.RemoveAndReturnAllElements();
                 Array.Resize(ref eles, eles.Length + 1);
                 for (int step = eles.Length-1; step > 1; step--)
@@ -88,7 +88,7 @@ namespace RandomAdditions
                 if (!Anchored && !ManSaveGame.Storing)
                     DisconnectLinked(false, false);
 
-                bool dynamicValid = !Anchored && Attached && RailSystemSpace != RailSpace.Local;
+                bool dynamicValid = !Anchored && Attached && !ManRails.HasLocalSpace(RailSystemSpace);
                 if (dynamicValid != wasDynamic)
                 {
                     wasDynamic = dynamicValid;
@@ -112,7 +112,7 @@ namespace RandomAdditions
                     }
                     else
                     {
-                        Node.ClearStation();
+                        Node.OnStationUnloaded();
                         NodeID = -1;
                         Node = null;
                     }

@@ -29,6 +29,13 @@ namespace RandomAdditions
             stop = new TechExtAudioState(CEA.CorpEngineAudioStop, false);
         }
 
+        internal void EnginePause(bool paused)
+        {
+            stop.Pause(paused);
+            idle.Pause(paused);
+            start.Pause(paused);
+            run.Pause(paused);
+        }
         internal void EngineStop()
         {
             stop.Stop();

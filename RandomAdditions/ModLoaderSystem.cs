@@ -25,6 +25,12 @@ public class JSONConverterUniversal : JsonConverter
     {
         Foundation = CustomModules.NuterraDeserializer.DeserializeIntoGameObject((JObject)token, Foundation);
     }
+    private static HashSet<string> JSONBLOCKNames = new HashSet<string>()
+    {
+        "JSONData",
+        "JSONBLOCK",
+        "Deserializer",
+    };
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
     {
         JObject json = JObject.Load(reader);
@@ -39,7 +45,7 @@ public class JSONConverterUniversal : JsonConverter
                     JToken token = item.Value;
                     if (token is JObject obj)
                     {
-                        if (item.Key != "JSONData")
+                        if (!JSONBLOCKNames.Contains(item.Key))
                             obj.Merge(existingValue);
                     }
                 }
@@ -56,7 +62,7 @@ public class JSONConverterUniversal : JsonConverter
                 foreach (var item in json)
                 {
                     JToken token = item.Value;
-                    if (item.Key == "JSONData")
+                    if (JSONBLOCKNames.Contains(item.Key))
                     {
                         try
                         {
@@ -83,8 +89,15 @@ public abstract class ModLoadable
     public ModContainer mod;
     [JsonIgnore]
     public string fileName;
+    [Doc("The advanced fields for fine alterations to this item")]
     public Dictionary<string,object> JSONData = new Dictionary<string,object>();
 }
+/// <summary>
+/// 
+/// </summary>
+/// <typeparam name="T">The Manager's type for loading content</typeparam>
+/// <typeparam name="V">The enum that is used to point to the targeted type</typeparam>
+/// <typeparam name="A">The content type to load</typeparam>
 public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A>, new()
     where V : struct where A : ModLoadable
 {
@@ -94,14 +107,30 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
     protected static readonly MethodInfo poolStart = typeof(Visible).GetMethod("OnPool", spamFlags);
     public static bool enabled = false;
 
+    public abstract string LogDirectoryName { get; }
+    public void Log(string logData)
+    {
+        DebugRandAddi.Log(logData);
+    }
+
+
     public Dictionary<string, A> Active = new Dictionary<string, A>();
     [SSaveField]
     public Dictionary<string, V> Registered = new Dictionary<string, V>();
     [SSaveField]
     public int RegisteredIDIterator = 420;
 
+    /// <summary>
+    /// This is automatically called before the save system loads anything
+    /// </summary>
     protected abstract void Init_Internal();
+    /// <summary>
+    /// This is automatically called for each Active type "A" to insert them into the world loading.
+    /// </summary>
     protected abstract void FinalAssignment(A instance, V type);
+    /// <summary>
+    /// Call this when the game has started saving it's SafeSaves serialization for this system
+    /// </summary>
     public void PrepareForSaving()
     {
         if (!enabled)
@@ -115,9 +144,15 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
             DebugRandAddi.Log("Cascade crash of " + typeof(T) + ".PrepareForSaving(): " + e);
         }
     }
+    /// <summary>
+    /// Call this when the game has finished saving it's SafeSaves serialization for this system
+    /// </summary>
     public void FinishedSaving()
     {
     }
+    /// <summary>
+    /// Call this when the game has started loading it's SafeSaves serialization for this system
+    /// </summary>
     public void PrepareForLoading()
     {
         if (!enabled)
@@ -131,6 +166,9 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
             DebugRandAddi.Log("Cascade crash of " + typeof(T) + ".PrepareForLoading(): " + e);
         }
     }
+    /// <summary>
+    /// Call this when the game has finished loading it's SafeSaves serialization for this system
+    /// </summary>
     public void FinishedLoading()
     {
         if (!enabled)
@@ -166,11 +204,22 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
         }
     }
 
+    /// <summary>
+    /// Creates all managed types "A" in all storage mediums.
+    /// </summary>
+    /// <param name="reload">Reload the objects from file</param>
+    /// <param name="path">The file path of the type</param>
     public void CreateAll(bool reload, string path)
     {
         CreateLocal(reload, path);
         CreateWorkshop(reload);
     }
+    /// <summary>
+    /// Creates all managed types "A" using data stored in a respective JSON file for that type.
+    ///  Call CreateAll() instead for first init.  CreateLocal() is better for JSON editing and testing.
+    /// </summary>
+    /// <param name="reload">Reload the objects from file</param>
+    /// <param name="path">The file path of the type</param>
     public void CreateLocal(bool reload, string path)
     {
         var MC = ResourcesHelper.GetModContainer("Random Additions", out _);
@@ -194,6 +243,10 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
             }
         }
     }
+    /// <summary>
+    /// Creates all managed types "A" using data stored in an AssetBundle for Workshop/Local Mods entries
+    ///  Call CreateAll() instead for first init.
+    /// </summary>
     public void CreateWorkshop(bool reload)
     {
         Init_Internal();
@@ -216,8 +269,17 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
     }
 
 
+    /// <summary>
+    /// Extract data from an existing instance from the base game this is supposed to target
+    /// </summary>
     protected abstract A ExtractFromExisting(object target);
+    /// <summary>
+    /// Saves a new instance file to the disk as JSON
+    /// </summary>
     protected abstract void CreateInstanceFile(ModContainer Mod, string path, bool Reload = false);
+    /// <summary>
+    /// Saves a new instance file to the disk as an AssetBundle
+    /// </summary>
     protected abstract void CreateInstanceAsset(ModContainer Mod, TextAsset asset, bool Reload = false);
 
 

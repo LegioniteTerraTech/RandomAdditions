@@ -15,10 +15,11 @@ namespace RandomAdditions
     public class ModuleRailBogie : ExtModule
     {
         public const int preciseAccuraccyIterations = 6;
-        public const float snapToRailDist = 2;
-        public static float snapToRailDistSqr = snapToRailDist * snapToRailDist;
+        public const float snapToRailDist = 1.25f;//2f;
+        public const float snapToRailDistSqr = snapToRailDist * snapToRailDist;
         public const float MaxBogieNoDragDistance = 0.65f;
-        private static float MaxBogieNoDragDistanceSqr = MaxBogieNoDragDistance * MaxBogieNoDragDistance;
+        public const float MaxBogieNoDragDistanceSqr = MaxBogieNoDragDistance * MaxBogieNoDragDistance;
+        public const float ExtraBogeyBelowAttachDistPercent = 0.56f;//0.35f;
         public const float BogieReRailDelay = 0.175f;
         public const float DerailedForceSqrRatio = 0.45f;
         public const float DerailedWheelSlipSpin = 0.175f;
@@ -26,6 +27,7 @@ namespace RandomAdditions
 
         public const float bogieDriftMaxTime = 0.8683f;
         public const float bogieDriftMaxKickPercent = 0.24f;
+        public const float bogieAttachLockDuration = 0.75f;
 
 
         internal static PhysicMaterial frictionless;
@@ -36,7 +38,8 @@ namespace RandomAdditions
         internal TankLocomotive engine;
         internal RailTrack Track;
         internal RailSegment CurrentSegment;
-        public bool AnyBogieOnRails => HierachyBogies.AnyBogiesOnRails();
+        public bool AnyBogieNotAirtimed => HierachyBogies.AnyBogiesNotAirtimed();
+        public bool AnyBogieRailLocked => HierachyBogies.AnyBogiesRailLock();
 
 
         public RailBogiePart HierachyBogies;
@@ -362,7 +365,6 @@ namespace RandomAdditions
             }
 
 
-            MaxBogieNoDragDistanceSqr = MaxBogieNoDragDistance * MaxBogieNoDragDistance;
             BogieReleaseDistanceSqr = BogieMaxSidewaysDistance * BogieMaxSidewaysDistance;
             //AC = KickStart.FetchAnimette(transform, "_Tether", AnimCondition.Tether);
             //block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
@@ -397,7 +399,7 @@ namespace RandomAdditions
             }
             ShowBogieMotors(false);
             enabled = false;
-            if (AnyBogieOnRails)
+            if (AnyBogieRailLocked)
                 DerailAllBogies();
             TankLocomotive.HandleRemoval(tank, this);
         }
@@ -443,16 +445,16 @@ namespace RandomAdditions
         internal bool PreFixedUpdate()
         {   // Apply bogey positioning
             HierachyBogies.PreFixedUpdate();
-            return AnyBogieOnRails;
+            return AnyBogieRailLocked;
         }
 
         /// <summary>
         /// Apply the physics
         /// - This forces the controller to float over the rails
         /// </summary>
-        internal void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied)
+        internal void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied, float extraStickForce)
         {
-            HierachyBogies.PostFixedUpdate(lastMoveVeloWorld, invMass, brakesApplied);
+            HierachyBogies.PostFixedUpdate(lastMoveVeloWorld, invMass, brakesApplied, extraStickForce);
         }
         internal void PostPostFixedUpdate()
         {
@@ -633,7 +635,7 @@ namespace RandomAdditions
             /// <summary> The pivot center of the bogie </summary>
             internal Transform BogieCenter { get; private set; }
             /// <summary> The pivot center of the bogie offset by bogieSuspensionOffsetCalc </summary>
-            internal Vector3 BogieCenterOffset => BogieCenter.position + (Vector3.down * main.bogieSuspensionOffsetCalc);
+            internal Vector3 BogieCenterOffset => BogieCenter.position + (BogieCenter.up * -main.bogieSuspensionOffsetCalc);
             /// <summary> The visuals of the bogie, updated by Update() </summary>
             internal Transform BogieVisual { get; private set; }
             /// <summary> The physics handling of the bogie, updated by FixedUpdate() </summary>
@@ -673,7 +675,8 @@ namespace RandomAdditions
             internal abstract RailBogie GetLastBogie();
             internal abstract void CollectAllBogies(ICollection<RailBogie> bogies);
             internal abstract void UncollectAllBogies(ICollection<RailBogie> bogies);
-            internal abstract bool AnyBogiesOnRails();
+            internal abstract bool AnyBogiesNotAirtimed();
+            internal abstract bool AnyBogiesRailLock();
             internal abstract float GetTurnSeverity();
 
             internal abstract void HaltAll();
@@ -694,7 +697,7 @@ namespace RandomAdditions
             /// Apply the physics
             /// - This forces the controller to float over the rails
             /// </summary>
-            internal abstract void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied);
+            internal abstract void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied, float extraStickForce);
             internal abstract void PostPostFixedUpdate();
         }
         /// <summary> The bogie with more bogies attached </summary>
@@ -735,9 +738,10 @@ namespace RandomAdditions
                 fwd.UncollectAllBogies(bogies);
                 bwd.UncollectAllBogies(bogies);
             }
-            internal override bool AnyBogiesOnRails()
+            internal override bool AnyBogiesNotAirtimed() => fwd.AnyBogiesNotAirtimed() || bwd.AnyBogiesNotAirtimed();
+            internal override bool AnyBogiesRailLock()
             {
-                return fwd.AnyBogiesOnRails() || bwd.AnyBogiesOnRails();
+                return fwd.AnyBogiesRailLock() || bwd.AnyBogiesRailLock();
             }
             internal override float GetTurnSeverity()
             {
@@ -771,10 +775,10 @@ namespace RandomAdditions
                 fwd.UpdateRailBogeyPositioning();
                 bwd.UpdateRailBogeyPositioning();
             }
-            internal override void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied)
+            internal override void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied, float extraStickForce)
             {   // Apply bogies positioning
-                fwd.PostFixedUpdate(lastMoveVeloWorld, invMass, brakesApplied);
-                bwd.PostFixedUpdate(lastMoveVeloWorld, invMass, brakesApplied);
+                fwd.PostFixedUpdate(lastMoveVeloWorld, invMass, brakesApplied, extraStickForce);
+                bwd.PostFixedUpdate(lastMoveVeloWorld, invMass, brakesApplied, extraStickForce);
             }
             internal override void PostPostFixedUpdate()
             {   // Apply bogies positioning
@@ -807,7 +811,9 @@ namespace RandomAdditions
             {
                 bogies.Remove(this);
             }
-            internal override bool AnyBogiesOnRails()
+
+            internal override bool AnyBogiesNotAirtimed() => !airtimed && CurrentSegment;
+            internal override bool AnyBogiesRailLock()
             {
                 return CurrentSegment;
             }
@@ -857,6 +863,7 @@ namespace RandomAdditions
             }
 
             public bool BogieGrounded { get; internal set; } = false;
+            public float BogieLockAttachDuration = 0;
 
             /// <summary> from the BogieVisual to BogieCenterOffset in BogieVisual's local space </summary>
             internal Vector3 bogiePositionLocal = Vector3.zero;
@@ -970,7 +977,7 @@ namespace RandomAdditions
             /// Apply the physics
             /// - This forces the controller to float over the rails
             /// </summary>
-            internal override void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied)
+            internal override void PostFixedUpdate(Vector3 lastMoveVeloWorld, float invMass, bool brakesApplied, float extraStickForce)
             {
                 Vector3 force;
                 if (CurrentSegment)
@@ -980,7 +987,7 @@ namespace RandomAdditions
                     {
                         BogieDetachedCollider.enabled = false;
                         /*
-                        if (Track.Space == RailSpace.Local)
+                        if (ManRails.HasLocalSpace(Track.Space))
                             BogieDetachedCollider.enabled = false;
                         else
                             BogieDetachedCollider.enabled = true;
@@ -988,72 +995,90 @@ namespace RandomAdditions
                     }
 
                     bogieOffset = BogieCenterOffset - BogieRemote.position;
-                    float invSusDist = 1 / main.MaxSuspensionDistance;
-                    float CenteringForce = Mathf.Clamp(bogieOffset.magnitude * invSusDist, 0.0f, 1);
+
+                    float invSusDist = 1f / main.MaxSuspensionDistance;
+                    float CenteringForce = Mathf.Clamp(bogieOffset.magnitude * invSusDist, 0.0f, 1f);
                     Vector3 localOffset = -BogieRemote.InverseTransformVector(bogieOffset);
                     float DampeningForce = (LastSuspensionDist - localOffset.y) * invSusDist / Time.fixedDeltaTime * main.SuspensionDampener;
                     LastSuspensionDist = localOffset.y;
                     force = localOffset.normalized * CenteringForce;
-                    // Quadratic
-                    if (main.SidewaysSpringQuadratic)
-                        force.x *= Mathf.Abs(force.x);
-                    force.x *= main.SidewaysSpringForce;
-
-                    if (main.SuspensionQuadratic)
-                        force.y *= Mathf.Abs(force.y);
-                    if (force.y > 0)
-                        force.y = Mathf.Max((force.y * main.SuspensionSpringForce) - DampeningForce, 0);
-                    else if (BogieVisual.up.y > main.BogieStickUprightStrictness)
-                        force.y *= main.SuspensionStickForce;
-
-                    float appliedVeloX = Mathf.Abs(force.x * invMass);
-                    if (appliedVeloX > main.MaxSidewaysSpringAcceleration)
-                        force.x *= main.MaxSidewaysSpringAcceleration / appliedVeloX;
-                    float appliedVeloY = Mathf.Abs(force.y * invMass);
-                    if (appliedVeloY > main.MaxVerticalSpringAcceleration)
-                        force.y *= main.MaxVerticalSpringAcceleration / appliedVeloY;
-
-                    float relSpeed = BogieRemote.InverseTransformDirection(lastMoveVeloWorld).z;
-                    float relSpeedAbs = Mathf.Abs(relSpeed);
-
-                    UpdateSlowParticles(!driveDirection.ApproxZero() && relSpeedAbs < main.BogieSlowParticlesMaxSpeed);
-
-                    if (brakesApplied)
-                    {
-                        if (engine.TankHasBrakes)
-                        {
-                            force.z *= main.BrakingForce;
-                            UpdateWheelSparks(!(DeltaRailPosition / Time.deltaTime).Approximately(0, WheelSlipSkidSparksMinSpeed), relSpeedAbs);
+                    if (airtimed && BogieLockAttachDuration <= 0)
+                    {   // We are off the rails
+                        UpdateWheelSparks(false);
+                        if (extraStickForce == 0)
+                        {   // We are off the rails and cannot do physics 
+                            AppliedForceBogeyFrameRef = Vector3.zero;
+                            return;
+                        }
+                        else
+                        {   // We can try moving our bogies back down towards the tracks
+                            force = new Vector3(0, Mathf.Clamp(force.y, -1, 1) * extraStickForce, 0);
+                            AppliedForceBogeyFrameRef = force;
                         }
                     }
                     else
                     {
-                        float appliedForceZ;
-                        float forceMulti = 1;
+                        // Quadratic
+                        if (main.SidewaysSpringQuadratic)
+                            force.x *= Mathf.Abs(force.x);
+                        force.x *= main.SidewaysSpringForce;
 
+                        if (main.SuspensionQuadratic)
+                            force.y *= Mathf.Abs(force.y);
+                        if (force.y > 0)
+                            force.y = Mathf.Max((force.y * main.SuspensionSpringForce) - DampeningForce, 0);
+                        else if (BogieVisual.up.y > main.BogieStickUprightStrictness)
+                            force.y *= main.SuspensionStickForce;
 
-                        float totalVeloZ = Mathf.Abs((force.z * invMass) + relSpeed);
-                        if (totalVeloZ > engine.BogieLimitedVelocity)
-                            forceMulti = engine.BogieLimitedVelocity / totalVeloZ;
-                        float bogieContactForce = Mathf.Clamp(engine.BogieCurrentDriveForce, 0, main.BogieMaxContactForce);
-                        if (relSpeed > 0)
+                        float appliedVeloX = Mathf.Abs(force.x * invMass);
+                        if (appliedVeloX > main.MaxSidewaysSpringAcceleration)
+                            force.x *= main.MaxSidewaysSpringAcceleration / appliedVeloX;
+                        float appliedVeloY = Mathf.Abs(force.y * invMass);
+                        if (appliedVeloY > main.MaxVerticalSpringAcceleration)
+                            force.y *= main.MaxVerticalSpringAcceleration / appliedVeloY;
+
+                        float relSpeed = BogieRemote.InverseTransformDirection(lastMoveVeloWorld).z;
+                        float relSpeedAbs = Mathf.Abs(relSpeed);
+
+                        UpdateSlowParticles(!driveDirection.ApproxZero() && relSpeedAbs < main.BogieSlowParticlesMaxSpeed);
+
+                        if (brakesApplied)
                         {
-                            float appliedVeloZ = driveCurve.Evaluate(Mathf.Clamp(relSpeed, -engine.BogieLimitedVelocity, engine.BogieLimitedVelocity) / engine.BogieLimitedVelocity);
-                            appliedForceZ = BogieRemote.InverseTransformVector(driveDirection * bogieContactForce * forceMulti * appliedVeloZ).z;
+                            if (engine.TankHasBrakes)
+                            {
+                                force.z *= main.BrakingForce;
+                                UpdateWheelSparks(!(DeltaRailPosition / Time.deltaTime).Approximately(0, WheelSlipSkidSparksMinSpeed), relSpeedAbs);
+                            }
                         }
                         else
                         {
-                            float appliedVeloZ = driveCurve.Evaluate(Mathf.Clamp(-relSpeed, -engine.BogieLimitedVelocity, engine.BogieLimitedVelocity) / engine.BogieLimitedVelocity);
-                            appliedForceZ = BogieRemote.InverseTransformVector(driveDirection * bogieContactForce * forceMulti * appliedVeloZ).z;
+                            float appliedForceZ;
+                            float forceMulti = 1;
+
+
+                            float totalVeloZ = Mathf.Abs((force.z * invMass) + relSpeed);
+                            if (totalVeloZ > engine.BogieLimitedVelocity)
+                                forceMulti = engine.BogieLimitedVelocity / totalVeloZ;
+                            float bogieContactForce = Mathf.Clamp(engine.BogieCurrentDriveForce, 0, main.BogieMaxContactForce);
+                            if (relSpeed > 0)
+                            {
+                                float appliedVeloZ = driveCurve.Evaluate(Mathf.Clamp(relSpeed, -engine.BogieLimitedVelocity, engine.BogieLimitedVelocity) / engine.BogieLimitedVelocity);
+                                appliedForceZ = BogieRemote.InverseTransformVector(driveDirection * bogieContactForce * forceMulti * appliedVeloZ).z;
+                            }
+                            else
+                            {
+                                float appliedVeloZ = driveCurve.Evaluate(Mathf.Clamp(-relSpeed, -engine.BogieLimitedVelocity, engine.BogieLimitedVelocity) / engine.BogieLimitedVelocity);
+                                appliedForceZ = BogieRemote.InverseTransformVector(driveDirection * bogieContactForce * forceMulti * appliedVeloZ).z;
+                            }
+
+
+                            force.z += appliedForceZ;
+                            UpdateWheelSparks(false);
                         }
-
-
-                        force.z += appliedForceZ;
-                        UpdateWheelSparks(false);
                     }
 
                     float stabDelta = tank.rbody.GetMaxStableForceThisFixedFrame();
-                    if (Track.Space == RailSpace.Local && Track.GetRigidbody())
+                    if (ManRails.HasLocalSpace(Track.Space) && Track.GetRigidbody())
                     {
                         float stabTrack = Track.GetRigidbody().GetMaxStableForceThisFixedFrame();
                         stabDelta = Mathf.Min(stabDelta, stabTrack);
@@ -1063,6 +1088,12 @@ namespace RandomAdditions
                     forceClamp.y = Mathf.Abs(forceClamp.y);
                     force.x = Mathf.Clamp(force.x, -forceClamp.x, forceClamp.x);
                     force.y = Mathf.Clamp(force.y, -forceClamp.y, forceClamp.y);
+                    // EASE IN
+                    if (Vector2.Dot(force.ToVector2XY(), AppliedForceBogeyFrameRef.ToVector2XY()) > 0)
+                    {
+                        force.x *= 0.5f;
+                        force.y *= 0.5f;
+                    }
                 }
                 else if (BogieGrounded)
                 {   // Bogie is loose and on the ground
@@ -1098,7 +1129,7 @@ namespace RandomAdditions
                 if (CurrentSegment)
                 {
                     Vector3 force = BogieRemote.TransformVector(AppliedForceBogeyFrameRef);
-                    if (Track.Space == RailSpace.Local && Track.GetRigidbody())
+                    if (ManRails.HasLocalSpace(Track.Space) && Track.GetRigidbody())
                     {
                         Track.GetRigidbody().AddForceAtPosition(-force, BogieCenter.position, ForceMode.Force);
                     }
@@ -1236,6 +1267,10 @@ namespace RandomAdditions
                 if (NextCheckTime > 0)
                     NextCheckTime -= Time.fixedDeltaTime;
             }
+            public bool WillTipOver(Vector3 railUp)
+            {
+                return Mathf.Abs(Vector3.SignedAngle(main.transform.up, railUp, BogieVisual.forward)) > main.BogieMaxRollDegrees;
+            }
 
             private bool airtimed = false;
             internal void UpdateActiveVisuals()
@@ -1249,30 +1284,28 @@ namespace RandomAdditions
                 {
                     if (Track != null)
                     {
-                        DebugRandAddi.Log("DetachBogey - End of rail");
+                        //DebugRandAddi.LogRails("DetachBogey - End of rail");
                         DerailBogey();
                     }
                     else
                         DebugRandAddi.Assert("Somehow ModuleRailBogey's Track is null but CurrentRail is not?!");
                     return;
                 }
-                if (bogiePositionLocal.y > main.bogieVisualSuspensionMaxDistanceCalc &&
-                    Mathf.Abs(Vector3.SignedAngle(engine.trainCabUpWorld, BogieVisual.up, BogieVisual.forward)) >
-                    main.BogieMaxRollDegrees)
-                {   // Tilted too far! derail!
-                    if (Track != null)
-                    {
-                        DebugRandAddi.Log("DetachBogey - Overtilt");
-                        DerailBogey();
+                if (BogieLockAttachDuration <= 0)
+                {   // We can detach by normal extremes
+                    if (bogiePositionLocal.y > main.bogieVisualSuspensionMaxDistanceCalc && WillTipOver(BogieVisual.up))
+                    {   // Tilted too far! derail!
+                        if (Track != null)
+                        {
+                            DebugRandAddi.LogRails("DetachBogey - Overtilt");
+                            DerailBogey();
+                        }
+                        else
+                            DebugRandAddi.Assert("Somehow ModuleRailBogie's Track is null but CurrentRail is not?!");
+                        return;
                     }
-                    else
-                        DebugRandAddi.Assert("Somehow ModuleRailBogie's Track is null but CurrentRail is not?!");
-                    return;
-                }
-                if (!main.IsPathing)
-                {
-                    if (IsTooFarFromTrack(bogiePositionLocal))
-                    {
+                    if (!main.IsPathing && IsTooFarFromTrack(bogiePositionLocal))
+                    {   // We are far too high above the tracks to stay on them!
                         if (Track != null)
                         {
                             DerailBogey();
@@ -1283,16 +1316,18 @@ namespace RandomAdditions
                     }
                 }
                 if (BogieVisual.localPosition.y < -main.bogieVisualSuspensionMaxDistanceCalc)
-                {
-                    BogieVisual.localPosition = BogieVisual.localPosition.SetY(-main.bogieVisualSuspensionMaxDistanceCalc);
                     airtimed = true;
-                }
                 else if (airtimed)
                 {
                     airtimed = false;
                     ForceSparks = true;
                     InvokeHelper.CancelInvoke(StopForceSparks);
                     InvokeHelper.Invoke(StopForceSparks, 0.125f);
+                }
+                if (BogieVisual.localPosition.sqrMagnitude > main.bogieVisualSuspensionMaxDistanceCalc * main.bogieVisualSuspensionMaxDistanceCalc)
+                {
+                    BogieVisual.localPosition = BogieVisual.localPosition.normalized * main.bogieVisualSuspensionMaxDistanceCalc;
+                    //BogieVisual.localPosition = BogieVisual.localPosition.SetY(-main.bogieVisualSuspensionMaxDistanceCalc);
                 }
 
                 DeltaRailPosition = railPosCur - VisualPositionOnRail;
@@ -1321,6 +1356,8 @@ namespace RandomAdditions
                 }
                 Vector3 driftDelta = BogieVisual.rotation * Vector3.left * horizontalDrift;
                 BogieVisual.position += driftDelta;
+                if (BogieLockAttachDuration > 0)
+                    BogieLockAttachDuration -= Time.deltaTime;
                 //DebugRandAddi.Log("bogieHorizontalDrift - is " + bogieHorizontalDrift + " and delta is " + driftDelta);
             }
 
@@ -1398,10 +1435,33 @@ namespace RandomAdditions
                     ManRails.TryAssignClosestRailSegment(this);
                     if (CurrentSegment != null)
                     {
+                        if (SnapToRailPositionNoCheck())
+                        {   //Actually on the rail
+                            UpdateActiveVisuals();
+                            if (CurrentSegment != null)
+                            {
+                                OnRerailFixedBogey();
+                                OnRerailVisualBogey();
+                                //CurrentSegment.ShowRailPoints();
+                                RotateBackRelay = BogieReRailDelay;
+                                ManRails.UpdateAllSignals = true;
+                            }
+                        }
+                        else
+                        {
+                            if (Track != null)
+                            {
+                                DebugRandAddi.Info("TryRerailToNearestRail() ~ DetachBogey - End of rail");
+                                DerailBogey();
+                            }
+                            else
+                                DebugRandAddi.Assert("Somehow ModuleRailBogey's Track is null but CurrentRail is not?!");
+                        }
+                        /*
                         Vector3 trainCabUp = tank.rootBlockTrans.InverseTransformVector(Vector3.up).SetZ(0).normalized;
                         if (Mathf.Abs(Vector3.SignedAngle(trainCabUp, Vector3.up, Vector3.forward)) <=
                             main.BogieMaxRollDegrees)
-                        {   // Tilted too far! derail!
+                        {   // We have not tilted too far so no derail.
                             if (SnapToRailPositionNoCheck())
                             {   //Actually on the rail
                                 UpdateActiveVisuals();
@@ -1425,6 +1485,7 @@ namespace RandomAdditions
                                     DebugRandAddi.Assert("Somehow ModuleRailBogey's Track is null but CurrentRail is not?!");
                             }
                         }
+                        */
                     }
                     NextCheckTime = BogieReRailDelay;
                 }
