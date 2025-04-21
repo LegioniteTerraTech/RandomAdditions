@@ -247,7 +247,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver)
                 {
                     LogicConnected = true;
-                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false, false);
                 }
             }
             enabled = true;
@@ -269,7 +269,7 @@ namespace RandomAdditions
             tank.control.driveControlEvent.Unsubscribe(OnInput);
             tank.control.explosiveBoltDetonateEvents[3].Unsubscribe(OnBolt);
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true, false);
             LogicConnected = false;
             DoUnlock();
             tank.CollisionEvent.Unsubscribe(OnCollision);

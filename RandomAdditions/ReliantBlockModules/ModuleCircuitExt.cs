@@ -108,7 +108,7 @@ namespace RandomAdditions
         {
             if (CircuitExt.LogicEnabled)
             {
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeValueRefreshed, false);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeValueRefreshed, false, true);
                 Circuits.PostSlowUpdate.Subscribe(PostSlowUpdate);
             }
             else
@@ -119,7 +119,7 @@ namespace RandomAdditions
             if (CircuitExt.LogicEnabled)
             {
                 Circuits.PostSlowUpdate.Unsubscribe(PostSlowUpdate);
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeValueRefreshed, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeValueRefreshed, true, true);
             }
             else
                 enabled = false;

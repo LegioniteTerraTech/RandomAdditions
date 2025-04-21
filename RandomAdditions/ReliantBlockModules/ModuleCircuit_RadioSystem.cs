@@ -177,7 +177,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver && Transmits)
                 {
                     LogicConnected = true;
-                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false, true);
                 }
             }
             ManRadio.HandleAddition(this);
@@ -191,7 +191,7 @@ namespace RandomAdditions
             SignalSend = Time.time;
             ManRadio.HandleRemoval(this);
             if (LogicConnected && Transmits)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true, true);
             LogicConnected = false;
         }
 

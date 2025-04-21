@@ -606,12 +606,12 @@ namespace RandomAdditions.PhysicsTethers
                 tank.TechAudio.AddModule(this);
                 tank.CollisionEvent.Subscribe(OnCollisionTank);
                 if (block.CircuitNode?.Receiver)
-                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, false);
+                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, false, true);
             }
             public override void OnDetach()
             {
                 if (block.CircuitNode?.Receiver)
-                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, true);
+                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, true, true);
                 tank.CollisionEvent.Unsubscribe(OnCollisionTank);
                 tank.TechAudio.RemoveModule(this);
                 if (Connection != null)

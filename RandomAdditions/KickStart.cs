@@ -1439,26 +1439,28 @@ namespace RandomAdditions
         }
 
 
-        public static bool SubToLogicReceiverCircuitUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, bool unsub) where T : ExtModule
+        public static bool SubToLogicReceiverCircuitUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, 
+            bool unsub, bool collectAPSpecificData) where T : ExtModule
         {
             if (module.block.CircuitNode?.Receiver)
             {
                 if (unsub)
                     module.block.CircuitNode?.Receiver.UnSubscribeFromChargeData(null, OnRec, null, null);
                 else
-                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, OnRec, null, null, false);
+                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, OnRec, null, null, collectAPSpecificData);
                 return true;
             }
             return false;
         }
-        public static bool SubToLogicReceiverFrameUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, bool unsub) where T : ExtModule
+        public static bool SubToLogicReceiverFrameUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, 
+            bool unsub, bool collectAPSpecificData) where T : ExtModule
         {
             if (module.block.CircuitNode?.Receiver)
             {
                 if (unsub)
                     module.block.CircuitNode?.Receiver.UnSubscribeFromChargeData(null, null, null, OnRec);
                 else
-                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, null, null, OnRec, false);
+                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, null, null, OnRec, collectAPSpecificData);
                 return true;
             }
             return false;

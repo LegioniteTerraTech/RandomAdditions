@@ -111,7 +111,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver)
                 {
                     LogicConnected = true;
-                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false, true);
                 }
             }
             TankLocomotive.HandleAddition(tank, this);
@@ -138,7 +138,7 @@ namespace RandomAdditions
             }
             TankLocomotive.HandleRemoval(tank, this);
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true, true);
             LogicConnected = false;
         }
 

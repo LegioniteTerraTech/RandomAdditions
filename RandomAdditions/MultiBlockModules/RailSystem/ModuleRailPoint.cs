@@ -234,8 +234,11 @@ namespace RandomAdditions.RailSystem
                 if (TrainCallAPIndexes != null || TrainStopAPIndexes != null)
                 {
                     LogicConnected = true;
-                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, false);
+                    if (!ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, false, true))
+                        DebugRandAddi.Log("FAILED TO REGISTER " + GetType().ToString() + ", TO CS!!!");
                 }
+                else
+                    DebugRandAddi.Log("No TrainCallAPIndexes or TrainStopAPIndexes for " + GetType().ToString() + ", skipping registration");
             }
             else
             {
@@ -268,7 +271,7 @@ namespace RandomAdditions.RailSystem
             SetAvailability(false, false);
             tank.Anchors.AnchorEvent.Unsubscribe(OnAnchor);
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, true, true);
             lastCachedConnections.Remove(this);
             LogicConnected = false;
         }

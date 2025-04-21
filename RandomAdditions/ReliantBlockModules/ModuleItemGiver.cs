@@ -81,7 +81,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver)
                 {
                     LogicConnected = true;
-                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false);
+                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false, true);
                 }
             }
             UpdateGiveTarget();
@@ -90,7 +90,7 @@ namespace RandomAdditions
         public override void OnDetach()
         {
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true);
+                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true, true);
             LogicConnected = false;
             tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
             if (grabStack != null)
