@@ -473,7 +473,7 @@ namespace RandomAdditions
             internal static Type target = typeof(ModuleTechController);
 
             [HarmonyPriority(-9999)]
-            private static void ExecuteControl_Postfix(ModuleTechController __instance, ref bool __result)
+            internal static void ExecuteControl_Postfix(ModuleTechController __instance, ref bool __result)
             {
                 var TankCheck = __instance.block.tank.GetComponent<RailSystem.TankLocomotive>();
                 if (TankCheck != null)

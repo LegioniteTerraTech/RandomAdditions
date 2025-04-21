@@ -15,7 +15,7 @@ namespace RandomAdditions
     public class ModuleRailBogie : ExtModule
     {
         public const int preciseAccuraccyIterations = 6;
-        public const float snapToRailDist = 1.25f;//2f;
+        public const float snapToRailDist = 2f;
         public const float snapToRailDistSqr = snapToRailDist * snapToRailDist;
         public const float MaxBogieNoDragDistance = 0.65f;
         public const float MaxBogieNoDragDistanceSqr = MaxBogieNoDragDistance * MaxBogieNoDragDistance;
@@ -24,6 +24,7 @@ namespace RandomAdditions
         public const float DerailedForceSqrRatio = 0.45f;
         public const float DerailedWheelSlipSpin = 0.175f;
         public const float WheelSlipSkidSparksMinSpeed = 8f;
+        public const float BogieVisualSuspensionMaxDistanceExtra = 0.5f;
 
         public const float bogieDriftMaxTime = 0.8683f;
         public const float bogieDriftMaxKickPercent = 0.24f;
@@ -93,7 +94,6 @@ namespace RandomAdditions
         private Vector3 driveDirection = Vector3.zero;
         internal Vector3 driveRotation = Vector3.zero;
 
-        private float BogieRescale = 1;
         internal float bogieWheelForwardsCalc = 1;
         internal float bogieSuspensionOffsetCalc = 1;
         internal float bogieWheelRadiusCalcCircumference = 1f;
@@ -473,7 +473,6 @@ namespace RandomAdditions
         }
         internal void ResetVisualBogies(bool instant = false)
         {
-            BogieRescale = 1;
             bogieWheelForwardsCalc = BogieWheelForwards;
             bogieSuspensionOffsetCalc = BogieSuspensionOffset;
             float radSet = BogieWheelRadius / 2;
@@ -482,7 +481,7 @@ namespace RandomAdditions
                 item.BogieSuspensionCollider.radius = radSet;
             }
             bogieWheelRadiusCalcCircumference = 2 * Mathf.PI * BogieWheelRadius;
-            bogieVisualSuspensionMaxDistanceCalc = BogieVisualSuspensionMaxDistance;
+            bogieVisualSuspensionMaxDistanceCalc = BogieVisualSuspensionMaxDistance + BogieVisualSuspensionMaxDistanceExtra;
             foreach (var item in HierachyBogies)
             {
                 item.ResetVisualBogey(instant);
@@ -892,6 +891,7 @@ namespace RandomAdditions
             internal float RotateBackRelay = 0;
 
             public float bogieSidewaySpringForceCalc = 1;
+            private float BogieRescale = 1;
 
             internal Vector3 driveDirection => main.driveDirection;
             /// <summary>
@@ -1179,6 +1179,8 @@ namespace RandomAdditions
             {
                 ForceSparks = true;
                 UpdateWheelSparks(true);
+                BogieRescale = ManRails.GetRailRescale(main.RailSystemType, CurrentSegment.Type);
+                BogieVisual.localScale = Vector3.one * BogieRescale;
                 InvokeHelper.CancelInvoke(StopForceSparks);
                 InvokeHelper.Invoke(StopForceSparks, 0.35f);
             }
@@ -1189,6 +1191,7 @@ namespace RandomAdditions
             }
             internal void ResetVisualBogey(bool instant = false)
             {
+                BogieRescale = 1;
                 BogieSuspensionCollider.radius = main.BogieWheelRadius / 2;
                 BogieVisual.localScale = Vector3.one;
                 BogieVisual.localPosition = Vector3.zero;
@@ -1457,6 +1460,7 @@ namespace RandomAdditions
                             else
                                 DebugRandAddi.Assert("Somehow ModuleRailBogey's Track is null but CurrentRail is not?!");
                         }
+                        // Disabled for some reason????
                         /*
                         Vector3 trainCabUp = tank.rootBlockTrans.InverseTransformVector(Vector3.up).SetZ(0).normalized;
                         if (Mathf.Abs(Vector3.SignedAngle(trainCabUp, Vector3.up, Vector3.forward)) <=
@@ -1486,6 +1490,7 @@ namespace RandomAdditions
                             }
                         }
                         */
+                        // END disabled
                     }
                     NextCheckTime = BogieReRailDelay;
                 }

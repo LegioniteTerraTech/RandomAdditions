@@ -430,7 +430,7 @@ namespace RandomAdditions.RailSystem
                 var mainLoco = main.GetComponent<TankLocomotive>();
                 if (mainLoco)
                 {
-                    DebugRandAddi.Log("TankLocomotive: TechsCoupled main");
+                    DebugRandAddi.Log("TankLocomotive: TechsCoupled main \"" + main.name + "\"");
                     mainLoco.UnRegisterAllConnectedLocomotives();
                     mainLoco.RegisterAllLinkedLocomotives();
                 }
@@ -442,7 +442,7 @@ namespace RandomAdditions.RailSystem
                     var otherLoco = other.GetComponent<TankLocomotive>();
                     if (otherLoco)
                     {
-                        DebugRandAddi.Log("TankLocomotive: TechsCoupled other");
+                        DebugRandAddi.Log("TankLocomotive: TechsCoupled other \"" + other.name + "\"");
                         otherLoco.UnRegisterAllConnectedLocomotives();
                         otherLoco.RegisterAllLinkedLocomotives();
                     }
@@ -1011,13 +1011,13 @@ namespace RandomAdditions.RailSystem
             }
             SortAndRegisterLocomotivesInfo(trainCars);
         }
-        private void SortAndRegisterLocomotivesInfo(HashSet<TankLocomotive> toProccess)
+        private void SortAndRegisterLocomotivesInfo(HashSet<TankLocomotive> toProcess)
         {
             // Then we use that origin to sort out the next few cars
             MasterSortByPositionForwards();
 
             //DebugRandAddi.Assert("TankLocomotive: SortAndRegisterLocomotivesInfo has " + toProccess.Count + " entries");
-            List<TankLocomotive> sortedCars = toProccess.OrderBy(x => x.CarNumber).ToList();
+            List<TankLocomotive> sortedCars = toProcess.OrderBy(x => x.CarNumber).ToList();
 
             // We use the sorted cars to find the MasterCar, or controlling Tech in the train
             var carBest = sortedCars.Find(x => x.tank.PlayerFocused);
@@ -1348,16 +1348,8 @@ namespace RandomAdditions.RailSystem
             //DebugRandAddi.Log("Commanding " + tank.name + "...");
             Quaternion Corrected = Quaternion.Inverse(GetMaster().tank.rootBlockTrans.localRotation) * FromMasterDrive 
                 * tank.rootBlockTrans.localRotation;
-            tank.control.CurState = new TankControl.State
-            {
-                m_Beam = false,
-                m_BoostJets = MasterCar.tank.control.CurState.m_BoostJets,
-                m_BoostProps = MasterCar.tank.control.CurState.m_BoostProps,
-                m_Fire = MasterCar.tank.control.FireControl,
-                m_InputMovement = Corrected * MasterCar.drive,
-                m_InputRotation = MasterCar.turn,
-                m_ThrottleValues = Vector3.zero,
-            };
+            tank.control.CollectMovementInput(Corrected * MasterCar.drive, MasterCar.turn, Vector3.zero,
+               MasterCar.tank.control.CurState.m_BoostProps, MasterCar.tank.control.CurState.m_BoostJets);
         }
         private void ForceForwards(float ForwardsPercent)
         {
