@@ -20,6 +20,7 @@ namespace RandomAdditions
         public bool DisplayTimeTank = false;
         private readonly List<ModuleTileLoader> loaders = new List<ModuleTileLoader>();
         private bool isLoading = false;
+        private bool isRecycled = true;
         public int MaxTileLoadingDiameter = 1; // Only supports up to diamater of 5 for performance's sake
 
         // Health
@@ -41,17 +42,66 @@ namespace RandomAdditions
             tank = gameObject.GetComponent<Tank>();
             GlobalClock.tanks.Add(this);
             tank.AnchorEvent.Subscribe(OnAnchor);
+            tank.AttachEvent.Subscribe(OnAttach);
             tank.DetachEvent.Subscribe(OnDetach);
+            tank.TankRecycledEvent.Subscribe(OnRecycled);
             enabled = true;
             InsureSolverIterations();
+            DebugRandAddi.Log(tank.name + " - init RandomTank with " + damagedBlocks.Count + " damaged blocks.");
+        }
+        public void OnRecycled(Tank tank)
+        {
+            if (tank == this.tank)
+            {
+                DebugRandAddi.Log(tank.name + " - OnRecycled RandomTank");
+                CheckDamaged();
+                //InvokeHelper.InvokeSingle(CheckDamaged, 0.1f);
+                tank.TankRecycledEvent.Unsubscribe(OnRecycled);
+                isRecycled = true;
+            }
         }
 
+        public void CheckDamaged()
+        {
+            try
+            {
+                foreach (var block in tank.blockman.IterateBlocks())
+                {
+                    OnAttach(block, tank);
+                }
+            }
+            catch { }
+        }
         public void OnDamaged(ManDamage.DamageInfo dmg, TankBlock damagedBlock)
         {
             if (dmg.Damage > 0)
             {
-                damagedBlocks.Add(damagedBlock);
+                if (damagedBlocks.Add(damagedBlock))
+                {
+                    DebugRandAddi.Log(tank.name + " - New damaged block " + damagedBlock.name);
+                }
             }
+        }
+        public void OnAttach(TankBlock newBlock, Tank tank)
+        {
+            if (isRecycled)
+            {
+                isRecycled = false;
+                DebugRandAddi.Log(tank.name + " - OnFirstAttach RandomTank");
+                tank.TankRecycledEvent.Subscribe(OnRecycled);
+                InvokeHelper.InvokeSingle(CheckDamaged, 0f);
+            }
+            if (!newBlock.visible.damageable.IsAtFullHealth)
+            {
+                if (!damagedBlocks.Contains(newBlock))
+                {
+                    DebugRandAddi.Log(tank.name + " - Is new damaged block!");
+                    damagedBlocks.Add(newBlock);
+                }
+            }
+            //if (newBlock)
+            //    DebugRandAddi.Log(tank.name + " - OnAttach called for " + newBlock.name);
+
         }
         public void OnDetach(TankBlock damagedBlock, Tank tank)
         {
@@ -80,6 +130,7 @@ namespace RandomAdditions
                     else
                         damagedBlocks.Remove(caseB);
                 }
+                DebugRandAddi.Log(tank.name + " - There are approx " + damagedBlocks.Count + " damaged blocks left");
             }
         }
 
@@ -164,24 +215,24 @@ namespace RandomAdditions
             if (tank.PlayerFocused || (GetComponent<TankLocomotive>() && GetComponent<TankLocomotive>().ShouldLoadTiles()))
             {
                 MaxTileLoadingDiameter = 2;
-                OnHostTileLoadingToggle(true);
+                OnClientTileLoadingToggle(true);
             }
             else if (MaxTileLoadingDiameter > 0)
-                OnHostTileLoadingToggle(true);
+                OnClientTileLoadingToggle(true);
             else
-                OnHostTileLoadingToggle(false);
+                OnClientTileLoadingToggle(false);
         }
-        public void OnHostTileLoadingToggle(bool set)
+        public void OnClientTileLoadingToggle(bool set)
         {
             if (set != isLoading)
             {
                 if (set)
                 {
-                    ManWorldTileExt.HostRegisterDynamicTileLoader(this);
+                    ManWorldTileExt.ClientRegisterDynamicTileLoader(this);
                 }
                 else
                 {
-                    ManWorldTileExt.HostUnregisterDynamicTileLoader(this);
+                    ManWorldTileExt.ClientUnregisterDynamicTileLoader(this);
                 }
             }
         }

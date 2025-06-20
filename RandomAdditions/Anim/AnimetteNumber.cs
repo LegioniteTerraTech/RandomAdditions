@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TerraTechETCUtil;
 using UnityEngine;
 
 public class AnimetteNumber : RandomAdditions.AnimetteNumber { }
@@ -38,7 +39,7 @@ namespace RandomAdditions
             }
             catch
             {
-                LogHandler.ThrowWarning("Make sure SevenSegDisplay has _A through _G declared as valid GameObjects!");
+                BlockDebug.ThrowWarning(true, "Make sure SevenSegDisplay has _A through _G declared as valid GameObjects!");
                 enabled = false;
             }
         }

@@ -2,6 +2,7 @@
 using UnityEngine;
 using SafeSaves;
 using TerraTechETCUtil;
+using System.Collections.Generic;
 
 public class ModuleClock : RandomAdditions.ModuleClock { };
 namespace RandomAdditions
@@ -38,15 +39,19 @@ namespace RandomAdditions
                 }
                 catch
                 {
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleClock NEEDS a GameObject in hierarchy named \"TimeObject\" for the hour hand!\nOtherwise set DisplayTime to false!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleClock NEEDS a GameObject in hierarchy named \"TimeObject\" for the hour hand!\nOtherwise set DisplayTime to false!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     thisInst.DisplayTime = false;
                 }
             }
         }
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleClock",
-             AltUI.HighlightString("Clocks") + " display the world time.\n" + 
-            AltUI.HintString("Never be late again prospector!"));
+        private static LocExtStringMod LOC_ModuleClock_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Clocks") + " display the world time.\n" +
+                        AltUI.HintString("Never be late again prospector!")},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Clock』") + "は世界時刻を表示します"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleClock", LOC_ModuleClock_desc);
         public override void OnAttach()
         {
             GlobalClock.ClockManager.AddClock(this);

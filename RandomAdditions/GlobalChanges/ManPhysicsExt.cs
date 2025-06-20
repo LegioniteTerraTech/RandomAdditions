@@ -32,8 +32,8 @@ namespace RandomAdditions
             public int blockID;
             public int mode;
         }
-        internal static NetworkHook<ModulePhysicsSetMessage> netHook = 
-            new NetworkHook<ModulePhysicsSetMessage>(OnReceiveSetRequest, NetMessageType.FromClientToServerThenClients);
+        internal static NetworkHook<ModulePhysicsSetMessage> netHook = new NetworkHook<ModulePhysicsSetMessage>(
+                "RandAdd.ModulePhysicsSetMessage", OnReceiveSetRequest, NetMessageType.FromClientToServerThenClients);
 
         public class ModulePhysicsUnlockMessage : MessageBase
         {
@@ -46,8 +46,8 @@ namespace RandomAdditions
             public uint techID;
             public int blockID;
         }
-        internal static NetworkHook<ModulePhysicsUnlockMessage> netHookUnlock =
-            new NetworkHook<ModulePhysicsUnlockMessage>(OnReceiveUnlockRequest, NetMessageType.FromClientToServerThenClients);
+        internal static NetworkHook<ModulePhysicsUnlockMessage> netHookUnlock = new NetworkHook<ModulePhysicsUnlockMessage>(
+                "RandAdd.ModulePhysicsUnlockMessage", OnReceiveUnlockRequest, NetMessageType.FromClientToServerThenClients);
 
         internal static readonly List<ModulePhysicsExt> veryLateUpdate = new List<ModulePhysicsExt>();
 
@@ -133,13 +133,25 @@ namespace RandomAdditions
             phyLock.RotorBreak = BreakingTorque;
         }
 
+        private static LocExtStringMod LOC_LockSettings = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Lock Settings" },
+            { LocalisationEnums.Languages.Japanese, "設定の編集をロックする" },
+        });
+
+        private static LocExtStringMod LOC_UnlockConnection = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Unlock" },
+            { LocalisationEnums.Languages.Japanese, "ロックを解除する" },
+        });
+
         public void InsureGUI()
         {
             if (buttonGUI == null)
             {
                 buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Tech Physics Joint", true);
-                buttonGUI.AddElement("Lock Settings", OnSetMode, OnIconSet, GetMode);
-                buttonGUI.AddElement("Unlock", OnUnlock, OnIconUnlock);
+                buttonGUI.AddElement(LOC_LockSettings, OnSetMode, OnIconSet, GetMode);
+                buttonGUI.AddElement(LOC_UnlockConnection, OnUnlock, OnIconUnlock);
             }
         }
 

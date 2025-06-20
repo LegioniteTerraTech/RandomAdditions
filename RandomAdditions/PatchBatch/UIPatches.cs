@@ -16,6 +16,21 @@ namespace RandomAdditions.PatchBatch
     internal class UIPatches
     {
 
+        internal static class ManUIPatches
+        {
+            internal static Type target = typeof(ManUI);
+
+            /// <summary>
+            /// Make it MORE legible, because it's irritating to deal with errors and have it stretch beyond the viewable screen
+            /// </summary>
+            [HarmonyPriority(-4500)]
+            internal static bool ShowErrorPopup_Prefix(ref string text)
+            {
+                ManModGUI.ShowErrorPopup(text, true);
+                return false;
+            }
+
+        }
         internal static class CursorPatches
         {
             internal static Type target = typeof(GameCursor);

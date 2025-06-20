@@ -39,7 +39,8 @@ namespace RandomAdditions.RailSystem
             public bool connected;
             public bool ignoreIfConnectedAlready;
         }
-        private static NetworkHook<NetworkedTrackMessage> netHook = new NetworkHook<NetworkedTrackMessage>(null, NetMessageType.ToServerOnly);
+        private static NetworkHook<NetworkedTrackMessage> netHook = new NetworkHook<NetworkedTrackMessage>(
+            "RandAdd.NetworkedTrackMessage", null, NetMessageType.ToServerOnly);
 
         public class ManRailsLoadData
         {
@@ -88,7 +89,8 @@ namespace RandomAdditions.RailSystem
 
             public byte[] infoBytes;
         }
-        private static NetworkHook<ManRailsLoadMessage> netHookStartup = new NetworkHook<ManRailsLoadMessage>(RequestDataFromServer, NetMessageType.RequestServerFromClient);
+        private static NetworkHook<ManRailsLoadMessage> netHookStartup = new NetworkHook<ManRailsLoadMessage>(
+            "RandAdd.ManRailsLoadMessage", RequestDataFromServer, NetMessageType.RequestServerFromClient);
 
         public class JunctionChangeMessage : MessageBase
         {
@@ -110,7 +112,8 @@ namespace RandomAdditions.RailSystem
             public int blockIndex;
             public int mode;
         }
-        internal static NetworkHook<JunctionChangeMessage> netHookJunction = new NetworkHook<JunctionChangeMessage>(ModuleRailJunction.OnJunctionChangeNetwork, NetMessageType.ToClientsOnly);
+        internal static NetworkHook<JunctionChangeMessage> netHookJunction = new NetworkHook<JunctionChangeMessage>(
+             "RandAdd.JunctionChangeMessage", ModuleRailJunction.OnJunctionChangeNetwork, NetMessageType.ToClientsOnly);
 
         internal static Material RailFoundationTexture;
 
@@ -197,10 +200,10 @@ namespace RandomAdditions.RailSystem
 
         internal static void InsureNetHooks()
         {
-            netHookStartup.Register();
-            netHook.Register();
-            netHookJunction.Register();
-            RailTrackNode.netHook.Register();
+            netHookStartup.Enable();
+            netHook.Enable();
+            netHookJunction.Enable();
+            RailTrackNode.netHook.Enable();
         }
 
         public static void Initiate()
@@ -218,15 +221,30 @@ namespace RandomAdditions.RailSystem
             return Singleton.playerTank && ManMinimapExt.ModaledSelectTarget.TrackedVis != null &&
                 ManMinimapExt.ModaledSelectTarget.TrackedVis.TeamID == Singleton.playerTank.Team;
         }
+        private static LocExtStringMod LOC_LinkRails = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Link Rails"},
+            { LocalisationEnums.Languages.Japanese, "レールを接続する" },
+        });
+        private static LocExtStringMod LOC_DriveTrain = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Drive Train To"},
+            { LocalisationEnums.Languages.Japanese, "に電車を送る" },
+        });
+        private static LocExtStringMod LOC_NoLinkRails = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Cannot Link Rails"},
+            { LocalisationEnums.Languages.Japanese, "レールを接続できません" },
+        });
         private static string StringCanConnect()
         {
             if (CanControl())
             {
                 if (Input.GetKey(KeyCode.LeftShift))
-                    return "Link Rails";
-                return "Drive Train To";
+                    return LOC_LinkRails;
+                return LOC_DriveTrain;
             }
-            return "Cannot Link Rails";
+            return LOC_NoLinkRails;
         }
         private static Sprite ShowCanConnect()
         {
@@ -308,16 +326,24 @@ namespace RandomAdditions.RailSystem
             inst.gameObject.SetActive(true);
             if (newHint == null)
             {
-                newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, "TRAIN HINT",
-                AltUI.HighlightString("Trains") + " can work beyond what you can see.\nTry them out!");
-                newHint2 = new LoadingHintsExt.LoadingHint(KickStart.ModID, "TRAIN HINT",
-                AltUI.HighlightString("Trains") + " can plow though pesky " + AltUI.EnemyString("Enemies") +
-                " and send them flying!\nCan't stop this train!");
+                newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, LocHelper.LOC_TRAIN_HINT, LOC_Hint_TrainDist);
+                newHint2 = new LoadingHintsExt.LoadingHint(KickStart.ModID, LocHelper.LOC_TRAIN_HINT, LOC_Hint_TrainRam);
             }
 
             LateInit();
             inst.enabled = true;
         }
+        private static LocExtStringMod LOC_Hint_TrainDist = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Trains") + " can work beyond what you can see.\nTry them out!" },
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("電車") + "が視界距離を超えて移動する" },
+        });
+        private static LocExtStringMod LOC_Hint_TrainRam = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Trains") + " can plow though pesky " + AltUI.EnemyString("Enemies") +
+                " and send them flying!\nCan't stop this train!"},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("電車") + "は" + AltUI.EnemyString("敵を") + "突き破ることができる" },
+        });
         public static void LateInit()
         {
             if (!firstInit)
@@ -2179,7 +2205,7 @@ namespace RandomAdditions.RailSystem
             {
                 foreach (var item in inst.RailEngineTiles)
                 {
-                    ManWorldTileExt.HostTempLoadTile(item, false);
+                    ManWorldTileExt.ClientTempLoadTile(item, false);
                 }
                 DebugRandAddi.Log("ManRails - Tile-Loading " + inst.RailEngineTiles.Length + " tiles for live TankLocomotives.");
                 inst.RailEngineTiles = null;

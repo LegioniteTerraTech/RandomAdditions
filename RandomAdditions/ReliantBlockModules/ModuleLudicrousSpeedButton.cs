@@ -67,9 +67,14 @@ namespace RandomAdditions
                 queuedDrain = 0;
             }
         }
+        private static LocExtStringMod LOC_ModuleLudicrousSpeedButton_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Overclockers") + ", when anchored can dramatically " +
+            AltUI.HintString("speed up") +" crafting."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Overclocker』") + "アンカー時にクラフト速度が上昇"},
+        });
         private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleLudicrousSpeedButton",
-            AltUI.HighlightString("Overclockers") + ", when anchored can dramatically " + 
-            AltUI.HintString("speed up") +" crafting.");
+            LOC_ModuleLudicrousSpeedButton_desc);
         private void OnAttach()
         {
             tonk = transform.root.GetComponent<Tank>();

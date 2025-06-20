@@ -166,7 +166,7 @@ namespace RandomAdditions
                 if (BogieCenter == null)
                 {
                     block.damage.SelfDestruct(0.1f);
-                    LogHandler.ThrowWarning("RandomAdditions: ModuleRailBogie NEEDS a GameObject in hierarchy named \"_bogieCenter\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailBogie NEEDS a GameObject in hierarchy named \"_bogieCenter\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     return;
                 }
 
@@ -196,7 +196,7 @@ namespace RandomAdditions
                 if (BogieVisual == null)
                 {
                     block.damage.SelfDestruct(0.1f);
-                    LogHandler.ThrowWarning("RandomAdditions: ModuleRailBogie NEEDS a GameObject in hierarchy named \"_bogieMain\" for the rail bogie effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailBogie NEEDS a GameObject in hierarchy named \"_bogieMain\" for the rail bogie effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     return;
                 }
 
@@ -211,7 +211,7 @@ namespace RandomAdditions
                         if (!BogieSuspensionCollider)
                         {
                             block.damage.SelfDestruct(0.1f);
-                            LogHandler.ThrowWarning("RandomAdditions: ModuleRailBogie NEEDS a GameObject \"_bogieSuspension\" for the rail bogie suspension!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                            BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailBogie NEEDS a GameObject \"_bogieSuspension\" for the rail bogie suspension!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                             return;
                         }
                         BogieSuspensionCollider.sharedMaterial = frictionless;
@@ -223,7 +223,7 @@ namespace RandomAdditions
                 if (BogieSuspension == null)
                 {
                     block.damage.SelfDestruct(0.1f);
-                    LogHandler.ThrowWarning("RandomAdditions: ModuleRailBogie NEEDS a GameObject in hierarchy named \"_bogieSuspension\" for the rail bogie suspension!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailBogie NEEDS a GameObject in hierarchy named \"_bogieSuspension\" for the rail bogie suspension!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     return;
                 }
 
@@ -373,11 +373,18 @@ namespace RandomAdditions
         }
 
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailBogie",
-            AltUI.HighlightString("Bogies") + " ride " + AltUI.ObjectiveString("Tracks") +
+        private static LocExtStringMod LOC_ModuleRailBogie_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Bogies") + " ride " + AltUI.ObjectiveString("Tracks") +
             " created from linking two " +  AltUI.HighlightString("Guides") + " together.  " +
-            AltUI.HighlightString("Bogies") + " and " + AltUI.HighlightString("Engines") + " make a " + 
-            AltUI.BlueString("Train"));
+            AltUI.HighlightString("Bogies") + " and " + AltUI.HighlightString("Engines") + " make a " +
+            AltUI.BlueStringMsg("Train")},
+            { LocalisationEnums.Languages.Japanese, 
+                AltUI.HighlightString("『Bogie』") + "を繋いで作られた" + AltUI.HighlightString("『Guide』")  + "乗車トラック。 " +
+                            AltUI.HighlightString("『Bogie』") + "と" +  AltUI.HighlightString("『Engine』") + "が" +
+                            AltUI.BlueStringMsg("電車") + "を構成する" },
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailBogie", LOC_ModuleRailBogie_desc);
         public override void OnGrabbed()
         {
             hint.Show();
@@ -660,7 +667,8 @@ namespace RandomAdditions
             private Schnabel parent;
 
 
-            internal RailBogiePart(ModuleRailBogie module, Schnabel parent, Transform BogieCenter, Transform BogieVisual, Transform BogieRemote)
+            internal RailBogiePart(ModuleRailBogie module, Schnabel parent, Transform BogieCenter,
+                Transform BogieVisual, Transform BogieRemote)
             {
                 main = module;
                 this.parent = parent;
@@ -709,7 +717,8 @@ namespace RandomAdditions
             internal RailBogiePart bwd;
 
             internal Schnabel(ModuleRailBogie module, Schnabel parent, Transform BogieCenter, Transform BogieVisual, Transform BogieRemote,
-                RailBogiePart fwdPart, RailBogiePart bwdPart) : base(module, parent, BogieCenter, BogieVisual, BogieRemote)
+               Transform RailChaser, RailBogiePart fwdPart, RailBogiePart bwdPart) : 
+                base(module, parent, BogieCenter, BogieVisual, BogieRemote)
             {
                 fwd = fwdPart;
                 bwd = bwdPart;
@@ -840,6 +849,7 @@ namespace RandomAdditions
 
             internal RailTrack Track;
             internal RailSegment CurrentSegment;
+            internal bool railLocked = false;
 
             internal SphereCollider BogieSuspensionCollider { get; private set; }
             internal GameObject BogieMotors { get; private set; }
@@ -880,7 +890,8 @@ namespace RandomAdditions
             internal float VisualPositionOnRail = 0;
             internal float DeltaRailPosition = 0;
 
-            private float LastSuspensionDist = 0;
+            private Vector3 LastSuspensionDist = Vector3.zero;
+            //private float LastSuspensionDist = 0;
             private float bogieHorizontalDrift = 0;
 
             private float horizontalDrift = 0;
@@ -901,7 +912,7 @@ namespace RandomAdditions
             {
                 if (CurrentSegment)
                 {   // Apply bogey positioning
-                    bogiePhysicsNormal = CurrentSegment.UpdateBogeySetPositioning(this, BogieRemote);
+                    bogiePhysicsNormal = CurrentSegment.UpdateBogeySetPositioning(this, BogieRemote, velocityForwards);
                     if (FlipBogie)
                         BogieRemote.position -= BogieRemote.rotation * Vector3.left * bogieHorizontalDrift;
                     else
@@ -994,13 +1005,16 @@ namespace RandomAdditions
                         */
                     }
 
-                    bogieOffset = BogieCenterOffset - BogieRemote.position;
+                    bogieOffset = BogieCenter.position - BogieRemote.position;
 
                     float invSusDist = 1f / main.MaxSuspensionDistance;
                     float CenteringForce = Mathf.Clamp(bogieOffset.magnitude * invSusDist, 0.0f, 1f);
                     Vector3 localOffset = -BogieRemote.InverseTransformVector(bogieOffset);
-                    float DampeningForce = (LastSuspensionDist - localOffset.y) * invSusDist / Time.fixedDeltaTime * main.SuspensionDampener;
-                    LastSuspensionDist = localOffset.y;
+                    Vector3 DampeningForce = (LastSuspensionDist - localOffset) * invSusDist / Time.fixedDeltaTime * main.SuspensionDampener;
+                    LastSuspensionDist = localOffset;
+                    /// LEGACY
+                    //float DampeningForce = (LastSuspensionDist - localOffset.y) * invSusDist / Time.fixedDeltaTime * main.SuspensionDampener;
+                    //LastSuspensionDist = localOffset.y;
                     force = localOffset.normalized * CenteringForce;
                     if (airtimed && BogieLockAttachDuration <= 0)
                     {   // We are off the rails
@@ -1021,12 +1035,17 @@ namespace RandomAdditions
                         // Quadratic
                         if (main.SidewaysSpringQuadratic)
                             force.x *= Mathf.Abs(force.x);
+                        // Normalizing
+                        if (force.x > 0)
+                            force.x = Mathf.Max((force.x * main.SuspensionSpringForce) - DampeningForce.x, 0);
+                        else
+                            force.x = Mathf.Min((force.x * main.SuspensionSpringForce) - DampeningForce.x, 0);
                         force.x *= main.SidewaysSpringForce;
 
                         if (main.SuspensionQuadratic)
                             force.y *= Mathf.Abs(force.y);
                         if (force.y > 0)
-                            force.y = Mathf.Max((force.y * main.SuspensionSpringForce) - DampeningForce, 0);
+                            force.y = Mathf.Max((force.y * main.SuspensionSpringForce) - DampeningForce.y, 0);
                         else if (BogieVisual.up.y > main.BogieStickUprightStrictness)
                             force.y *= main.SuspensionStickForce;
 
@@ -1126,18 +1145,19 @@ namespace RandomAdditions
             private Vector3 AppliedForceBogeyFrameRef;
             internal override void PostPostFixedUpdate()
             {
+                // Note: BogieCenter.position was replaced by BogieCenterOffset for stability reasons
                 if (CurrentSegment)
-                {
+                {   // On rails forces
                     Vector3 force = BogieRemote.TransformVector(AppliedForceBogeyFrameRef);
                     if (ManRails.HasLocalSpace(Track.Space) && Track.GetRigidbody())
                     {
-                        Track.GetRigidbody().AddForceAtPosition(-force, BogieCenter.position, ForceMode.Force);
+                        Track.GetRigidbody().AddForceAtPosition(-force, BogieCenterOffset, ForceMode.Force);
                     }
-                    tank.rbody.AddForceAtPosition(force, BogieCenter.position, ForceMode.Force);
+                    tank.rbody.AddForceAtPosition(force, BogieCenterOffset, ForceMode.Force);
                 }
                 else
-                {
-                    tank.rbody.AddForceAtPosition(BogieVisual.TransformVector(AppliedForceBogeyFrameRef), BogieCenter.position, ForceMode.Force);
+                {   // Detached force
+                    tank.rbody.AddForceAtPosition(BogieVisual.TransformVector(AppliedForceBogeyFrameRef), BogieCenterOffset, ForceMode.Force);
                 }
             }
 
@@ -1223,6 +1243,7 @@ namespace RandomAdditions
                     engine.FinishPathing(TrainArrivalStatus.Derailed);
                 ManRails.UpdateAllSignals = true;
 
+                railLocked = false;
                 Track = null;
                 CurrentSegment = null;
                 FixedPositionOnRail = 0;

@@ -33,7 +33,7 @@ namespace RandomAdditions
             if (RotateAxis == null)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_rotAxis\" for the rotor axis!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_rotAxis\" for the rotor axis!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
 
@@ -71,7 +71,7 @@ namespace RandomAdditions
                 catch
                 {
                     block.damage.SelfDestruct(0.1f);
-                    LogHandler.ThrowWarning("RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_maglock\" for the maglock attach surface to work!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_maglock\" for the maglock attach surface to work!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 }
                 return;
             }
@@ -168,7 +168,7 @@ namespace RandomAdditions
             if (RotateAxis == null)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_rotAxis\" for the rotor axis!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_rotAxis\" for the rotor axis!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
 
@@ -206,7 +206,7 @@ namespace RandomAdditions
                 catch
                 {
                     block.damage.SelfDestruct(0.1f);
-                    LogHandler.ThrowWarning("RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_maglock\" for the maglock attach surface to work!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_maglock\" for the maglock attach surface to work!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 }
                 return;
             }

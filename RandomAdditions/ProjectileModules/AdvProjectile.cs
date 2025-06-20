@@ -7,6 +7,7 @@ using UnityEngine;
 namespace RandomAdditions
 {
     /// <summary>
+    /// UNUSED - ABANDONED
     /// A projectile type that exceeds the base game's projectile abilities. 
     ///   Offers more options with less issues
     /// </summary>

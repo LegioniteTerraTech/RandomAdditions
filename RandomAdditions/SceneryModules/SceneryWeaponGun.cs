@@ -79,7 +79,7 @@ namespace RandomAdditions
             FireDataAlt = GetComponent<FireData>();
             if (!FireDataAlt)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS a FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ChildModuleWeapon NEEDS a FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -93,7 +93,7 @@ namespace RandomAdditions
             barrelC = BarrelsMain.Count;
             if (barrelC == 0)
             {
-                LogHandler.ThrowWarning("ChildModuleWeapon NEEDS a RACannonBarrel in hierarchy!  Problem block: " + block.name);
+                BlockDebug.ThrowWarning(true, "ChildModuleWeapon NEEDS a RACannonBarrel in hierarchy!  Problem block: " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -117,7 +117,7 @@ namespace RandomAdditions
             MW = block.GetComponent<ModuleWeapon>();
             if (!(bool)MW)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -125,7 +125,7 @@ namespace RandomAdditions
             MWG = block.GetComponent<ModuleWeaponGun>();
             if (!(bool)MWG)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;

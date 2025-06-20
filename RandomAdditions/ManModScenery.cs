@@ -71,8 +71,8 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
         int defRedirect = AssignedIDInt;
         if (PreviousIDInt == -1)
         {
-            LocalisationExt.Register(LocalisationEnums.StringBanks.SceneryName, AssignedIDInt, scenery.Name);
-            LocalisationExt.Register(LocalisationEnums.StringBanks.SceneryDescription, AssignedIDInt, scenery.Description);
+            LocalisationExt.RegisterRawEng(LocalisationEnums.StringBanks.SceneryName, AssignedIDInt, scenery.Name);
+            LocalisationExt.RegisterRawEng(LocalisationEnums.StringBanks.SceneryDescription, AssignedIDInt, scenery.Description);
         }
         else
             defRedirect = IdToNameIndexLookup[AssignedIDInt];

@@ -18,10 +18,17 @@ namespace RandomAdditions
         private int lastMode = 0;
         public IntVector3[] HubSelections = new IntVector3[0];
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailJunction",
-            AltUI.HighlightString("Junctions") +" split " + AltUI.HighlightString("Guide") + " " + 
-            AltUI.ObjectiveString("Tracks") + ". "+ AltUI.HighlightString("Right-Click") + 
-            " to set junction settings.");
+        private static LocExtStringMod LOC_ModuleRailJunction_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+               AltUI.HighlightString("Junctions") +" split " + AltUI.HighlightString("Guide") + " " +
+                        AltUI.ObjectiveString("Tracks") + ". "+ AltUI.HighlightString("Right-Click") +
+                        " to set junction settings." },
+            { LocalisationEnums.Languages.Japanese,
+                AltUI.HighlightString("『Junction』") + "は線路を分岐します。 " +
+                            AltUI.HighlightString("右クリック") + "して" +  AltUI.HighlightString("『Junction』") + "設定を設定します"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailJunction", LOC_ModuleRailJunction_desc);
         public override void OnGrabbed()
         {
             hint.Show();
@@ -35,7 +42,7 @@ namespace RandomAdditions
             if (LinkHubs.Count < 3)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRailJunction cannot host less than 3 \"_trackHub\" GameObjects.  Use ModuleRailPoint instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailJunction cannot host less than 3 \"_trackHub\" GameObjects.  Use ModuleRailPoint instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
             linkHubsAll = LinkHubs;
@@ -45,7 +52,7 @@ namespace RandomAdditions
                 if (item == null)
                 {
                     block.damage.SelfDestruct(0.1f);
-                    LogHandler.ThrowWarning("RandomAdditions: ModuleRailJunction HubSelection values must not be null!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailJunction HubSelection values must not be null!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     return;
                 }
             }
@@ -66,7 +73,7 @@ namespace RandomAdditions
                 {
                     eles[step] = eles[step - 1];
                 }
-                eles[1] = ModuleUIButtons.MakeElement("Junction Type", ChangeShape, null, SliderDescName);
+                eles[1] = ModuleUIButtons.MakeElement(LOC_JuctType, ChangeShape, null, SliderDescName);
                 buttonGUI.SetElementsInst(eles);
             }
         }
@@ -153,18 +160,43 @@ namespace RandomAdditions
             lastMode = value;
             ReconstructNode(GetTrans(HubSelections[lastMode]));
         }
+        private static LocExtStringMod LOC_JuctType = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Junction Type" },
+            { LocalisationEnums.Languages.Japanese, "『Junction』タイプ" },
+        });
+        private static LocExtStringMod LOC_JuctType_Main = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Type " },
+            { LocalisationEnums.Languages.Japanese, "タイプ" },
+        });
+        private static LocExtStringMod LOC_JuctType_Out = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Type Outer" },
+            { LocalisationEnums.Languages.Japanese, "タイプ外" },
+        });
+        private static LocExtStringMod LOC_JuctType_In = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Type Inner" },
+            { LocalisationEnums.Languages.Japanese, "タイプ内部" },
+        });
+        private static LocExtStringMod LOC_JuctType_Mid = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Type Split" },
+            { LocalisationEnums.Languages.Japanese, "タイプミドル" },
+        });
         public string SliderDescName()
         {
             switch (lastMode)
             {
                 case 0:
-                    return "Type Outer";
+                    return LOC_JuctType_Out;
                 case 1:
-                    return "Type Inner";
+                    return LOC_JuctType_In;
                 case 2:
-                    return "Type Split";
+                    return LOC_JuctType_Mid;
                 default:
-                    return "Type " + lastMode;
+                    return LOC_JuctType_Main + lastMode;
             }
         }
 

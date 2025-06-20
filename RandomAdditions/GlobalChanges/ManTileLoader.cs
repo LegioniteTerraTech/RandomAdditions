@@ -17,14 +17,12 @@ namespace RandomAdditions
         public IntVector2[] TilesNeedLoadedNextLoad;
 
         private static HashSet<IntVector2> emptyHash = new HashSet<IntVector2>();
-        public static Dictionary<IntVector2, WorldTile.State> RequestedLoaded => ManWorldTileExt.LoadedTileCoords;
-        public static Dictionary<IntVector2, WorldTile.State> Perimeter => ManWorldTileExt.PerimeterTileSubLoaded;
+        public static Dictionary<IntVector2, WorldTile.State> RequestedLoaded => ManWorldTileExt.RequestedLoaded;
 
 
         [SSaveField]
         public HashSet<IntVector2> LoadedTileCoords = new HashSet<IntVector2>();
 
-        public HashSet<IntVector2> PerimeterTileSubLoaded = new HashSet<IntVector2>();
 
 
         public static void Initiate()
@@ -82,7 +80,7 @@ namespace RandomAdditions
                                     {
                                         if (tech.m_ID == lastTechID)
                                         {
-                                            ManWorldTileExt.HostTempLoadTile(tile, false);
+                                            ManWorldTileExt.ClientTempLoadTile(tile, false);
                                             DebugRandAddi.Log("Fetched last player Tech");
                                             lastTechUpdateTime = Time.time + EmergencyTileLoad;
                                         }
@@ -163,8 +161,7 @@ namespace RandomAdditions
                 List<IntVector2> loadTiles = GetAllCenterTileLoadedTiles();
                 if (loadTiles.Count > 0)
                     inst.TilesNeedLoadedNextLoad = loadTiles.ToArray();
-                ToHashSet(ManWorldTileExt.LoadedTileCoords, inst.LoadedTileCoords);
-                ToHashSet(ManWorldTileExt.PerimeterTileSubLoaded, inst.PerimeterTileSubLoaded);
+                ToHashSet(ManWorldTileExt.RequestedLoaded, inst.LoadedTileCoords);
             }
             catch { }
         }
@@ -180,13 +177,12 @@ namespace RandomAdditions
         {
             try
             {
-                ToDictionary(inst.LoadedTileCoords, ManWorldTileExt.LoadedTileCoords);
-                ToDictionary(inst.PerimeterTileSubLoaded, ManWorldTileExt.PerimeterTileSubLoaded);
+                ToDictionary(inst.LoadedTileCoords, ManWorldTileExt.RequestedLoaded);
                 if (inst.TilesNeedLoadedNextLoad == null || !ManNetwork.IsHost)
                     return;
                 foreach (var tile in inst.TilesNeedLoadedNextLoad)
                 {
-                    ManWorldTileExt.HostTempLoadTile(tile, false);
+                    ManWorldTileExt.ClientTempLoadTile(tile, false);
                     //tileLoaderActive = true;
                     /*
                     if (MTL.AnchorOnly)

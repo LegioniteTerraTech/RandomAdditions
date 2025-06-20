@@ -53,7 +53,7 @@ namespace RandomAdditions
             if (forceEmitter == null)
             {
                 forceEmitter = this.transform;
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleTractorBeam NEEDS a GameObject in hierarchy named \"_Emitter\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTractorBeam NEEDS a GameObject in hierarchy named \"_Emitter\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
             if (!(bool)spinner)
                 spinner = GetComponentInChildren<Spinner>(true);
@@ -68,7 +68,7 @@ namespace RandomAdditions
                 TargetAimer = GetComponent<TargetAimer>();
                 if (TargetAimer == null)
                 {
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleTractorBeam NEEDS a valid TargetAimer in hierarchy!\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTractorBeam NEEDS a valid TargetAimer in hierarchy!\nCause of error - Block " + gameObject.name);
                     return;
                 }
                 if (TargetAimer)
@@ -78,9 +78,13 @@ namespace RandomAdditions
             }
         }
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTractorBeam",
-            AltUI.HighlightString("Tractor Beams") + " can carry friendly " + AltUI.BlueString("Techs") + 
-            " above the ground.");
+        private static LocExtStringMod LOC_ModuleTractorBeam_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Tractor Beams") + " can carry friendly " + AltUI.BlueStringMsg("Techs") +
+                        " above the ground."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Tractor Beam』") + "は味方の" + AltUI.BlueStringMsg("テック") + "を運ぶことができる"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTractorBeam", LOC_ModuleTractorBeam_desc);
         public override void OnAttach()
         {
             enabled = true;

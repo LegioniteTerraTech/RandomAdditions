@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TerraTechETCUtil;
 using UnityEngine;
 
 namespace RandomAdditions
@@ -78,6 +79,10 @@ namespace RandomAdditions
         {
             if (shouldAssert)
                 throw new Exception(e);
+        }
+        internal static void LogPopupToPlayer(string Warning, bool IsSeriousError = false, Action OnFixRequested = null)
+        {
+            ManModGUI.ShowErrorPopup(Warning, IsSeriousError, OnFixRequested);
         }
 
         internal static void DrawDirIndicator(Vector3 posScene, Vector3 vectorWorld, Color color, float duration = 2)

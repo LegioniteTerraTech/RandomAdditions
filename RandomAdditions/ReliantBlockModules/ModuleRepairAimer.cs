@@ -18,7 +18,7 @@ namespace RandomAdditions
         // The module that moves a beam to an allied block's damaged location
         internal ModuleEnergy Energy;
 
-        private TankBlock aimTargBlock;
+        internal TankBlock aimTargBlock;
         private Transform Targeter;        // the transform that rests at the aim position
         private LineRenderer HealBeam;
         private TargetAimer TargetAimer;      // the controller that controls the GimbalAimers
@@ -29,10 +29,8 @@ namespace RandomAdditions
         private float lastZDist = 0;
         private float healStep = 0;
         private float healTargetRad = 0;
-        private int timestep = UpdateInterval;
         private float animPulse = 0;
-        private float animSpeedMulti = 3;
-        private const int UpdateInterval = 60;
+        private float animSpeedMulti = 30;
         private const float DistDeviance = 12;
         private const float distVar = 1.5f;
 
@@ -52,7 +50,7 @@ namespace RandomAdditions
             Energy = GetComponent<ModuleEnergy>();
             if (Energy == null)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRepairAimer NEEDS a valid ModuleEnergy!\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRepairAimer NEEDS a valid ModuleEnergy!\nCause of error - Block " + gameObject.name);
                 return;
             }
             //Invoke("DelayedSub", 0.001f);
@@ -60,7 +58,7 @@ namespace RandomAdditions
             TargetAimer = GetComponent<TargetAimer>();
             if (TargetAimer == null)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRepairAimer NEEDS a valid TargetAimer in hierarchy!\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRepairAimer NEEDS a valid TargetAimer in hierarchy!\nCause of error - Block " + gameObject.name);
                 return;
             }
             gimbals = GetComponentsInChildren<GimbalAimer>().ToList();
@@ -68,12 +66,12 @@ namespace RandomAdditions
             Targeter = KickStart.HeavyTransformSearch(transform, "_Target");
             if (Targeter == null)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRepairAimer NEEDS a GameObject in hierarchy named \"_Target\" for the aiming position!\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRepairAimer NEEDS a GameObject in hierarchy named \"_Target\" for the aiming position!\nCause of error - Block " + gameObject.name);
                 return;
             }
             if (!(bool)Targeter.parent)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRepairAimer NEEDS a GameObject in hierarchy named \"_Target\" WITHIN the GimbalAimer containing GameObjects!\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRepairAimer NEEDS a GameObject in hierarchy named \"_Target\" WITHIN the GimbalAimer containing GameObjects!\nCause of error - Block " + gameObject.name);
                 return;
             }
             if (!(bool)spinner)
@@ -82,12 +80,16 @@ namespace RandomAdditions
             targeterZOffset = Targeter.localPosition.z;
             lastZDist = targeterZOffset;
             TargetAimer.Init(block, 60, null);
-            InitHealBeam();
+            InitHealBeamEffect();
         }
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRepairAimer",
-            AltUI.HighlightString("Repair Arms") + " repair blocks from far away at the cost of " +
-            AltUI.BlueString("Energy") + ".");
+        private static LocExtStringMod LOC_ModuleRepairAimer_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Repair Arms") + " repair blocks from far away at the cost of " +
+                        AltUI.BlueStringMsg("Energy") + "."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Repair Arm』")  + "は泡よりもさらに遠くまで修復"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRepairAimer", LOC_ModuleRepairAimer_desc);
         public override void OnAttach()
         {
             TankRepairer.stat.HandleAddition(this);
@@ -96,6 +98,7 @@ namespace RandomAdditions
 
         public override void OnDetach()
         {
+            aimTargBlock = null;
             TankRepairer.stat.HandleRemoval(this);
             StopBeam();
         }
@@ -116,27 +119,84 @@ namespace RandomAdditions
             return canDo;
         }
 
-        public bool TargBlockValid => aimTargBlock && aimTargBlock.visible.isActive && aimTargBlock.tank 
+        public bool IsTargBlockValid(TankBlock aimTargBlock) => aimTargBlock && aimTargBlock.visible.isActive && aimTargBlock.tank 
             && !aimTargBlock.visible.damageable.IsAtFullHealth;
 
-        public void UpdateRepair(TankBlock TargBlock)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="NewTargBlock"></param>
+        /// <returns>true if it did something</returns>
+        public bool UpdateRepair(TankBlock NewTargBlock, ref float energyPool)
         {
             if (TargetAimer == null || Targeter == null)
-                return;
+                return false;
+            bool healed = false;
             //DebugRandAddi.Log("RandomAdditions: ModuleRepairAimer - UPDATING
-            if (TargBlockValid)
+            if (!IsTargBlockValid(aimTargBlock))
             {
-                if (CanAimAt(aimTargBlock.centreOfMassWorld))
+                if (NewTargBlock == null)
+                    DebugRandAddi.Log(block.name + " - Not given a valid target!!!");
+                else
                 {
+                    aimTargBlock = NewTargBlock;
+                    DebugRandAddi.Log(block.name + " - New target " + NewTargBlock.name);
+                    if (!IsTargBlockValid(aimTargBlock))
+                        DebugRandAddi.Log(aimTargBlock.name + " -> Target is INVALID - null? " + aimTargBlock + ", Vis active " + aimTargBlock.visible.isActive +
+                            ", attached to Tech " + aimTargBlock.tank + ", is not at full health " + !aimTargBlock.visible.damageable.IsAtFullHealth);
+                }
+            }
+            if (IsTargBlockValid(aimTargBlock))
+            {
+                Vector3 targPos = aimTargBlock.centreOfMassWorld;
+                if (CanAimAt(targPos))
+                {
+                    DebugRandAddi.Log(block.name + " - Update heal beam");
                     StartBeam();
-                    TargetAimer.AimAtWorldPos(aimTargBlock.centreOfMassWorld, RotateSpeed);
-                    float aimZDist = Targeter.parent.InverseTransformPoint(aimTargBlock.centreOfMassWorld).z;
+                    TargetAimer.AimAtWorldPos(targPos, RotateSpeed);
+                    float aimZDist = Targeter.parent.InverseTransformPoint(targPos).z;
                     UpdateTargetDist(aimZDist);
-                    UpdateHealBeam();
+                    UpdateHealBeamEffect();
                 }
                 else
                 {
-                    aimTargBlock = TargBlock;
+                    DebugRandAddi.Log(block.name + " - Cannot aim!!!");
+                    aimTargBlock = NewTargBlock;
+                }
+                healStep += Time.deltaTime;
+                if (healStep >= HealPulseDelay)
+                {
+                    healStep = 0;
+                    if (Targeter.InverseTransformPoint(aimTargBlock.centreOfMassWorld).Approximately(Vector3.zero, DistDeviance))
+                    {
+                        if (ManNetwork.IsHost || !ManNetwork.IsNetworked)
+                        {
+                            if (energyPool >= HealPulseCost)
+                            {
+                                StartBeam();
+                                var DMG = aimTargBlock.visible.damageable;
+                                DMG.Repair(HealHealthRate, true);
+                                aimTargBlock.visible.KeepAwake();
+                                energyPool -= HealPulseCost;
+                                healed = true;
+                            }
+                            else
+                            {
+                                DebugRandAddi.Log(block.name + " - Not enough energy to repair [" + energyPool + "] vs needed [" + HealPulseCost + "]");
+                                StopBeam();
+                                //DebugRandAddi.Log("RandomAdditions: ModuleRepairAimer - UPDATING - not enough energy " + Energy.GetCurrentAmount(EnergyRegulator.EnergyType.Electric));
+                            }
+                        }
+                        else
+                        {
+                            healed = true;
+                            StartBeam();
+                        }
+                    }
+                    else
+                    {
+                        DebugRandAddi.Log(block.name + " - Still extending to reach target " + aimTargBlock.name);
+                    }
                 }
             }
             else
@@ -147,48 +207,10 @@ namespace RandomAdditions
                 UpdateTargetDist(targeterZOffset);
             }
 
-            timestep++;
-            if (timestep > UpdateInterval)
-            {
-                timestep = 0;
-            }
-            if (TargBlockValid)
-            {
-                healStep += Time.deltaTime;
-                if (healStep >= HealPulseDelay)
-                {
-                    healStep = 0;
-                    UpdateHeals();
-                }
-            }
-            else
-                aimTargBlock = TargBlock;
-        }
-        private void UpdateHeals()
-        {
-            if (Targeter.InverseTransformPoint(aimTargBlock.centreOfMassWorld).Approximately(Vector3.zero, DistDeviance))
-            {
-                if (ManNetwork.IsHost || !ManNetwork.IsNetworked)
-                {
-                    if (Energy.ConsumeIfEnough(TechEnergy.EnergyType.Electric, HealPulseCost))
-                    {
-                        StartBeam();
-                        var DMG = aimTargBlock.visible.damageable;
-                        DMG.Repair(HealHealthRate);
-                        aimTargBlock.visible.KeepAwake();
-                    }
-                    else
-                    {
-                        StopBeam();
-                        //DebugRandAddi.Log("RandomAdditions: ModuleRepairAimer - UPDATING - not enough energy " + Energy.GetCurrentAmount(EnergyRegulator.EnergyType.Electric));
-                    }
-                }
-                else
-                    StartBeam();
-            }
+            return healed;
         }
 
-        private void InitHealBeam()
+        private void InitHealBeamEffect()
         {
             Transform TO = transform.Find("HealLine");
             GameObject gO = null;
@@ -222,7 +244,7 @@ namespace RandomAdditions
             HealBeam = lr;
             HealBeam.gameObject.SetActive(false);
         }
-        private void UpdateHealBeam()
+        private void UpdateHealBeamEffect()
         {
             float aimedScale = (bool)aimTargBlock ? Mathf.Max(aimTargBlock.trans.TransformVector(aimTargBlock.BlockCellBounds.size).y / 2, 1) : 1;
 
@@ -285,14 +307,13 @@ namespace RandomAdditions
         public Tank tank { get; set; }
         public HashSet<ModuleRepairAimer> Modules { get; set; } = new HashSet<ModuleRepairAimer>();
         private ModuleRepairAimer primary;
+        private bool dirty = false;
 
-        private Tank aimTarget = null;
-        private TankBlock aimTargBlock;
+        private Tank aimTargetTank = null;
+        private List<TankBlock> TargetBlocks = new List<TankBlock>();
         private float MaxLockOnRange = 500;
-        public bool TargTankValid => aimTarget && aimTarget.visible.isActive;
-        public bool TargBlockValid => aimTargBlock && aimTargBlock.visible.isActive && aimTargBlock.tank
-            && !aimTargBlock.visible.damageable.IsAtFullHealth;
-        private Stack<Tank> techsCollect = new Stack<Tank>();
+        public bool TargTankValid => aimTargetTank && aimTargetTank.visible.isActive;
+        private static List<Tank> techsCollect = new List<Tank>();
 
         public void StartManagingPre()
         {
@@ -309,9 +330,11 @@ namespace RandomAdditions
         }
         public void AddModule(ModuleRepairAimer rep)
         {
+            dirty = true;
         }
         public void RemoveModule(ModuleRepairAimer rep)
         {
+            dirty = true;
             if (primary == rep)
             {
                 primary.Energy.UpdateConsumeEvent.Unsubscribe(UpdatePower);
@@ -320,94 +343,159 @@ namespace RandomAdditions
                     primary.Energy.UpdateConsumeEvent.Subscribe(UpdatePower);
             }
         }
-
+        private float eCost = 0;
         public void UpdatePower()
         {
-            IterateTargets();
+            //DebugRandAddi.Log("TankRepairer.UpdatePower()");
+            try
+            {
+                if (eCost > 0)
+                {
+                    DebugRandAddi.Log("Consuming " + eCost);
+                    gameObject.GetComponent<ModuleEnergy>().ConsumeIfEnough(TechEnergy.EnergyType.Electric, eCost);
+                    eCost = 0;
+                }
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("TankRepairer.UpdatePower() ERROR - " + e);
+            }
+        }
+        public float GetCurrentEnergy()
+        {
+            if (tank != null)
+            {
+                var reg = tank.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
+                return reg.storageTotal - reg.spareCapacity;
+            }
+            return 0;
+        }
+        private bool WasLocked = false;
+        public void Update()
+        {
+            if (!ManPauseGame.inst.IsPaused)
+            {
+                if (dirty)
+                {
+                    dirty = false;
+                    MaxLockOnRange = 0;
+                    foreach (var module in Modules)
+                    {
+                        if (MaxLockOnRange < module.MaxLockOnRange)
+                            MaxLockOnRange = module.MaxLockOnRange;
+                    }
+                    MaxLockOnRange += tank.blockman.CheckRecalcBlockBounds().extents.magnitude;
+                }
+                if (!TargTankValid)
+                    TryInsureTargetTank();
+                if (TargTankValid && 
+                    (aimTargetTank.boundsCentreWorldNoCheck - tank.boundsCentreWorldNoCheck).sqrMagnitude < MaxLockOnRange * MaxLockOnRange)
+                {
+                    bool targetFetchFail = false;
+                    bool healedOnce = false;
+                    float prevBudget = GetCurrentEnergy();
+                    float budget = prevBudget;
+                    int stepper = 0;
+                    while (TargetBlocks.Count > stepper)
+                    {
+                        var caseB = TargetBlocks.ElementAt(stepper);
+                        if (caseB == null)
+                        {
+                            //DebugRandAddi.Log("Removed stupid block");
+                            TargetBlocks.RemoveAt(stepper);
+                        }
+                        else
+                            stepper++;
+                    }
+                    foreach (var item in Modules)
+                    {
+                        //if (!TargetBlocks.Any())
+                        //    DebugRandAddi.Log("no stupid blocks left");
+                        if (item.UpdateRepair(TargetBlocks.GetRandomEntry(), ref budget))
+                            healedOnce = true;
+                        if (!TargetBlocks.Any())
+                        {
+                            if (!targetFetchFail && !TryInsureTargetTank())
+                                targetFetchFail = true;
+                        }
+                    }
+                    eCost += prevBudget - budget;
+                    WasLocked = true;
+                    if (healedOnce)
+                    {
+                        if (Time.time > timestep)
+                        {
+                            timestep = Time.time + UpdateIntervalSecLong;
+                            if (TargTankValid)
+                                TryFetchNewTargetBlocks(aimTargetTank);
+                        }
+                        return;
+                    }
+
+                }
+                else if (WasLocked)
+                {
+                    WasLocked = false;
+                    foreach (var item in Modules)
+                    {
+                        item.aimTargBlock = null;
+                    }
+                }
+                TryInsureTargetTank();
+            }
         }
 
-        private const int UpdateInterval = 60;
-        private int timestep = UpdateInterval;
-        private void RefreshTargets()
+        private const float UpdateIntervalSec = 0.75f;
+        private const float UpdateIntervalSecLong = 1.5f;
+        private float timestep = 0;
+        private bool TryInsureTargetTank()
         {
-            timestep++;
-            if (timestep > UpdateInterval)
+            if (Time.time > timestep)
             {
-                timestep = 0;
                 techsCollect.Clear();
-                foreach (Visible tech in ManVisible.inst.VisiblesTouchingRadius(tank.boundsCentreWorld, MaxLockOnRange, new Bitfield<ObjectTypes>()))
+                foreach (Visible tech in ManVisible.inst.VisiblesTouchingRadius(tank.boundsCentreWorld, MaxLockOnRange, new Bitfield<ObjectTypes>( new ObjectTypes
+                   [] { ObjectTypes.Vehicle })))
                 {
                     if (tech.isActive && (bool)tech.tank)
                     {
-                        if (tech.tank.Team == tank.Team)
+                        var RT = RandomTank.Insure(tech.tank);
+                        if (tech.tank.Team == tank.Team && RT.Damaged)
                         {
-                            techsCollect.Push(tech.tank);
+                            techsCollect.Add(tech.tank);
                         }
                     }
                 }
+                if (techsCollect.Count == 0)
+                {
+                    timestep = Time.time + UpdateIntervalSec;
+                    return false;
+                }
+                else
+                {
+                    DebugRandAddi.Log(tank.name + " - Found " + techsCollect.Count + " Techs to repair.");
+                    if (techsCollect.Contains(tank))
+                        DebugRandAddi.Log(tank.name + " - Including self!");
+                    timestep = Time.time + UpdateIntervalSecLong;
+                }
+                aimTargetTank = techsCollect.GetRandomEntry();
+                if (TargTankValid && TryFetchNewTargetBlocks(aimTargetTank))
+                    return true;
             }
+            return false;
         }
 
-        static List<TankBlock> blockC = new List<TankBlock>();
-        private bool TryFindNewTargetBlock(Tank tank)
+        private bool TryFetchNewTargetBlocks(Tank tank)
         {
-            aimTargBlock = null;
             var rt = RandomTank.Insure(tank);
             if (rt.Damaged)
             {
-                blockC.Clear();
-                RandomTank.Insure(tank).GetDamagedBlocks(blockC);
-                foreach (TankBlock TB in blockC)
-                {
-                    Damageable damage = TB.GetComponent<Damageable>();
-                    if (!damage.IsAtFullHealth)
-                    {
-                        if ((bool)TB)
-                        {
-                            aimTargBlock = TB;
-                            return true;
-                        }
-                    }
-                }
+                TargetBlocks.Clear();
+                rt.GetDamagedBlocks(TargetBlocks);
+                DebugRandAddi.Log(tank.name + " - Found " + TargetBlocks.Count + " blocks on target Tech to repair.");
+                return TargetBlocks.Any();
             }
             return false;
         }
 
-        private bool TryInsureTarget()
-        {
-            if (TargTankValid && TryFindNewTargetBlock(aimTarget))
-                return true;
-            if (techsCollect.Count == 0)
-            {
-                RefreshTargets();
-                if (techsCollect.Count == 0)
-                    return false;
-            }
-            aimTarget = techsCollect.Pop();
-            if (TargTankValid && TryFindNewTargetBlock(aimTarget))
-                return true;
-            return false;
-        }
-
-        private void IterateTargets()
-        {
-            if (TargTankValid && (aimTarget.boundsCentreWorld - tank.boundsCentreWorld).sqrMagnitude > MaxLockOnRange * MaxLockOnRange)
-            {
-                bool targetFetchFail = false;
-                foreach (var item in Modules)
-                {
-                    item.UpdateRepair(aimTargBlock);
-                    if (!TargBlockValid)
-                    {
-                        if (!targetFetchFail && !TryInsureTarget())
-                            targetFetchFail = true;
-                    }
-                }
-            }
-            else
-            {
-                TryInsureTarget();
-            }
-        }
     }
 }

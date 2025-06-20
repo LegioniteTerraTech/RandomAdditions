@@ -27,12 +27,6 @@ namespace RandomAdditions
             ModularMenu = GUIButtonMadness.Initiate(IDGUI, "ERROR", new GUI_BM_Element[0] { });
         }
        
-
-        private static ModuleUIButtons openMouseStartTarg = null;
-        private static Vector2 openMouseStart = Vector2.zero;
-        private static float openMouseTime = 0;
-
-
         protected override void Pool()
         {
             PoolInsure();
@@ -172,6 +166,18 @@ namespace RandomAdditions
             return new GUI_BM_Element_Simple()
             {
                 Name = Name,
+                OnIcon = sprite,
+                OnDesc = sliderDescIfIsSlider,
+                ClampSteps = numClampSteps,
+                LastVal = 0,
+                OnSet = onTriggered,
+            };
+        }
+        public static GUI_BM_Element MakeElement(LocExtString Name, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
+        {
+            return new GUI_BM_Element_Complex()
+            {
+                Name = Name.ToString,
                 OnIcon = sprite,
                 OnDesc = sliderDescIfIsSlider,
                 ClampSteps = numClampSteps,

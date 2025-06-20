@@ -3,6 +3,7 @@ using System.Text;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
@@ -66,43 +67,11 @@ namespace RandomAdditions
         /// Assert!
         /// </summary>
         /// <param name="Text">What we assert.</param>
-        public static void ThrowWarning(string Text)
+        public static void GeneralWarning(string Text, bool IsSeriousError)
         {
             DebugRandAddi.Log(Text);
-            if (KickStart.DebugPopups)
-            {
-                if (WarningCount < WarningCountMax)
-                {
-                    if (Warnings.Length > 0)
-                    {
-                        Warnings.Append("\n");
-                        Warnings.Append("<b>--------------------</b>\n");
-                    }
-                    Warnings.Append(Text);
-                    if (!WarningQueued && inst.IsNotNull())
-                    {
-                        inst.Invoke("ActuallyThrowWarning", 0);// next Update
-                        WarningQueued = true;
-                    }
-                }
-                // Else it's MAXED
-                WarningCount++;
-            }
+            ManModGUI.ShowErrorPopup(Text, IsSeriousError);
         }
-        public void ActuallyThrowWarning()
-        {
-            if (WarningCount > WarningCountMax)
-            {
-                Warnings.Append("\n");
-                Warnings.Append("<b>--------------------</b>\n");
-                Warnings.Append("Other Errors: " + (WarningCount - WarningCountMax));
-            }
-            Singleton.Manager<ManUI>.inst.ShowErrorPopup(Warnings.ToString());
-            Warnings.Clear(); // RESET
-            WarningCount = 0;
-            WarningQueued = false;
-        }
-
 
         private static MethodInfo crsh = typeof(UIScreenBugReport).GetMethod("ShowContinueAfterCrashNotification", BindingFlags.NonPublic | BindingFlags.Instance);
         private static bool threwForceEnd = false;

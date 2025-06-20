@@ -109,7 +109,7 @@ namespace RandomAdditions
                         {
                             foreach (var item in val2)
                             {
-                                ManWorldTileExt.HostTempLoadTile(item, false, 3);
+                                ManWorldTileExt.ClientTempLoadTile(item, false, 3);
                             }
                         }
                     }
@@ -160,7 +160,7 @@ namespace RandomAdditions
         {
             if (SignalOnAPIndex < 0 || SignalOnAPIndex >= block.attachPoints.Length)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleCircuit_RadioSystem SignalOnAPIndex ["
+                BlockDebug.ThrowWarning(false, "RandomAdditions: ModuleCircuit_RadioSystem SignalOnAPIndex ["
                     + SignalOnAPIndex + "] is out of APIndex range [0-" + (block.attachPoints.Length - 1)
                     + "] to operate correctly.\n  Cause of error - Block " + block.name);
                 SignalOnAPIndex = 0;

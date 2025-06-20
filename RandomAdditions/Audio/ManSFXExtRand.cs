@@ -50,7 +50,7 @@ public static class ManSFXExtRand
     internal static void OnRebuildSounds()
     {
         if (ManWorldTileExt.HostCanCommandTileLoaderQuiet())
-            ManWorldTileExt.HostReloadENTIREScene(false);
+            ManWorldTileExt.HostOnly_ReloadENTIREScene(false);
         foreach (var item in libTechs.Values)
         {
             foreach (var item2 in item)

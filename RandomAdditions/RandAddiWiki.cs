@@ -21,17 +21,19 @@ namespace RandomAdditions
 
         internal static void InitWiki()
         {
+            if (nullSprite != null)
+                return;
             nullSprite = ManUI.inst.GetSprite(ObjectTypes.Block, -1);
             InitChunks();
             InitMechanics();
         }
         internal static void InitMechanics()
         {
-            new WikiPageInfo(modID, "Tools", ToolsSprite, PageTools);
+            new WikiPageInfo(modID, LOC_Tools, ToolsSprite, PageTools);
         }
         internal static void InitChunks()
         {
-            var group = InsureWikiGroup(modID, "Chunks", ChunksSprite);
+            var group = InsureWikiGroup(modID, LOC_Chunks, ChunksSprite);
             foreach (var item in ManModChunks.Resurrected)
             {
                 new WikiPageChunk((int)item, group);

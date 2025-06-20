@@ -32,11 +32,16 @@ namespace RandomAdditions
         protected override void Pool()
         {
         }
+        private static LocExtStringMod LOC_ModuleJumpDrive_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Jump Drives") + " let you jump to your other " + AltUI.BlueStringMsg("Techs") +
+                        ".  Open your " + AltUI.ObjectiveString("World Map") + " and double-click on the " + AltUI.BlueStringMsg("Tech") +
+                        " to jump to"},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Jump Drive』") + "を使用すると、他の" +  AltUI.BlueStringMsg("テック") +
+                            "にテレポートできます"},
+        });
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleJumpDrive",
-            AltUI.HighlightString("Jump Drives") + " let you jump to your other " + AltUI.BlueString("Techs") +
-            ".  Open your " + AltUI.ObjectiveString("World Map") + " and double-click on the " + AltUI.BlueString("Tech") + 
-            " to jump to");
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleJumpDrive", LOC_ModuleJumpDrive_desc);
         public override void OnGrabbed()
         {
             hint.Show();

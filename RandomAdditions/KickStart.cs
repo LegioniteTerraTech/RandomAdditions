@@ -19,6 +19,7 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Text;
 using TerraTech.Network;
+using RandomAdditions.PatchBatch;
 
 
 namespace RandomAdditions
@@ -37,6 +38,7 @@ namespace RandomAdditions
             public string DirectoryInExtModSettings => "RandomAdditions";
             public string lastMPSaveName;
             public int gameMode = 0;
+            public bool failedLastBoot = false;
         }
         internal static KickStartRAData quickData = new KickStartRAData();
 
@@ -48,7 +50,7 @@ namespace RandomAdditions
 
         public static GameObject logMan;
 
-        public static bool DebugPopups = false;
+        //public static bool DebugPopups = false;
         public static bool ResetModdedPopups = false;
         public static bool ImmediateLoadLastSave = true; // Load directly into the last saved save on game startup
         public static bool UseAltDateFormat = false; //Change the date format to Y M D (requested by Exund [Weathermod])
@@ -175,6 +177,30 @@ namespace RandomAdditions
             return true;
         }
 
+        private static void InsurePatches()
+        {
+            if (!patched)
+            {
+                try
+                { // init changes
+                    LegModExt.InsurePatches();
+                    if (MassPatcherRA.MassPatchAll())
+                    {
+                        DebugRandAddi.Log("RandomAdditions: Patched");
+                        patched = true;
+                    }
+                    else
+                        DebugRandAddi.Log("RandomAdditions: Error on patch");
+                    quickData.TryLoadFromDisk(ref quickData);
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.Log("RandomAdditions: Error on patch");
+                    DebugRandAddi.Log(e);
+                }
+            }
+        }
+
 
         private static bool OfficialEarlyInited = false;
         public static void OfficialEarlyInit()
@@ -200,25 +226,7 @@ namespace RandomAdditions
 #endif
 
             //Initiate the madness
-            if (!patched)
-            {
-                try
-                { // init changes
-                    LegModExt.InsurePatches();
-                    if (MassPatcherRA.MassPatchAll())
-                    {
-                        DebugRandAddi.Log("RandomAdditions: Patched");
-                        patched = true;
-                    }
-                    else
-                        DebugRandAddi.Log("RandomAdditions: Error on patch");
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("RandomAdditions: Error on patch");
-                    DebugRandAddi.Log(e);
-                }
-            }
+            InsurePatches();
             if (!logMan)
             {
                 logMan = new GameObject("logMan");
@@ -247,13 +255,15 @@ namespace RandomAdditions
             }
             try
             {
-                if (ForceIntoModeStartup > 0)
+                if (quickData.failedLastBoot)
+                {
+                }
+                else if (ForceIntoModeStartup > 0)
                 {
                     // FORCE STARTUP SWITCH
                     DebugRandAddi.Log("RandomAdditions: Prepping Quick Start...");
                     harmonyInstance.MassPatchAllWithin(typeof(PatchStartup), ModName);
                     Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
-                    doQuickstart = true;
                 }
             }
             catch (Exception e)
@@ -268,7 +278,13 @@ namespace RandomAdditions
             OfficialEarlyInited = true;
         }
 
-
+        private static bool BypassStartupSkip = false;
+        private static void DoBypassStartupSkip()
+        {
+            ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Back);
+            BypassStartupSkip = true;
+            ManModGUI.RemoveEscapeableCallback(DoBypassStartupSkip, true);
+        }
         public static void MainOfficialInit()
         {
             //SafeSaves.DebugSafeSaves.LogAll = true;
@@ -301,30 +317,12 @@ namespace RandomAdditions
 #endif
 
             //Initiate the madness
-            if (!patched)
-            {
-                try
-                {
-                    LegModExt.InsurePatches();
-                    if (MassPatcherRA.MassPatchAll())
-                    {
-                        DebugRandAddi.Log("RandomAdditions: Patched");
-                        patched = true;
-                    }
-                    else
-                        DebugRandAddi.Log("RandomAdditions: Error on patch");
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("RandomAdditions: Error on patch");
-                    DebugRandAddi.Log(e);
-                }
-            }
+            InsurePatches();
             CursorChanger.AddNewCursors();
             GlobalClock.ClockManager.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
-            ManTethers.Init();
+            ManTethers.Initiate();
             ModHelpers.Initiate();
             GUIClock.Initiate();
             ManTileLoader.Initiate();
@@ -339,23 +337,39 @@ namespace RandomAdditions
             ManRails.InsureNetHooks();
 
             // etc
-            IngameQuit.Init();
+            IngameQuit.Initiate();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<ModuleReinforced>();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<SFXAddition>();
             ResourcesHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
             RandAddiWiki.InitWiki();
-            quickData.TryLoadFromDisk(ref quickData);
+            RandAddiExtendWiki.InitWiki();
 
-            if (ForceIntoModeStartup > 0)
+            if (quickData.failedLastBoot)
+            {
+                DebugRandAddi.Log("RandomAdditions: We failed on last startup, so we skipped loading this time");
+                ManModGUI.ShowErrorPopup("The game failed to boot last time.  Skip Title Screen is disabled until you press \"Fix\"", true,
+                    () =>
+                    {
+                        quickData.failedLastBoot = false;
+                        quickData.TrySaveToDisk();
+                    });
+            }
+            else if (ForceIntoModeStartup > 0)
             {
                 DebugRandAddi.Log("RandomAdditions: Blocking attract loading...(2)");
+                ManModGUI.AddEscapeableCallback(DoBypassStartupSkip, true);
                 Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
+                doQuickstart = true;
             }
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
             //PrintDataBase();
 #endif
             //ResourcesHelper.PostBlocksLoadEvent.Subscribe(ManSFXExtRand.GetAllSoundsRegistered);
+            // crash testers
+            //ResourcesHelper.SerialGO goCrash = new ResourcesHelper.SerialGO(null, null);
+            //object blockCRasher = null;
+            //blockCRasher.GetType();
         }
         public static void PrepExternalChunksAndScenery(bool reload = false)
         {
@@ -507,6 +521,14 @@ namespace RandomAdditions
                 ManTileLoader.OnWorldSave();
                 ManRails.PrepareForSaving();
                 RandomWorld.PrepareForSaving();
+            }
+            else
+            {
+                ManRails.FinishedSaving();
+                ManTileLoader.OnWorldFinishSave();
+                ManModChunks.inst.FinishedSaving();
+                ManModScenery.inst.FinishedSaving();
+                RandomWorld.FinishedSaving();
                 string prevName = quickData.lastMPSaveName;
                 int prevMode = quickData.gameMode;
                 if (ManNetwork.IsNetworked)
@@ -522,16 +544,8 @@ namespace RandomAdditions
                 if (prevName != quickData.lastMPSaveName || prevMode != quickData.gameMode)
                 {
                     if (!quickData.TrySaveToDisk())
-                        DebugRandAddi.Assert("Failed to save RandomAdditions data to disk.");
+                        DebugRandAddi.Assert("Failed to save RandomAdditions quickLoad data to disk.");
                 }
-            }
-            else
-            {
-                ManRails.FinishedSaving();
-                ManTileLoader.OnWorldFinishSave();
-                ManModChunks.inst.FinishedSaving();
-                ManModScenery.inst.FinishedSaving();
-                RandomWorld.FinishedSaving();
             }
         }
         public static void OnLoadManagers(bool Doing)
@@ -608,96 +622,117 @@ namespace RandomAdditions
         public static bool ShouldQuickStartGame() => doQuickstart;
         public static bool QuickStartGame()
         {
-            if (didQuickstart)
+            if (didQuickstart || !doQuickstart)
                 return true;
             didQuickstart = true;
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
 #endif
-            if (Input.GetKey(KeyCode.Backspace) || Input.GetKey(KeyCode.Escape) || Environment.CommandLine.Contains("NoQuickStart"))
-            {
-                return true;
-            }
+            bool vanillaStartup = true;
+            bool LoadSPSaveOrNewGame = false;
             try
             {
                 if (ForceIntoModeStartup > 0)
                 {
-                    InvokeHelper.Invoke(PostQuickstart, 2f);
-                    ManProfile.Profile prof = ManProfile.inst.GetCurrentUser();
-                    if (prof != null)
+                    ManModGUI.RemoveEscapeableCallback(DoBypassStartupSkip, true);
+                    if (Input.GetKey(KeyCode.Backspace) || Input.GetKey(KeyCode.Escape) || BypassStartupSkip || Environment.CommandLine.Contains("NoQuickStart"))
                     {
-                        DebugRandAddi.Log("RandomAdditions: Quick-Starting...");
-                        Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
-                        ManGameMode.GameType GT = ManGameMode.GameType.Creative;
-                        string saveName = null;
-                        switch (ForceIntoModeStartup)
-                        {
-                            case 1:
-                                if (prof.m_LastUsedSaveName != null)
-                                {
-                                    if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
-                                        break;
-                                    saveName = prof.m_LastUsedSaveName;
-                                    GT = prof.m_LastUsedSaveType;
-                                }
-                                else
-                                {
-                                    DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
-                                    Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
-                                }
-                                break;
-                            case 2:
-                                GT = ManGameMode.GameType.Creative;
-                                break;
-                            case 3:
-                                if (!ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
-                                    break;
-                                GT = ManGameMode.GameType.RaD;
-                                break;
-                            case 4:
-                                if (quickData.lastMPSaveName != null)
-                                {
-                                    TryMakeMPSaveLobby((ManGameMode.GameType)quickData.gameMode, quickData.lastMPSaveName);
-                                    return false;
-                                }
-                                else if (prof.m_LastUsedSaveName != null)
-                                {
-                                    if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
-                                        break;
-                                    saveName = prof.m_LastUsedSaveName;
-                                    GT = prof.m_LastUsedSaveType;
-                                }
-                                else
-                                {
-                                    DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
-                                    Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
-                                }
-                                break;
-                            default:
-                                break;
-                        }
-                        DebugRandAddi.Log("RandomAdditions: Next mode, " + GT.ToString());
-                        ManUI.inst.ExitAllScreens();
-                        ManGameMode.inst.ClearModeInitSettings();
-                        if (saveName.NullOrEmpty())
-                            ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
-                        else
-                            ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
-                        ManGameMode.inst.NextModeSetting.SwitchToMode();
-                        //ManUI.inst.FadeToBlack(0.25f, false);
-                        DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
-                        return false;
+                        // We boot vanilla
                     }
                     else
-                        DebugRandAddi.Log("RandomAdditions: QuickStartGame failed!  User profile is not set!  Cannot Execute!");
+                    {
+                        InvokeHelper.Invoke(PostQuickstart, 2f);
+                        ManProfile.Profile prof = ManProfile.inst.GetCurrentUser();
+                        if (prof != null)
+                        {
+                            DebugRandAddi.Log("RandomAdditions: Quick-Starting...");
+                            Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
+                            ManGameMode.GameType GT = ManGameMode.GameType.Creative;
+                            string saveName = null;
+                            switch (ForceIntoModeStartup)
+                            {
+                                case 1:
+                                    if (prof.m_LastUsedSaveName != null)
+                                    {
+                                        if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                                            break;
+                                        saveName = prof.m_LastUsedSaveName;
+                                        GT = prof.m_LastUsedSaveType;
+                                        LoadSPSaveOrNewGame = true;
+                                        vanillaStartup = false;
+                                    }
+                                    else
+                                    {
+                                        DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
+                                    }
+                                    break;
+                                case 2:
+                                    GT = ManGameMode.GameType.Creative;
+                                    LoadSPSaveOrNewGame = true;
+                                    vanillaStartup = false;
+                                    break;
+                                case 3:
+                                    if (!ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                                        break;
+                                    GT = ManGameMode.GameType.RaD;
+                                    LoadSPSaveOrNewGame = true;
+                                    vanillaStartup = false;
+                                    break;
+                                case 4:
+                                    if (quickData.lastMPSaveName != null)
+                                    {
+                                        TryMakeMPSaveLobby((ManGameMode.GameType)quickData.gameMode, quickData.lastMPSaveName);
+                                        vanillaStartup = false;
+                                    }
+                                    else if (prof.m_LastUsedSaveName != null)
+                                    {
+                                        if (prof.m_LastUsedSaveType == ManGameMode.GameType.RaD && !ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                                            break;
+                                        saveName = prof.m_LastUsedSaveName;
+                                        GT = prof.m_LastUsedSaveType;
+                                        LoadSPSaveOrNewGame = true;
+                                        vanillaStartup = false;
+                                    }
+                                    else
+                                    {
+                                        DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
+                                    }
+                                    break;
+                                default:
+                                    break;
+                            }
+                            if (LoadSPSaveOrNewGame)
+                            {
+                                DebugRandAddi.Log("RandomAdditions: Next mode, " + GT.ToString());
+                                ManUI.inst.ExitAllScreens();
+                                ManGameMode.inst.ClearModeInitSettings();
+                                if (saveName.NullOrEmpty())
+                                    ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
+                                else
+                                    ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
+                                ManGameMode.inst.NextModeSetting.SwitchToMode();
+                                ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
+                                //ManUI.inst.FadeToBlack(0.25f, false);
+                                DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
+                            }
+                        }
+                        else
+                            DebugRandAddi.Log("RandomAdditions: QuickStartGame failed!  User profile is not set!  Cannot Execute!");
+                    }
                 }
             }
             catch (Exception e)
             {
                 DebugRandAddi.Log("RandomAdditions: Failed in quickstarting " + e);
+                quickData.failedLastBoot = true;
+                quickData.TrySaveToDisk();
             }
-            ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
-            return true;
+            if (vanillaStartup)
+            {
+                ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
+                Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
+            }
+            return vanillaStartup;
         }
         private static void PostQuickstart()
         {
@@ -761,7 +796,11 @@ namespace RandomAdditions
             harmonyInstance.MassUnPatchAllWithin(typeof(PatchStartup), ModName);
             ManGameMode.inst.ModeStartEvent.Unsubscribe(OnFinishedQuickstart);
             doQuickstart = false;
-            Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
+            if (BugReportPatches.UIScreenBugReportPatches.Crashed)
+            {
+                quickData.failedLastBoot = true;
+                quickData.TrySaveToDisk();
+            }
         }
 
         public static BlockTypes GetProperBlockType(BlockTypes BTVanilla, string blockTypeString)
@@ -1033,7 +1072,7 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "_hangarButton");
 
                 // DEVELOPMENT
-                thisModConfig.BindConfig<KickStart>(null, "DebugPopups");
+                thisModConfig.BindConfig<BlockDebug>(null, "DebugPopups");
                 thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
                 thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
                 thisModConfig.BindConfig<KickStart>(null, "AllowIngameQuitToDesktop");
@@ -1120,8 +1159,8 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup SafeSaves");
                     DebugRandAddi.Log(e);
                 }
-                allowPopups = new OptionToggle("Enable custom block debug popups", RandomDev, KickStart.DebugPopups);
-                allowPopups.onValueSaved.AddListener(() => { KickStart.DebugPopups = allowPopups.SavedValue; });
+                allowPopups = new OptionToggle("Enable custom block debug popups", RandomDev, BlockDebug.DebugPopups);
+                allowPopups.onValueSaved.AddListener(() => { BlockDebug.DebugPopups = allowPopups.SavedValue; });
                 blockSnap = new OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomDev, KickStart.SnapBlockButton);
                 blockSnap.onValueSaved.AddListener(() => {
                     KickStart.SnapBlockButton = blockSnap.SavedValue;

@@ -25,7 +25,7 @@ namespace RandomAdditions
             consumer = gameObject.GetComponent<ModuleItemConsume>();
             if (!shop && !consumer)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleCustomShop NEEDS a ModuleShop in hierarchy!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleCustomShop NEEDS a ModuleShop in hierarchy!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 enabled = false;
             }
         }

@@ -78,11 +78,12 @@ namespace RandomAdditions
             public string blockName;
             public bool state;
         }
-        private static NetworkHook<AbilityToggleCommand> netHookAbility = new NetworkHook<AbilityToggleCommand>(OnReceiveAbilityRequest, NetMessageType.ToServerOnly);
+        private static NetworkHook<AbilityToggleCommand> netHookAbility = new NetworkHook<AbilityToggleCommand>(
+            "RandAdd.ToggleCommand", OnReceiveAbilityRequest, NetMessageType.ToServerOnly);
 
         internal static void InsureNetHooks()
         {
-            netHookAbility.Register();
+            netHookAbility.Enable();
         }
         internal static bool OnReceiveAbilityRequest(AbilityToggleCommand command, bool isServer)
         {
@@ -157,7 +158,7 @@ namespace RandomAdditions
             FireData[] batch = GetComponentsInChildren<FireData>();
             if (batch.Length < 2)
             {
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleModeSwitch NEEDS a second FireData somewhere present to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleModeSwitch NEEDS a second FireData somewhere present to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 return;
             }
             else
@@ -176,13 +177,13 @@ namespace RandomAdditions
             MW = GetComponent<ModuleWeapon>();
             if (!(bool)MW)
             {
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleModeSwitch NEEDS \"ModuleWeapon\" present to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleModeSwitch NEEDS \"ModuleWeapon\" present to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 return;
             }
             MWG = GetComponent<ModuleWeaponGun>();
             if (!(bool)MWG)
             {
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleModeSwitch NEEDS \"ModuleWeaponGun\" present to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleModeSwitch NEEDS \"ModuleWeaponGun\" present to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 return;
             }
 
@@ -244,9 +245,14 @@ namespace RandomAdditions
             //DebugRandAddi.Log("RandomAdditions: ModuleModeSwitch - Prepped a gun");
         }
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleModeSwitch",
-            "This " + AltUI.HighlightString("Weapon") + " can switch based on the " + 
-            AltUI.EnemyString("Enemy") + ".");
+        private static LocExtStringMod LOC_ModuleModeSwitch_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "This " + AltUI.HighlightString("Weapon") + " can switch based on the " +
+            AltUI.EnemyString("Enemy") + "."},
+            { LocalisationEnums.Languages.Japanese, "この" + AltUI.HighlightString("武器") + "は" +
+                            AltUI.EnemyString("敵") + "に応じて自動的に切り替わります"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleModeSwitch", LOC_ModuleModeSwitch_desc);
         public override void OnAttach()
         {
             if ((int)ModeSwitch > (int)ModeSwitchCondition.PrimarySecondarySalvo)

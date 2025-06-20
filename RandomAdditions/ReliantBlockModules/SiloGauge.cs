@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using TerraTechETCUtil;
 
 public class SiloGauge : RandomAdditions.SiloGauge { };
 namespace RandomAdditions
@@ -41,7 +42,7 @@ namespace RandomAdditions
             siloMain = MIS;
             var shader = Resources.FindObjectsOfTypeAll<Shader>().Where(s => s.name == "Standard").ElementAt(1); ////Standard
             if (shader.IsNull())
-                LogHandler.ThrowWarning("RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nSiloGauge: Could not find any shader!   ALERT CODER!!!");
             shade = shader;
 
             var meshV = gameObject.GetComponent<MeshRenderer>();

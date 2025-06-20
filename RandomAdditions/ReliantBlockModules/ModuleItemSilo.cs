@@ -173,7 +173,7 @@ namespace RandomAdditions
                         possibleAPs = stack.apConnectionIndices.Length;
                     if (!stack.CanAcceptObjectType(ObjectTypes.Block))
                     {
-                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle blocks instead of chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 1!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                        BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle blocks instead of chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 1!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                         break;
                     }
                 }
@@ -186,7 +186,7 @@ namespace RandomAdditions
                         possibleAPs = stack.apConnectionIndices.Length;
                     if (!stack.CanAcceptObjectType(ObjectTypes.Chunk))
                     {
-                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 0!</b>\nThis operation cannot be handled automatically.\n  Cause of error - Block " + TankBlock.name);
+                        BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 0!</b>\nThis operation cannot be handled automatically.\n  Cause of error - Block " + TankBlock.name);
                         break;
                     }
                 }
@@ -244,18 +244,23 @@ namespace RandomAdditions
             if (itemStore.IsNull())
             {
                 //DebugRandAddi.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.\n  Cause of error - Block " + TankBlock.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.\n  Cause of error - Block " + TankBlock.name);
             }
             if (MaxCapacity <= 0)
             {
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\n  Cause of error - Block " + TankBlock.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\n  Cause of error - Block " + TankBlock.name);
             }
             ResetGaugesAndDisplays();
         }
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleItemSilo",
-             AltUI.HighlightString("Storages") + " hold stacks of " + AltUI.ObjectiveString("Chunks") +
-            " or " + AltUI.ObjectiveString("Blocks") + " safely inside.");
+        private static LocExtStringMod LOC_ModuleItemSilo_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Storages") + " hold stacks of " + AltUI.ObjectiveString("Chunks") +
+            " or " + AltUI.ObjectiveString("Blocks") + " safely inside."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("サイロ") + "は" + AltUI.ObjectiveString("チャンク") +
+                            "または" + AltUI.ObjectiveString("ブロック") + "の積み重ねを安全に内部に保持します"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleItemSilo", LOC_ModuleItemSilo_desc);
         private void OnAttach()
         {
             if (StackSet == 0)
@@ -267,7 +272,7 @@ namespace RandomAdditions
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
 
             ResetGaugesAndDisplays();
-            isSaving = false; 
+            isSaving = false;
             hint.Show();
         }
         private void OnDetach()
@@ -423,7 +428,7 @@ namespace RandomAdditions
                     toManage.SetHolder(null, true);//DROP IT NOW!!!
                     if (toManage.InBeam == true)
                     {
-                        LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid chunk");
+                        LogHandler.GeneralWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid chunk", true);
                     }
                 }
             }
@@ -474,7 +479,7 @@ namespace RandomAdditions
                         toManage.InBeam = false;//DROP IT NOW!!!
                         if (toManage.InBeam == true)
                         {
-                            LogHandler.ThrowWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block");
+                            LogHandler.GeneralWarning("RandomAdditions: \nModuleItemSilo: Critical error on handling invalid block", true);
                         }
                     }
                 }

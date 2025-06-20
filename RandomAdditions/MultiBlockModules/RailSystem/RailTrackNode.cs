@@ -40,7 +40,8 @@ namespace RandomAdditions.RailSystem
             public bool connected;
             public bool ignoreIfConnectedAlready;
         }
-        internal static NetworkHook<TrackNodeMessage> netHook = new NetworkHook<TrackNodeMessage>(OnReceiveNodeLinkRequest, NetMessageType.FromClientToServerThenClients);
+        internal static NetworkHook<TrackNodeMessage> netHook = new NetworkHook<TrackNodeMessage>(
+            "RandAdd.TrackNodeMessage", OnReceiveNodeLinkRequest, NetMessageType.FromClientToServerThenClients);
 
         private static bool OnReceiveNodeLinkRequest(TrackNodeMessage command, bool isServer)
         {

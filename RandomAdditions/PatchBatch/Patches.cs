@@ -7,14 +7,126 @@ using UnityEngine;
 using UnityEngine.UI;
 using FMOD.Studio;
 using RandomAdditions.Minimap;
-using static CompoundExpression;
 using TerraTechETCUtil;
+using TMPro;
 
 namespace RandomAdditions
 {
     internal static class Patches
     {
+        [HarmonyPatch(typeof(UITechManagerEntry))]
+        [HarmonyPatch("Init")]//
+        internal static class GrabUIEntryDetails
+        {
+            const string name = "JumpTo_Button";
+            static FieldInfo TargetInfo = typeof(UITechManagerEntry).GetField("m_TrackedVis", BindingFlags.Instance | BindingFlags.NonPublic);
+            static Material mockIcon = null;
+            private static LocExtStringMod LOC_DirectControl = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Assume Direct Control"},
+            { LocalisationEnums.Languages.Japanese, "をコントロールする"},
+        });
+            private static LocExtStringMod LOC_DirectControlNotAvail = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Cannot Assume Direct Control"},
+            { LocalisationEnums.Languages.Japanese, "制御できない"},
+        });
+            internal static void Postfix(UITechManagerEntry __instance, TrackedVisible tv)
+            {
+                Transform MainTrans = __instance.transform;
+                Button[] ToCopy = __instance.gameObject.GetComponentsInChildren<Button>(true);
+                for (int i = 0; i < ToCopy.Length; i++)
+                {
+                    Button button = ToCopy[i];
+                    Transform parent2 = button.transform.parent;
+                    if (MainTrans == parent2)
+                        continue;
+                    if (parent2.name == name)
+                    {
+                        return;
+                    }
+                }
+                DebugRandAddi.Log("Creating new " + name);
+                Transform template = null;
+                int locatorIndex = 0;
+                for (int i = 0; i < ToCopy.Length; i++)
+                {
+                    Button button = ToCopy[i];
+                    Transform parent2 = button.transform.parent;
+                    if (MainTrans == parent2 || !parent2.name.Contains("_Button"))
+                        continue;
+                    if (template == null && parent2.name.Contains("SendToSCU"))
+                        template = parent2;
+                    DebugRandAddi.Log(parent2.name + " posLoc: " + parent2.localPosition.ToString());
+                    parent2.localPosition = new Vector3(Mathf.Lerp(244f, 454f, locatorIndex / 4f), 0.6f, 0.0f); 
+                    locatorIndex++;
+                }
+                Transform parentMain = __instance.transform;
+                GameObject GO = UnityEngine.Object.Instantiate(template.gameObject, parentMain);
+                if (GO == null)
+                    throw new NullReferenceException("GO");
+                Button newButton = GO.GetComponentInChildren<Button>();
+                if (newButton == null)
+                    throw new NullReferenceException("newButton");
+                Image[] newImages = GO.GetComponentsInChildren<Image>();
+                if (newImages == null)
+                    throw new NullReferenceException("newImage");
+                TooltipComponent newTooltip = GO.GetComponentInChildren<TooltipComponent>();
+                if (newTooltip == null)
+                    throw new NullReferenceException("newTooltip");
+                bool canJump = ManMinimapExt.CanTeleportSafely(tv);
+                newButton.interactable = canJump;
+                if (canJump)
+                {
+                    LOC_DirectControl.SetTextAuto(newTooltip);
+                    newTooltip.SetMode(UITooltipOptions.Default);
+                }
+                else
+                {
+                    LOC_DirectControlNotAvail.SetTextAuto(newTooltip);
+                    newTooltip.SetMode(UITooltipOptions.Warning);
+                }
+                GO.name = name;
+                GO.transform.localPosition = new Vector3(Mathf.Lerp(244f, 454f, locatorIndex / 4f), 0.6f, 0.0f);//404.0f
+                Button.ButtonClickedEvent BCE = new Button.ButtonClickedEvent();
+                BCE.AddListener(() =>
+                {
+                    TrackedVisible TV = (TrackedVisible)TargetInfo.GetValue(__instance);
+                    ManMinimapExt.MinimapExt.TryJumpPlayer(TV);
+                    ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Enter);
+                });
+                newButton.onClick = BCE;
+                if (mockIcon == null)
+                {
+                    mockIcon = new Material(newImages[0].material.shader);
+                    mockIcon.mainTexture = UIHelpersExt.GetGUIIcon("HUD_Slider_Graphics_01_1").texture;
+                }
+                foreach (Image image in newImages)
+                {
+                    // SETTING IMAGE DOES NOT WORK FOR SOME STUPID REASON
+                    image.material = mockIcon;
+                    CanvasRenderer CR = image.GetComponent<CanvasRenderer>();
+                    CR.SetPopMaterial(mockIcon, 0);
+                    CR.SetMaterial(mockIcon, 0);
+                    image.SetAllDirty();
+                    DebugRandAddi.Log("Layer " + image.name);
+                    if (!image.name.Contains("Button"))
+                    { 
+                        UnityEngine.Object.Destroy(image.gameObject);
+                    }
+                }
+                // SETTING IMAGE DOES NOT WORK FOR SOME STUPID REASON
+                //Utilities.LogGameObjectHierachy(newButton.gameObject);
+                newButton.image.material = mockIcon;
+                CanvasRenderer CR2 = newButton.image.GetComponent<CanvasRenderer>();
+                CR2.SetPopMaterial(mockIcon, 0);
+                CR2.SetMaterial(mockIcon, 0);
+                newButton.image.SetAllDirty();
+                DebugRandAddi.Log("Created new " + name);
+            }
+        }
 
+        /*
         [HarmonyPatch(typeof(FmodGvrAudioRoom))]
         [HarmonyPatch("Update")]//
         internal static class EatEscapeKeypress
@@ -23,7 +135,7 @@ namespace RandomAdditions
             {
                 DebugRandAddi.Log("FmodGvrAudioRoom ACTIVE");
             }
-        }
+        }*/
 
         [HarmonyPatch(typeof(ManRadar))]
         [HarmonyPatch("IconTypeCount", MethodType.Getter)]//

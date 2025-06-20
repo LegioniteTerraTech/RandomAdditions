@@ -1,4 +1,5 @@
-﻿using RandomAdditions.RailSystem;
+﻿using System.Collections.Generic;
+using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 using UnityEngine;
 using static OrthoRotation;
@@ -96,9 +97,15 @@ namespace RandomAdditions
         }
 
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailEngine",
-            AltUI.HighlightString("Engines") + " allow " + AltUI.HighlightString("Bogies") + 
-            " to apply force.");
+        private static LocExtStringMod LOC_ModuleRailEngine_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, 
+                AltUI.HighlightString("Engines") + " allow " + AltUI.HighlightString("Bogies") +
+                        " to apply force."},
+            { LocalisationEnums.Languages.Japanese,
+                AltUI.HighlightString("『Engine』") + "は" +  AltUI.HighlightString("『Bogie』") + "の移動を可能にする"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailEngine", LOC_ModuleRailEngine_desc);
         public override void OnGrabbed()
         {
             hint.Show();

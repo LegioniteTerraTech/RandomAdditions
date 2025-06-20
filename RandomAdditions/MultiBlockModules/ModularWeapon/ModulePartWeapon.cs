@@ -122,7 +122,7 @@ namespace RandomAdditions
             barrelMountPrefab = KickStart.HeavyTransformSearch(transform, "_barrelMountPrefab");
             if (!barrelMountPrefab)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelMountPrefab with a model!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelMountPrefab with a model!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -131,7 +131,7 @@ namespace RandomAdditions
             barrelMountAttacher = KickStart.HeavyTransformSearch(transform, "_barrelMountAttacher");
             if (!barrelMountAttacher)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelMountAttacher with a model!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelMountAttacher with a model!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -139,7 +139,7 @@ namespace RandomAdditions
             barrelRotatingMount = KickStart.HeavyTransformSearch(transform, "_barrelRotatingMount");
             if (!barrelRotatingMount)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelRotatingMount on the same GameObject as the Aux Barrel!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeapon NEEDS GameObject _barrelRotatingMount on the same GameObject as the Aux Barrel!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;

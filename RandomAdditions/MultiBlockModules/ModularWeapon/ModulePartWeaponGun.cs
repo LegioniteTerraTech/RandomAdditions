@@ -65,7 +65,7 @@ namespace RandomAdditions
             MW = GetComponent<ModuleWeapon>();
             if (!MW)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeaponGun NEEDS a ModuleWeapon within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeaponGun NEEDS a ModuleWeapon within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -74,7 +74,7 @@ namespace RandomAdditions
             TA = GetComponent<TargetAimer>();
             if (!TA)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeaponGun NEEDS a TargetAimer within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeaponGun NEEDS a TargetAimer within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -83,7 +83,7 @@ namespace RandomAdditions
             fireData = GetComponent<FireData>();
             if (!fireData)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeaponGun NEEDS a valid FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeaponGun NEEDS a valid FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -92,7 +92,7 @@ namespace RandomAdditions
             fireData = GetComponent<FireData>();
             if (!fireData)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModulePartWeaponGun NEEDS a FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModulePartWeaponGun NEEDS a FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -104,14 +104,14 @@ namespace RandomAdditions
             PartCannonBarrel[] barrelsTemp = GetComponentsInChildren<PartCannonBarrel>();
             if (barrelsTemp == null)
             {
-                LogHandler.ThrowWarning("ModulePartWeaponGun has no PartCannonBarrels: " + block.name);
+                BlockDebug.ThrowWarning(true, "ModulePartWeaponGun has no PartCannonBarrels: " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
             }
             if (barrelsTemp.Length > 1)
             {
-                LogHandler.ThrowWarning("ModulePartWeaponGun can only have one main barrel, the others are handled automatically: " + block.name);
+                BlockDebug.ThrowWarning(true, "ModulePartWeaponGun can only have one main barrel, the others are handled automatically: " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -632,7 +632,7 @@ namespace RandomAdditions
             partWeap = gameObject.GetComponentInParents<ModulePartWeaponGun>();
             if (!partWeap)
             {
-                LogHandler.ThrowWarning("RandomAdditions: PartCannonBarrel NEEDS ModulePartWeaponGun in it's parents to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + transform.root.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: PartCannonBarrel NEEDS ModulePartWeaponGun in it's parents to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + transform.root.name);
                 enabled = false;
                 return;
             }
@@ -801,7 +801,7 @@ namespace RandomAdditions
         private void OnPool()
         {
             if (GetComponent<CannonBarrel>())
-                LogHandler.ThrowWarning("PartCannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
+                BlockDebug.ThrowWarning(true, "PartCannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
 
             trans = transform;
             var smokeTrans = KickStart.HeavyTransformSearch(trans, "_smoke");

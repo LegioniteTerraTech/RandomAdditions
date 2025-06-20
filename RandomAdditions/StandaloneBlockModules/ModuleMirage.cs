@@ -28,9 +28,13 @@ namespace RandomAdditions
         public MirageType MirageType = MirageType.Circle;
         public float MiragePower = 10;
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleMirage",
-            AltUI.HighlightString("Mirage Cores") + " can distract " + AltUI.EnemyString("Enemy") + 
-            " weapons.");
+        private static LocExtStringMod LOC_ModuleMirage_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Mirage Cores") + " can distract " + AltUI.EnemyString("Enemy") +
+                        " weapons."},
+            { LocalisationEnums.Languages.Japanese,  AltUI.HighlightString("『Mirage Core』") + "は" +AltUI.EnemyString("敵") + "の武器をそらす"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleMirage", LOC_ModuleMirage_desc);
         public override void OnGrabbed()
         {
             hint.Show();

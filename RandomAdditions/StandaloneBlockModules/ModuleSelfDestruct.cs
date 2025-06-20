@@ -21,9 +21,13 @@ public class ModuleSelfDestruct : ExtModule
     public float SelfDestructTimer = 3;
     public bool DetachInstead = false;
 
-    private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleSelfDestruct",
-         "This block will explode just after attachment." +
-        AltUI.HintString("It's one-use only!"));
+    private static LocExtStringMod LOC_ModuleSelfDestruct_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "This block will explode just after attachment." +
+                        AltUI.HintString("It's one-use only!")},
+            { LocalisationEnums.Languages.Japanese,  "このブロックは1回のみ使用できます"},
+        });
+    private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleSelfDestruct", LOC_ModuleSelfDestruct_desc);
     private void DetachForced()
     {
         block.PreExplodePulse = false;

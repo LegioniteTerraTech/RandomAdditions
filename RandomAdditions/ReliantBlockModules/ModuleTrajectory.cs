@@ -32,9 +32,13 @@ namespace RandomAdditions
         public float Distance = 10;
         public float LaunchVelocity = 10;
         public float GravityMultiplier = -1;
-        public static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTrajectory",
-            "This block displays the approximate arc of the attached " + AltUI.HighlightString("Weapon's") + 
-            " projectile.");
+        private static LocExtStringMod LOC_ModuleTrajectory_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "This block displays the approximate arc of the attached " + AltUI.HighlightString("Weapon's") +
+                        " projectile."},
+            { LocalisationEnums.Languages.Japanese, "このブロックは、取り付けられた武器の軌道を表示します"},
+        });
+        public static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTrajectory", LOC_ModuleTrajectory_desc);
 
 
         public void OnPool()

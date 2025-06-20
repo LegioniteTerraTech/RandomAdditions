@@ -25,7 +25,8 @@ namespace RandomAdditions.Minimap
             public int x;
             public int y;
         }
-        private static NetworkHook<NetFarPlayerSwapTechMessage> nethook = new NetworkHook<NetFarPlayerSwapTechMessage>(OnPlayerSwapRequestNetwork, NetMessageType.ToServerOnly);
+        private static NetworkHook<NetFarPlayerSwapTechMessage> nethook = new NetworkHook<NetFarPlayerSwapTechMessage>(
+            "RandAdd.NetFarPlayerSwapTechMessage", OnPlayerSwapRequestNetwork, NetMessageType.ToServerOnly);
 
         public static bool OnPlayerSwapRequestNetwork(NetFarPlayerSwapTechMessage command, bool isServer)
         {
@@ -51,9 +52,15 @@ namespace RandomAdditions.Minimap
         internal static MinimapExt instWorld;
         internal static MinimapExt instMini;
 
-        internal static LoadingHintsExt.LoadingHint newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID, "GENERAL HINT",
-            "Using the " + AltUI.HighlightString("Map") + ", you can quick-jump to another " + 
-            AltUI.BlueString("Tech") + " by " +  AltUI.HighlightString("Shift Right-Clicking") + " on it's icon");
+        private static LocExtStringMod LOC_MapHelper = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Using the " + AltUI.HighlightString("Map") + ", you can quick-jump to another " +
+            AltUI.BlueStringMsg("Tech") + " by " +  AltUI.HighlightString("Shift Right-Clicking") + " on it's icon" },
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("マップ")  + "上で" +AltUI.HighlightString("シフト右クリック") +
+                        "を押しながら右クリックすることで、遠距離から別の" + AltUI.BlueStringMsg("テック") + "に切り替えることができます"  },
+        });
+        internal static LoadingHintsExt.LoadingHint newHint = new LoadingHintsExt.LoadingHint(KickStart.ModID,
+            LocHelper.LOC_GENERAL_HINT, LOC_MapHelper);
 
 
         private static Dictionary<int, Type> LayersIndexedCached = new Dictionary<int, Type>();
@@ -64,32 +71,43 @@ namespace RandomAdditions.Minimap
         {
             return CanTeleportSafely(ModaledSelectTarget);
         }
+        public static bool CanTeleportSafely(TrackedVisible tonk)
+        {
+            return (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes) && 
+                tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam &&
+                tonk.ObjectType == ObjectTypes.Vehicle && CanPlayerControl(tonk);
+        }
         private static bool CanTeleportSafely(UIMiniMapElement element)
         {
-            if (element != null && (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes))
+            if (element != null)
             {
-                var tonk = element.TrackedVis;
-                return tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam &&
-                    tonk.ObjectType == ObjectTypes.Vehicle && CanPlayerControl(tonk);
+                return CanTeleportSafely(element.TrackedVis);
             }
             return false;
         }
         private static bool CanTeleportSafelyMap(UIMiniMapElement element)
         {
-            if (Input.GetKey(KeyCode.LeftShift) && element != null &&
-                (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes))
+            if (Input.GetKey(KeyCode.LeftShift) && element != null)
             {
-                var tonk = element.TrackedVis;
-                return tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam &&
-                    tonk.ObjectType == ObjectTypes.Vehicle && CanPlayerControl(tonk);
+                return CanTeleportSafely(element.TrackedVis);
             }
             return false;
         }
+        private static LocExtStringMod LOC_TeleTech = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Teleport To Tech" },
+            { LocalisationEnums.Languages.Japanese, "テックに切り替える"  },
+        });
+        private static LocExtStringMod LOC_TeleTechNo = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Cannot Teleport To Tech"},
+            { LocalisationEnums.Languages.Japanese, "テックに切り替えられない" },
+        });
         private static string StringCanTeleport()
         {
             if (CanTeleportSafely())
-                return "Teleport To Tech";
-            return "Cannot Teleport To Tech";
+                return LOC_TeleTech;
+            return LOC_TeleTechNo;
         }
         private static Sprite ShowCanTeleport()
         {
@@ -104,7 +122,7 @@ namespace RandomAdditions.Minimap
                 instWorld.TryJumpPlayer(ModaledSelectTarget);
                 return 0;
             }, ShowCanTeleport);
-            nethook.Register();
+            nethook.Enable();
         }
         public static void DeInitAll()
         {
@@ -396,6 +414,17 @@ namespace RandomAdditions.Minimap
             }
 
 
+            public static void TryJumpPlayer(TrackedVisible tonk)
+            {
+                if (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes)
+                {
+                    if (tonk != null && tonk.TeamID == ManPlayer.inst.PlayerTeam && tonk.ObjectType == ObjectTypes.Vehicle)
+                    {// WE SWITCH TECHS
+                        instMini.BeginPlayerTransfer(tonk);
+                        lastClickTime = 0;
+                    }
+                }
+            }
             public void TryJumpPlayer(UIMiniMapElement element)
             {
                 if (ManGameMode.inst.IsCurrent<ModeMisc>() || PermitPlayerMapJumpInAllNonMPModes)
@@ -577,7 +606,7 @@ namespace RandomAdditions.Minimap
                 {
                     for (int y = tilePos.y - 1; y < tilePos.y + 1; y++)
                     {
-                        ManWorldTileExt.HostTempLoadTile(new IntVector2(x,y), false, 2.5f);
+                        ManWorldTileExt.ClientTempLoadTile(new IntVector2(x,y), false, 2.5f);
                     }
                 }
             }
@@ -621,7 +650,7 @@ namespace RandomAdditions.Minimap
                     Invoke("DoPlayerTransfer2", 0.5f);
                     return;
                 }
-                ManWorldTileExt.HostTempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord, false);
+                ManWorldTileExt.ClientTempLoadTile(nextPlayerTech.GetWorldPosition().TileCoord, false);
                 Quaternion camRot = Singleton.cameraTrans.rotation;
                 Vector3 look = Singleton.cameraTrans.position - Singleton.playerTank.boundsCentreWorld;
                 CameraManager.inst.ResetCamera(nextPlayerTech.GetWorldPosition().ScenePosition + look, camRot);
@@ -677,6 +706,7 @@ namespace RandomAdditions.Minimap
                 ManTechs.inst.RequestSetPlayerTank(nextPlayerTech.visible.tank, true);
                 Invoke("FinishPlayerTransfer", 0.5f);
             }
+            private static MethodInfo invokeRebuild = typeof(UITechManagerHUD).GetMethod("FullyRebuildTechList", BindingFlags.Instance | BindingFlags.NonPublic);
             public void FinishPlayerTransfer()
             {
                 if (nextPlayerTech != null)
@@ -684,6 +714,11 @@ namespace RandomAdditions.Minimap
                 nextPlayerTech = null;
                 transferInProgress = false;
                 ManUI.inst.ClearFade(1f);
+                if (ManHUD.inst.IsHudElementVisible(ManHUD.HUDElementType.TechManager))
+                {
+                    UITechManagerHUD TechMan = (UITechManagerHUD)ManHUD.inst.GetHudElement(ManHUD.HUDElementType.TechManager);
+                    invokeRebuild.Invoke(TechMan, Array.Empty<object>());
+                }
                 DebugRandAddi.Log("MinimapExtended - BeginPlayerTransfer Success");
             }
 

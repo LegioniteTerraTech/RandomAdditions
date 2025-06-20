@@ -73,7 +73,7 @@ namespace RandomAdditions
                     item.Condition = AnimCondition.ManagerManaged;
                 }
                 DebugRandAddi.Info("ANIMATION NUMBERS HOOKED UP TO " + display.Count + " DIGITS");
-                //LogHandler.ThrowWarning("ManAnimette expects an AnimetteController in a GameObject named \"_digit0\", but there is none!");
+                //BlockDebug.ThrowWarning(true, "ManAnimette expects an AnimetteController in a GameObject named \"_digit0\", but there is none!");
             }
             var controlCache = GetComponentsInChildren<AnimetteController>();
             if (controlCache != null)

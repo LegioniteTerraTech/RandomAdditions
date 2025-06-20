@@ -39,13 +39,13 @@ namespace RandomAdditions
             itemHold = gameObject.GetComponent<ModuleItemHolder>();
             if (itemHold.IsNull())
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleItemGiver NEEDS a ModuleItemHolder to work!  This cannot be fixed automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleItemGiver NEEDS a ModuleItemHolder to work!  This cannot be fixed automatically.\n  Cause of error - Block " + block.name);
                 block.damage.SelfDestruct(0.1f);
                 return;
             }
             if (block.attachPoints.Length <= NeighboorStackAPIndex || NeighboorStackAPIndex < 0)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleItemGiver's NeighboorStackAPIndex is not within range [" + 0 + " - " + block.attachPoints.Length +
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleItemGiver's NeighboorStackAPIndex is not within range [" + 0 + " - " + block.attachPoints.Length +
                     "]!  This cannot be fixed automatically.\n  Cause of error - Block " + block.name);
                 block.damage.SelfDestruct(0.1f);
                 return;

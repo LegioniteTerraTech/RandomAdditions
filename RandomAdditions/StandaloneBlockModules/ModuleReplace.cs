@@ -89,18 +89,18 @@ namespace RandomAdditions
 
             if (WeightedChance > 2500)
             {
-                LogHandler.ThrowWarning("ModuleReplace: Block " + block.name + " has too high of a WeightedChance - 2500 is max");
+                BlockDebug.ThrowWarning(false, "ModuleReplace: Block " + block.name + " has too high of a WeightedChance - 2500 is max");
                 WeightedChance = 2500;
             }
             if (WeightedChance < 1)
             {
-                LogHandler.ThrowWarning("ModuleReplace: Block " + block.name + " has too low of a WeightedChance - 1 is minimum");
+                BlockDebug.ThrowWarning(false, "ModuleReplace: Block " + block.name + " has too low of a WeightedChance - 1 is minimum");
                 WeightedChance = 1;
             }
             List<string> check = CanReplace.Distinct().ToList();
             if (check.Count < CanReplace.Count)
             {
-                LogHandler.ThrowWarning("ModuleReplace: Block " + block.name + " has duplicate Blocktypes in CanReplace!");
+                BlockDebug.ThrowWarning(false, "ModuleReplace: Block " + block.name + " has duplicate Blocktypes in CanReplace!");
                 CanReplace = check;
             }
             DebugRandAddi.Log("ModuleReplace: " + offsetRot.ToString() + " | " + (offsetRot * Vector3.forward).ToString());
@@ -145,7 +145,7 @@ namespace RandomAdditions
             TankBlock blockO = GetComponent<TankBlock>();
             if (!(bool)blockO) 
             {
-                LogHandler.ThrowWarning("ModuleReplace: Instance is not attached to a valid block!");
+                BlockDebug.ThrowWarning(true, "ModuleReplace: Instance is not attached to a valid block!");
             }
             foreach (BlockTypes bloc in CanReplace.Select(x => BlockIndexer.StringToBlockType(x)))
             {
@@ -175,7 +175,7 @@ namespace RandomAdditions
                     }
                     string batch2 = SB.ToString();
                     SB.Clear();
-                    LogHandler.ThrowWarning("ModuleReplace: Filled cells for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + blockCompare.filledCells.ToString() + "! | " + blockO.filledCells.ToString());
+                    BlockDebug.ThrowWarning(true, "ModuleReplace: Filled cells for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + blockCompare.filledCells.ToString() + "! | " + blockO.filledCells.ToString());
                     valid = false;
                 }
                 if (!Contains(blockCompare.attachPoints.ToList(), rotAPs))
@@ -191,12 +191,12 @@ namespace RandomAdditions
                         SB.Append(vect.ToString() + " | ");
                     }
                     string batch2 = SB.ToString();
-                    LogHandler.ThrowWarning("ModuleReplace: Attachment points for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + batch1 + "! | " + batch2);
+                    BlockDebug.ThrowWarning(true, "ModuleReplace: Attachment points for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + batch1 + "! | " + batch2);
                     valid = false;
                 }
                 if (blockCompare.m_DefaultMass > blockO.m_DefaultMass + weightTolerence || blockCompare.m_DefaultMass < blockO.m_DefaultMass - weightTolerence)
                 {
-                    LogHandler.ThrowWarning("ModuleReplace: Weight for block " + blockO.name + " is not close enough [" + (blockCompare.m_DefaultMass - weightTolerence) + "~" + (blockCompare.m_DefaultMass + weightTolerence) + "] to " + blockCompare.name + "!");
+                    BlockDebug.ThrowWarning(true, "ModuleReplace: Weight for block " + blockO.name + " is not close enough [" + (blockCompare.m_DefaultMass - weightTolerence) + "~" + (blockCompare.m_DefaultMass + weightTolerence) + "] to " + blockCompare.name + "!");
                     valid = false;
                 }
             }

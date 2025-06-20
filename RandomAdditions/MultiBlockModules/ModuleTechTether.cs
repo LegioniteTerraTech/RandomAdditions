@@ -55,7 +55,8 @@ namespace RandomAdditions.PhysicsTethers
             public bool connected;
             public bool playSound;
         }
-        private static NetworkHook<TetherMessage> netHook = new NetworkHook<TetherMessage>(OnReceiveTetherRequest, NetMessageType.FromClientToServerThenClients);
+        private static NetworkHook<TetherMessage> netHook = new NetworkHook<TetherMessage>(
+            "RandAdd.TetherMessage", OnReceiveTetherRequest, NetMessageType.FromClientToServerThenClients);
 
         private static bool OnReceiveTetherRequest(TetherMessage command, bool isServer)
         {
@@ -117,7 +118,7 @@ namespace RandomAdditions.PhysicsTethers
         private static List<TetherPair> DeLinkedTethers = new List<TetherPair>();
         private static bool UIClicked = false;
 
-        public static void Init()
+        public static void Initiate()
         {
             ActiveTethers = new List<ModuleTechTether>();
             LinkedTethers = new HashSet<TetherPair>();
@@ -125,7 +126,7 @@ namespace RandomAdditions.PhysicsTethers
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(OnFixedUpdatePre), 85);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(OnFixedUpdatePost), -85);
             ManUpdate.inst.AddAction(ManUpdate.Type.Update, ManUpdate.Order.Last, new Action(OnUpdate), -9001);
-            netHook.Register();
+            netHook.Enable();
         }
         public static void DeInit()
         {
@@ -525,7 +526,7 @@ namespace RandomAdditions.PhysicsTethers
                 if (tetherPoint == null)
                 {
                     tetherPoint = this.transform;
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_Tether\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_Tether\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 }
                 try
                 {
@@ -534,10 +535,10 @@ namespace RandomAdditions.PhysicsTethers
                     {
                         tetherConnector = KickStart.HeavyTransformSearch(transform, "_TetherConnector");
                         if (tetherConnector == null)
-                            LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_TetherConnector\" if \"_TetherUp\" is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                            BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_TetherConnector\" if \"_TetherUp\" is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                         tetherConnectorEnd = KickStart.HeavyTransformSearch(transform, "_TetherConnectorEnd");
                         if (tetherConnectorEnd == null)
-                            LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_TetherConnectorEnd\" if \"_TetherUp\" is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                            BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_TetherConnectorEnd\" if \"_TetherUp\" is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                         tetherConnectorStartLocal = tetherConnectorEnd.localPosition.z;
                     }
                 }
@@ -550,7 +551,7 @@ namespace RandomAdditions.PhysicsTethers
                     {
                         bumpLinkCollider = bumpTrans.GetComponent<SphereCollider>();
                         if (bumpLinkCollider == null)
-                            LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a SphereCollider component for GameObject \"_TetherBumpCollider\" in hierarchy named if it is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                            BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTechTether NEEDS a SphereCollider component for GameObject \"_TetherBumpCollider\" in hierarchy named if it is present!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                     }
                 }
                 catch { bumpLinkCollider = null; }
@@ -566,10 +567,10 @@ namespace RandomAdditions.PhysicsTethers
                         InitTracBeam();
                 }
                 else
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_Target\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTechTether NEEDS a GameObject in hierarchy named \"_Target\" for the tractor beam effect!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 if (InputsOnAPIndexes.Length != OutputsOnAPIndexes.Length)
                 {
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleTechTether every AP specified in " +
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleTechTether every AP specified in " +
                       "InputsOnAPIndexes should have a OutputsOnAPIndexes counterpart." +
                       "\nThis operation cannot be handled " +
                       "automatically.\nCause of error - Block " + gameObject.name);
@@ -591,9 +592,13 @@ namespace RandomAdditions.PhysicsTethers
                 InsureGUI();
             }
 
-            private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTechTether",
-                 AltUI.HighlightString("Couplers") + " connects to other " + AltUI.HighlightString("Couplers") + 
-                " to keep " + AltUI.BlueString("Techs") + " together."); 
+            private static LocExtStringMod LOC_ModuleTechTether_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Couplers") + " connects to other " + AltUI.HighlightString("Couplers") +
+                " to keep " + AltUI.BlueStringMsg("Techs") + " together."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Coupler』") + "は互いに接続を形成して" + AltUI.BlueStringMsg("テック") + "をまとめます"},
+        });
+            private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTechTether", LOC_ModuleTechTether_desc); 
             public override void OnGrabbed()
             {
                 hint.Show();
@@ -647,12 +652,22 @@ namespace RandomAdditions.PhysicsTethers
                     buttonGUI.AddElement(ConnectionStatus, RequestConnection, ConnectionIcon);
                 }
             }
+            private static LocExtStringMod LOC_Link = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Link"},
+            { LocalisationEnums.Languages.Japanese, "接続する"},
+        });
+            private static LocExtStringMod LOC_Unlink = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Unlink"},
+            { LocalisationEnums.Languages.Japanese, "切断する"},
+        });
             public string ConnectionStatus()
             {
                 if (IsConnected)
-                    return "Unlink";
+                    return LOC_Unlink;
                 else
-                    return "Link";
+                    return LOC_Link;
             }
             public Sprite ConnectionIcon()
             {
@@ -694,12 +709,22 @@ namespace RandomAdditions.PhysicsTethers
                 }
                 return 0;
             }
+            private static LocExtStringMod LOC_AutoOn = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Auto Enabled"},
+            { LocalisationEnums.Languages.Japanese, "自動接続が有効になっています"},
+        });
+            private static LocExtStringMod LOC_AutoOff = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Auto Disabled"},
+            { LocalisationEnums.Languages.Japanese, "自動接続が無効になっています"},
+        });
             public string AutoLinkStatus()
             {
                 if (AutoLink)
-                    return "Auto Enabled";
+                    return LOC_AutoOn;
                 else
-                    return "Auto Disabled";
+                    return LOC_AutoOff;
             }
             public Sprite AutoLinkIcon()
             {

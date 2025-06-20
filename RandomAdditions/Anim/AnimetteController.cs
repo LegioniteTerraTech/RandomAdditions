@@ -142,7 +142,7 @@ namespace RandomAdditions
                 enabled = false;
             }
             else
-                LogHandler.ThrowWarning("AnimetteController in " + gameObject.name + " expects an Animette in hierachy, but there is none!");
+                BlockDebug.ThrowWarning(true, "AnimetteController in " + gameObject.name + " expects an Animette in hierachy, but there is none!");
             fetched = true;
             if (Condition == AnimCondition.ManagerManaged)
                 enabled = false;

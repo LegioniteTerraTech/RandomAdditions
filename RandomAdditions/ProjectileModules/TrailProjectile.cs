@@ -17,41 +17,68 @@ namespace RandomAdditions
     /// </summary>
     public class TrailProjectile : ExtProj
     {
-        private static TrailRenderer latentPool;
+        private static WorldTrailHolder latentPool;
+        internal static FieldInfo m_DieAfterDelay_fetch;
+
+        public class WorldTrailHolder : MonoBehaviour, IWorldTreadmill
+        {
+            private TrailRenderer TR;
+            public void OnCreate(TrailRenderer trailOriginal, float deathDelayed)
+            {
+                TR = gameObject.GetComponent<TrailRenderer>();
+                TR.enabled = true;
+                TR.emitting = true;
+                TR.time = deathDelayed;
+                TR.textureMode = trailOriginal.textureMode;
+                TR.sharedMaterial = trailOriginal.sharedMaterial;
+                TR.alignment = trailOriginal.alignment;
+                TR.allowOcclusionWhenDynamic = trailOriginal.allowOcclusionWhenDynamic;
+                TR.startColor = trailOriginal.startColor;
+                TR.endColor = trailOriginal.endColor;
+                TR.startWidth = trailOriginal.startWidth;
+                TR.endWidth = trailOriginal.endWidth;
+                TR.minVertexDistance = trailOriginal.minVertexDistance;
+                TR.widthMultiplier = trailOriginal.widthMultiplier;
+                TR.numCapVertices = trailOriginal.numCapVertices;
+                TR.numCornerVertices = trailOriginal.numCornerVertices;
+                Vector3[] transfer = new Vector3[trailOriginal.positionCount];
+                //if (trailOriginal.positionCount != transferArray.Length)
+                //    Array.Resize(ref transferArray, trailOriginal.positionCount);
+                trailOriginal.GetPositions(transfer);
+                TR.SetPositions(transfer);
+                //trailOriginal.Clear();
+                InvokeHelper.Invoke(DoRecycle, deathDelayed);
+            }
+            public void DoRecycle()
+            {
+                this.Recycle();
+            }
+            public void OnMoveWorldOrigin(IntVector3 delta)
+            {
+                Vector3[] transfer = new Vector3[TR.positionCount];
+                TR.GetPositions(transfer);
+                for (int i = 0; i < TR.positionCount; i++)
+                    transfer[i] += delta;
+                TR.SetPositions(transfer);
+            }
+        }
 
         private static void InsureInit()
         {
             if (!latentPool)
             {
-                latentPool = new GameObject("TrailProjectileDummy").AddComponent<TrailRenderer>();
-                latentPool.autodestruct = false;
+                GameObject TPD = new GameObject("TrailProjectileDummy");
+                TPD.AddComponent<TrailRenderer>().autodestruct = false;
+                latentPool = TPD.AddComponent<WorldTrailHolder>();
                 latentPool.CreatePool(8);
+                m_DieAfterDelay_fetch = typeof(Projectile).GetField("m_DieAfterDelay", BindingFlags.NonPublic | BindingFlags.Instance);
             }
         }
         private static Vector3[] transferArray = new Vector3[26];
-        private void KeepTrailPresent()
+        private void CopyTrail()
         {
-            var TRo = trail;
-            var TR = latentPool.Spawn(null, transform.position);
-            TR.time = delay;
-            TR.textureMode = TRo.textureMode;
-            TR.sharedMaterial = TRo.sharedMaterial;
-            TR.alignment = TRo.alignment;
-            TR.allowOcclusionWhenDynamic = TRo.allowOcclusionWhenDynamic;
-            TR.startColor = TRo.startColor;
-            TR.endColor = TRo.endColor;
-            TR.startWidth = TRo.startWidth;
-            TR.endWidth = TRo.endWidth;
-            TR.minVertexDistance = TRo.minVertexDistance;
-            TR.widthMultiplier = TRo.widthMultiplier;
-            TR.numCapVertices = TRo.numCapVertices;
-            TR.numCornerVertices = TRo.numCornerVertices;
-            if (TRo.positionCount != transferArray.Length)
-                Array.Resize(ref transferArray, TRo.positionCount);
-            trail.GetPositions(transferArray);
-            TR.SetPositions(transferArray);
-            TRo.Clear();
-            InvokeHelper.Invoke(TR.Recycle, delay, true);
+            DebugRandAddi.Assert("Spawned copy trail at " + transform.position);
+            latentPool.Spawn(null, transform.position + new Vector3(0, 5, 0)).OnCreate(trail, delay);
         }
 
 
@@ -71,7 +98,7 @@ namespace RandomAdditions
 
             if (trail)
             {   // clear
-                trail.SetPositions(new Vector3[0]);
+                trail.SetPositions(Array.Empty<Vector3>());
                 trail.emitting = true;
             }
 
@@ -89,7 +116,7 @@ namespace RandomAdditions
 
             if (trail)
             {
-                KeepTrailPresent();
+                //CopyTrail(); // disabled since this was causing it not to work rip
                 trail.emitting = false;
             }
             foreach (var col in cols)
@@ -101,8 +128,6 @@ namespace RandomAdditions
             PB.rbody.useGravity = false;
             PB.rbody.velocity = Vector3.zero;
         }
-        static FieldInfo deathDis = typeof(Projectile).GetField("m_DieAfterDelay", BindingFlags.NonPublic | BindingFlags.Instance);
-
         public override void Pool()
         {
             InsureInit();
@@ -118,9 +143,9 @@ namespace RandomAdditions
             }
             if (trail && !trail.enabled)
             {   
-                LogHandler.ThrowWarning("RandomAdditions: TrailProjectile expects an active TrailRenderer in hierarchy, but it is not enabled!");
+                BlockDebug.ThrowWarning(true, "RandomAdditions: TrailProjectile expects an active TrailRenderer in hierarchy, but it is not enabled!");
             }
+            m_DieAfterDelay_fetch.SetValue(PB.project, true);
         }
-
     }
 }

@@ -37,12 +37,12 @@ namespace RandomAdditions
             {
                 wheelsDownwards = KickStart.HeavyTransformSearch(transform, "_effectorDown");
                 if (wheelsDownwards == null)
-                    LogHandler.ThrowWarning("RandomAdditions: ModuleStickyWheels with a DownwardsForce value greater than 0 NEEDS a GameObject of name \"_effectorDown\". \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + block.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleStickyWheels with a DownwardsForce value greater than 0 NEEDS a GameObject of name \"_effectorDown\". \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + block.name);
             }
             wheels = GetComponent<ModuleWheels>();
             if (wheels.IsNull())
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleStickyWheels NEEDS ModuleWheels to operate correctly. \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleStickyWheels NEEDS ModuleWheels to operate correctly. \n<b>THE BLOCK WILL NOT BE ABLE TO DO ANYTHING!!!</b>\n  Cause of error - Block " + block.name);
             }
             enabled = false;
             OnInit();

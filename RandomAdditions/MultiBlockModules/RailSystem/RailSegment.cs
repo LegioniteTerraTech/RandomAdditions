@@ -672,10 +672,21 @@ namespace RandomAdditions.RailSystem
             return bogey.rotation * Vector3.up;
         }
 
-        public Vector3 UpdateBogeySetPositioning(ModuleRailBogie.RailBogie RB, Transform bogey)
+        public Vector3 UpdateBogeySetPositioning(ModuleRailBogie.RailBogie RB, Transform bogey, float lastRailVelocity)
         {
             float posPercent = RB.FixedPositionOnRail / AlongTrackDist;
-            bogey.position = EvaluateSegmentAtPositionFastWorld(posPercent);
+            // We EASE the bogey into position as we move to prevent snapping motions!
+            Vector3 targetPos = EvaluateSegmentAtPositionFastWorld(posPercent);
+            RB.railLocked = true;
+            if (RB.railLocked)
+                bogey.position = targetPos;
+            else
+            {
+                float ToDestPercent = (lastRailVelocity * lastRailVelocity * 1.34f) / (targetPos - bogey.position).sqrMagnitude;
+                bogey.position = Vector3.Lerp(bogey.position, targetPos, ToDestPercent);
+                if (ToDestPercent > 0.9f)
+                    RB.railLocked = true;
+            }
             Vector3 p2;
             if (posPercent <= 0.96f)
             {
@@ -702,6 +713,7 @@ namespace RandomAdditions.RailSystem
             //BogeyPosLocal = bogey.InverseTransformPoint(MRB.BogieCenterOffset);
             AlignBogieToTrack(bogey, bogieForwards, posPercent, out _);
             TryApproximateBogieToTrack(RB, bogey, out BogeyPosLocal, ref pos, ref posPercent);
+            Vector3 upright = EvaluateSegmentUprightAtPositionFastWorld(posPercent);
             Vector3 p2;
             if (posPercent < 1 - bogieForwards)
             {
@@ -710,13 +722,13 @@ namespace RandomAdditions.RailSystem
                     Vector3 posB = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
                     p2 = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
                     bogey.position = (posB + p2) / 2;
-                    bogey.rotation = Quaternion.LookRotation((p2 - posB).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                    bogey.rotation = Quaternion.LookRotation((p2 - posB).normalized, upright);
                     eject = false;
                 }
                 else
                 {   // Overshoot low end
                     p2 = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
-                    bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                    bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, upright);
                     eject = !Track.SegExists(SegIndex, -1);
                     /*
                     if (eject)
@@ -729,7 +741,7 @@ namespace RandomAdditions.RailSystem
             else
             {   // Overshoot high end
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
-                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, upright);
                 eject = !Track.SegExists(SegIndex, 1);
                 /*
                 if (eject)
@@ -738,6 +750,10 @@ namespace RandomAdditions.RailSystem
                     GetSegmentInformation();
                 }*/
             }
+            // Then we try to position it directly below the bogie mounting point somehow
+            //   DISABLED because it looked like cr*p
+            //Vector3 correction = Vector3.ProjectOnPlane(bogey.parent.TransformVector(-bogey.localPosition), upright);
+            //bogey.position += correction;
             return pos;
         }
 

@@ -30,7 +30,7 @@ namespace RandomAdditions
             Hardpoints = GetComponentsInChildren<Hardpoint>(true);
 
             if (Hardpoints == null || Hardpoints.Length == 0)
-                LogHandler.ThrowWarning("ModuleHardpoint Has no RandomAdditions.Hardpoint declared.  Please remove this module if unused.\nProblem block: " + block.name);
+                BlockDebug.ThrowWarning(true, "ModuleHardpoint Has no RandomAdditions.Hardpoint declared.  Please remove this module if unused.\nProblem block: " + block.name);
             else
             {
                 for (int step = 0; step < Hardpoints.Length; step++)
@@ -45,14 +45,14 @@ namespace RandomAdditions
                 {
                     if (item.APIndices == null || item.APIndices.Length == 0)
                     {
-                        LogHandler.ThrowWarning("ModuleHardpoint Expects at least one declared AP for each entry in Hardpoints!\nProblem block: " + block.name);
+                        BlockDebug.ThrowWarning(true, "ModuleHardpoint Expects at least one declared AP for each entry in Hardpoints!\nProblem block: " + block.name);
                         return;
                     }
                     foreach (var item2 in item.APIndices)
                     {
                         if (block.attachPoints.Length <= item2 || item2 < 0)
                         {
-                            LogHandler.ThrowWarning("ModuleHardpoint: Invalid APIndice detected.  Please make sure that the AP is a valid, declared (zero-indexed, meaning starts at 0 for first AP) index in \"APs\". \nBlock: " + name);
+                            BlockDebug.ThrowWarning(true, "ModuleHardpoint: Invalid APIndice detected.  Please make sure that the AP is a valid, declared (zero-indexed, meaning starts at 0 for first AP) index in \"APs\". \nBlock: " + name);
                             return;
                         }
                     }

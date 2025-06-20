@@ -99,9 +99,14 @@ namespace RandomAdditions
                 queuedGeneration = 0;
             }
         }
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleFuelEnergyGenerator",
-            AltUI.HighlightString("Fuel Generators") + " burn " + AltUI.ObjectiveString("Fuel") + 
-            " to generate " + AltUI.BlueString("Energy") + ".");
+        private static LocExtStringMod LOC_ModuleFuelEnergyGenerator_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Fuel Generators") + " burn " + AltUI.ObjectiveString("Fuel") +
+            " to generate " + AltUI.BlueStringMsg("Energy") + "."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Fuel Generator』")  + "は" +AltUI.ObjectiveString("燃料") +
+                            "を燃やし" + AltUI.BlueStringMsg("エネルギー") + "を生成する"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleFuelEnergyGenerator", LOC_ModuleFuelEnergyGenerator_desc);
         public override void OnAttach()
         {
             enabled = true;

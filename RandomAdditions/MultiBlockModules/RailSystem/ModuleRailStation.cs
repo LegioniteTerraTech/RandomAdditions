@@ -1,4 +1,5 @@
-﻿using RandomAdditions.RailSystem;
+﻿using System.Collections.Generic;
+using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 
 public class ModuleRailStation : RandomAdditions.ModuleRailStation { };
@@ -22,13 +23,20 @@ namespace RandomAdditions
             if (LinkHubs.Count > 2)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRailPoint cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailPoint cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
         }
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailStation",
-            AltUI.HighlightString("Stations")  + " provide destinations for " + AltUI.BlueString("Trains") + 
-            " to automatically drive to. " + AltUI.HighlightString("Right-Click") + " to open menu.");
+        private static LocExtStringMod LOC_ModuleRailPoint_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                AltUI.HighlightString("Stations")  + " provide destinations for " + AltUI.BlueStringMsg("Trains") +
+            " to automatically drive to. " + AltUI.HighlightString("Right-Click") + " to open menu."},
+            { LocalisationEnums.Languages.Japanese,
+                AltUI.HighlightString("『Station』") + "は" + AltUI.BlueStringMsg("電車") +
+                            "が向かう目的地を提供する"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailStation", LOC_ModuleRailPoint_desc);
         public override void OnGrabbed()
         {
             hint.Show();

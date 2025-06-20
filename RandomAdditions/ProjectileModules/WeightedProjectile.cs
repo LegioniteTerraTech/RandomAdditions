@@ -63,7 +63,7 @@ namespace RandomAdditions
         public void ForceProjectileGrav()
         {
             if (!PB)
-                LogHandler.ThrowWarning("PROJECTILE BASE IS NULL");
+                BlockDebug.ThrowWarning(true, "PROJECTILE BASE IS NULL");
             else
             {
                 Vector3 grav = Physics.gravity * PB.project.GetGravityScale() * PB.rbody.mass;

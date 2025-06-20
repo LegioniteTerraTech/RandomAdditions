@@ -62,17 +62,17 @@ namespace RandomAdditions
             if (DriveControlStrength > 1)
             {
                 DriveControlStrength = 1;
-                LogHandler.ThrowWarning("ModuleMoveGimbal DriveControlStrength cannot be greater than 1!  Problem block: " + block.name);
+                BlockDebug.ThrowWarning(true, "ModuleMoveGimbal DriveControlStrength cannot be greater than 1!  Problem block: " + block.name);
             }
             else if (DriveControlStrength < 0)
             {
                 DriveControlStrength = 0;
-                LogHandler.ThrowWarning("ModuleMoveGimbal DriveControlStrength cannot be less than 0!  Problem block: " + block.name);
+                BlockDebug.ThrowWarning(true, "ModuleMoveGimbal DriveControlStrength cannot be less than 0!  Problem block: " + block.name);
             }
 
             gimbals = GetComponentsInChildren<MoveGimbal>();
             if (gimbals == null)
-                LogHandler.ThrowWarning("ModuleMoveGimbal NEEDS a MoveGimbal in hierarchy!  Problem block: " + block.name);
+                BlockDebug.ThrowWarning(true, "ModuleMoveGimbal NEEDS a MoveGimbal in hierarchy!  Problem block: " + block.name);
             else
             {
                 foreach (MoveGimbal MG in gimbals)

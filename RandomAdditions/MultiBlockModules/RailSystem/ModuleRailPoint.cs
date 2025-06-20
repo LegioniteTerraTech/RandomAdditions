@@ -69,7 +69,7 @@ namespace RandomAdditions.RailSystem
             if (LinkHubs.Count > 2)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRailPoint cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailPoint cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
             if (TrainCallAPIndexes != null && TrainCallAPIndexes.Length == 0)
@@ -81,15 +81,27 @@ namespace RandomAdditions.RailSystem
                 block.CircuitNode.ConnexionsUpdatedEvent.Subscribe(OnConnexionsChanged);
         }
 
+        private static LocExtStringMod LOC_RailConnect = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+               "Connect Rail" },
+            { LocalisationEnums.Languages.Japanese,
+                "鉄道信号を接続する"},
+        });
+        private static LocExtStringMod LOC_RailDisconnect = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,"Disconnect Rails"},
+            { LocalisationEnums.Languages.Japanese, "すべての鉄道信号を切断する"},
+        });
         public void InsureGUI()
         {
             if (buttonGUI == null)
             {
                 buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Rail Guide", false);
-                buttonGUI.AddElement("Connect", RequestConnect, GetIconRequestConnect);
+                buttonGUI.AddElement(LOC_RailConnect, RequestConnect, GetIconRequestConnect);
                 if (AllowTrainCalling)
                     buttonGUI.AddElement(RequestTrainStatus, RequestTrain, GetIconCall);
-                buttonGUI.AddElement("Disconnect", RequestDisconnect, null);
+                buttonGUI.AddElement(LOC_RailDisconnect, RequestDisconnect, GetIconRequestDisconnect);
                 buttonGUI.AddElement(OneWayStatus, RequestOneWay, GetIconOneWay);
             }
         }
@@ -116,8 +128,16 @@ namespace RandomAdditions.RailSystem
         }
         public float RequestConnect(float unused)
         {
-            DebugRandAddi.LogRails("OnClick RequestConnect " + block.name);
-            ManRails.SetSelectedNode(this);
+            if (ManRails.SelectedNode == Node)
+            {
+                DebugRandAddi.LogRails("OnClick RequestDisonnect " + block.name);
+                ManRails.DeselectRailAttachModeInstCall();
+            }
+            else
+            {
+                DebugRandAddi.LogRails("OnClick RequestConnect " + block.name);
+                ManRails.SetSelectedNode(this);
+            }
             HideGUI();
             return 0;
         }
@@ -130,14 +150,40 @@ namespace RandomAdditions.RailSystem
             return 0;
         }
 
+        public Sprite GetIconRequestDisconnect()
+        {
+            ModContainer MC = ManMods.inst.FindMod("Random Additions");
+            return UIHelpersExt.GetIconFromBundle(MC, "GUI_Disconnect");
+        }
+        private static LocExtStringMod LOC_NodeMissing = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+               "No Node" },
+            { LocalisationEnums.Languages.Japanese,
+                "レールの故障"},
+        });
+        private static LocExtStringMod LOC_OneWayOn = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                "One Way On" },
+            { LocalisationEnums.Languages.Japanese,
+                "現在は一方向です"},
+        });
+        private static LocExtStringMod LOC_OneWayOff = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                "One Way Off"},
+            { LocalisationEnums.Languages.Japanese,
+                "現在双方向"},
+        });
         public string OneWayStatus()
         {
             if (Node == null)
-                return "No Node";
+                return LOC_NodeMissing;
             else if (Node.OneWay)
-                return "One Way On";
+                return LOC_OneWayOn;
             else
-                return "One Way Off";
+                return LOC_OneWayOff;
         }
         public float RequestOneWay(float val)
         {
@@ -157,14 +203,35 @@ namespace RandomAdditions.RailSystem
             return UIHelpersExt.GetIconFromBundle(MC, "GUI_TwoWay");
         }
 
+        private static LocExtStringMod LOC_CallingTrain = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                "Calling..."},
+            { LocalisationEnums.Languages.Japanese,
+                "電車を探す"},
+        }); 
+        private static LocExtStringMod LOC_TrainRouting = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                "Train Pathing"},
+            { LocalisationEnums.Languages.Japanese,
+                "電車が来ます"},
+        }); 
+        private static LocExtStringMod LOC_CallTrain = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                "Call Train"},
+            { LocalisationEnums.Languages.Japanese,
+                "召喚電車"},
+        });
         private string RequestTrainStatus()
         {
             if (Calling)
-                return "Calling...";
+                return LOC_CallingTrain;
             else if (trainEnRoute)
-                return "Train Pathing";
+                return LOC_TrainRouting;
             else
-                return "Call Train";
+                return LOC_CallTrain;
         }
         public float RequestTrain(float unused)
         {
@@ -217,7 +284,7 @@ namespace RandomAdditions.RailSystem
             if (LinkHubs.Count == 0)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_trackHub\" for the rails to work!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: " + GetType() + " NEEDS a GameObject in hierarchy named \"_trackHub\" for the rails to work!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
             if (LinkHubs.Count == 1)

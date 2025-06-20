@@ -51,18 +51,28 @@ namespace RandomAdditions
             if (AnalyzerIcon == null)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("ModuleCircuit_Analyzer needs a valid GameObject in hiearchy called \"_scannerIcon\" with a vaild Mesh!");
+                BlockDebug.ThrowWarning(true, "ModuleCircuit_Analyzer needs a valid GameObject in hiearchy called \"_scannerIcon\" with a vaild Mesh!");
                 return;
             }
             InsureGUI();
         }
+        private static LocExtStringMod LOC_SetScannerMode = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Set Scanner Mode"},
+            { LocalisationEnums.Languages.Japanese, "スキャナーモードの選択"},
+        });
+        private static LocExtStringMod LOC_OutputMode = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Output Mode"},
+            { LocalisationEnums.Languages.Japanese, "出力モードの選択"},
+        });
         public void InsureGUI()
         {
             if (!OnlyGetBest && buttonGUI == null)
             {
                 buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Scanner", true);
-                buttonGUI.AddElement("Set Value", RequestSet, GetIcon, GetDesc);
-                buttonGUI.AddElement("Output Mode", RequestAnalog, GetIconAnalog, GetDescAnalog);
+                buttonGUI.AddElement(LOC_SetScannerMode, RequestSet, GetIcon, GetDesc);
+                buttonGUI.AddElement(LOC_OutputMode, RequestAnalog, GetIconAnalog, GetDescAnalog);
                 buttonGUI.OnGUIOpenAttemptEvent.Subscribe(OnGUIOpen);
             }
         }
@@ -92,6 +102,11 @@ namespace RandomAdditions
             }
             return Mathf.Clamp01((float)SelectedAnalyzer / Enum.GetValues(typeof(ScannerModeSet)).Length);
         }
+        private static LocExtStringMod LOC_OutputERROR = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "ERROR"},
+            { LocalisationEnums.Languages.Japanese, "壊す"},
+        });
         private string GetDescAnalog()
         {
             switch ((ScannerModeSet)ScannerMode)
@@ -103,7 +118,7 @@ namespace RandomAdditions
                 case ScannerModeSet.Analog:
                     return "Signed";
                 default:
-                    return "ERROR";
+                    return LOC_OutputERROR;
             }
         }
         private float RequestAnalog(float val)

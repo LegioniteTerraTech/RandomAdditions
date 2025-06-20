@@ -60,7 +60,7 @@ namespace RandomAdditions
                 PitchVariance.Length != Targets.Length || Targets.Length != TargetFields.Length || MaxInstances.Length != Names.Length)
             {
                 enabled = false;
-                LogHandler.ThrowWarning("RandomAdditions: SFXAddition - WARNING: Block has mismatched Names, Volume, PitchVariance, Targets, TargetFields (they must have same count) \n Problem block name: " + name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: SFXAddition - WARNING: Block has mismatched Names, Volume, PitchVariance, Targets, TargetFields (they must have same count) \n Problem block name: " + name);
                 return;
             }
 
@@ -70,19 +70,19 @@ namespace RandomAdditions
                 if (Names[i].NullOrEmpty())
                 {
                     enabled = false;
-                    LogHandler.ThrowWarning("RandomAdditions: SFXAddition - WARNING: Name cannot be null or empty \n Problem block name: " + name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: SFXAddition - WARNING: Name cannot be null or empty \n Problem block name: " + name);
                     return;
                 }
                 if (Targets[i].NullOrEmpty())
                 {
                     enabled = false;
-                    LogHandler.ThrowWarning("RandomAdditions: SFXAddition - WARNING: Target cannot be null or empty \n Problem block name: " + name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: SFXAddition - WARNING: Target cannot be null or empty \n Problem block name: " + name);
                     return;
                 }
                 if (TargetFields[i].NullOrEmpty())
                 {
                     enabled = false;
-                    LogHandler.ThrowWarning("RandomAdditions: SFXAddition - WARNING: TargetField cannot be null or empty \n Problem block name: " + name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: SFXAddition - WARNING: TargetField cannot be null or empty \n Problem block name: " + name);
                     return;
                 }
                 ManSFXExtRand.ExtSound exist = tempL.Find(x => x.Name == Names[i]);

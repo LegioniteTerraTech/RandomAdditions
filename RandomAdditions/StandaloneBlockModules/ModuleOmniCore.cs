@@ -40,8 +40,13 @@ namespace RandomAdditions
 
         private bool working = false;
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleOmniCore",
-           AltUI.HighlightString("Starship Engines") + " apply centralized thrust in any direction and axi regardless of placement.");
+
+        private static LocExtStringMod LOC_ModuleOmniCore_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Starship Engines") + " apply centralized thrust in any direction and axi regardless of placement."},
+            { LocalisationEnums.Languages.Japanese,  AltUI.HighlightString("『Starship Engine』") + "は単純な制御力を適用する"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleOmniCore", LOC_ModuleOmniCore_desc);
         public override void OnGrabbed()
         {
             hint.Show();

@@ -14,7 +14,6 @@ namespace RandomAdditions
             internal static Type target = typeof(Projectile);
             static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
 
-
             /// <summary>
             /// PatchProjectileCollisionForOverride
             /// On Direct Hit

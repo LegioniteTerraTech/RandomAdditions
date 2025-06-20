@@ -31,14 +31,21 @@ namespace RandomAdditions
             if (LinkHubs.Count > 2)
             {
                 block.damage.SelfDestruct(0.1f);
-                LogHandler.ThrowWarning("RandomAdditions: ModuleRailSignal cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRailSignal cannot host more than two \"_trackHub\" GameObjects.  Use ModuleRailJunction instead.\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 return;
             }
         }
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailPoint",
-           AltUI.HighlightString("Guides") + " designate a path for " + AltUI.ObjectiveString("Tracks") + 
-            " to follow. " + AltUI.HighlightString("Right-Click") + " or use the map to link " + 
-            AltUI.ObjectiveString("Tracks") + ".");
+        private static LocExtStringMod LOC_ModuleRailPoint_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                AltUI.HighlightString("Guides") + " designate a path for " + AltUI.ObjectiveString("Tracks") +
+            " to follow. " + AltUI.HighlightString("Right-Click") + " or use the map to link " +
+            AltUI.ObjectiveString("Tracks") + "."},
+            { LocalisationEnums.Languages.Japanese,
+                AltUI.HighlightString("『Guide』") + "は、トラックがたどる道筋を示す。 " + AltUI.HighlightString("右クリック") +
+                            "またはマップを使用してトラックをリンクします"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRailPoint", LOC_ModuleRailPoint_desc);
         public override void OnGrabbed()
         {
             hint.Show();

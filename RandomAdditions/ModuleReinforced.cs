@@ -70,8 +70,12 @@ namespace RandomAdditions
             }
             catch { }
         }
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleReinforced",
-            "This block is " + AltUI.HighlightString("reinforced") + " and has special resistance properties.");
+        private static LocExtStringMod LOC_ModuleReinforced_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "This block is " + AltUI.HighlightString("reinforced") + " and has special resistance properties."},
+            { LocalisationEnums.Languages.Japanese, "このブロックは" + AltUI.HighlightString("特別な装甲特性") + "を持っています"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleReinforced", LOC_ModuleReinforced_desc);
         public void OnGrabbed()
         {
             hint.Show();

@@ -230,6 +230,7 @@
     <Compile Include="GeneralComponents\AOEField.cs" />
     <Compile Include="Audio\SFXAddition.cs" />
     <Compile Include="GlobalChanges\RandomWorld.cs" />
+    <Compile Include="LocHelper.cs" />
     <Compile Include="ManModScenery.cs" />
     <Compile Include="ManModChunks.cs" />
     <Compile Include="GlobalChanges\ManPhysicsExt.cs" />
@@ -239,6 +240,7 @@
     <Compile Include="GlobalChanges\IngameQuit.cs" />
     <None Include="ManRapidModReloader.cs" />
     <Compile Include="ModLoaderSystem.cs" />
+    <Compile Include="MultiBlockModules\RailSystem\ModuleRailComputer.cs" />
     <Compile Include="MultiBlockModules\RailSystem\PrefabTrain.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailMeshBuilder.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailSegmentGround.cs" />
@@ -279,6 +281,7 @@
     <Compile Include="MultiBlockModules\RailSystem\RailTrackNode.cs" />
     <Compile Include="PatchBatch\CircuitPatches.cs" />
     <Compile Include="PatchBatch\ManRailsPatches.cs" />
+    <Compile Include="RandAddiExtendWiki.cs" />
     <Compile Include="RandAddiWiki.cs" />
     <Compile Include="ReliantBlockModules\BlockScannerTarg.cs" />
     <Compile Include="ReliantBlockModules\ModuleCircuitExt.cs" />

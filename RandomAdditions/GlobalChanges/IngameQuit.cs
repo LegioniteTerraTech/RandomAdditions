@@ -21,7 +21,7 @@ namespace RandomAdditions
                 ExitButton.gameObject.SetActive(active);
         }
 
-        public static void Init()
+        public static void Initiate()
         {
             var screen = (UIScreenMenuMain)ManUI.inst.GetScreen(ManUI.ScreenType.MainMenu);
             //DebugRandAddi.Log("| Main Menu " + Nuterra.NativeOptions.UIUtilities.GetComponentTree(screen.gameObject, "|"));

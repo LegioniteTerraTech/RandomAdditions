@@ -102,7 +102,7 @@ namespace RandomAdditions
             FireDataAlt = GetComponent<FireData>();
             if (!FireDataAlt)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS a FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ChildModuleWeapon NEEDS a FireData within it's GameObject to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -116,7 +116,7 @@ namespace RandomAdditions
             barrelC = BarrelsMain.Count;
             if (barrelC == 0)
             { 
-                LogHandler.ThrowWarning("ChildModuleWeapon NEEDS a RACannonBarrel in hierarchy!  Problem block: " + block.name);
+                BlockDebug.ThrowWarning(true, "ChildModuleWeapon NEEDS a RACannonBarrel in hierarchy!  Problem block: " + block.name);
                 enabled = false;
                 block.damage.SelfDestruct(0.5f);
                 return;
@@ -157,7 +157,7 @@ namespace RandomAdditions
                 MW = block.GetComponent<ModuleWeapon>();
                 if (!(bool)MW)
                 {
-                    LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeapon\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                     enabled = false;
                     block.damage.SelfDestruct(0.5f);
                     return;
@@ -165,7 +165,7 @@ namespace RandomAdditions
                 MWG = block.GetComponent<ModuleWeaponGun>();
                 if (!(bool)MWG)
                 {
-                    LogHandler.ThrowWarning("RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: ChildModuleWeapon NEEDS \"ModuleWeaponGun\" present in base block GameObject to operate!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                     enabled = false;
                     block.damage.SelfDestruct(0.5f);
                     return;
@@ -589,7 +589,7 @@ namespace RandomAdditions
             CMW = gameObject.GetComponentInParents<ChildModuleWeapon>();
             if (!CMW)
             {
-                LogHandler.ThrowWarning("RandomAdditions: ExtGimbalAimer NEEDS ChildModuleWeapon in it's parents to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + transform.root.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ExtGimbalAimer NEEDS ChildModuleWeapon in it's parents to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + transform.root.name);
                 return;
             }
             Setup(CMW);
@@ -667,7 +667,7 @@ namespace RandomAdditions
             childWeap = gameObject.GetComponentInParents<ChildModuleWeapon>();
             if (!childWeap)
             {
-                LogHandler.ThrowWarning("RandomAdditions: RACannonBarrel NEEDS ChildModuleWeapon in it's parents to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + transform.root.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: RACannonBarrel NEEDS ChildModuleWeapon in it's parents to work!\nThis operation cannot be handled automatically.\n  Cause of error - Block " + transform.root.name);
                 enabled = false;
                 return;
             }
@@ -838,7 +838,7 @@ namespace RandomAdditions
         private void OnPool()
         {
             if (GetComponent<CannonBarrel>())
-                LogHandler.ThrowWarning("RACannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
+                BlockDebug.ThrowWarning(true, "RACannonBarrel sees a CannonBarrel in the same GameObject as itself, please null it");
 
             trans = transform;
             bulletTrans = KickStart.HeavyTransformSearch(trans, "_bulletSpawn");
@@ -847,13 +847,13 @@ namespace RandomAdditions
                 bulletTrans = KickStart.HeavyTransformSearch(trans, "_spawnBullet");
                 if (!bulletTrans)
                 {
-                    LogHandler.ThrowWarning("RACannonBarrel expects a _bulletSpawn or a _spawnBullet in GameObject hierachy!");
+                    BlockDebug.ThrowWarning(true, "RACannonBarrel expects a _bulletSpawn or a _spawnBullet in GameObject hierachy!");
                 }
             }
             recoilTrans = KickStart.HeavyTransformSearch(trans, "_recoiler");
             if (!recoilTrans)
             {
-                //LogHandler.ThrowWarning("RACannonBarrel expects a _recoiler in GameObject hierachy!");
+                //BlockDebug.ThrowWarning(true, "RACannonBarrel expects a _recoiler in GameObject hierachy!");
             }
             var smokeTrans = KickStart.HeavyTransformSearch(trans, "_smoke");
             if (smokeTrans)

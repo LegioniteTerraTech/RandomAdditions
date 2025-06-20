@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TerraTechETCUtil;
 using UnityEngine;
 
 namespace RandomAdditions
@@ -64,21 +65,21 @@ namespace RandomAdditions
             isSetup = true;
             if (DamagePerSecond < 0)
             {
-                LogHandler.ThrowWarning("RandomAdditions: AOEField - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: AOEField - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + gameObject.name);
             }
             if (Radius < 0.001f)
             {
-                LogHandler.ThrowWarning("RandomAdditions: AOEField - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: AOEField - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.name);
                 Radius = 0.001f;
             }
             if (RadiusStretchMultiplier < 0.001f)
             {
-                LogHandler.ThrowWarning("RandomAdditions: AOEField - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: AOEField - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + gameObject.name);
                 RadiusStretchMultiplier = 0.001f;
             }
             if (RadiusFalloff + 0.5f > Radius)
             {
-                LogHandler.ThrowWarning("RandomAdditions: AOEField - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: AOEField - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + gameObject.name);
                 CalcBoost = (Radius - 0.5f) / Radius;
             }
             else

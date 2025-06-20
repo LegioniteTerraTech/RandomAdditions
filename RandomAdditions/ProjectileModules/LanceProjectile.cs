@@ -18,7 +18,7 @@ namespace RandomAdditions
             //DebugRandAddi.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
             Collider fetchedCollider = (Collider)collodo.GetValue(proj);
             fetchedCollider.isTrigger = true;// Make it not collide
-            DebugRandAddi.Log("RandomAdditions: Overwrote Collision");
+            DebugRandAddi.LogDevOnly("RandomAdditions: Overwrote Collision for LanceProjectile");
         }
 
         public override void ImpactDamageable(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)

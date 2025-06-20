@@ -36,7 +36,8 @@ namespace RandomAdditions
             public uint TechToDock;
             public bool ChangeTarget;
         }
-        private static NetworkHook<HangarCommand> netHook = new NetworkHook<HangarCommand>(OnReceiveDockingRequest, NetMessageType.ToServerOnly);
+        private static NetworkHook<HangarCommand> netHook = new NetworkHook<HangarCommand>(
+            "RandAdd.HangarCommand", OnReceiveDockingRequest, NetMessageType.ToServerOnly);
 
         public class HangarLaunchCommand : MessageBase
         {
@@ -49,12 +50,13 @@ namespace RandomAdditions
             public uint TechID;
             public int BlockIndex;
         }
-        private static NetworkHook<HangarLaunchCommand> netHookLaunch = new NetworkHook<HangarLaunchCommand>(OnReceiveLaunchRequest, NetMessageType.ToServerOnly);
+        private static NetworkHook<HangarLaunchCommand> netHookLaunch = new NetworkHook<HangarLaunchCommand>(
+            "RandAdd.HangarLaunchCommand", OnReceiveLaunchRequest, NetMessageType.ToServerOnly);
 
         internal static void InsureNetHooks()
         {
-            netHook.Register();
-            netHookLaunch.Register();
+            netHook.Enable();
+            netHookLaunch.Enable();
         }
 
         private const float DelayedUpdateDelay = 0.5f;
@@ -194,7 +196,7 @@ namespace RandomAdditions
             if (HangarEntry == null)
             {
                 HangarEntry = this.transform;
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Entry\" for the hangar enterance!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Entry\" for the hangar enterance!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
 
             try
@@ -215,7 +217,7 @@ namespace RandomAdditions
             if (HangarInside == null)
             {
                 HangarInside = this.transform;
-                LogHandler.ThrowWarning("RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Inside\" for the hangar inside!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Inside\" for the hangar inside!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
 
             try
@@ -234,14 +236,14 @@ namespace RandomAdditions
                 if (EnergyToRepairRatio <= 0)
                 {
                     EnergyToRepairRatio = 0.5f;
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleHangar field EnergyToRepairRatio cannot be a value below or equal to zero.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleHangar field EnergyToRepairRatio cannot be a value below or equal to zero.\nCause of error - Block " + gameObject.name);
                 }
                 energyMan = transform.GetComponent<ModuleEnergy>();
                 if (!energyMan)
                 {
                     ChargeStoredTechsRate = 0;
                     RepairStoredTechsRate = 0;
-                    LogHandler.ThrowWarning("RandomAdditions: \nModuleHangar NEEDS ModuleEnergy in the base GameObject layer if ChargeStoredTechsRate and/or RepairStoredTechsRate is greater than 0!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                    BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleHangar NEEDS ModuleEnergy in the base GameObject layer if ChargeStoredTechsRate and/or RepairStoredTechsRate is greater than 0!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
                 }
                 else
                     energyMan.UpdateConsumeEvent.Subscribe(OnDrain);
@@ -264,9 +266,14 @@ namespace RandomAdditions
             }
         }
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleHangar",
-            AltUI.HighlightString("Hangars") + " hold Techs!  " + AltUI.HighlightString("H + Right-Click") + 
-            " on a Tech to store or " + AltUI.HighlightString("move close and right-click on it") + " from another.");
+        private static LocExtStringMod LOC_ModuleHangar_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, AltUI.HighlightString("Hangars") + " hold Techs!  " + AltUI.HighlightString("H + Right-Click") +
+                        " on a Tech to store or " + AltUI.HighlightString("move close and right-click on it") + " from another."},
+            { LocalisationEnums.Languages.Japanese, AltUI.HighlightString("『Hangar』") + "には" + AltUI.BlueStringMsg("テック") + "が保管されている。 " +
+                            AltUI.HighlightString("「H」+右クリック") + "で" +  AltUI.BlueStringMsg("テック")  + "を保存"},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleHangar", LOC_ModuleHangar_desc);
         public override void OnAttach()
         {
             enabled = true;

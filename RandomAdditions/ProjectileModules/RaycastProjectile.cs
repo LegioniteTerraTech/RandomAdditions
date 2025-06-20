@@ -207,12 +207,12 @@ namespace RandomAdditions
             SmokeTrail ST = GetComponent<SmokeTrail>();
             if (FadeTime <= 0)
             {
-                LogHandler.ThrowWarning("RandomAdditions: RaycastProjectile cannot have a FadeTime less than or equal to zero!");
+                BlockDebug.ThrowWarning(false, "RandomAdditions: RaycastProjectile cannot have a FadeTime less than or equal to zero!");
                 FadeTime = 1;
             }
             if (!line)
             {
-                LogHandler.ThrowWarning("RandomAdditions: RaycastProjectile expects an active LineRenderer in hierarchy, but there is none!");
+                BlockDebug.ThrowWarning(true, "RandomAdditions: RaycastProjectile expects an active LineRenderer in hierarchy, but there is none!");
             }
             else
             {

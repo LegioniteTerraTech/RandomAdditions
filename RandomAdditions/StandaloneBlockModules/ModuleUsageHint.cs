@@ -26,7 +26,7 @@ namespace RandomAdditions
                 ExtUsageHint.EditHint(gameObject.name, BlockID, HintDescription);
             }
             else
-                LogHandler.ThrowWarning("RandomAdditions: ModuleUsageHint's HintDescription is NULL or block ID is below 5001!!!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleUsageHint's HintDescription is NULL or block ID is below 5001!!!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
         }
 
         public override void OnGrabbed()
@@ -37,7 +37,7 @@ namespace RandomAdditions
             }
             catch
             {
-                LogHandler.ThrowWarning("RandomAdditions: ModuleUsageHint's HintDescription is NULL or block ID is below 5001!!!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleUsageHint's HintDescription is NULL or block ID is below 5001!!!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
         }
     }

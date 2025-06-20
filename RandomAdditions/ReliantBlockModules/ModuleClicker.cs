@@ -97,7 +97,7 @@ namespace RandomAdditions
                 Invoke("ForceUpdate", 0.01f);
             }
             else
-                LogHandler.ThrowWarning("ModuleClicker has no valid Animettes");
+                BlockDebug.ThrowWarning(false, "ModuleClicker has no valid Animettes");
             if (!block)
                 throw new NullReferenceException("ModuleClicker is present on a GameObject that is not a legitimate block.  This is illegal");
             if (ModuleUIButtons.PropertyGrabber.GetMethod.Invoke(block, new object[0] { }) != null)

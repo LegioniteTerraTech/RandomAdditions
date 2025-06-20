@@ -53,8 +53,12 @@ namespace RandomAdditions
         private static FieldInfo effectoor = typeof(BoosterJet).GetField("m_Effector", BindingFlags.NonPublic | BindingFlags.Instance);
 
 
-        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "BurnerJet",
-            "This booster can deal damage and fling objects.  " + AltUI.EnemyString("Use with care."));
+        private static LocExtStringMod LOC_BurnerJet_desc = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "This booster can deal damage and fling objects.  " + AltUI.EnemyString("Use with care.")},
+            { LocalisationEnums.Languages.Japanese, "このブースターはダメージを与えたり、" + AltUI.EnemyString("物を投げたりすることができます")},
+        });
+        private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "BurnerJet", LOC_BurnerJet_desc);
         public void OnGrabbed()
         {
             hint.Show();
@@ -73,21 +77,21 @@ namespace RandomAdditions
             catch (Exception e) { DebugRandAddi.Assert("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + block.name); }
             if (DamagePerSecond < 0)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + block.name);
+                BlockDebug.ThrowWarning(false, "RandomAdditions: BurnerJet - WARNING: Block is using a DamagePerSecond value below zero!  This may lead to unexpected results! \n Problem block name: " + block.name);
             }
             if (Radius < 0.001f)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + block.name);
+                BlockDebug.ThrowWarning(false, "RandomAdditions: BurnerJet - Radius is hovering at, is or below zero!!! \n Radius MUST be at least 0.001 to work properly! \n Problem block name: " + block.name);
                 Radius = 0.001f;
             }
             if (RadiusStretchMultiplier < 0.001f)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + block.name);
+                BlockDebug.ThrowWarning(false, "RandomAdditions: BurnerJet - RadiusStretchMultiplier is hovering at, is or below zero!!! \n RadiusStretchMultiplier MUST be at least 0.001 to work properly! \n Problem block name: " + block.name);
                 RadiusStretchMultiplier = 0.001f;
             }
             if (RadiusFalloff + 0.5f > Radius)
             {
-                LogHandler.ThrowWarning("RandomAdditions: BurnerJet - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + block.name);
+                BlockDebug.ThrowWarning(false, "RandomAdditions: BurnerJet - RADIUSFALLOFF IS TOO CLOSE TO RADIUS!!! \n RadiusFalloff MUST be at least 0.5 below Radius' value! \n Problem block name: " + block.name);
                 CalcBoost = (Radius - 0.5f) / Radius;
             }
             else

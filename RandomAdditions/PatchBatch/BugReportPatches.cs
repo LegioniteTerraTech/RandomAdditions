@@ -21,6 +21,7 @@ namespace RandomAdditions.PatchBatch
 
         internal static class UIScreenBugReportPatches
         {
+            internal static bool Crashed = false;
             internal static Type target = typeof(UIScreenBugReport);
             private static FieldInfo cat = typeof(UIScreenBugReport).GetField("m_ErrorCatcher", BindingFlags.NonPublic | BindingFlags.Instance);
             /// <summary>
@@ -30,6 +31,7 @@ namespace RandomAdditions.PatchBatch
             [HarmonyPriority(-9001)]
             internal static void Show_Prefix(UIScreenBugReport __instance)
             {   //Custom error menu
+                Crashed = true;
 #if STEAM
                 if (KickStart.isNoBugReporterPresent)
                     DebugRandAddi.Log("RandomAdditions: Game crashed but NoBugReporter is present.  We do not push bug reporter.");

@@ -88,8 +88,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                 switch (CT)
                 {
                     case ChunkTypes._deprecated_TerreriaIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Terreria Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Terreria Ingot");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Makes up tough, explosive-absorbing armor." +
                             "\nA very sturdy alloy fused from the best-bonding matchup out there: Plumbite and Titania!");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -97,8 +97,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             3 * ChunkPrice(ChunkTypes.TitaniaIngot);
                         break;
                     case ChunkTypes._deprecated_ThermiaIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Thermia Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Thermia Ingot");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Heat-resistant materials used for orbital re-entry." +
                             "\nAn alloy with extreme heat resistance: Ignite, Titania, and Oleite make this possible.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -106,8 +106,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             5 * ChunkPrice(ChunkTypes.OlasticBrick);
                         break;
                     case ChunkTypes._deprecated_FulmeniaIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Fulmenia Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Fulmenia Ingot");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "A highly-potent energy conductor and storage.\n" +
                             "It is highly radioactive!");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -115,8 +115,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             5 * ChunkPrice(ChunkTypes.RodiusCapsule);
                         break;
                     case ChunkTypes._deprecated_FunderiaIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Funderia Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Funderia Ingot");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Can unleash extreme amounts of power safely." +
                             "\nAn alloy with powerful energy bending properties.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -124,8 +124,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             5 * ChunkPrice(ChunkTypes.IgnianCrystal);
                         break;
                     case ChunkTypes._deprecated_PenniaIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Pennia Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Pennia Ingot");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Used to manipulate gravity at a finely grained level." +
                             "\nAn alloy with gravity-bending properties.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -133,8 +133,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             5 * ChunkPrice(ChunkTypes.CelestianCrystal);
                         break;
                     case ChunkTypes._deprecated_BosoniaIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Bosonia Ingot");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Bosonia Ingot");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Used in the creation of highly intelligent blocks." +
                             "\nAn alloy capable of building advanced neural pathways.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
@@ -142,48 +142,48 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             5 * ChunkPrice(ChunkTypes.ErudianCrystal);
                         break;
                     case ChunkTypes._deprecated_ChristmasPresent1:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Present");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Present");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "What's this? A present for me?  You shouldn't have!");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         if (def.saleValue == 0)
                             def.saleValue = 500;
                         break;
                     case ChunkTypes._deprecated_ChristmasPresent2:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Gift");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Gift");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Whatever is inside is very soft.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         if (def.saleValue == 0)
                             def.saleValue = 500;
                         break;
                     case ChunkTypes._deprecated_ChristmasPresent3:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Bonus");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Bonus");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "It's GOTTA be worth a LOT.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         if (def.saleValue == 0)
                             def.saleValue = 500;
                         break;
                     case ChunkTypes._deprecated_ChristmasPresent4:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Surprise");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Surprise");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Hmm, what lies within?");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         if (def.saleValue == 0)
                             def.saleValue = 500;
                         break;
                     case ChunkTypes._deprecated_Stone:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Stone");
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Stone");
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Absolutely useless.  This has practically no use. Not even the trading stations want it...");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         if (def.saleValue == 0)
                             def.saleValue = -1;
                         break;
                     case ChunkTypes._deprecated_HeartOre:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Heart Ore");//"Cardiacite"
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Heart Ore");//"Cardiacite"
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "An extremely rare ore, \"Cardiacite\" is used in the creation of even greater intelligences.\n" +
                             "Why it has self-repairing properties like Luxite, but unlike it's yellow fellow, it can " +
                             "self-replicate!  \nIf given the right substances and conditions that is.");
@@ -192,16 +192,16 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 327;
                         break;
                     case ChunkTypes._deprecated_HeartCrystal:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Heart Crystal");//"Cardiac Prism"
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Heart Crystal");//"Cardiac Prism"
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Used in the creation of reality-bending, self-replicating machines.\nBeware of the singularity!\n" +
                             "Some believe it was the aftermath of a mighty widespread nano-machine race.  That's bogus!");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Refined);
                         def.saleValue = 863;
                         break;
                     case ChunkTypes._deprecated_CommOre:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Comm Ore");//"Magellus Fragment"
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Comm Ore");//"Magellus Fragment"
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "A mysterious material bursting with tiny explosive electrical sparks.  Looks alien in origin." +
                             "\nAffectionately known as \"Plasmite\" amongst many nations out there, this ore posesses " +
                             "impressive quantum energy funneling properties and is very volatile in nature.\n" +
@@ -212,8 +212,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 291;
                         break;
                     case ChunkTypes._deprecated_CommCrystal:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Comm Crystal");//Magellus Compound
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Comm Crystal");//Magellus Compound
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "The basis for excessively powerful energy manipulation weapons like E.P.M.C." +
                             "\nComm Crystals have the most fine-grained command over the wide spectrum of energies." +
                             "\nThe reach of energy types this can control appears seemingly limitless.");
@@ -222,8 +222,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 442;
                         break;
                     case ChunkTypes._deprecated_SenseOre:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Sense Ore");//"Adaranthium"
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Sense Ore");//"Adaranthium"
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "It is prized for it's powerful 3D detection and space-time bending properties." +
                             "\nThis originates from vibrant seas of <b>Adaranth</b>, a distant planet several parsecs away from the Off-World." +
                             "\nMany Kingdoms reside upon the oceanic planet and prosper greatly.");
@@ -232,8 +232,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 4321;
                         break;
                     case ChunkTypes._deprecated_SenseCrystal:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Sense Crystal");//"Adaranth Ingot"
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Sense Crystal");//"Adaranth Ingot"
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Used in the creation of devices which detect in the 3rd dimension as well as bend space-time. " +
                             "\nA beautiful pearl-like crystal worthy for a king or queen." +
                             "\nI have no idea how this works. Stuff this into a block" +
@@ -243,8 +243,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 5263;
                         break;
                     case ChunkTypes._deprecated_SmallMetalOre:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Small Metal Ore");//"Tessellium"
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Small Metal Ore");//"Tessellium"
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Extremely tough and durable, this stellar metal ore is no ordinary Earth metal.\n" +
                             "It binds effortlessly to other metals, and becomes even stronger in the process.\n" +
                             "It goes by a great many names.  Some nations call it \"Tessellium\", others call it Bulk Compound.");
@@ -253,8 +253,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 103636;
                         break;
                     case ChunkTypes._deprecated_SmallMetalIngot:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Small Metal Ingot");//Tesseract
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Small Metal Ingot");//Tesseract
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "The ultimate building material.  \nA critical component for any bulky, tough armors " +
                             "that could take an onslaught from an entire armada.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Refined);
@@ -262,8 +262,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             def.saleValue = 243262;
                         break;
                     case ChunkTypes._deprecated_AlloyExpRes:
-                        LocalisationExt.Register(StringBanks.ChunkName, stepper, "Alloy Exp Res");//Abstractum
-                        LocalisationExt.Register(StringBanks.ChunkDescription, stepper,
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Alloy Exp Res");//Abstractum
+                        LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Better known as Bulkhead Alloy, this alloy is famous for having \"more hitpoints than god\"," +
                             "seemingly able to take on anything in the galaxy without a dent." +
                             "\nProcuring this however is nearly impossible as it's a deeply guarded trade secret by the highest of " +
@@ -372,8 +372,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
         int defRedirect = AssignedIDInt;
         if (PreviousIDInt == -1)
         {
-            LocalisationExt.Register(StringBanks.ChunkName, AssignedIDInt, chunk.Name);
-            LocalisationExt.Register(StringBanks.ChunkDescription, AssignedIDInt, chunk.Description);
+            LocalisationExt.RegisterRawEng(StringBanks.ChunkName, AssignedIDInt, chunk.Name);
+            LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, AssignedIDInt, chunk.Description);
         }
         else
             defRedirect = IdToNameIndexLookup[AssignedIDInt];
