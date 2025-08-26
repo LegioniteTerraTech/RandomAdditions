@@ -274,7 +274,9 @@ namespace RandomAdditions
             {
                 ManModChunks.RenewOldChunks();
             }
+#if DEBUG
             PrepExternalChunksAndScenery();
+#endif
             OfficialEarlyInited = true;
         }
 
