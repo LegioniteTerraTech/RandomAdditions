@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using TerraTechETCUtil;
 using System.Reflection;
+using static CompoundExpression.EEInstance;
 
 public class TrailProjectile : RandomAdditions.TrailProjectile { }
 namespace RandomAdditions
@@ -63,6 +64,15 @@ namespace RandomAdditions
             }
         }
 
+        /// <summary>
+        /// How long should we continue applying damage after initial hit?
+        ///  Will cause the trail to continue trying to move forwards
+        /// </summary>
+        public float TrailingDamageTime = 0;
+        /// <summary>
+        /// How many hits should this deal over TrailingDamageTime
+        /// </summary>
+        public int MaxTrailingHits = 0;
         private static void InsureInit()
         {
             if (!latentPool)
@@ -87,7 +97,11 @@ namespace RandomAdditions
         private bool hasEmiss = false;
         private ParticleSystem[] emiss;
         private bool wasGrav = false;
+        private Vector3 lastVelo1 = Vector3.zero;
+        private Vector3 lastVelo2 = Vector3.zero;
         private float delay => trail.time;
+        private float trailingCurTime = 0;
+        private float trailingCooldownTime = 0;
 
         public override void Fire(FireData fireData)
         {
@@ -104,6 +118,13 @@ namespace RandomAdditions
 
             foreach (var col in cols)
                 col.enabled = true;
+            if (TrailingDamageTime > 0 && MaxTrailingHits > 0)
+            {
+                trailingCurTime = 0;
+                InvokeHelper.Invoke(UpdatePositionalTracker, 0.01f);
+                lastVelo2 = PB.rbody.velocity;
+                lastVelo1 = lastVelo2;
+            }
         }
 
         public override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
@@ -124,9 +145,94 @@ namespace RandomAdditions
             if (hasEmiss)
                 foreach (var emis in emiss)
                     emis.SetEmissionEnabled(false);
+            if (MaxTrailingHits != 0)
+            {
+                trailingCooldownTime = TrailingDamageTime / MaxTrailingHits;
+                InvokeHelper.CancelInvoke(UpdatePositionalTracker);
+                InvokeHelper.Invoke(UpdateTrailingDamage, 0.01f);
+            }
 
             PB.rbody.useGravity = false;
             PB.rbody.velocity = Vector3.zero;
+        }
+        public override void WorldRemoval()
+        {
+            if (MaxTrailingHits != 0)
+            {
+                trailingCurTime = TrailingDamageTime;
+                if (trailingCurTime == 0)
+                    InvokeHelper.CancelInvoke(UpdatePositionalTracker);
+                else
+                    InvokeHelper.CancelInvoke(UpdateTrailingDamage);
+            }
+            base.WorldRemoval();
+        }
+        public void UpdatePositionalTracker()
+        {
+            lastVelo2 = lastVelo1;
+            lastVelo1 = PB.rbody.velocity;
+        }
+        public void UpdateTrailingDamage()
+        {
+            if (trailingCurTime > 0)
+            {
+                trailingCooldownTime -= Time.deltaTime;
+
+                float prevTime = trailingCurTime;
+                trailingCurTime -= Time.deltaTime;
+                float dmgFrame = MaxTrailingHits * ((prevTime - Mathf.Max(0, trailingCurTime)) / trailingCurTime);
+
+                var targHit = RaycastProjectile.targHit;
+                Vector3 fwdVec = lastVelo2.normalized;
+                Vector3 offsetOrigin = transform.position - fwdVec;
+                float distEnd = lastVelo2.magnitude;
+                int hitNum = Physics.RaycastNonAlloc(new Ray(offsetOrigin, lastVelo2),
+                    targHit, distEnd, RaycastProjectile.layerMask, QueryTriggerInteraction.Collide);
+
+
+                RaycastHit hit;
+                int hitIndex = -1;
+                for (int step = 0; step < hitNum; step++)
+                {
+                    hit = targHit[step];
+                    if (hit.distance > 0 && hit.distance <= distEnd)
+                    {
+                        if (hit.collider.gameObject.layer == Globals.inst.layerShieldBulletsFilter)
+                        {
+                            Visible vis = ManVisible.inst.FindVisible(hit.collider);
+                            if (vis?.block?.tank && !vis.block.tank.IsEnemy(PB.shooter.Team))
+                                continue;
+                        }
+                        hitIndex = step;
+                        distEnd = hit.distance;
+                    }
+                }
+                Vector3 nextPoint = offsetOrigin;
+                if (hitIndex > -1)
+                {
+                    hit = targHit[hitIndex];
+                    nextPoint = fwdVec * hit.distance;
+                    if (trailingCooldownTime < 0)
+                    {   // Aquire hit target
+                        Damageable toDamage = hit.collider.GetComponentInParents<Damageable>(false);
+                        // Keep hitting until our cooldown is over
+                        while (trailingCooldownTime < 0)
+                        {
+                            trailingCooldownTime += TrailingDamageTime / MaxTrailingHits;
+                            PB.project.HandleCollision(toDamage, hit.point, hit.collider, false);
+                        }
+                    }
+                }
+                else
+                {
+                    nextPoint += fwdVec * distEnd;
+                    while (trailingCooldownTime < 0)
+                    {
+                        trailingCooldownTime += TrailingDamageTime / MaxTrailingHits;
+                    }
+                }
+                trail.AddPosition(nextPoint);
+            }
         }
         public override void Pool()
         {
@@ -146,6 +252,8 @@ namespace RandomAdditions
                 BlockDebug.ThrowWarning(true, "RandomAdditions: TrailProjectile expects an active TrailRenderer in hierarchy, but it is not enabled!");
             }
             m_DieAfterDelay_fetch.SetValue(PB.project, true);
+            if (TrailingDamageTime <= 0 || MaxTrailingHits < 0)
+                MaxTrailingHits = 0;
         }
     }
 }

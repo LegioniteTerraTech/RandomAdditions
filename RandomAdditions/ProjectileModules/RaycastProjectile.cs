@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using TerraTechETCUtil;
+using System.Reflection;
+using UnityEngine.Experimental.UIElements;
 
 public class RaycastProjectile : RandomAdditions.RaycastProjectile { }
 namespace RandomAdditions
@@ -35,8 +37,8 @@ namespace RandomAdditions
 
         private float fadeCurrent = 1f;
         private LineRenderer line;
-        private static int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerShieldBulletsFilter.mask | Globals.inst.layerScenery.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerTankIgnoreTerrain.mask;
-        private static RaycastHit[] targHit = new RaycastHit[32];
+        internal static int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerShieldBulletsFilter.mask | Globals.inst.layerScenery.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerTankIgnoreTerrain.mask;
+        internal static RaycastHit[] targHit = new RaycastHit[32];
 
 
         public override void Fire(FireData fireData)
@@ -50,15 +52,19 @@ namespace RandomAdditions
                     col.enabled = false;
                 fadeCurrent = 1;
 
+                Vector3 facing;
                 if (PB.shooter.rbody)
                 {
-                    transform.rotation = Quaternion.LookRotation((PB.rbody.velocity - PB.shooter.rbody.velocity).normalized);
-                    launchVelo = PB.shooter.rbody.velocity;
+                    facing = PB.rbody.velocity - PB.shooter.rbody.velocity;
+                    launchVelo = (PB.rbody.velocity * 0.01f) + PB.shooter.rbody.velocity;
                 }
                 else
-                    launchVelo = Vector3.zero;
+                {
+                    facing = PB.rbody.velocity;
+                    launchVelo = (PB.rbody.velocity * 0.01f) + Vector3.zero;
+                }
+                transform.rotation = Quaternion.LookRotation(facing.normalized);
                 PB.rbody.velocity = launchVelo;
-
 
                 float distEnd = MaxRange;
                 int hitNum = Physics.RaycastNonAlloc(new Ray(transform.position, transform.forward), targHit, MaxRange, layerMask, QueryTriggerInteraction.Collide);
@@ -200,11 +206,14 @@ namespace RandomAdditions
                 }
             }
         }
+        private static FieldInfo rotVelo = typeof(Projectile).GetField("m_RotateWithVelocity", BindingFlags.NonPublic | BindingFlags.Instance);
 
         public override void Pool()
         {
             line = GetComponent<LineRenderer>();
             SmokeTrail ST = GetComponent<SmokeTrail>();
+            rotVelo.SetValue(PB.project, false);
+            
             if (FadeTime <= 0)
             {
                 BlockDebug.ThrowWarning(false, "RandomAdditions: RaycastProjectile cannot have a FadeTime less than or equal to zero!");

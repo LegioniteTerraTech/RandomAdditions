@@ -413,6 +413,36 @@ namespace RandomAdditions
             */
         }
 
+        internal static class ManGameMode_ModeSettingsPatches
+        {
+            internal static Type target = typeof(ManGameMode.ModeSettings);
+            internal static FieldInfo field = typeof(ManGameMode.ModeSettings).GetField("m_nextModeCachedSettings", 
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            /// <summary>
+            /// SANITY CHECK
+            /// </summary>
+            /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
+            private static void SwitchToMode_Prefix(ManGameMode.ModeSettings __instance)
+            {
+                if (__instance == null)
+                {
+                    DebugRandAddi.FatalError("SwitchToMode call was called on a NULL ModeSettings!");
+                }
+                else
+                {
+                    if (__instance.m_SwitchAction == null)
+                    {
+                        DebugRandAddi.FatalError("SwitchToMode call has null m_SwitchAction when it should have one!");
+                    }
+                    if (field.GetValue(__instance) == null)
+                    {
+                        DebugRandAddi.FatalError("SwitchToMode call has null m_nextModeCachedSettings when it should have one!");
+                    }
+                } 
+            }
+
+        }
 
     }
 }
