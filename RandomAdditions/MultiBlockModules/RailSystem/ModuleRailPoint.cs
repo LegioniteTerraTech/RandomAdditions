@@ -1,15 +1,10 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using UnityEngine;
-using TerraTechETCUtil;
 using SafeSaves;
-using RandomAdditions;
-using System.Runtime.InteropServices;
-using Newtonsoft.Json.Linq;
-using static CheckpointChallenge;
+using TerraTechETCUtil;
+using UnityEngine;
 
 namespace RandomAdditions.RailSystem
 {
@@ -162,12 +157,19 @@ namespace RandomAdditions.RailSystem
             { LocalisationEnums.Languages.Japanese,
                 "レールの故障"},
         });
-        private static LocExtStringMod LOC_OneWayOn = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        private static LocExtStringMod LOC_OneWayLeft = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
         {
             { LocalisationEnums.Languages.US_English,
-                "One Way On" },
+                "One Way Left" },
             { LocalisationEnums.Languages.Japanese,
-                "現在は一方向です"},
+                "現在は左のみに設定されています"},
+        });
+        private static LocExtStringMod LOC_OneWayRight = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English,
+                "One Way Right" },
+            { LocalisationEnums.Languages.Japanese,
+                "現在は右のみに設定されています"},
         });
         private static LocExtStringMod LOC_OneWayOff = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
         {
@@ -180,16 +182,24 @@ namespace RandomAdditions.RailSystem
         {
             if (Node == null)
                 return LOC_NodeMissing;
-            else if (Node.OneWay)
-                return LOC_OneWayOn;
             else
-                return LOC_OneWayOff;
+            {
+                switch (Node.OneWay)
+                {
+                    case 1:// Left
+                        return LOC_OneWayLeft;
+                    case 2:// Right
+                        return LOC_OneWayRight;
+                    default:
+                        return LOC_OneWayOff;
+                }
+            }
         }
         public float RequestOneWay(float val)
         {
             if (Node != null)
             {
-                Node.OneWay = !Node.OneWay;
+                Node.OneWay = (Node.OneWay + 1) % 2;
             }
             return 0;
         }
@@ -198,9 +208,15 @@ namespace RandomAdditions.RailSystem
             if (Node == null)
                 return null;
             ModContainer MC = ManMods.inst.FindMod("Random Additions");
-            if (Node.OneWay)
-                return UIHelpersExt.GetIconFromBundle(MC, "GUI_OneWay");
-            return UIHelpersExt.GetIconFromBundle(MC, "GUI_TwoWay");
+            switch (Node.OneWay)
+            {
+                case 1:// Left
+                    return UIHelpersExt.GetIconFromBundle(MC, "GUI_OneWay");
+                case 2:// Right
+                    return UIHelpersExt.GetIconFromBundle(MC, "GUI_OneWayReversed");
+                default:
+                    return UIHelpersExt.GetIconFromBundle(MC, "GUI_TwoWay");
+            }
         }
 
         private static LocExtStringMod LOC_CallingTrain = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
@@ -252,8 +268,10 @@ namespace RandomAdditions.RailSystem
         {
             if (Node != null)
             {
-                if (Node.OneWay)
+                if (Node.OneWay == 1)
                     return RailTieType.OneWay;
+                else if (Node.OneWay == 2)
+                    return RailTieType.OneWayReversed;
             }
             return RailTieType.Default;
         }

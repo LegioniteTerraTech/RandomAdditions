@@ -11,6 +11,7 @@ namespace RandomAdditions.RailSystem
     {
         Default,
         OneWay,
+        OneWayReversed,
     }
 
     internal class RailTypeStats

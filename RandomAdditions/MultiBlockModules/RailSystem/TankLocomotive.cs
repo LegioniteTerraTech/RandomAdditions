@@ -2,10 +2,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
-using UnityEngine.Networking;
 using RandomAdditions.PhysicsTethers;
 using TerraTechETCUtil;
+using UnityEngine;
+using UnityEngine.Networking;
+using static WaterMod.SurfacePool;
 
 namespace RandomAdditions.RailSystem
 {
@@ -19,6 +20,9 @@ namespace RandomAdditions.RailSystem
         BKDYield,
         BKDFullSpeed,
     }
+    /// <summary>
+    /// DOES NOT SUPPORT PARALELL BOGIES
+    /// </summary>
     public class TankLocomotive : MonoBehaviour, IWorldTreadmill
     {
 
@@ -26,6 +30,7 @@ namespace RandomAdditions.RailSystem
         public static bool AllowAutopilotToOverridePlayer => ManNetwork.IsHost;
         public static bool DebugMode = false;
         public static bool FirstInit = false;
+        private static HashSet<TankLocomotive> iteratedLocos = new HashSet<TankLocomotive>();
         public const float defaultSpeedDrag = 0.001f;
         public const float trainSpeedDrag = 0.00001f;
 
@@ -96,10 +101,19 @@ namespace RandomAdditions.RailSystem
         private HashSet<ModuleRailBogie.RailBogie> Bogies { get; set; } = new HashSet<ModuleRailBogie.RailBogie>();
         public int BogiesCount => Bogies.Count;
 
+        /// <summary>
+        /// NOT ORDERED - Added to by CollectAllBogies
+        /// </summary>
+
         internal readonly List<ModuleRailBogie.RailBogie> bogiesRailLock = new List<ModuleRailBogie.RailBogie>();
         public int ActiveBogieCount => bogiesRailLock.Count;
-
+        /// <summary>
+        /// In order of when they engaged the track, not in order of positioning
+        /// </summary>
         public ModuleRailBogie.RailBogie FirstActiveBogie => ActiveBogieCount > 0 ? bogiesRailLock.FirstOrDefault() : null;
+        /// <summary>
+        /// CREATES A NEW COPY LIST
+        /// </summary>
         public List<ModuleRailBogie.RailBogie> AllActiveBogies => new List<ModuleRailBogie.RailBogie>(bogiesRailLock);
 
         public bool TrainOnRails { get; private set; } = false;
@@ -114,7 +128,9 @@ namespace RandomAdditions.RailSystem
         public float lastForwardSpeed { get; private set; } = 0;
 
         private bool Autopilot = false;
+        /// <summary> The front-most bogie that leads this Tech </summary>
         private ModuleRailBogie.RailBogie leadingBogie = null;
+        /// <summary> The rear-most bogie that leads this Tech </summary>
         private ModuleRailBogie.RailBogie rearBogie = null;
         private bool TrainDriveForwards = true;
         private TrainDriveState TrainDriveOverride = TrainDriveState.None;
@@ -135,7 +151,7 @@ namespace RandomAdditions.RailSystem
         {
             TankLocomotive train = tank.gameObject.AddComponent<TankLocomotive>();
             train.tank = tank;
-            train.MasterCar = null;
+            train.AssignedMasterCar = null;
             tank.CollisionEvent.Subscribe(train.HandleCollision);
             tank.control.driveControlEvent.Subscribe(train.DriveCommand);
             ManPauseGame.inst.PauseEvent.Subscribe(train.OnPaused);
@@ -162,7 +178,7 @@ namespace RandomAdditions.RailSystem
                 tank.GetComponent<TankRailsLocal>().train = null;
             }
             ManWorldTreadmill.inst.RemoveListener(this);
-            MasterCar = null;
+            AssignedMasterCar = null;
             MasterUnRegisterAllConnectedLocomotives();
             FinishPathing(TrainArrivalStatus.Destroyed);
             ManPauseGame.inst.PauseEvent.Unsubscribe(OnPaused);
@@ -479,14 +495,14 @@ namespace RandomAdditions.RailSystem
         public TankLocomotive GetMaster()
         {
             TankLocomotive mainTrain;
-            if (MasterCar)
-                mainTrain = MasterCar;
+            if (AssignedMasterCar)
+                mainTrain = AssignedMasterCar;
             else
                 mainTrain = this;
-            if (mainTrain.MasterCar != null)
+            if (mainTrain.AssignedMasterCar != null)
             {
                 DebugRandAddi.Assert("TankLocomotive.GetMaster() returned a Master which already has a master, which should not be possible. Cleaning...");
-                mainTrain.MasterCar = null;
+                mainTrain.AssignedMasterCar = null;
             }
             return mainTrain;
         }
@@ -572,18 +588,26 @@ namespace RandomAdditions.RailSystem
             return MasterGetAllInterconnectedBogies();
         }
 
+        public bool IsLeadingBogieOnTrain(ModuleRailBogie.RailBogie bogie, bool Backwards = false)
+        {
+            //DebugRandAddi.Log("IsLeadingBogieOnTrain");
+            if (Backwards)
+                return !IterateBogiesBehind(bogie).Any();
+            else
+                return !IterateBogiesAhead(bogie).Any();
+        }
         public ModuleRailBogie.RailBogie MasterTryGetLeadingBogieOnTrain(bool Backwards = false)
         {
-            TankLocomotive locoCur = MasterGetLeading();
+            TankLocomotive locoCur = MasterGetLeading(Backwards);
             ModuleRailBogie.RailBogie bestVal = locoCur.TryGetLeadingBogie(!Backwards);
-            HashSet<ModuleTechTether> iterate = new HashSet<ModuleTechTether>();
             while (!bestVal)
             {
-                locoCur = locoCur.TryGetForwardsTether(iterate, true, !Backwards)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
+                locoCur = locoCur.TryGetForwardsTetherFast(iteratedLocos, true, !Backwards)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
                 if (!locoCur)
                     break;
                 bestVal = locoCur.TryGetLeadingBogie(!Backwards);
             }
+            iteratedLocos.Clear();
             return bestVal;
         }
         public float GetBogiePosition(ModuleRailBogie bogie)
@@ -595,15 +619,15 @@ namespace RandomAdditions.RailSystem
         {
             float best;
             ModuleRailBogie.RailBogie bestVal = null;
-            Vector3 fwd = GetTankDriveForwardsInRelationToMaster();
+            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(GetTankDriveForwardsInRelationToMaster()));
             if (Backwards)
-            {
-               best = float.MaxValue;
+            {  // Get leastmost z in relation to Master orientation
+                best = float.MaxValue;
                 foreach (var item in bogiesRailLock)
                 {
                     if (item)
                     {
-                        float pos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * item.main.block.trans.localPosition).z;
+                        float pos = (fwdRot * item.main.block.trans.localPosition).z;
                         if (best > pos)
                         {
                             best = pos;
@@ -613,13 +637,13 @@ namespace RandomAdditions.RailSystem
                 }
             }
             else
-            {
-                best = 0;
+            {   // Get greatest z in relation to Master orientation
+                best = float.MinValue;
                 foreach (var item in bogiesRailLock)
                 {
                     if (item)
                     {
-                        float pos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * item.main.block.trans.localPosition).z;
+                        float pos = (fwdRot * item.main.block.trans.localPosition).z;
                         if (best < pos)
                         {
                             best = pos;
@@ -630,96 +654,238 @@ namespace RandomAdditions.RailSystem
             }
             return bestVal;
         }
-
-
-        private static List<ModuleRailBogie.RailBogie> bogiesCached = new List<ModuleRailBogie.RailBogie>();
-        public static List<ModuleRailBogie.RailBogie> GetBogiesBehind(ModuleRailBogie.RailBogie bogie)
+        /// <summary>
+        /// Gets the furthest aligned bogie on our Tank with an error range of +/- 2
+        /// </summary>
+        public ModuleRailBogie.RailBogie TryGetLeadingBogieAligned(float xAlignment, bool Backwards = false)
         {
-            bogiesCached.Clear();
-            TankLocomotive locoCur = bogie.engine;
-            Vector3 fwd = locoCur.GetTankDriveForwardsInRelationToMaster();
-            float bogiePos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * bogie.main.block.trans.localPosition).z;
-            foreach (var item in locoCur.bogiesRailLock)
-            {
-                if (item)
+            float bestZ;
+            ModuleRailBogie.RailBogie bestVal = null;
+            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(GetTankDriveForwardsInRelationToMaster()));
+            if (Backwards)
+            {   // Get leastmost z in relation to Master orientation
+                bestZ = float.MaxValue;
+                foreach (var item in bogiesRailLock)
                 {
-                    float pos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * item.main.block.trans.localPosition).z;
-                    if (bogiePos > pos)
+                    if (item)
                     {
-                        bogiesCached.Add(item);
+                        Vector3 pos = fwdRot * item.GetBogieBlockMassPosLocal;
+                        if (bestZ > pos.z && xAlignment.Approximately(pos.x, 2))
+                        {
+                            bestZ = pos.z;
+                            bestVal = item;
+                        }
                     }
                 }
             }
-            HashSet<ModuleTechTether> iterate = new HashSet<ModuleTechTether>();
-            while (true)
-            {
-                locoCur = locoCur.TryGetForwardsTether(iterate, true, true)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
-                if (!locoCur)
-                    break;
-                bogiesCached.AddRange(locoCur.bogiesRailLock);
-            }
-            return bogiesCached;
-        }
-        public static List<ModuleRailBogie.RailBogie> GetBogiesAhead(ModuleRailBogie.RailBogie bogie)
-        {
-            TankLocomotive locoCur = bogie.engine;
-            Vector3 fwd = locoCur.GetTankDriveForwardsInRelationToMaster();
-            float bogiePos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * bogie.main.block.trans.localPosition).z;
-            foreach (var item in locoCur.bogiesRailLock)
-            {
-                if (item)
+            else
+            {   // Get greatest z in relation to Master orientation
+                bestZ = float.MinValue;
+                foreach (var item in bogiesRailLock)
                 {
-                    float pos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * item.main.block.trans.localPosition).z;
-                    if (bogiePos < pos)
+                    if (item)
                     {
-                        bogiesCached.Add(item);
+                        Vector3 pos = fwdRot * item.GetBogieBlockMassPosLocal;
+                        if (bestZ < pos.z && xAlignment.Approximately(pos.x, 2))
+                        {
+                            bestZ = pos.z;
+                            bestVal = item;
+                        }
                     }
                 }
             }
-            HashSet<ModuleTechTether> iterate = new HashSet<ModuleTechTether>();
-            while (true)
-            {
-                locoCur = locoCur.TryGetForwardsTether(iterate, true, false)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
-                if (!locoCur)
-                    break;
-                bogiesCached.AddRange(locoCur.bogiesRailLock);
-            }
-            return bogiesCached;
+            return bestVal;
         }
 
 
-        private static List<TankLocomotive> carsCache = new List<TankLocomotive>();
-        public List<TankLocomotive> MasterGetAllCars()
+
+        /// <summary>
+        /// Gets all bogies behind in relation to the Master locomotive orthogonally aligned with this bogie with an error range of +/- 2
+        /// IT IS NOT ORDERED
+        /// </summary>
+        public static IEnumerable<ModuleRailBogie.RailBogie> IterateBogiesBehind(ModuleRailBogie.RailBogie bogie)
         {
-            carsCache.Clear();
-            carsCache.Add(this);
+            //DebugRandAddi.Log("IterateBogiesBehind");
+            TankLocomotive locoCur = bogie.engine;
+            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+            Vector3 bogiePos = fwdRot * bogie.GetBogieBlockMassPosLocal;
+            foreach (var item in locoCur.bogiesRailLock)
+            {
+                if (item != null)
+                {
+                    Vector3 pos = fwdRot * item.GetBogieBlockMassPosLocal;
+                    if (bogiePos.z > pos.z && bogiePos.x.Approximately(pos.x, 2))
+                    {
+                        //DebugRandAddi.Log("Retruned bigie - ours " + bogiePos + " vs " + pos);
+                        yield return item;
+                    }
+                    /*
+                    else
+                        DebugRandAddi.Log("skip bigie - ours " + bogiePos + " vs " + pos);*/
+                }
+            }
+            // WARNING: current approach is unordered!
+            while (locoCur != null)
+            {
+                ManTethers.ModuleTechTether MTT = locoCur.TryGetForwardsTetherAligned(iteratedLocos, true, bogiePos.x, true);
+                locoCur = null;
+                if (MTT != null)
+                {
+                    ManTethers.ModuleTechTether MTT2 = MTT.GetOtherSideTetherWithQuat(out Quaternion rotToOtherTechSpace);
+                    if (MTT2 != null)
+                    {
+                        locoCur = MTT2.tank.GetComponent<TankLocomotive>();
+                        if (locoCur != null)
+                        {
+                            // Transfer our ref bogie to the next tech's space before changing space
+                            bogiePos = (rotToOtherTechSpace * (bogiePos - (fwdRot * MTT.GetTetherBlockMassPosLocal))) + MTT2.GetTetherBlockMassPosLocal;
+                            fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+                            foreach (var item in locoCur.bogiesRailLock)
+                            {
+                                if (item != null)
+                                {
+                                    Vector3 pos = fwdRot * item.GetBogieBlockMassPosLocal;
+                                    if (bogiePos.x.Approximately(pos.x, 2))
+                                    {
+                                        //DebugRandAddi.Log("Retruned bigie2");
+                                        yield return item;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            iteratedLocos.Clear();
+        }
+        /// <summary>
+        /// Gets all bogies ahead in relation to the Master locomotive orthogonally aligned with this bogie with an error range of +/- 2
+        /// IT IS NOT ORDERED
+        /// </summary>
+        public static IEnumerable<ModuleRailBogie.RailBogie> IterateBogiesAhead(ModuleRailBogie.RailBogie bogie)
+        {
+            //DebugRandAddi.Log("IterateBogiesAhead");
+            TankLocomotive locoCur = bogie.engine;
+            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+            Vector3 bogiePos = fwdRot * bogie.GetBogieBlockMassPosLocal;
+            foreach (var item in locoCur.bogiesRailLock)
+            {
+                if (item != null)
+                {
+                    Vector3 pos = fwdRot * item.GetBogieBlockMassPosLocal;
+                    if (bogiePos.z < pos.z && bogiePos.x.Approximately(pos.x, 2))
+                    {
+                        //DebugRandAddi.Log("Retruned bigie - ours " + bogiePos + " vs " + pos);
+                        yield return item;
+                    }
+                    /*
+                    else
+                        DebugRandAddi.Log("skip bigie - ours " + bogiePos + " vs " + pos);*/
+                }
+            }
+            // WARNING: current approach is unordered!
+            while (locoCur != null)
+            {
+                ManTethers.ModuleTechTether MTT = locoCur.TryGetForwardsTetherAligned(iteratedLocos, true, bogiePos.x, false);
+                locoCur = null;
+                if (MTT != null)
+                {
+                    ManTethers.ModuleTechTether MTT2 = MTT.GetOtherSideTetherWithQuat(out Quaternion rotToOtherTechSpace);
+                    if (MTT2 != null)
+                    {
+                        locoCur = MTT2.tank.GetComponent<TankLocomotive>();
+                        if (locoCur != null)
+                        {
+                            // Transfer our ref bogie to the next tech's space before changing space
+                            bogiePos = (rotToOtherTechSpace * (bogiePos - (fwdRot * MTT.GetTetherBlockMassPosLocal))) + MTT2.GetTetherBlockMassPosLocal;
+                            fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+                            foreach (var item in locoCur.bogiesRailLock)
+                            {
+                                if (item != null)
+                                {
+                                    Vector3 pos = fwdRot * item.GetBogieBlockMassPosLocal;
+                                    if (bogiePos.x.Approximately(pos.x, 2))
+                                    {
+                                        //DebugRandAddi.Log("Retruned bigie2");
+                                        yield return item;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            iteratedLocos.Clear();
+        }
+
+        public IEnumerable<TankLocomotive> MasterIterateAllCars()
+        {
+            yield return this;
             foreach (var item in LocomotiveCars)
             {
                 var loco = item.Key.GetComponent<TankLocomotive>();
                 if (loco)
-                    carsCache.Add(loco);
+                    yield return loco;
             }
-            return carsCache;
         }
-        public ModuleTechTether TryGetForwardsTether(HashSet<ModuleTechTether> prevIterated, bool Linked, bool Backwards = false)
+        /// <summary>
+        /// Gets only the BEST one that faces the specified direction in relation to the main cab.
+        /// </summary>
+        public IEnumerable<ModuleTechTether> IterateForwardsTethers(HashSet<TankLocomotive> prevIterated, bool LinkedOnly, bool Backwards = false)
         {
-            float best;
+            if (prevIterated.Add(this))
+            {
+                Vector3 cabFwd = tank.rootBlockTrans.forward;
+                if (Backwards)
+                {
+                    foreach (var item2 in tank.blockman.IterateBlocks())
+                    {
+                        var t = item2.GetComponent<ModuleTechTether>();
+                        if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                            Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
+                        {
+                            yield return t;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var item2 in tank.blockman.IterateBlocks())
+                    {
+                        var t = item2.GetComponent<ModuleTechTether>();
+                        if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                            Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
+                        {
+                            yield return t;
+                        }
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// Gets only the BEST one that faces the specified direction in relation to the main cab.
+        /// </summary>
+        public ModuleTechTether TryGetForwardsTetherFast(HashSet<TankLocomotive> prevIterated, bool LinkedOnly, bool Backwards = false)
+        {
+            float bestZ;
             ModuleTechTether bestVal = null;
-            Vector3 fwd = GetTankDriveForwardsInRelationToMaster();
+            if (!prevIterated.Add(this))
+                return null;
+            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(GetTankDriveForwardsInRelationToMaster()));
+            Vector3 cabFwd = tank.rootBlockTrans.forward;
             if (Backwards)
             {
-                best = float.MaxValue;
+                bestZ = float.MaxValue;
                 foreach (var item2 in tank.blockman.IterateBlocks())
                 {
                     var t = item2.GetComponent<ModuleTechTether>();
-                    if (t && (!Linked || t.IsConnected) && !prevIterated.Contains(t))
+                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                        Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
                     {
-                        prevIterated.Add(t);
-                        Vector3 l = item2.trans.localPosition;
-                        float pos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * l).z;
-                        if (best > pos)
+                        float pos = (fwdRot * t.GetTetherBlockMassPosLocal).z;
+                        if (bestZ > pos)
                         {
-                            best = pos;
+                            bestZ = pos;
                             bestVal = t;
                         }
                     }
@@ -731,18 +897,82 @@ namespace RandomAdditions.RailSystem
             }
             else
             {
-                best = float.MinValue;
+                bestZ = float.MinValue;
                 foreach (var item2 in tank.blockman.IterateBlocks())
                 {
                     var t = item2.GetComponent<ModuleTechTether>();
-                    if (t && (!Linked || t.IsConnected) && !prevIterated.Contains(t))
+                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                        Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
                     {
-                        prevIterated.Add(t);
-                        Vector3 l = item2.trans.localPosition;
-                        float pos = (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * l).z;
-                        if (best < pos)
+                        float pos = (fwdRot * t.GetTetherBlockMassPosLocal).z;
+                        if (bestZ < pos)
                         {
-                            best = pos;
+                            bestZ = pos;
+                            bestVal = t;
+                        }
+                    }
+                }
+                if (bestVal)
+                {
+                    //ManTrainPathing.TrainStatusPopup("[F]", WorldPosition.FromScenePosition(bestVal.block.centreOfMassWorld));
+                }
+            }
+            return bestVal;
+        }
+        public ManTethers.ModuleTechTether TryGetForwardsTetherAligned(HashSet<TankLocomotive> prevIterated, bool LinkedOnly,
+            float xAlignment, bool Backwards = false)
+        {
+            float bestZ, bestX;
+            ManTethers.ModuleTechTether bestVal = null;
+            if (!prevIterated.Add(this))
+                return null;
+            Vector3 fwd = GetTankDriveForwardsInRelationToMaster();
+            Vector3 cabFwd = tank.rootBlockTrans.forward;
+            if (Backwards)
+            {
+                bestZ = float.MaxValue;
+                bestX = float.MaxValue;
+                foreach (var item2 in tank.blockman.IterateBlocks())
+                {
+                    var t = item2.GetComponent<ManTethers.ModuleTechTether>();
+                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                        Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
+                    {
+                        Vector3 pos = Quaternion.Inverse(Quaternion.LookRotation(fwd)) * t.GetTetherBlockMassPosLocal;
+                        if (bestZ >= pos.z && bestX > Mathf.Abs(pos.x - xAlignment))
+                        {
+                            if (bestZ > pos.z)
+                                bestX = float.MaxValue;
+                            else
+                                bestX = Mathf.Abs(pos.x - xAlignment);
+                            bestZ = pos.z;
+                            bestVal = t;
+                        }
+                    }
+                }
+                if (bestVal)
+                {
+                    //ManTrainPathing.TrainStatusPopup("[B]", WorldPosition.FromScenePosition(bestVal.block.centreOfMassWorld));
+                }
+            }
+            else
+            {
+                bestZ = float.MinValue;
+                bestX = float.MaxValue;
+                foreach (var item2 in tank.blockman.IterateBlocks())
+                {
+                    var t = item2.GetComponent<ManTethers.ModuleTechTether>();
+                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                        Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
+                    {
+                        Vector3 pos = Quaternion.Inverse(Quaternion.LookRotation(fwd)) * t.GetTetherBlockMassPosLocal;
+                        if (bestZ <= pos.z && bestX > Mathf.Abs(pos.x - xAlignment))
+                        {
+                            if (bestZ < pos.z)
+                                bestX = float.MaxValue;
+                            else
+                                bestX = Mathf.Abs(pos.x - xAlignment);
+                            bestZ = pos.z;
                             bestVal = t;
                         }
                     }
@@ -761,33 +991,40 @@ namespace RandomAdditions.RailSystem
             else
                 return LocomotiveCarsOrdered.FirstOrDefault();
         }
-        private TankLocomotive MasterGetLeadingSlow(bool Backwards = false)
+        private TankLocomotive MasterGetSingleLeadingSlow(bool Backwards = false)
         {
             TankLocomotive locoPrev = this;
             TankLocomotive locoCur = locoPrev;
-            HashSet<ModuleTechTether> iterate = new HashSet<ModuleTechTether>();
-            HashSet<TankLocomotive> iterate2 = new HashSet<TankLocomotive>();
-            while (locoCur && !iterate2.Contains(locoCur))
+            while (locoCur)
             {
-                iterate2.Add(locoCur);
                 locoPrev = locoCur;
-                locoCur = locoCur.TryGetForwardsTether(iterate, true, Backwards)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
+                locoCur = locoCur.TryGetForwardsTetherFast(iteratedLocos, true, Backwards)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
             }
+            iteratedLocos.Clear();
             return locoPrev;
         }
+        /// <summary>
+        /// Is not through on trains with multiple splits (two or more cars attached to front/back, ETC)
+        /// </summary>
         private void MasterSortByPositionForwards()
         {
-            int pos = 0;
-            TankLocomotive locoCur = MasterGetLeadingSlow();
-            HashSet<ModuleTechTether> iterate = new HashSet<ModuleTechTether>();
-            HashSet<TankLocomotive> iterate2 = new HashSet<TankLocomotive>();
-            while (locoCur && !iterate2.Contains(locoCur))
+            TankLocomotive locoCur = MasterGetSingleLeadingSlow();
+            locoCur.CarNumber = 0;
+            RecurseGetTethers(locoCur, iteratedLocos, true, 0, true);
+            iteratedLocos.Clear();
+        }
+        /// <summary>
+        /// Is not through on trains with multiple splits (two or more cars attached to front/back, ETC)
+        /// </summary>
+        private void RecurseGetTethers(TankLocomotive locoCur, HashSet<TankLocomotive> prevIterated, bool LinkedOnly, int carNum, bool Backwards)
+        {
+            carNum++;
+            foreach (var item in locoCur.IterateForwardsTethers(prevIterated, LinkedOnly, Backwards))
             {
-                //DebugRandAddi.Log("TankLocomotive: MasterSortByPositionForwards " + locoCur.tank.name + " step " + pos);
-                iterate2.Add(locoCur);
-                locoCur.CarNumber = pos;
-                locoCur = locoCur.TryGetForwardsTether(iterate, true, true)?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
-                pos++;
+                TankLocomotive nextLoco = item?.GetOtherSideTech()?.GetComponent<TankLocomotive>();
+                locoCur.CarNumber = carNum;
+                if (nextLoco != null)
+                    RecurseGetTethers(nextLoco, prevIterated, LinkedOnly, carNum, Backwards);
             }
         }
 
@@ -960,7 +1197,7 @@ namespace RandomAdditions.RailSystem
 
 
 
-        private TankLocomotive MasterCar { 
+        private TankLocomotive AssignedMasterCar { 
             get
             {
                 return _MasterCar;
@@ -973,7 +1210,7 @@ namespace RandomAdditions.RailSystem
         }
         private TankLocomotive _MasterCar = null;
         private Quaternion FromMasterDrive = Quaternion.identity;
-        public bool IsMaster => !MasterCar;
+        public bool IsMaster => !AssignedMasterCar;
         public int CarNumber { get; private set; } = -1;
 
 
@@ -1005,7 +1242,7 @@ namespace RandomAdditions.RailSystem
 
                     //DebugRandAddi.Log("TankLocomotive: Locomotive " + this.tank.name + " registered " + add.name + " as a car with offset forwards of"
                     //    + (offsetRotControl * Vector3.forward).ToString());
-                    loco.MasterCar = this;
+                    loco.AssignedMasterCar = this;
                     trainCars.Add(loco);
                 }
             }
@@ -1061,7 +1298,7 @@ namespace RandomAdditions.RailSystem
                         loco.LocomotiveCars.Clear();
                         loco.LocomotiveCarsOrdered.Clear();
                         loco.FromMasterDrive = val;
-                        loco.MasterCar = this;
+                        loco.AssignedMasterCar = this;
                         loco.tank.TankRecycledEvent.Subscribe(MasterUnRegisterLocomotiveCar);
 
                         //DebugRandAddi.Log("TankLocomotive: Locomotive " + this.tank.name + " registered " + add.name + " as a car with offset forwards of"
@@ -1081,7 +1318,7 @@ namespace RandomAdditions.RailSystem
                 else
                 {
                     loco.FromMasterDrive = Quaternion.identity;
-                    loco.MasterCar = null;
+                    loco.AssignedMasterCar = null;
                     if (DebugMode)
                         ManTrainPathing.TrainStatusPopup(loco.CarNumber + " | M", WorldPosition.FromScenePosition(loco.tank.boundsCentreWorld));
                 }
@@ -1119,9 +1356,9 @@ namespace RandomAdditions.RailSystem
                 var loco = removed.GetComponent<TankLocomotive>();
                 if (loco)
                 {
-                    if (loco.MasterCar)
-                        removed.TankRecycledEvent.Unsubscribe(loco.MasterCar.MasterUnRegisterLocomotiveCar);
-                    loco.MasterCar = null;
+                    if (loco.AssignedMasterCar)
+                        removed.TankRecycledEvent.Unsubscribe(loco.AssignedMasterCar.MasterUnRegisterLocomotiveCar);
+                    loco.AssignedMasterCar = null;
                     loco.CarNumber = -1;
                     loco.FromMasterDrive = Quaternion.identity;
                     loco.LocomotiveCars.Clear();
@@ -1226,9 +1463,9 @@ namespace RandomAdditions.RailSystem
             if (!rearBogie)
             {
                 DebugRandAddi.Assert("MasterGetFrontAndBackBogie could not fetch rear bogie.  Returning last in MasterGetAllOrderedBogies() instead");
-                rearBogie = MasterGetAllOrderedBogies().Last();
+                rearBogie = MasterGetAllOrderedBogies().LastOrDefault();
                 if (DebugMode)
-                    ManTrainPathing.TrainStatusPopup("[R]", WorldPosition.FromScenePosition(leadingBogie.main.block.centreOfMassWorld));
+                    ManTrainPathing.TrainStatusPopup("[R]", WorldPosition.FromScenePosition(rearBogie.main.block.centreOfMassWorld));
             }
         }
         public void MasterSetTrainDriveOverride(TrainDriveState toSet)
@@ -1282,7 +1519,7 @@ namespace RandomAdditions.RailSystem
             if (!ManPauseGame.inst.IsPaused && tank.rbody && !tank.beam.IsActive && TrainRailLock && 
                 (AllowAutopilotToOverridePlayer || !tank.PlayerFocused))
             {
-                if (MasterCar)
+                if (AssignedMasterCar)
                 {
                     RelayControlsFromMaster();
                     return true;
@@ -1343,13 +1580,17 @@ namespace RandomAdditions.RailSystem
             }
             return false;
         }
+        /// <summary>
+        /// This relays controls from the master train. 
+        /// BROKEN - NEEDS FIXING
+        /// </summary>
         private void RelayControlsFromMaster()
         {
             //DebugRandAddi.Log("Commanding " + tank.name + "...");
             Quaternion Corrected = Quaternion.Inverse(GetMaster().tank.rootBlockTrans.localRotation) * FromMasterDrive 
                 * tank.rootBlockTrans.localRotation;
-            tank.control.CollectMovementInput(Corrected * MasterCar.drive, MasterCar.turn, Vector3.zero,
-               MasterCar.tank.control.CurState.m_BoostProps, MasterCar.tank.control.CurState.m_BoostJets);
+            tank.control.CollectMovementInput(Corrected * AssignedMasterCar.drive, AssignedMasterCar.turn, Vector3.zero,
+               AssignedMasterCar.tank.control.CurState.m_BoostProps, AssignedMasterCar.tank.control.CurState.m_BoostJets);
         }
         private void ForceForwards(float ForwardsPercent)
         {
@@ -1391,9 +1632,14 @@ namespace RandomAdditions.RailSystem
                     uprightSuggestion = Vector3.zero;
                     foreach (var item in BogieBlocks)
                     {
+                        if (item.PrePreFixedUpdate())
+                            item.HierachyBogies.CollectAllBogiesRailLocked(bogiesRailLock);
+                    }
+
+                    foreach (var item in BogieBlocks)
+                    {
                         if (item.PreFixedUpdate())
                         {
-                            item.HierachyBogies.CollectAllBogies(bogiesRailLock);
                             movementDampening += item.BogeyKineticStiffPercent;
                             tankAlignForce += item.BogieAlignmentForce;
                             tankAlignDampener += item.BogieAlignmentDampener;
@@ -1701,6 +1947,9 @@ namespace RandomAdditions.RailSystem
             // Turn it in
             PHYRotateAxis(turnVal);
         }
+        /// <summary>
+        ///  Note to self- fix edge-case of when the cab is rotated the wrong way
+        /// </summary>
         private void MultiBogeyFixedUpdateAlignment()
         {
             Vector3 forwardsAim = cab.forward;

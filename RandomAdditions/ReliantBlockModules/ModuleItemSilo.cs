@@ -50,6 +50,19 @@ namespace RandomAdditions
         //public bool KeepAtLeastOneItemOut = true;//WIP
         public bool Empty = true;
 
+        public ItemTypeInfo StoredTypeInfo
+        {
+            get
+            {
+                ModuleItemHolder.Stack stack = ReleaseTargetNode.FirstOrDefault(x => x != null || !x.IsEmpty);
+                if (stack != null)
+                {
+                    return stack.FirstItem.m_ItemType;
+                }
+                return null;
+            }
+        }
+
         internal float GetCountPercent
         {
             get
@@ -287,12 +300,15 @@ namespace RandomAdditions
                 {
                     if (SavedCount > 0)
                     {
+                        ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateOpen);
+                        /*
                         TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemCannonDelivered);
                         try
                         {
                             TankBlock.tank.TechAudio.PlayOneshot(sound);
                         }
                         catch { }
+                        */
                     }
                 }
                 // SILO COMPROMISED!  EJECT ALL!
@@ -418,6 +434,7 @@ namespace RandomAdditions
                 if (toManage.pickup.ChunkType == GetChunkType)
                 {
                     QueueStoreAnim(toManage);
+                    PlayConsumeSFX();
                     SavedCount++;
                     if (SavedCount >= MaxCapacity)
                         break;
@@ -444,6 +461,7 @@ namespace RandomAdditions
                 if (StackSet == 0)
                 {   // It absorbs and doesn't give back
                     QueueStoreAnim(toManage);
+                    PlayConsumeSFX();
                     if (Singleton.Manager<ManPlayer>.inst.InventoryIsUnrestricted) { }
                     else if (Singleton.Manager<ManGameMode>.inst.IsCurrentModeMultiplayer())
                     {
@@ -497,6 +515,7 @@ namespace RandomAdditions
                     break;
                 }
                 SavedCount--;
+                PlayProduceSFX();
                 QueueReleaseAnim(stack);
                 if (SavedCount <= 0)
                 {
@@ -525,6 +544,7 @@ namespace RandomAdditions
                         DebugRandAddi.LogError("RandomAdditions: SILO HAS A NULL SAVEDBLOCK TYPE!!!");
                         break;
                     }
+                    PlayProduceSFX();
                     QueueReleaseAnim(stack);
                     SavedCount = MaxCapacity;
                 }
@@ -547,6 +567,7 @@ namespace RandomAdditions
                                         availQuant--;
                                         NI.SetBlockCount(GetBlockType, availQuant);
 
+                                        PlayProduceSFX();
                                         QueueReleaseAnim(stack);
                                         SavedCount = availQuant;
                                         if (availQuant <= 0)
@@ -575,6 +596,7 @@ namespace RandomAdditions
                                         availQuant--;
                                         SI.SetBlockCount(GetBlockType, availQuant);
 
+                                        PlayProduceSFX();
                                         QueueReleaseAnim(stack);
                                         SavedCount = availQuant;
                                         if (availQuant <= 0)
@@ -622,7 +644,18 @@ namespace RandomAdditions
             }
             return 0;
         }
-
+        private void PlayConsumeSFX()
+        {
+            block.tank.TechAudio.PlayOneshot(TechAudio.AudioTickData.ConfigureOneshot(
+                this, StoresBlocksInsteadOfChunks ? 
+                TechAudio.SFXType.ItemBlockConsumed :  TechAudio.SFXType.ItemResourceConsumed));
+        }
+        private void PlayProduceSFX()
+        {
+            block.tank.TechAudio.PlayOneshot(TechAudio.AudioTickData.ConfigureOneshot(
+                this, StoresBlocksInsteadOfChunks ?
+                TechAudio.SFXType.ItemBlockProduced : TechAudio.SFXType.ItemResourceProduced));
+        }
 
         // "Animations"
         private void QueueStoreAnim(Visible toManage)

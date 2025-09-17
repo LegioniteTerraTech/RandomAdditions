@@ -672,33 +672,49 @@ namespace RandomAdditions.RailSystem
             return bogey.rotation * Vector3.up;
         }
 
-        public Vector3 UpdateBogeySetPositioning(ModuleRailBogie.RailBogie RB, Transform bogey, float lastRailVelocity)
+
+        internal static Dictionary<ModuleRailBogie.RailBogie, KeyValuePair<float, Vector3>> BogeyAttachOperations = 
+            new Dictionary<ModuleRailBogie.RailBogie, KeyValuePair<float, Vector3>>();
+        public Vector3 UpdateBogeySetPositioning(ModuleRailBogie.RailBogie RB, Transform bogeyPhysics, float lastRailVelocity)
         {
             float posPercent = RB.FixedPositionOnRail / AlongTrackDist;
             // We EASE the bogey into position as we move to prevent snapping motions!
             Vector3 targetPos = EvaluateSegmentAtPositionFastWorld(posPercent);
-            RB.railLocked = true;
+            //RB.UpdateRailLockState(true);
+
             if (RB.railLocked)
-                bogey.position = targetPos;
+                bogeyPhysics.position = targetPos;
             else
-            {
-                float ToDestPercent = (lastRailVelocity * lastRailVelocity * 1.34f) / (targetPos - bogey.position).sqrMagnitude;
-                bogey.position = Vector3.Lerp(bogey.position, targetPos, ToDestPercent);
-                if (ToDestPercent > 0.9f)
+            {   // TO-DO - FIX THIS PIECE OF SHIT
+                if (!BogeyAttachOperations.ContainsKey(RB))
+                    BogeyAttachOperations.Add(RB, new KeyValuePair<float, Vector3>(0, bogeyPhysics.position));
+                float smoothMoveTime = 1f / Mathf.Max(1, lastRailVelocity * 0.333f);
+                if (BogeyAttachOperations[RB].Key <= smoothMoveTime)
+                {   // Smooth move to position
+                    float DistMag = (targetPos - BogeyAttachOperations[RB].Value).magnitude;
+                    float estStepsLeft = Mathf.Max(1, (smoothMoveTime - BogeyAttachOperations[RB].Key) / Time.fixedDeltaTime);
+                    bogeyPhysics.position = Vector3.MoveTowards(BogeyAttachOperations[RB].Value, targetPos, DistMag / estStepsLeft);
+                    BogeyAttachOperations[RB] = new KeyValuePair<float, Vector3>(BogeyAttachOperations[RB].Key + Time.fixedDeltaTime, bogeyPhysics.position);
+                }
+                else
+                {   // Finished, lock to position
+                    bogeyPhysics.position = targetPos;
                     RB.railLocked = true;
+                    BogeyAttachOperations.Remove(RB);
+                }
             }
             Vector3 p2;
             if (posPercent <= 0.96f)
             {
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent + 0.04f);
-                bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogeyPhysics.rotation = Quaternion.LookRotation((p2 - targetPos).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             else
             {
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent - 0.04f);
-                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogeyPhysics.rotation = Quaternion.LookRotation(-(p2 - targetPos).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
-            return bogey.rotation * Vector3.up;
+            return RB.railLocked ? (bogeyPhysics.rotation * Vector3.up) : Vector3.zero;
         }
 
 

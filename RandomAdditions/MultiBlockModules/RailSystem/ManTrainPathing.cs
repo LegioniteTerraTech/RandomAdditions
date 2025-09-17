@@ -18,6 +18,9 @@ namespace RandomAdditions.RailSystem
         TrainBlockingPath,
         PlayerHyjacked,
     }
+    /// <summary>
+    /// Note: This pathfinding only supports single-track trains, and cannot control multi-track trains that have parallel bogies.
+    /// </summary>
     public class ManTrainPathing
     {
         public const float StationaryTrainObstructionPenalty = 360000;
@@ -145,9 +148,9 @@ namespace RandomAdditions.RailSystem
         private static int patherQueueStep = 0;
         private static int patherQueueStepRepeater = 0;
         public static void TrainPathfindRailNetwork(TankLocomotive train, RailTrackNode destination,
-            Action<bool> calledOnDestination)
+            Action<bool> optionalCallOnArrival)
         {
-            patherQueue.Add(new KeyValuePair<TrainPathRequest, Action<bool>>(new TrainPathRequest(train, destination), calledOnDestination));
+            patherQueue.Add(new KeyValuePair<TrainPathRequest, Action<bool>>(new TrainPathRequest(train, destination), optionalCallOnArrival));
         }
         internal static void AsyncManageTrainPathing()
         {

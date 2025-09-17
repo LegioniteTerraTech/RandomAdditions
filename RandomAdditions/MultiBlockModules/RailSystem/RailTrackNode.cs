@@ -3,11 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TerraTechETCUtil;
 using UnityEngine;
 using UnityEngine.Networking;
-using TerraTechETCUtil;
-using static BlockPlacementCollector.Collection;
-using static System.Collections.Specialized.BitVector32;
 
 namespace RandomAdditions.RailSystem
 {
@@ -62,7 +60,8 @@ namespace RandomAdditions.RailSystem
         public readonly bool CanCallTrains = false;
         public readonly bool Stopper = false;
         public readonly int Team = ManPlayer.inst.PlayerTeam;
-        public bool OneWay = false;
+        /// <summary> 0 = Off, 1 = Right, facing Rail Signal trackside, 2 = Left, facing Rail Signal trackside</summary>
+        public int OneWay = 0;
         public bool Angled = false;
 
 
@@ -874,9 +873,9 @@ namespace RandomAdditions.RailSystem
         }
 
         private static StringBuilder SB = new StringBuilder();
-        public int GetEntryIndex(RailTrack entryTrack, out bool NodeTrack)
+        public int GetEntryIndex(RailTrack entryTrack, out bool entryTrackIsNode)
         {
-            int check = -1;
+            int outIndex = -1;
             if (entryTrack == null)
                 throw new NullReferenceException("GetEntryIndex - entryTrack cannot be null");
             if (entryTrack.IsNodeTrack)
@@ -886,7 +885,7 @@ namespace RandomAdditions.RailSystem
                     RailConnectInfo cand = TrackLinks[step];
                     if (cand.NodeTrack == entryTrack)
                     {
-                        check = step;
+                        outIndex = step;
                         break;
                     }
                 }
@@ -898,15 +897,15 @@ namespace RandomAdditions.RailSystem
                     RailConnectInfo cand = TrackLinks[step];
                     if (cand.LinkTrack == entryTrack)
                     {
-                        check = step;
+                        outIndex = step;
                         break;
                     }
                 }
             }
-            if (check != -1)
+            if (outIndex != -1)
             {
-                NodeTrack = entryTrack.IsNodeTrack;
-                return check;
+                entryTrackIsNode = entryTrack.IsNodeTrack;
+                return outIndex;
             }
             try
             {
@@ -954,39 +953,39 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-        public bool NextTrackExists(RailConnectInfo startInfo, int turnIndex, bool isNodeTrack, bool enteredLowValSideNodeTrack)
+        public bool NextTrackExists(RailConnectInfo crossedConnectInfo, int turnIndex, bool entryIsNodeTrack, bool enteredLowValSideNodeTrack)
         {
-            if (startInfo.NodeTrack != null)
-            {
-                if (isNodeTrack)
+            if (crossedConnectInfo.NodeTrack != null)
+            {   // Our input has a NodeTrack
+                if (entryIsNodeTrack)   // We came from the NodeTrack
                 {   // Relay FROM node track  -  Node track always has low end connected to index 0,
                     //   and high ends connected to other indexes.
                     if (enteredLowValSideNodeTrack)
                     {   // To Node on NodeTrack, From Low-Value side
-                        return NodeOrLinkTrackExists(RelayAcrossFirstHub(startInfo, turnIndex, false));
+                        return NodeOrLinkTrackExists(RelayAcrossFirstHub(crossedConnectInfo, turnIndex, false));
                     }
                     else
                     {   // From NodeTrack to LinkedTrack, From High-Value side
-                        return startInfo.LinkTrack != null;
+                        return crossedConnectInfo.LinkTrack != null;
                     }
                 }
-                else
+                else   // We came from the LinkTrack
                 {   // Relay TO node track 
                     //  Coming from LinkedTrack onto NodeTrack
-                    return startInfo.NodeTrack != null;
+                    return crossedConnectInfo.NodeTrack != null;
                 }
             }
-            else
+            else   //  Our input does NOT have a NodeTrack
             {
-                return NodeOrLinkTrackExists(RelayAcrossFirstHub(startInfo, turnIndex, false));
+                return NodeOrLinkTrackExists(RelayAcrossFirstHub(crossedConnectInfo, turnIndex, false));
             }
         }
         public bool NextTrackExists(RailTrack entryTrack, int turnIndex, bool enteredLowValSideNodeTrack)
         {
             int entryIndex = GetEntryIndex(entryTrack, out bool isNodeTrack);
             if (TrackLinks[entryIndex].NodeTrack != null)
-            {
-                if (isNodeTrack)
+            {   // Our entryIndex has a NodeTrack
+                if (isNodeTrack)   // We came from the NodeTrack
                 {   // Relay FROM node track  -  Node track always has low end connected to index 0,
                     //   and high ends connected to other indexes.
                     if (enteredLowValSideNodeTrack)
@@ -998,13 +997,13 @@ namespace RandomAdditions.RailSystem
                         return TrackLinks[entryIndex].LinkTrack != null;
                     }
                 }
-                else
+                else  // We came from the LinkTrack
                 {   // Relay TO node track 
                     //  Coming from LinkedTrack onto NodeTrack
                     return TrackLinks[entryIndex].NodeTrack != null;
                 }
             }
-            else
+            else   //  Our entryIndex does NOT have a NodeTrack
             {
                 return NodeOrLinkTrackExists(RelayAcrossFirstHub(TrackLinks[entryIndex], turnIndex, false));
             }
@@ -1056,64 +1055,67 @@ namespace RandomAdditions.RailSystem
             }
         }
 
-
-        public RailConnectInfo GetConnectionByTrack(RailTrack entryTrack, out bool isNodeTrack)
+        /// <summary>
+        /// Returns a RailConnectInfo that can have nothing, or NodeTrack and/or LinkTrack.
+        /// </summary>
+        public RailConnectInfo GetConnectionByTrack(RailTrack entryTrack, out bool entryTrackIsNode)
         {
-            return TrackLinks[GetEntryIndex(entryTrack, out isNodeTrack)];
+            return TrackLinks[GetEntryIndex(entryTrack, out entryTrackIsNode)];
         }
 
 
-        public RailTrack RelayToNextOnNode(RailConnectInfo entryInfo, bool nodeTrack, bool enteredLowValNodeTrack, 
+        public RailTrack RelayToNextOnNode(RailConnectInfo crossedConnectInfo, bool entryTrackIsNode, bool enteredLowValNodeTrack, 
             int destIndex, out bool reverseRelativeRailDirection, out RailConnectInfo connection, bool log = false)
         {
             bool lowTrackConnect;
             RailTrack RT;
-            bool hasNodeTrack = entryInfo.NodeTrack != null;
+            bool hasNodeTrack = crossedConnectInfo.NodeTrack != null;
             if (hasNodeTrack)
-            {
-                if (nodeTrack)
+            {   // Our input has a NodeTrack
+                if (entryTrackIsNode)   // We came from the NodeTrack
                 {   // Relay FROM node track  -  Node track always has low end connected to index 0,
                     //   and high ends connected to other indexes.
                     if (enteredLowValNodeTrack)
-                    {   // To Node on NodeTrack, From Low-Value side
-                        destIndex = RelayAcrossFirstHub(entryInfo, destIndex, log);
-                        RT = RelayToNodeTrackACROSSNode(destIndex, out lowTrackConnect);
+                    {   // From NodeTrack to LinkedTrack, From Low-Value side from a junction end
+                        // To Node on NodeTrack, From Low-Value side where junctions split
+                        destIndex = RelayAcrossFirstHub(crossedConnectInfo, destIndex, log);
+                        RT = RelayToNodeOrLinkTrackACROSSNode(destIndex, out lowTrackConnect);
                         reverseRelativeRailDirection = true == lowTrackConnect;
                         if (log)
-                            DebugRandAddi.Log("RandomAdditions: " + NodeType + " On NodeTrack ACROSS Node TO Link/NodeTrack (" + entryInfo.Index + " | " + destIndex + ") flip direction sides " +
+                            DebugRandAddi.Log("RandomAdditions: " + NodeType + " On NodeTrack ACROSS Node TO Link/NodeTrack (" + crossedConnectInfo.Index + " | " + destIndex + ") flip direction sides " +
                                true + " " + lowTrackConnect + " | " + (true == lowTrackConnect));
                         connection = TrackLinks[destIndex];
                         return RT;
                     }
                     else
-                    {   // From NodeTrack to LinkedTrack, From High-Value side
-                        reverseRelativeRailDirection = false == entryInfo.LowTrackConnection;
+                    {   // From NodeTrack to LinkedTrack, From High-Value side where junctions merge
+                        reverseRelativeRailDirection = false == crossedConnectInfo.LowTrackConnection;
                         if (log)
-                            DebugRandAddi.Log("RandomAdditions: " + NodeType + " On NodeTrack TO LinkTrack (" + entryInfo.Index + ") flip direction sides " + 
-                               false + " " + entryInfo.LowTrackConnection + " | " + (false == entryInfo.LowTrackConnection));
-                        connection = entryInfo;
-                        return entryInfo.LinkTrack;
+                            DebugRandAddi.Log("RandomAdditions: " + NodeType + " On NodeTrack TO LinkTrack (" + crossedConnectInfo.Index + ") flip direction sides " + 
+                               false + " " + crossedConnectInfo.LowTrackConnection + " | " + (false == crossedConnectInfo.LowTrackConnection));
+                        connection = crossedConnectInfo;
+                        return crossedConnectInfo.LinkTrack;
                     }
                 }
-                else
+                else   // We came from the LinkTrack
                 {   // Relay TO node track 
                     //  Coming from LinkedTrack onto NodeTrack
-                    reverseRelativeRailDirection = false == entryInfo.LowTrackConnection;
+                    reverseRelativeRailDirection = false == crossedConnectInfo.LowTrackConnection;
                     if (log)
-                        DebugRandAddi.Log("RandomAdditions: " + NodeType + " On LinkTrack TO NodeTrack (" + entryInfo.Index + ") flip direction sides " +
-                               false + " " + entryInfo.LowTrackConnection + " | " + (false == entryInfo.LowTrackConnection));
-                    connection = entryInfo;
-                    return entryInfo.NodeTrack;
+                        DebugRandAddi.Log("RandomAdditions: " + NodeType + " On LinkTrack TO NodeTrack (" + crossedConnectInfo.Index + ") flip direction sides " +
+                               false + " " + crossedConnectInfo.LowTrackConnection + " | " + (false == crossedConnectInfo.LowTrackConnection));
+                    connection = crossedConnectInfo;
+                    return crossedConnectInfo.NodeTrack;
                 }
             }
             else
-            {
-                destIndex = RelayAcrossFirstHub(entryInfo, destIndex, log);
-                RT = RelayToNodeTrackACROSSNode(destIndex, out lowTrackConnect);
+            {   // Our input does NOT have a NodeTrack - Assume no transfer to Nodetrack is required
+                destIndex = RelayAcrossFirstHub(crossedConnectInfo, destIndex, log);
+                RT = RelayToNodeOrLinkTrackACROSSNode(destIndex, out lowTrackConnect);
                 if (log)
-                    DebugRandAddi.Log("RandomAdditions: " + NodeType + " On LinkTrack(Non-NodeTrack) ACROSS Node TO NodeTrack (" + entryInfo.Index + " | " + destIndex + ") flip direction sides " +
-                               lowTrackConnect + " " + entryInfo.LowTrackConnection + " | " + (lowTrackConnect == entryInfo.LowTrackConnection));
-                reverseRelativeRailDirection = lowTrackConnect == entryInfo.LowTrackConnection;
+                    DebugRandAddi.Log("RandomAdditions: " + NodeType + " On LinkTrack(Non-NodeTrack) ACROSS Node TO NodeTrack (" + crossedConnectInfo.Index + " | " + destIndex + ") flip direction sides " +
+                               lowTrackConnect + " " + crossedConnectInfo.LowTrackConnection + " | " + (lowTrackConnect == crossedConnectInfo.LowTrackConnection));
+                reverseRelativeRailDirection = lowTrackConnect == crossedConnectInfo.LowTrackConnection;
                 connection = TrackLinks[destIndex];
                 return RT;
             }
@@ -1182,8 +1184,12 @@ namespace RandomAdditions.RailSystem
             {
                 if (entryInfo.Index == 0)
                 {   // Entering the split side 
-                    DebugRandAddi.Assert(destIndex >= TrackLinks.Length, "RandomAdditions: RelayToNextJunction - RailTrackNode was given a destIndex that is above the bounds [1-" + TrackLinks.Length + "]");
-                    DebugRandAddi.Assert(destIndex < 1, "RandomAdditions: RelayToNextJunction - RailTrackNode was given a destIndex that is below the bounds [1-" + TrackLinks.Length + "]");
+                    DebugRandAddi.Assert(destIndex >= TrackLinks.Length, "RandomAdditions: RelayToNextJunction - RailTrackNode was given a destIndex (" +
+                        destIndex + ") that is above the bounds [1-" + TrackLinks.Length + "] from entry index 0");
+                    /*  // destIndex == 0 can happen due to the way manual steering works, just ignore it for now.
+                    DebugRandAddi.Assert(destIndex < 1, "RandomAdditions: RelayToNextJunction - RailTrackNode was given a destIndex (" +
+                        destIndex + ") that is below the bounds [1-" + TrackLinks.Length + "] from entry index 0");
+                    */
                     int nextIndex = Mathf.Clamp(destIndex, 1, TrackLinks.Length - 1);
                     if (log)
                         DebugRandAddi.Log("RandomAdditions: RelayToNextJunction - final index is " + nextIndex);
@@ -1224,7 +1230,7 @@ namespace RandomAdditions.RailSystem
                 return TrackLinks[targetIndex].NodeTrack != null;
             }
         }
-        private RailTrack RelayToNodeTrackACROSSNode(int targetIndex, out bool LowTrackConnection)
+        private RailTrack RelayToNodeOrLinkTrackACROSSNode(int targetIndex, out bool LowTrackConnection)
         {
             if (TrackLinks[targetIndex].NodeTrack != null)
             {
@@ -1455,7 +1461,7 @@ namespace RandomAdditions.RailSystem
         public int Team = ManPlayer.inst.PlayerTeam;
         public bool CanCallTrains = true;
         public bool Stop = false;
-        public bool OneWay = false;
+        public int OneWay = 0;
         public int MaxConnectionCount = 0;
         public WorldPosition[] LinkCenters;
         public Vector3[] LinkForwards;

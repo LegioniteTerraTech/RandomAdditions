@@ -493,6 +493,15 @@ namespace RandomAdditions.PhysicsTethers
             public TetherPair Connection;
             public bool IsConnected => Connection != null;
 
+            internal Vector3 GetTetherBlockMassPosLocal
+            {
+                get
+                {
+                    var bogieBlock = block;
+                    return bogieBlock.cachedLocalPosition + (bogieBlock.cachedLocalRotation * bogieBlock.CentreOfMass);
+                }
+            }
+
             [SSaveField]
             public bool AutoLink = true;
             [SSaveField]
@@ -843,8 +852,8 @@ namespace RandomAdditions.PhysicsTethers
                     ModuleTechTether MTT = Connection.GetOpposingSide(this);
                     if (MTT && MTT.tank)
                     {
-                        Quaternion main = block.trans.localRotation;
-                        Quaternion other = MTT.block.trans.localRotation;
+                        Quaternion main = block.cachedLocalRotation;
+                        Quaternion other = MTT.block.cachedLocalRotation;
                         offset = Quaternion.LookRotation(Quaternion.FromToRotation(main * Vector3.forward, other * Vector3.back) * Vector3.forward);
                         return MTT;
                     }
@@ -889,6 +898,10 @@ namespace RandomAdditions.PhysicsTethers
                 }
             }
 
+            /// <summary>
+            /// CREATES GARBAGE
+            /// </summary>
+            /// <returns></returns>
             public Dictionary<Tank, Quaternion> GetAllConnectedTethersRelativeRotation()
             {
                 Dictionary<Tank, Quaternion> tethers = new Dictionary<Tank, Quaternion>();

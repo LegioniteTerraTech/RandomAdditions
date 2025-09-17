@@ -23,25 +23,6 @@ namespace RandomAdditions.RailSystem
     [AutoSaveManager]
     public class ManRails : MonoBehaviour, IWorldTreadmill
     {
-        public class NetworkedTrackMessage : MessageBase
-        {
-            public NetworkedTrackMessage() { }
-            public NetworkedTrackMessage(RailTrackNode main, RailTrackNode other, bool connected, bool ignoreIfConnectedAlready)
-            {
-                NodeID = main.NodeID;
-                NodeID2 = other.NodeID;
-                this.connected = connected;
-                this.ignoreIfConnectedAlready = ignoreIfConnectedAlready;
-            }
-
-            public int NodeID;
-            public int NodeID2;
-            public bool connected;
-            public bool ignoreIfConnectedAlready;
-        }
-        private static NetworkHook<NetworkedTrackMessage> netHook = new NetworkHook<NetworkedTrackMessage>(
-            "RandAdd.NetworkedTrackMessage", null, NetMessageType.ToServerOnly);
-
         public class ManRailsLoadData
         {
             public RailNodeJSON[] RailNodeSerials;
@@ -159,6 +140,11 @@ namespace RandomAdditions.RailSystem
         [SSaveField]
         public Dictionary<int, int[]> VisiblesToRailNodes;
 
+        /// <summary>
+        /// Force the other train bogies to go their own way at an intersection
+        /// </summary>
+        public static KeyCode IgnoreLeadBogiePath = KeyCode.V;
+        public static int _snapIgnoreLeadBogiePath = (int)IgnoreLeadBogiePath;
 
         public static List<ModuleRailPoint> AllActiveStations;
         /// <summary> VisibleID, RailTrackNodes</summary>
@@ -201,7 +187,6 @@ namespace RandomAdditions.RailSystem
         internal static void InsureNetHooks()
         {
             netHookStartup.Enable();
-            netHook.Enable();
             netHookJunction.Enable();
             RailTrackNode.netHook.Enable();
         }
@@ -301,6 +286,7 @@ namespace RandomAdditions.RailSystem
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(SemiFirstFixedUpdate), 97);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(SemiLastFixedUpdate), -97);
             MassPatcherRA.harmonyInst.MassPatchAllWithin(typeof(ManRailsPatches), MassPatcherRA.modName);
+            TonyRailsWiki.InitWiki();
 
 
             ManMinimapExt.AddMinimapLayer(typeof(UIMiniMapLayerTrain), RailMapPriority);
@@ -362,7 +348,7 @@ namespace RandomAdditions.RailSystem
                 RailSegmentGround.Init();
                 RailSegmentBeam.Init();
                 InitRailStops();
-                trainAttract = new SpecialAttract.AttractInfo("I Like Trains", 2, null, StartTrainAd, EndTrainAd, true);
+                trainAttract = new SpecialAttract.AttractInfo("I Like Trains", 20000, null, StartTrainAd, EndTrainAd, true);
             }
         }
         public static bool StartTrainAd(ModeAttract __instance)
@@ -593,6 +579,7 @@ namespace RandomAdditions.RailSystem
         }
         public static void OnModeEnd(Mode move)
         {
+            RailSegment.BogeyAttachOperations.Clear();
             PurgeAllMan();
             NodeIDStep = -1;
             TrackIDStep = -1;
@@ -611,6 +598,11 @@ namespace RandomAdditions.RailSystem
                 {
                     item.stopperInst.transform.position += move;
                 }
+            }
+            for (var i = 0; i < RailSegment.BogeyAttachOperations.Count; i++)
+            {
+                var bogie = RailSegment.BogeyAttachOperations.ElementAt(i);
+                RailSegment.BogeyAttachOperations[bogie.Key] = new KeyValuePair<float, Vector3>(bogie.Value.Key, bogie.Value.Value + move);
             }
             Invoke("OnMoveWorldOriginPost", 0.01f);
         }
@@ -2356,7 +2348,7 @@ namespace RandomAdditions.RailSystem
                             GUILayout.Label(selectedTrain.TrainLength.ToString());
                             GUILayout.EndHorizontal();
 
-                            foreach (var item in selectedTrain.MasterGetAllCars())
+                            foreach (var item in selectedTrain.MasterIterateAllCars())
                             {
                                 GUILayout.BeginHorizontal();
                                 GUILayout.FlexibleSpace();

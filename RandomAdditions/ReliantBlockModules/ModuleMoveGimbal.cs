@@ -2,8 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using UnityEngine;
+using RandomAdditions.RailSystem;
+using SafeSaves;
 using TerraTechETCUtil;
+using UnityEngine;
+using static FunctionTree;
+using static RandomAdditions.RailSystem.ManRails;
+using static RandomAdditions.RailSystem.ModuleRailPoint;
 
 public class ModuleMoveGimbal : RandomAdditions.ModuleMoveGimbal { };
 public class MoveGimbal : RandomAdditions.MoveGimbal { };
@@ -36,6 +41,7 @@ namespace RandomAdditions
     /// <summary>
     /// Handles an assigned transform which is rotated to meet a specific heading
     /// </summary>
+    [AutoSaveComponent]
     public class ModuleMoveGimbal : ExtModule, IExtGimbalControl
     {
         private const float updateDelay = 0.5f;
@@ -44,6 +50,14 @@ namespace RandomAdditions
 
         private MoveGimbal[] gimbals;
         private Thruster[] thrusters;
+        private ModuleUIButtons buttonGUI;
+        private static NetworkHook<NetUtil.NetworkedBoolMessage> netHook = new NetworkHook<NetUtil.NetworkedBoolMessage>(
+            "RandAdd.GimbalLock", OnClientSetState, NetMessageType.FromClientToServerThenClients);
+
+        static ModuleMoveGimbal()
+        {
+            netHook.Enable();
+        }
 
         public float DriveControlStrength = 1.0f;
         public IdlePoint IdlePointing = IdlePoint.CabFacing;
@@ -51,6 +65,94 @@ namespace RandomAdditions
         public float RotateRate = 90;
         public bool ForwardsAndBackwards = true;
         public bool RotateZAxis = false;
+        public bool PermitLockRotation = false;
+        public bool DefaultLockRotation = false;
+
+        [SSaveField]
+        public bool lockedRotation = false;
+
+        private static LocExtStringMod LOC_LockRotation = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Lock Rotation" },
+            { LocalisationEnums.Languages.Japanese, "回転をロックする"},
+        });
+        private static LocExtStringMod LOC_UnlockRotation = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
+        {
+            { LocalisationEnums.Languages.US_English, "Unlock Rotation"},
+            { LocalisationEnums.Languages.Japanese, "回転のロックを解除する"},
+        });
+
+        private string ButtonLockStatus()
+        {
+            if (lockedRotation)
+                return LOC_UnlockRotation;
+            else
+                return LOC_LockRotation;
+        }
+        public float ButtonToggleLock(float unused)
+        {
+            SetLock(!lockedRotation);
+            return 0;
+        }
+        public Sprite ButtonGetIconLock()
+        {
+            if (lockedRotation)
+                return UIHelpersExt.GetGUIIcon("GUI_Reset");
+            else
+                return UIHelpersExt.GetGUIIcon("ICON_PAUSE");
+        }
+       
+        /// <summary>
+        /// NETWORK SENDER
+        /// </summary>
+        /// <param name="state"></param>
+        public void SetLock(bool state)
+        {
+            if (ManNetwork.IsNetworked)
+                netHook.TryBroadcast(new NetUtil.NetworkedBoolMessage(block, state));
+            else
+                DoSetLock(state);
+        }
+        private static bool OnClientSetState(NetUtil.NetworkedBoolMessage message, bool isServer)
+        {
+            var block = message.GetBlock();
+            if (block != null)
+            {
+                block.GetComponent<ModuleMoveGimbal>().DoSetLock(message.state);
+                return true;
+            }
+            return false;
+        }
+        private void DoSetLock(bool state)
+        {
+            if (state)
+                ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateUnlock, block.centreOfMassWorld);
+            else
+                ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateOpen, block.centreOfMassWorld);
+            lockedRotation = state;
+            enabled = lockedRotation;
+        }
+
+        public void InsureGUI()
+        {
+            if (buttonGUI == null)
+            {
+                buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Lock Rotation", false);
+                buttonGUI.AddElement(ButtonLockStatus, ButtonToggleLock, ButtonGetIconLock);
+            }
+        }
+        public void ShowGUI()
+        {
+            DebugRandAddi.Log("ShowGUI() - " + Time.time);
+            InsureGUI();
+            buttonGUI.Show();
+        }
+        public void HideGUI()
+        {
+            if (buttonGUI != null)
+                buttonGUI.Hide();
+        }
+
 
         public bool Linear()
         {
@@ -84,11 +186,13 @@ namespace RandomAdditions
                     thrusters = GetComponentsInChildren<Thruster>();
                 }
             }
+            InsureGUI();
         }
 
         public override void OnAttach()
         {
-            enabled = true;
+            enabled = DefaultLockRotation;
+            lockedRotation = DefaultLockRotation;
             foreach (MoveGimbal gimbal in gimbals)
             {
                 gimbal.ResetAim();
@@ -158,6 +262,31 @@ namespace RandomAdditions
                 }
             }
             nextUpdateTime = Time.time + updateDelay;
+        }
+
+
+
+        public void OnTechSnapSerialization(bool Saving, TankPreset.BlockSpec spec, bool tankPresent)
+        {
+            if (!tankPresent)
+                return;
+            //DebugRandAddi.Log("ModuleRailPoint: OnTechSnapSerialization saving: " + Saving);
+            if (Saving)
+            {
+                spec.Store(GetType(), "LR", lockedRotation.ToString());
+                spec.Store(GetType(), "Ro", lockedRotation.ToString());
+            }
+            else
+            {
+                string txt = spec.Retrieve(GetType(), "LR");
+                if (!txt.NullOrEmpty())
+                {
+                    if (Boolean.TryParse(txt, out bool state))
+                        lockedRotation = state;
+                    else
+                        lockedRotation = DefaultLockRotation;
+                }
+            }
         }
     }
 
@@ -237,7 +366,7 @@ namespace RandomAdditions
             {
                 Vector3 rot = startRotCab * controlState.InputRotation;
                 Vector3 offCenter = Quaternion.Euler(rot.x, rot.y,  rot.z) * tankCOMLocal;
-                forwardsAim += (tankCOMLocal - offCenter).normalized;
+                forwardsAim += tankCOMLocal - offCenter;
             }
 
             if (MMG.RotateZAxis)

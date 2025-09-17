@@ -54,14 +54,19 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
     }
 
 
+
     private const BindingFlags spamFlags = BindingFlags.NonPublic | BindingFlags.Instance;
     private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_ChunkNames", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_ChunkDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly FieldInfo ResData = typeof(ResourceManager).GetField("m_DefinitionTable", spamFlags);
     private static readonly FieldInfo ResRare = typeof(ResourcePickup).GetField("m_ChunkRarity", spamFlags);
     private static readonly MethodInfo poolStart2 = typeof(ResourcePickup).GetMethod("OnPool", spamFlags);
+
+    private static RecipeTable.RecipeList foundryRecipes;
+    private static List<RecipeTable.Recipe> foundryDirect => foundryRecipes.m_Recipes;
     public static void RenewOldChunks()
     {
+        InsureFoundryRecipes();
         DebugRandAddi.Log("FindOldChunks - Renewing unused Chunks...");
         int stepper = 420;
         Dictionary<int, int> vars = (Dictionary<int, int>)ResLook.GetValue(null);
@@ -95,6 +100,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         def.saleValue = 3 * ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             3 * ChunkPrice(ChunkTypes.TitaniaIngot);
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk, 
+                                (int)ChunkTypes.PlumbiaIngot), 3),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.TitaniaIngot), 3),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                     case ChunkTypes._deprecated_ThermiaIngot:
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Thermia Ingot");
@@ -104,6 +117,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             5 * ChunkPrice(ChunkTypes.OlasticBrick);
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.PlumbiaIngot), 1),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.OlasticBrick), 5),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                     case ChunkTypes._deprecated_FulmeniaIngot:
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Fulmenia Ingot");
@@ -113,6 +134,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             5 * ChunkPrice(ChunkTypes.RodiusCapsule);
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.PlumbiaIngot), 1),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.RodiusCapsule), 5),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                     case ChunkTypes._deprecated_FunderiaIngot:
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Funderia Ingot");
@@ -122,6 +151,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             5 * ChunkPrice(ChunkTypes.IgnianCrystal);
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.PlumbiaIngot), 1),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.IgnianCrystal), 5),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                     case ChunkTypes._deprecated_PenniaIngot:
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Pennia Ingot");
@@ -131,6 +168,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             5 * ChunkPrice(ChunkTypes.CelestianCrystal);
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.PlumbiaIngot), 1),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.CelestianCrystal), 5),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                     case ChunkTypes._deprecated_BosoniaIngot:
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Bosonia Ingot");
@@ -140,6 +185,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         def.saleValue = ChunkPrice(ChunkTypes.PlumbiaIngot) +
                             5 * ChunkPrice(ChunkTypes.ErudianCrystal);
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.PlumbiaIngot), 1),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.ErudianCrystal), 5),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                     case ChunkTypes._deprecated_ChristmasPresent1:
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Present");
@@ -186,7 +239,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "An extremely rare ore, \"Cardiacite\" is used in the creation of even greater intelligences.\n" +
                             "Why it has self-repairing properties like Luxite, but unlike it's yellow fellow, it can " +
-                            "self-replicate!  \nIf given the right substances and conditions that is.");
+                            "self-replicate!  \nIf given the right substances and conditions that is.\n\n" +
+                            "(WIP) Can be grown with the Lab block.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Raw);
                         if (def.saleValue == 0)
                             def.saleValue = 327;
@@ -206,7 +260,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                             "\nAffectionately known as \"Plasmite\" amongst many nations out there, this ore posesses " +
                             "impressive quantum energy funneling properties and is very volatile in nature.\n" +
                             "Rumors say of a planet made almost entirely of it lie somewhere in the cosmos, waiting to be plundered " +
-                            "(or 'poloded).");
+                            "(or 'poloded).\n\n" +
+                            "(WIP) Needs to be collected in a Pillars Biome with a Pillar Cracker");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Raw);
                         if (def.saleValue == 0)
                             def.saleValue = 291;
@@ -226,7 +281,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "It is prized for it's powerful 3D detection and space-time bending properties." +
                             "\nThis originates from vibrant seas of <b>Adaranth</b>, a distant planet several parsecs away from the Off-World." +
-                            "\nMany Kingdoms reside upon the oceanic planet and prosper greatly.");
+                            "\nMany Kingdoms reside upon the oceanic planet and prosper greatly.\n\n" +
+                            "(WIP) Can be found deep in the ocean with Ocean Mode enabled with Water Mod + Lava.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Raw);
                         if (def.saleValue == 0)
                             def.saleValue = 4321;
@@ -247,7 +303,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Extremely tough and durable, this stellar metal ore is no ordinary Earth metal.\n" +
                             "It binds effortlessly to other metals, and becomes even stronger in the process.\n" +
-                            "It goes by a great many names.  Some nations call it \"Tessellium\", others call it Bulk Compound.");
+                            "It goes by a great many names.  Some nations call it \"Tessellium\", others call it Bulk Compound.\n\n" +
+                            "(WIP) Can be found high in the sky where Spaceships can spawn.");
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Raw);
                         if (def.saleValue == 0)
                             def.saleValue = 103636;
@@ -274,13 +331,82 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         ManSpawn.inst.VisibleTypeInfo.SetDescriptor(hash, ChunkCategory.Component);
                         if (def.saleValue == 0)
                             def.saleValue = 4209001;
+                        if (!RecipeExistsInFoundry((ChunkTypes)stepper))
+                            AddRecipeFoundryFast(new RecipeTable.Recipe.ItemSpec[]
+                            {
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.PlumbiaIngot), 32),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes.TitaniaIngot), 8),
+                                new RecipeTable.Recipe.ItemSpec( new ItemTypeInfo(ObjectTypes.Chunk,
+                                (int)ChunkTypes._deprecated_SmallMetalIngot), 4),
+                            }, new ItemTypeInfo(ObjectTypes.Chunk, stepper));
                         break;
                 }
             }
             stepper++;
         }
+        AddRecipesForOldChunks();
     }
 
+    private static void InsureFoundryRecipes()
+    {
+        if (foundryRecipes == null)
+        {
+            foundryRecipes = new RecipeTable.RecipeList()
+            {
+                m_Name = "foundry",
+                m_Recipes = new List<RecipeTable.Recipe>(),
+                m_Root = false,
+                m_UseForChunkCategoryCalculation = false,
+                m_UseForMoneyRecipeCalculation = false,
+                m_ValueAddFactor = 3,
+            };
+        }
+    }
+
+    private static readonly FieldInfo recData = typeof(RecipeManager).GetField("m_ModdedRecipes", spamFlags);
+    private static Dictionary<string, RecipeTable.RecipeList> modRecipies;
+    private static void AddRecipesForOldChunks()
+    {
+        if (modRecipies == null)
+        {
+            modRecipies = (Dictionary<string, RecipeTable.RecipeList>)recData.GetValue(RecipeManager.inst);
+        }
+        if (modRecipies != null)
+        {
+            AddRecipeListDemo(foundryRecipes);
+        }
+    }
+    private static bool RecipeExistsInFoundry(ChunkTypes outputChunk)
+    {
+        int search = (int)outputChunk;
+        return foundryDirect.Exists(x => x.m_OutputItems.First().m_Item.ItemType == search);
+    }
+    private static RecipeTable.Recipe AddRecipeFoundryFast(RecipeTable.Recipe.ItemSpec[] inputs, ItemTypeInfo outputChunk)
+    {
+        return new RecipeTable.Recipe()
+        {
+            m_EnergyOutput = 0f,
+            m_BuildTimeSeconds = 3f,
+            m_CalcState = RecipeTable.Recipe.CalcState.NeedUpdate,
+            m_EnergyType = TechEnergy.EnergyType.Electric,
+            m_MoneyOutput = 0,
+            m_OutputType = RecipeTable.Recipe.OutputType.Items,
+            m_InputItems = inputs,
+            m_OutputItems = new RecipeTable.Recipe.ItemSpec[]
+            {
+                new RecipeTable.Recipe.ItemSpec(outputChunk, 3),
+            },
+        };
+    }
+    private static void AddRecipeListDemo(RecipeTable.RecipeList list)
+    {
+        if (modRecipies == null)
+            modRecipies = (Dictionary<string, RecipeTable.RecipeList>)recData.GetValue(ResourceManager.inst);
+        if (modRecipies != null && !modRecipies.ContainsKey(list.m_Name))
+            modRecipies.Add(list.m_Name, list);
+    }
 
     public void FindOldChunks()
     {

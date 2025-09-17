@@ -47,13 +47,13 @@ namespace RandomAdditions
             tank.TankRecycledEvent.Subscribe(OnRecycled);
             enabled = true;
             InsureSolverIterations();
-            DebugRandAddi.Log(tank.name + " - init RandomTank with " + damagedBlocks.Count + " damaged blocks.");
+            DebugRandAddi.Info(tank.name + " - init RandomTank with " + damagedBlocks.Count + " damaged blocks.");
         }
         public void OnRecycled(Tank tank)
         {
             if (tank == this.tank)
             {
-                DebugRandAddi.Log(tank.name + " - OnRecycled RandomTank");
+                //DebugRandAddi.Log(tank.name + " - OnRecycled RandomTank");
                 CheckDamaged();
                 //InvokeHelper.InvokeSingle(CheckDamaged, 0.1f);
                 tank.TankRecycledEvent.Unsubscribe(OnRecycled);
@@ -78,7 +78,7 @@ namespace RandomAdditions
             {
                 if (damagedBlocks.Add(damagedBlock))
                 {
-                    DebugRandAddi.Log(tank.name + " - New damaged block " + damagedBlock.name);
+                    //DebugRandAddi.Log(tank.name + " - New damaged block " + damagedBlock.name);
                 }
             }
         }
@@ -87,7 +87,7 @@ namespace RandomAdditions
             if (isRecycled)
             {
                 isRecycled = false;
-                DebugRandAddi.Log(tank.name + " - OnFirstAttach RandomTank");
+                //DebugRandAddi.Log(tank.name + " - OnFirstAttach RandomTank");
                 tank.TankRecycledEvent.Subscribe(OnRecycled);
                 InvokeHelper.InvokeSingle(CheckDamaged, 0f);
             }
@@ -95,7 +95,7 @@ namespace RandomAdditions
             {
                 if (!damagedBlocks.Contains(newBlock))
                 {
-                    DebugRandAddi.Log(tank.name + " - Is new damaged block!");
+                    //DebugRandAddi.Log(tank.name + " - Is new damaged block!");
                     damagedBlocks.Add(newBlock);
                 }
             }
@@ -130,7 +130,7 @@ namespace RandomAdditions
                     else
                         damagedBlocks.Remove(caseB);
                 }
-                DebugRandAddi.Log(tank.name + " - There are approx " + damagedBlocks.Count + " damaged blocks left");
+                //DebugRandAddi.Log(tank.name + " - There are approx " + damagedBlocks.Count + " damaged blocks left");
             }
         }
 
@@ -158,9 +158,7 @@ namespace RandomAdditions
             var rbody = GetComponent<Rigidbody>();
             if (rbody && rbody.solverIterations != Optimax.ColTankIterations)
             {
-                DebugRandAddi.Log("Rbody for tank altered - [" + 
-                    rbody.solverIterations + " -> " + Optimax.ColTankIterations + "], [" +
-                    rbody.solverVelocityIterations + " -> "+ Optimax.ColTankIterations + "]");
+                //DebugRandAddi.Log("Rbody for tank altered - [" + rbody.solverIterations + " -> " + Optimax.ColTankIterations + "], [" + rbody.solverVelocityIterations + " -> "+ Optimax.ColTankIterations + "]");
                 rbody.solverIterations = Optimax.ColTankIterations;
                 rbody.solverVelocityIterations = Optimax.VelTankIterations;
             }

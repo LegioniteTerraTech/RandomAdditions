@@ -226,11 +226,15 @@
     <Compile Include="CraftingExt.cs" />
     <Compile Include="CursorChanger.cs" />
     <Compile Include="CustomChunk.cs" />
+    <Compile Include="CustomRecipe.cs" />
     <Compile Include="CustomScenery.cs" />
+    <Compile Include="CustomSceneryMaker.cs" />
     <Compile Include="GeneralComponents\AOEField.cs" />
     <Compile Include="Audio\SFXAddition.cs" />
     <Compile Include="GlobalChanges\RandomWorld.cs" />
     <Compile Include="LocHelper.cs" />
+    <Compile Include="TonyRailsWiki.cs" />
+    <None Include="ManModRecipes.cs" />
     <Compile Include="ManModScenery.cs" />
     <Compile Include="ManModChunks.cs" />
     <Compile Include="GlobalChanges\ManPhysicsExt.cs" />
@@ -248,6 +252,7 @@
     <Compile Include="MultiBlockModules\RailSystem\RailType.cs" />
     <Compile Include="MultiBlockModules\RailSystem\RailTypeStats.cs" />
     <Compile Include="MultiBlockModules\RailSystem\UnstableTrack.cs" />
+    <Compile Include="NetUtil.cs" />
     <Compile Include="Optimax.cs" />
     <Compile Include="PatchBatch\BugReportPatches.cs" />
     <Compile Include="PatchBatch\NuterraPatches.cs" />
@@ -294,6 +299,7 @@
     <None Include="SceneryModules\SceneryWeaponGun.cs" />
     <Compile Include="StandaloneBlockModules\ModuleBuoy.cs" />
     <Compile Include="StandaloneBlockModules\ExtModuleClickable.cs" />
+    <Compile Include="StandaloneBlockModules\ModuleEnergyMiner.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
     <Compile Include="StandaloneBlockModules\ModuleJumpDrive.cs" />

@@ -7,6 +7,7 @@ using System.Reflection;
 using HarmonyLib;
 using TerraTechETCUtil;
 using UnityEngine;
+using static WaterMod.SurfacePool;
 
 namespace RandomAdditions
 {
@@ -19,7 +20,9 @@ namespace RandomAdditions
         {
             public string target;
             public Stopwatch timer;
-            public long total;
+            public long totalCycle;
+            public long totalPeak;
+            public long lastPeakSteps;
         }
         internal const int ColDefaultIterations = 1;
         internal const int VelDefaultIterations = 1;
@@ -36,6 +39,8 @@ namespace RandomAdditions
             new Dictionary<int, Dictionary<Type, DurationTracker>>();
         private static Dictionary<int, Dictionary<Type, DurationTracker>> FixedDeltaTime =
             new Dictionary<int, Dictionary<Type, DurationTracker>>();
+        private static Dictionary<int, Dictionary<Type, DurationTracker>> LateDeltaTime =
+            new Dictionary<int, Dictionary<Type, DurationTracker>>();
         private static void Init()
         {
             if (inst)
@@ -44,17 +49,26 @@ namespace RandomAdditions
             ManUpdate.inst.AddAction(ManUpdate.Type.Update, ManUpdate.Order.Last, () => { EndTrackingUpdate0<ManUpdate>(); }, -90010);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, OnStaticFixedUpdate, 90010);
             ManUpdate.inst.AddAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, () => { EndTrackingFixedUpdate0<ManUpdate>(); }, -90010);
+            ManUpdate.inst.AddAction(ManUpdate.Type.LateUpdate, ManUpdate.Order.First, OnStaticLateUpdate, 90010);
+            ManUpdate.inst.AddAction(ManUpdate.Type.LateUpdate, ManUpdate.Order.Last, () => { EndTrackingLateUpdate0<ManUpdate>(); }, -90010);
             inst = new GameObject("Optimaxxer").AddComponent<Optimax>();
             BeginTrackingUpdate0<ManUpdate>();
             BeginTrackingFixedUpdate0<ManUpdate>();
             TrackTypeUpdate<MB_Update>("Update");
             TrackTypeFixed<MB_FixedUpdate>("FixedUpdate");
+            TrackTypeLate<MB_LateUpdate>("LateUpdate");
+            TrackTypeUpdate<ManMods>("Update");
+            TrackTypeFixed<ManMods>("FixedUpdate");
+            TrackTypeUpdate<ManTileLoader>("Update");
+            TrackTypeFixed<ManMods>("FixedUpdate");
             TrackTypeUpdate<Tank>("Update");
             TrackTypeFixed<Tank>("FixedUpdate");
             TrackTypeUpdate<HoverJet>("OnUpdate");
             TrackTypeFixed<HoverJet>("OnFixedUpdate");
             TrackTypeUpdate<TechWeapon>("OnUpdate");
             TrackTypeUpdate<TechVision>("GetFirstVisibleTechIsEnemy");
+            TrackTypeFixed<ManWheels>("OnFirstFixedUpdate");
+            TrackTypeFixed<ManWheels>("OnLastFixedUpdate");
             /*
             TrackTypeFixed(typeof(Tank), "OnCollisionEnter");
             TrackTypeFixed(typeof(Tank), "OnCollisionStay");
@@ -101,13 +115,17 @@ namespace RandomAdditions
             GUILayout.BeginHorizontal();
             GUILayout.Label("Update", AltUI.LabelBlackTitle);
             GUILayout.FlexibleSpace();
-            GUILayout.Label(Time.deltaTime.ToString("0.000"));
-            GUILayout.Label("|", AltUI.LabelBlue);
+            //GUILayout.Label(Time.deltaTime.ToString("0.000"));
             long combined = 0;
             foreach (var item in DeltaTime)
                 foreach (var item2 in item.Value)
                     combined += item2.Value.timer.ElapsedMilliseconds;
-            GUILayout.Label((combined / (Time.deltaTime * 1000)).ToString("p"));
+            GUILayout.Label((combined / 1000f).ToString("0.000"));
+            AltUI.Tooltip.GUITooltip("Total time in seconds for all tracked Update()");
+            GUILayout.Label("|", AltUI.LabelBlue);
+            GUILayout.Label((combined / (Time.deltaTime * 1000f)).ToString("p"));
+            AltUI.Tooltip.GUITooltip("Total tracked time / reported Unity Time.deltaTime.  Time.deltaTime: " + 
+                Time.deltaTime.ToString("0.000"));
             GUILayout.EndHorizontal();
             foreach (var item in DeltaTime)
                 foreach (var item2 in item.Value)
@@ -116,19 +134,28 @@ namespace RandomAdditions
                     GUILayout.Label(item2.Key.Name);
                     GUILayout.Label(item2.Value.target);
                     GUILayout.FlexibleSpace();
-                    GUILayout.Label((item2.Value.total / 1000f).ToString("0.000"));
+                    GUILayout.Label((item2.Value.totalPeak / 1000f).ToString("0.000"));
+                    AltUI.Tooltip.GUITooltip("Peak in the last 80 calls");
+                    GUILayout.Label("|");
+                    GUILayout.Label((item2.Value.totalCycle / 1000f).ToString("0.000"));
+                    AltUI.Tooltip.GUITooltip("This cycle");
                     GUILayout.EndHorizontal();
                 }
+
             GUILayout.BeginHorizontal();
             GUILayout.Label("Fixed", AltUI.LabelBlackTitle);
             GUILayout.FlexibleSpace();
-            GUILayout.Label(Time.fixedDeltaTime.ToString("0.000"));
-            GUILayout.Label("|", AltUI.LabelBlue);
+            //GUILayout.Label(Time.fixedDeltaTime.ToString("0.000"));
             long combined2 = 0;
             foreach (var item in FixedDeltaTime)
                 foreach (var item2 in item.Value)
                     combined2 += item2.Value.timer.ElapsedMilliseconds;
-            GUILayout.Label((combined2 / (Time.fixedDeltaTime * 1000)).ToString("p"));
+            GUILayout.Label((combined2 / 1000f).ToString("0.000"));
+            AltUI.Tooltip.GUITooltip("Total time in seconds for all tracked FixedUpdate()");
+            GUILayout.Label("|", AltUI.LabelBlue);
+            GUILayout.Label((combined2 / (Time.fixedDeltaTime * 1000f)).ToString("p"));
+            AltUI.Tooltip.GUITooltip("Total tracked time / reported Unity Time.fixedDeltaTime.  Time.fixedDeltaTime: " +
+                Time.fixedDeltaTime.ToString("0.000"));
             GUILayout.EndHorizontal();
             foreach (var item in FixedDeltaTime)
                 foreach (var item2 in item.Value)
@@ -137,7 +164,39 @@ namespace RandomAdditions
                     GUILayout.Label(item2.Key.Name);
                     GUILayout.Label(item2.Value.target);
                     GUILayout.FlexibleSpace();
-                    GUILayout.Label((item2.Value.total / 1000f).ToString("0.000"));
+                    GUILayout.Label((item2.Value.totalPeak / 1000f).ToString("0.000"));
+                    AltUI.Tooltip.GUITooltip("Peak in the last 80 calls");
+                    GUILayout.Label("|");
+                    GUILayout.Label((item2.Value.totalCycle / 1000f).ToString("0.000"));
+                    AltUI.Tooltip.GUITooltip("This cycle");
+                    GUILayout.EndHorizontal();
+                }
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Late", AltUI.LabelBlackTitle);
+            GUILayout.FlexibleSpace();
+            long combined3 = 0;
+            foreach (var item in LateDeltaTime)
+                foreach (var item2 in item.Value)
+                    combined3 += item2.Value.timer.ElapsedMilliseconds;
+            GUILayout.Label((combined3 / 1000f).ToString("0.000"));
+            AltUI.Tooltip.GUITooltip("Total time in seconds for all tracked LateUpdate()");
+            GUILayout.Label("|", AltUI.LabelBlue);
+            GUILayout.Label("???");
+            AltUI.Tooltip.GUITooltip("Unity does not report lateDeltaTime.");
+            GUILayout.EndHorizontal();
+            foreach (var item in LateDeltaTime)
+                foreach (var item2 in item.Value)
+                {
+                    GUILayout.BeginHorizontal(AltUI.TextfieldBlack);
+                    GUILayout.Label(item2.Key.Name);
+                    GUILayout.Label(item2.Value.target);
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label((item2.Value.totalPeak / 1000f).ToString("0.000"));
+                    AltUI.Tooltip.GUITooltip("Peak in the last 80 calls");
+                    GUILayout.Label("|");
+                    GUILayout.Label((item2.Value.totalCycle / 1000f).ToString("0.000"));
+                    AltUI.Tooltip.GUITooltip("This cycle");
                     GUILayout.EndHorizontal();
                 }
             if (GUILayout.Button("UPDATE COLLIDERS"))
@@ -173,7 +232,7 @@ namespace RandomAdditions
                 {
                     target = "Base",
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
                 };
                 inline.Add(type, watch);
             }
@@ -200,7 +259,7 @@ namespace RandomAdditions
                 {
                     target = "Base",
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
                 };
                 inline.Add(type, watch);
             }
@@ -229,7 +288,7 @@ namespace RandomAdditions
                 {
                     target = "Base",
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
                 };
                 inline.Add(type, watch);
             }
@@ -256,7 +315,64 @@ namespace RandomAdditions
                 {
                     target = "Base",
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
+                };
+                inline.Add(type, watch);
+            }
+            watch.timer.Stop();
+        }
+
+
+        // LateDeltaTime
+        public static void BeginTrackingLateUpdate0<T>() => BeginTrackingLateUpdate_Internal<T>(0);
+        public static void BeginTrackingLateUpdate1<T>() => BeginTrackingLateUpdate_Internal<T>(1);
+        public static void BeginTrackingLateUpdate2<T>() => BeginTrackingLateUpdate_Internal<T>(2);
+        public static void BeginTrackingLateUpdate3<T>() => BeginTrackingLateUpdate_Internal<T>(3);
+        public static void BeginTrackingLateUpdate4<T>() => BeginTrackingLateUpdate_Internal<T>(4);
+        public static void BeginTrackingLateUpdate5<T>() => BeginTrackingLateUpdate_Internal<T>(5);
+        private static void BeginTrackingLateUpdate_Internal<T>(int index)
+        {
+            Type type = typeof(T);
+            DurationTracker watch;
+            if (!LateDeltaTime.TryGetValue(index, out var inline))
+            {
+                inline = new Dictionary<Type, DurationTracker>();
+                LateDeltaTime.Add(index, inline);
+            }
+            if (!inline.TryGetValue(type, out watch))
+            {
+                watch = new DurationTracker
+                {
+                    target = "Base",
+                    timer = new Stopwatch(),
+                    totalCycle = 0,
+                };
+                inline.Add(type, watch);
+            }
+            watch.timer.Start();
+        }
+        public static void EndTrackingLateUpdate0<T>() => EndTrackingLateUpdate_Internal<T>(0);
+        public static void EndTrackingLateUpdate1<T>() => EndTrackingLateUpdate_Internal<T>(1);
+        public static void EndTrackingLateUpdate2<T>() => EndTrackingLateUpdate_Internal<T>(2);
+        public static void EndTrackingLateUpdate3<T>() => EndTrackingLateUpdate_Internal<T>(3);
+        public static void EndTrackingLateUpdate4<T>() => EndTrackingLateUpdate_Internal<T>(4);
+        public static void EndTrackingLateUpdate5<T>() => EndTrackingLateUpdate_Internal<T>(5);
+        private static void EndTrackingLateUpdate_Internal<T>(int index)
+        {
+            Type type = typeof(T);
+            DurationTracker watch;
+            if (!LateDeltaTime.TryGetValue(index, out var inline))
+            {
+                inline = new Dictionary<Type, DurationTracker>();
+                LateDeltaTime.Add(index, inline);
+            }
+            if (!inline.TryGetValue(type, out watch))
+            {
+                watch = new DurationTracker
+                {
+                    target = "Base",
+                    timer = new Stopwatch(),
+                    totalCycle = 0,
                 };
                 inline.Add(type, watch);
             }
@@ -275,10 +391,27 @@ namespace RandomAdditions
                 var inline = DeltaTime.ElementAt(i).Value;
                 for (int j = 0; j < inline.Count; j++)
                 {
-                    var item = inline.ElementAt(i);
+                    var item = inline.ElementAt(j);
                     var secs = item.Value.timer.ElapsedMilliseconds;
                     if (secs > 0)
-                        item.Value.total = secs;
+                        item.Value.totalCycle = secs;
+                    if (item.Value.totalCycle > item.Value.totalPeak)
+                    {
+                        item.Value.totalPeak = item.Value.totalCycle;
+                        item.Value.lastPeakSteps = 80;
+                    }
+                    else
+                    {
+                        if (item.Value.lastPeakSteps > 0)
+                        {
+                            item.Value.lastPeakSteps = item.Value.lastPeakSteps - 1;
+                            if (item.Value.lastPeakSteps <= 0)
+                            {
+                                item.Value.totalPeak = item.Value.totalCycle;
+                                item.Value.lastPeakSteps = 0;
+                            }
+                        }
+                    }
                     item.Value.timer.Reset();
                 }
             }
@@ -295,11 +428,63 @@ namespace RandomAdditions
                     var item = inline.ElementAt(i);
                     var secs = item.Value.timer.ElapsedMilliseconds;
                     if (secs > 0)
-                        item.Value.total = secs;
+                        item.Value.totalCycle = secs;
+                    if (item.Value.totalCycle > item.Value.totalPeak)
+                    {
+                        item.Value.totalPeak = item.Value.totalCycle;
+                        item.Value.lastPeakSteps = 80;
+                    }
+                    else
+                    {
+                        if (item.Value.lastPeakSteps > 0)
+                        {
+                            item.Value.lastPeakSteps = item.Value.lastPeakSteps - 1;
+                            if (item.Value.lastPeakSteps <= 0)
+                            {
+                                item.Value.totalPeak = item.Value.totalCycle;
+                                item.Value.lastPeakSteps = 0;
+                            }
+                        }
+                    }
                     item.Value.timer.Reset();
                 }
             }
             BeginTrackingFixedUpdate0<ManUpdate>();
+        }
+
+        public static void OnStaticLateUpdate()
+        {
+            for (int i = 0; i < LateDeltaTime.Count; i++)
+            {
+                var inline = LateDeltaTime.ElementAt(i).Value;
+                for (int j = 0; j < inline.Count; j++)
+                {
+                    var item = inline.ElementAt(i);
+                    var secs = item.Value.timer.ElapsedMilliseconds;
+                    if (secs > 0)
+                        item.Value.totalCycle = secs;
+                    if (item.Value.totalCycle > item.Value.totalPeak)
+                    {
+                        item.Value.totalPeak = item.Value.totalCycle;
+                        item.Value.lastPeakSteps = 80;
+                    }
+                    else
+                    {
+                        if (item.Value.lastPeakSteps > 0)
+                        {
+                            item.Value.lastPeakSteps = item.Value.lastPeakSteps - 1;
+                            if (item.Value.lastPeakSteps <= 0)
+                            {
+                                item.Value.totalPeak = item.Value.totalCycle;
+                                item.Value.lastPeakSteps = 0;
+                            }
+                        }
+                    }
+
+                    item.Value.timer.Reset();
+                }
+            }
+            BeginTrackingLateUpdate0<ManUpdate>();
         }
 
         public static void UpdateColliders()
@@ -348,7 +533,7 @@ namespace RandomAdditions
                 {
                     target = targetFunc,
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
                     new HarmonyMethod(AccessTools.Method(typeof(Optimax), "BeginTrackingUpdate" + depth.ToString(), null, new Type[] { adder })),
@@ -406,7 +591,7 @@ namespace RandomAdditions
                 {
                     target = targetFunc,
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
                     new HarmonyMethod(AccessTools.Method(typeof(Optimax), "BeginTrackingUpdate" + depth.ToString(), null, new Type[] { adder })),
@@ -451,7 +636,7 @@ namespace RandomAdditions
                 {
                     target = targetFunc,
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
                     new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
@@ -475,7 +660,52 @@ namespace RandomAdditions
                 {
                     target = targetFunc,
                     timer = new Stopwatch(),
-                    total = 0,
+                    totalCycle = 0,
+                });
+                KickStart.harmonyInstance.Patch(target,
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingUpdate" + depth.ToString(), null, new Type[] { adder })));
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log(KickStart.ModName + ": Failed to handle patch of " + ToPatch.Name + " for function - " + targetFunc + " - " + e);
+            }
+        }
+        public static void TrackTypeLate<T>(string targetFunc)
+        {
+            Type ToPatch = typeof(T);
+            try
+            {
+                MethodInfo target = AccessTools.Method(ToPatch, targetFunc);
+                Type adder = ToPatch;
+                int depth = 0;
+                if (adder.IsAbstract)
+                {
+                    for (int step = 0; step < 6; step++)
+                    {
+                        adder = fillers[step];
+                        depth = 0;
+                        for (; depth < 6; depth++)
+                        {
+                            if (!DeltaTime.TryGetValue(depth, out var next) || !next.ContainsKey(ToPatch))
+                                goto skipper;
+                        }
+                    }
+                    DebugRandAddi.Log(KickStart.ModName + ": Failed to handle patch of " + ToPatch.Name + " for function - " + targetFunc +
+                        " - no more static handles could be created");
+                    return;
+                skipper: { }
+                }
+                else
+                {
+                    while (DeltaTime.TryGetValue(depth, out var next) && next.ContainsKey(ToPatch))
+                        depth++;
+                }
+                LateDeltaTime.AddInlined(depth, adder, new DurationTracker
+                {
+                    target = targetFunc,
+                    timer = new Stopwatch(),
+                    totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
                     new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),

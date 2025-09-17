@@ -1,9 +1,10 @@
-﻿using RandomAdditions.RailSystem;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System;
+using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 using UnityEngine;
+using static WaterMod.SurfacePool;
 
 public class ModuleRailBogie : RandomAdditions.ModuleRailBogie { };
 namespace RandomAdditions
@@ -47,6 +48,14 @@ namespace RandomAdditions
         public RailBogie FirstBogie => HierachyBogies.GetFirstBogie();
         public bool BogieGrounded => HierachyBogies.GetEnumerator().Any(x => x.BogieGrounded);
 
+        internal Vector3 GetBogieBlockMassPosLocal
+        {
+            get
+            {
+                var bogieBlock = block;
+                return bogieBlock.cachedLocalPosition + (bogieBlock.cachedLocalRotation * bogieBlock.CentreOfMass);
+            }
+        }
 
 
         // Rail System
@@ -447,6 +456,15 @@ namespace RandomAdditions
             return HierachyBogies.GetTurnSeverity();
         }
         /// <summary>
+        /// Place the rail bogeys
+        /// </summary>
+        internal bool PrePreFixedUpdate()
+        {   // Apply bogey positioning
+            HierachyBogies.PrePreFixedUpdate();
+            return AnyBogieRailLocked;
+        }
+
+        /// <summary>
         /// Update the positioning of the rail bogeys
         /// </summary>
         internal bool PreFixedUpdate()
@@ -682,6 +700,7 @@ namespace RandomAdditions
             internal abstract RailBogie GetLastBogie();
             internal abstract void CollectAllBogies(ICollection<RailBogie> bogies);
             internal abstract void UncollectAllBogies(ICollection<RailBogie> bogies);
+            internal abstract void CollectAllBogiesRailLocked(ICollection<RailBogie> bogies);
             internal abstract bool AnyBogiesNotAirtimed();
             internal abstract bool AnyBogiesRailLock();
             internal abstract float GetTurnSeverity();
@@ -691,7 +710,11 @@ namespace RandomAdditions
             internal abstract void DerailAll();
 
             /// <summary>
-            /// Update the positioning of the rail bogeys
+            /// Set the positioning and attachmemnt of the rail bogeys
+            /// </summary>
+            internal abstract void PrePreFixedUpdate();
+            /// <summary>
+            /// Finely adjust and position the bogeys
             /// </summary>
             internal abstract void PreFixedUpdate();
             /// <summary>
@@ -746,6 +769,11 @@ namespace RandomAdditions
                 fwd.UncollectAllBogies(bogies);
                 bwd.UncollectAllBogies(bogies);
             }
+            internal override void CollectAllBogiesRailLocked(ICollection<RailBogie> bogies)
+            { 
+                fwd.CollectAllBogiesRailLocked(bogies);
+                bwd.CollectAllBogiesRailLocked(bogies);
+            }
             internal override bool AnyBogiesNotAirtimed() => fwd.AnyBogiesNotAirtimed() || bwd.AnyBogiesNotAirtimed();
             internal override bool AnyBogiesRailLock()
             {
@@ -773,8 +801,13 @@ namespace RandomAdditions
                 bwd.DerailAll();
             }
 
-            internal override void PreFixedUpdate()
+            internal override void PrePreFixedUpdate()
             {   // Apply bogies positioning
+                fwd.PrePreFixedUpdate();
+                bwd.PrePreFixedUpdate();
+            }
+            internal override void PreFixedUpdate()
+            {   // Adjust bogies positioning
                 fwd.PreFixedUpdate();
                 bwd.PreFixedUpdate();
             }
@@ -818,6 +851,11 @@ namespace RandomAdditions
             internal override void UncollectAllBogies(ICollection<RailBogie> bogies)
             {
                 bogies.Remove(this);
+            }
+            internal override void CollectAllBogiesRailLocked(ICollection<RailBogie> bogies)
+            { 
+                if (railLocked)
+                    bogies.Add(this);
             }
 
             internal override bool AnyBogiesNotAirtimed() => !airtimed && CurrentSegment;
@@ -883,6 +921,7 @@ namespace RandomAdditions
             internal bool FlipBogie = false;
             internal bool IsCenterBogie = false;
 
+            internal Vector3 GetBogieBlockMassPosLocal => main.GetBogieBlockMassPosLocal;
             internal int CurrentSegmentIndex => CurrentSegment ? CurrentSegment.SegIndex : -1;
 
             private float velocityForwards = 0;
@@ -905,18 +944,25 @@ namespace RandomAdditions
             private float BogieRescale = 1;
 
             internal Vector3 driveDirection => main.driveDirection;
-            /// <summary>
-            /// Update the positioning of the rail bogeys
-            /// </summary>
-            internal override void PreFixedUpdate()
+
+            internal override void PrePreFixedUpdate()
             {
                 if (CurrentSegment)
                 {   // Apply bogey positioning
                     bogiePhysicsNormal = CurrentSegment.UpdateBogeySetPositioning(this, BogieRemote, velocityForwards);
-                    if (FlipBogie)
-                        BogieRemote.position -= BogieRemote.rotation * Vector3.left * bogieHorizontalDrift;
-                    else
-                        BogieRemote.position += BogieRemote.rotation * Vector3.left * bogieHorizontalDrift;
+                }
+            }
+            internal override void PreFixedUpdate()
+            {
+                if (CurrentSegment)
+                {   // Apply bogey positioning
+                    if (railLocked)
+                    {
+                        if (FlipBogie)
+                            BogieRemote.position -= BogieRemote.rotation * Vector3.left * bogieHorizontalDrift;
+                        else
+                            BogieRemote.position += BogieRemote.rotation * Vector3.left * bogieHorizontalDrift;
+                    }
 
                     bogieOffset = BogieCenterOffset - BogieRemote.position;
                     Vector3 bogeyFollowForce;
@@ -1005,16 +1051,18 @@ namespace RandomAdditions
                         */
                     }
 
+
                     bogieOffset = BogieCenter.position - BogieRemote.position;
 
                     float invSusDist = 1f / main.MaxSuspensionDistance;
-                    float CenteringForce = Mathf.Clamp(bogieOffset.magnitude * invSusDist, 0.0f, 1f);
                     Vector3 localOffset = -BogieRemote.InverseTransformVector(bogieOffset);
-                    Vector3 DampeningForce = (LastSuspensionDist - localOffset) * invSusDist / Time.fixedDeltaTime * main.SuspensionDampener;
+                    float CenteringForce = Mathf.Clamp(localOffset.magnitude * invSusDist, 0.0f, 1f);//bogieOffset.magnitude
+                    Vector3 DampeningForce = (LastSuspensionDist - localOffset) * invSusDist / Time.deltaTime * main.SuspensionDampener;
                     LastSuspensionDist = localOffset;
                     /// LEGACY
                     //float DampeningForce = (LastSuspensionDist - localOffset.y) * invSusDist / Time.fixedDeltaTime * main.SuspensionDampener;
                     //LastSuspensionDist = localOffset.y;
+
                     force = localOffset.normalized * CenteringForce;
                     if (airtimed && BogieLockAttachDuration <= 0)
                     {   // We are off the rails
@@ -1035,12 +1083,13 @@ namespace RandomAdditions
                         // Quadratic
                         if (main.SidewaysSpringQuadratic)
                             force.x *= Mathf.Abs(force.x);
+                        
                         // Normalizing
                         if (force.x > 0)
-                            force.x = Mathf.Max((force.x * main.SuspensionSpringForce) - DampeningForce.x, 0);
+                            force.x = Mathf.Max((force.x * main.SidewaysSpringForce) - DampeningForce.x, 0);
                         else
-                            force.x = Mathf.Min((force.x * main.SuspensionSpringForce) - DampeningForce.x, 0);
-                        force.x *= main.SidewaysSpringForce;
+                            force.x = Mathf.Min((force.x * main.SidewaysSpringForce) - DampeningForce.x, 0);
+                        
 
                         if (main.SuspensionQuadratic)
                             force.y *= Mathf.Abs(force.y);
@@ -1142,6 +1191,7 @@ namespace RandomAdditions
                 }
                 AppliedForceBogeyFrameRef = force;
             }
+            /// <summary> Physics to apply in relation to Bogey space </summary>
             private Vector3 AppliedForceBogeyFrameRef;
             internal override void PostPostFixedUpdate()
             {
@@ -1152,8 +1202,18 @@ namespace RandomAdditions
                     if (ManRails.HasLocalSpace(Track.Space) && Track.GetRigidbody())
                     {
                         Track.GetRigidbody().AddForceAtPosition(-force, BogieCenterOffset, ForceMode.Force);
+                        tank.rbody.AddForceAtPosition(force, BogieCenterOffset, ForceMode.Force);
                     }
-                    tank.rbody.AddForceAtPosition(force, BogieCenterOffset, ForceMode.Force);
+                    else
+                    {   // Run stable physics
+                        tank.rbody.AddForceAtPosition(force, BogieCenterOffset, ForceMode.Force);
+
+                        /*// Makes it far more unstable
+                        Vector3 forceLocalTank = tank.trans.InverseTransformPoint(BogieCenterOffset);
+                        forceLocalTank.y = tank.rbody.centerOfMass.y;
+                        tank.rbody.AddForceAtPosition(force, tank.trans.TransformPoint(forceLocalTank), ForceMode.Force);
+                        */
+                    }
                 }
                 else
                 {   // Detached force
@@ -1235,6 +1295,7 @@ namespace RandomAdditions
             public void DerailBogey()
             {
                 //DebugRandAddi.Assert("DetachBogey");
+                RailSegment.BogeyAttachOperations.Remove(this);
                 Track.RemoveBogey(this);
                 NextCheckTime = BogieReRailDelay;
                 ResetFixedBogey();
@@ -1618,21 +1679,28 @@ namespace RandomAdditions
             }
             internal int GetTurnInput(RailTrackNode Node, RailConnectInfo Info, out bool isPathfinding)
             {
-                int turnIndex;
+                int turnIndex = 0;
                 if (IsPathing && PathingPlan.TryGetValue(Info, out int val))
-                {
+                {   // Autopilot
                     turnIndex = val;
                     isPathfinding = true;
                 }
                 else
-                {
-                    if (Node.RelayBestAngle(main.driveRotation, out turnIndex))
-                    {
+                {   // Manual Operation
+                    bool goingBackwards = engine.GetMaster().lastForwardSpeed < 0;
+                    bool CanAssign = false;
+                    if (engine.GetMaster().tank.PlayerFocused && Input.GetKey(ManRails.IgnoreLeadBogiePath))
+                        CanAssign = true;
+                    else if (main.engine.IsLeadingBogieOnTrain(this, goingBackwards))
+                        CanAssign = true;
+                    if (CanAssign && Node.RelayBestAngle(main.driveRotation, out turnIndex))
+                    {   // We store the memory of our drive action
+                        //DebugRandAddi.Log("RelayBestAngle - " + turnIndex);
                         if (turnIndex == 0)
-                        {
-                            if (engine.GetMaster().lastForwardSpeed < 0)
-                            {
-                                foreach (var item2 in TankLocomotive.GetBogiesAhead(this))
+                        { 
+                            if (goingBackwards)
+                            {   // Backwards 
+                                foreach (var item2 in TankLocomotive.IterateBogiesAhead(this))
                                 {
                                     if (item2.turnCache.ContainsKey(Info))
                                         item2.turnCache.Remove(Info);
@@ -1640,7 +1708,7 @@ namespace RandomAdditions
                             }
                             else
                             {
-                                foreach (var item2 in TankLocomotive.GetBogiesBehind(this))
+                                foreach (var item2 in TankLocomotive.IterateBogiesBehind(this))
                                 {
                                     if (item2.turnCache.ContainsKey(Info))
                                         item2.turnCache.Remove(Info);
@@ -1649,16 +1717,14 @@ namespace RandomAdditions
                         }
                         else
                         {
-                            if (engine.GetMaster().lastForwardSpeed < 0)
+                            if (goingBackwards)
                             {
-                                foreach (var item2 in TankLocomotive.GetBogiesAhead(this))
+                                foreach (var item2 in TankLocomotive.IterateBogiesAhead(this))
                                 {
                                     if (item2.turnCache.TryGetValue(Info, out int turnIndex2))
                                     {
                                         if (turnIndex != turnIndex2)
-                                        {
                                             item2.turnCache[Info] = turnIndex;
-                                        }
                                     }
                                     else
                                         item2.turnCache.Add(Info, turnIndex);
@@ -1666,14 +1732,12 @@ namespace RandomAdditions
                             }
                             else
                             {
-                                foreach (var item2 in TankLocomotive.GetBogiesBehind(this))
+                                foreach (var item2 in TankLocomotive.IterateBogiesBehind(this))
                                 {
                                     if (item2.turnCache.TryGetValue(Info, out int turnIndex2))
                                     {
                                         if (turnIndex != turnIndex2)
-                                        {
                                             item2.turnCache[Info] = turnIndex;
-                                        }
                                     }
                                     else
                                         item2.turnCache.Add(Info, turnIndex);
@@ -1683,6 +1747,7 @@ namespace RandomAdditions
                     }
                     else if (turnCache.TryGetValue(Info, out int turnIndex2))
                     {
+                        //DebugRandAddi.Log("turnCache - " + turnIndex2);
                         turnIndex = turnIndex2;
                         turnCache.Remove(Info);
                     }

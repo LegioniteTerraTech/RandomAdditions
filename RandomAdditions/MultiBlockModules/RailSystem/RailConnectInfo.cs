@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace RandomAdditions.RailSystem
 {
+    /// <summary>
+    /// Note: CAN have both LinkTrack and NodeTrack at the same time
+    /// </summary>
     public class RailConnectInfo
     {
         public readonly byte Index;

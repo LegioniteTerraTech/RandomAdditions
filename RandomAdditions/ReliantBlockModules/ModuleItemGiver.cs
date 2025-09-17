@@ -257,7 +257,8 @@ namespace RandomAdditions
                                         if (item.block != null)
                                             item.block.InitRigidbody();
                                     }
-                                    item2.Take(item, true, false);
+                                    if (item2.Take(item, true, false).IsSuccess)
+                                        PlayItemPickupSfx();
                                     step++;
                                     if (firstStack.IsEmpty || step == GiveAmount)
                                         return;
@@ -311,6 +312,11 @@ namespace RandomAdditions
                         break;
                 }
             }
+        }
+        private void PlayItemPickupSfx()
+        {
+            TechAudio.AudioTickData data = TechAudio.AudioTickData.ConfigureOneshot(block, TechAudio.SFXType.ItemPickup);
+            block.tank.TechAudio.PlayOneshot(data);
         }
 
 

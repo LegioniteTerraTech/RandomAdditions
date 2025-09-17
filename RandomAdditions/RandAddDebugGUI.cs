@@ -48,7 +48,7 @@ namespace RandomAdditions
         }
         private void Update()
         {
-            if (Input.GetKey(KeyCode.RightControl))
+            if (Input.GetKey(KeyCode.RightShift))
             {
                 if (Input.GetKeyDown(KeyCode.KeypadMinus))
                 {

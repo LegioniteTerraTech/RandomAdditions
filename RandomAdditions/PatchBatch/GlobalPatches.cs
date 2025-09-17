@@ -374,7 +374,7 @@ namespace RandomAdditions
             internal static Type target = typeof(ManMods);
 
             [HarmonyPriority(-9001)]
-            private static void RequestReloadAllMods_Postfix(ManMods __instance)
+            internal static void RequestReloadAllMods_Postfix(ManMods __instance)
             {
                 KickStart.didQuickstart = false;
             }
@@ -388,6 +388,13 @@ namespace RandomAdditions
                 ManMusicEnginesExt.inst.RefreshModCorpAudio();
             }
 
+            /// <summary>
+            /// Inject in the new custom recipes
+            /// </summary>
+            internal static void InjectModdedBlocks_Prefix(ManMods __instance)
+            { 
+
+            }
 
             /*
             internal static Stopwatch TimeToLoadAllBlocks = new Stopwatch();

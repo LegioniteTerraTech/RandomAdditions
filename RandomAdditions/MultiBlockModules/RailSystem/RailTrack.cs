@@ -1165,6 +1165,9 @@ namespace RandomAdditions.RailSystem
             }
         }
 
+        /// <summary>
+        /// Only used by pathfinding to obey one-way tracks
+        /// </summary>
         internal RailTrack PathfindRailStepObeyOneWay(bool forwards, out bool reverseDirection, out RailConnectInfo entryInfo, ref int curSeg)
         {
             RailTrack RN2 = this;
@@ -1666,14 +1669,14 @@ namespace RandomAdditions.RailSystem
             {   // Fake rails should not alter existing
                 Vector3 turn = Vector3.zero;
                 int turnIndex;
-                bool nodeTrack;
+                bool entryTrackIsNodeTrack;
                 if (EndOfTrack(rPos) == -1 && StartNode != null && StartNode.NodeType == RailNodeType.Straight &&
                     StartNode.RelayBestAngle(turn, out turnIndex))
                 {
-                    var info = StartNode.GetConnectionByTrack(this, out nodeTrack);
-                    if (StartNode.NextTrackExists(info, turnIndex, nodeTrack, true))
+                    var info = StartNode.GetConnectionByTrack(this, out entryTrackIsNodeTrack);
+                    if (StartNode.NextTrackExists(info, turnIndex, entryTrackIsNodeTrack, true))
                     {
-                        var next = StartNode.RelayToNextOnNode(info, nodeTrack, true, turnIndex, out bool reversed, out _);
+                        var next = StartNode.RelayToNextOnNode(info, entryTrackIsNodeTrack, true, turnIndex, out bool reversed, out _);
                         if (next != null)
                         {
                             if (reversed)
@@ -1705,10 +1708,10 @@ namespace RandomAdditions.RailSystem
                 if (EndOfTrack(nRPos) == 1 && EndNode != null && EndNode.NodeType == RailNodeType.Straight &&
                     EndNode.RelayBestAngle(turn, out turnIndex))
                 {
-                    var info = EndNode.GetConnectionByTrack(this, out nodeTrack);
-                    if (EndNode.NextTrackExists(info, turnIndex, nodeTrack, false))
+                    var info = EndNode.GetConnectionByTrack(this, out entryTrackIsNodeTrack);
+                    if (EndNode.NextTrackExists(info, turnIndex, entryTrackIsNodeTrack, false))
                     {
-                        var next = EndNode.RelayToNextOnNode(info, nodeTrack, false, turnIndex, out bool reversed, out _);
+                        var next = EndNode.RelayToNextOnNode(info, entryTrackIsNodeTrack, false, turnIndex, out bool reversed, out _);
                         if (next != null)
                         {
                             if (reversed)
@@ -1803,8 +1806,8 @@ namespace RandomAdditions.RailSystem
         {
             int turnIndex;
             bool expectingPath;
-            bool nodeTrack;
-            RailConnectInfo info;
+            bool curTrackIsNodeTrack;
+            RailConnectInfo crossedConnectInfo;
             RailTrack curTrack = MRB.Track;
             if (MRB == null)
                 throw new NullReferenceException("RailTrack.GetNextTrackIfNeeded expects a valid MRB(ModuleRailBogie) instance but found \"null\" instead");
@@ -1813,12 +1816,12 @@ namespace RandomAdditions.RailSystem
                 case -1: // behind start
                     if (curTrack.StartNode != null)
                     {
-                        info = curTrack.StartNode.GetConnectionByTrack(curTrack, out nodeTrack);
-                        turnIndex = MRB.GetTurnInput(curTrack.StartNode, info, out expectingPath);
-                        if (curTrack.StartNode.NextTrackExists(info, turnIndex, nodeTrack, true))
+                        crossedConnectInfo = curTrack.StartNode.GetConnectionByTrack(curTrack, out curTrackIsNodeTrack);
+                        turnIndex = MRB.GetTurnInput(curTrack.StartNode, crossedConnectInfo, out expectingPath);
+                        if (curTrack.StartNode.NextTrackExists(crossedConnectInfo, turnIndex, curTrackIsNodeTrack, true))
                         {
                             //DebugRandAddi.Log("StartNode");
-                            RailTrack RN = curTrack.StartNode.RelayToNextOnNode(info, nodeTrack, true, turnIndex, out reversed, out _);
+                            RailTrack RN = curTrack.StartNode.RelayToNextOnNode(crossedConnectInfo, curTrackIsNodeTrack, true, turnIndex, out reversed, out _);
                             if (RN == null)
                             {
                                 //DebugRandAddi.Log("END OF LINE");
@@ -1850,12 +1853,12 @@ namespace RandomAdditions.RailSystem
                 case 1: // beyond end
                     if (curTrack.EndNode != null)
                     {
-                        info = curTrack.EndNode.GetConnectionByTrack(curTrack, out nodeTrack);
-                        turnIndex = MRB.GetTurnInput(curTrack.EndNode, info, out expectingPath);
-                        if (curTrack.EndNode.NextTrackExists(info, turnIndex, nodeTrack, false))
+                        crossedConnectInfo = curTrack.EndNode.GetConnectionByTrack(curTrack, out curTrackIsNodeTrack);
+                        turnIndex = MRB.GetTurnInput(curTrack.EndNode, crossedConnectInfo, out expectingPath);
+                        if (curTrack.EndNode.NextTrackExists(crossedConnectInfo, turnIndex, curTrackIsNodeTrack, false))
                         {
                             //DebugRandAddi.Log("EndNode");
-                            RailTrack RN = curTrack.EndNode.RelayToNextOnNode(info, nodeTrack, false, turnIndex, out reversed, out _);
+                            RailTrack RN = curTrack.EndNode.RelayToNextOnNode(crossedConnectInfo, curTrackIsNodeTrack, false, turnIndex, out reversed, out _);
                             if (RN == null)
                             {
                                 //DebugRandAddi.Log("END OF LINE");
@@ -1985,7 +1988,11 @@ namespace RandomAdditions.RailSystem
             return null;
         }
 
-        internal RailTrack PeekNextTrackObeyOneWay(ref int railIndex, out RailConnectInfo entryInfo, out RailConnectInfo exitInfo, out bool reversed, out bool EndOfTheLine, ModuleRailBogie.RailBogie MRB = null)
+        /// <summary>
+        /// Only used by pathfinding to obey one-way tracks
+        /// </summary>
+        internal RailTrack PeekNextTrackObeyOneWay(ref int railIndex, out RailConnectInfo entryInfo, out RailConnectInfo exitInfo, 
+            out bool reversed, out bool EndOfTheLine, ModuleRailBogie.RailBogie MRB = null)
         {
             if (Removing)
                 throw new InvalidOperationException("PeekNextTrackObeyOneWay called on a RECYCLED track");
@@ -2005,7 +2012,15 @@ namespace RandomAdditions.RailSystem
                             StartNode.RelayBestAngle(Vector3.zero, out turnIndex);
                         if (StartNode.NextTrackExists(entryInfo, turnIndex, nodeTrack, true))
                         {
-                            RailTrack RN = StartNode.RelayToNextOnNode(entryInfo, nodeTrack, true, turnIndex, out reversed, out exitInfo);
+                            RailTrack RN;
+                            if (EndNode.OneWay == 2)
+                            {   // Right
+                                RN = null;
+                                exitInfo = null;
+                                reversed = false;
+                            }
+                            else
+                                RN = StartNode.RelayToNextOnNode(entryInfo, nodeTrack, true, turnIndex, out reversed, out exitInfo);
                             if (RN == null)
                             {
                                 if (debugModePeekNextTrack)
@@ -2042,8 +2057,8 @@ namespace RandomAdditions.RailSystem
                         if (EndNode.NextTrackExists(entryInfo, turnIndex, nodeTrack, false))
                         {
                             RailTrack RN;
-                            if (EndNode.OneWay)
-                            {
+                            if (EndNode.OneWay == 1)
+                            {   // Left
                                 RN = null;
                                 exitInfo = null;
                                 reversed = false;

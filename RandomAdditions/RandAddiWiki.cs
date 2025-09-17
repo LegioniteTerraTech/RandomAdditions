@@ -27,6 +27,7 @@ namespace RandomAdditions
             InitChunks();
             InitMechanics();
         }
+
         internal static void InitMechanics()
         {
             new WikiPageInfo(modID, LOC_Tools, ToolsSprite, PageTools);
@@ -58,24 +59,29 @@ namespace RandomAdditions
         internal static void PageTools()
         {
             AltUI.Sprite(nullSprite, AltUI.TextfieldBorderedBlue, GUILayout.Height(128), GUILayout.Width(128));
-#if !DEBUG
+            GUILayout.BeginVertical(AltUI.TextfieldBlackHuge);
+            GUILayout.Label("Modding Helpers", AltUI.LabelBlueTitle);
+            if (GUILayout.Button("Show Performance", AltUI.ButtonOrangeLarge))
+            {
+                benchmarker = !benchmarker;
+                Optimax.SetActive(benchmarker);
+            }
+#if DEBUG
+            if (GUILayout.Button("Print all SFX data in Logs", AltUI.ButtonOrangeLarge))
+            {
+                KickStart.PrintSoundDataBase();
+            }
+#else
             if (KickStart.isNuterraSteamPresent)
             {
 #endif
-                GUILayout.BeginVertical(AltUI.TextfieldBlackHuge);
-                GUILayout.Label("Modding Helpers", AltUI.LabelBlueTitle);
 
-                if (GUILayout.Button("Open Custom Blocks", AltUI.ButtonOrangeLarge))
+            if (GUILayout.Button("Open Custom Blocks", AltUI.ButtonOrangeLarge))
                 {
                     string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "Custom Blocks");
                     if (!Directory.Exists(path))
                         Directory.CreateDirectory(path);
                     OpenInExplorer(path);
-                }
-                if (GUILayout.Button("Show Performance", AltUI.ButtonOrangeLarge))
-                {
-                    benchmarker = !benchmarker;
-                    Optimax.SetActive(benchmarker); 
                 }
 
                 if (ModHelpers.allowQuickSnap > 0)
@@ -94,15 +100,9 @@ namespace RandomAdditions
                     OpenInExplorer(path);
                 }
 #if !DEBUG
-            GUILayout.EndVertical();
             }
-#else
-            if (GUILayout.Button("Print all SFX data in Logs", AltUI.ButtonOrangeLarge))
-            {
-                KickStart.PrintSoundDataBase();
-            }
-            GUILayout.EndVertical();
 #endif
+            GUILayout.EndVertical();
 
             GUILayout.BeginVertical(AltUI.TextfieldBlackHuge);
             GUILayout.Label("Mod Data", AltUI.LabelBlueTitle);

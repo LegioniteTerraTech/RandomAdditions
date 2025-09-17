@@ -422,32 +422,32 @@ namespace RandomAdditions
             /// <summary>
             /// PatchModuleItemHolderStackToSeeInternalSiloContents
             /// </summary>
-            private static void OfferAllItemsToCollector_Postfix(ModuleItemHolder.Stack __instance, ref ItemSearchCollector collector)
+            internal static void OfferAllItemsToCollector_Postfix(ModuleItemHolder.Stack __instance, ref ItemSearchCollector collector)
             {
                 var ModuleCheck = __instance.myHolder.gameObject.GetComponent<ModuleItemSilo>();
-                if (ModuleCheck != null)
+                if (ModuleCheck != null && !ModuleCheck.WasSearched)
                 {
-                    if (!ModuleCheck.WasSearched)
+                    if (ModuleCheck.SavedCount > 0)
                     {
-                        int count = ModuleCheck.SavedCount;
-                        if (count > 0)
+                        collector.OfferAnonItem(ModuleCheck.StoredTypeInfo);
+                        /*
+                        // creates shitloads of garbage
+                        if (!ModuleCheck.StoresBlocksInsteadOfChunks)
                         {
-                            if (!ModuleCheck.StoresBlocksInsteadOfChunks)
-                            {
-                                collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)ModuleCheck.GetChunkType));
-                                //DebugRandAddi.Log("RandomAdditions: Searched silo (Chunks)");
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Block, (int)ModuleCheck.GetBlockType));
-                                }
-                                catch { }// Chances are we can't get modded blocks with this
-                                //DebugRandAddi.Log("RandomAdditions: Searched silo (Blocks)");
-                            }
-                            ModuleCheck.WasSearched = true;
+                            StoredTypeInfo
+                            //collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Chunk, (int)ModuleCheck.GetChunkType));
+                            //DebugRandAddi.Log("RandomAdditions: Searched silo (Chunks)");
                         }
+                        else
+                        {
+                            try
+                            {
+                                //collector.OfferAnonItem(new ItemTypeInfo(ObjectTypes.Block, (int)ModuleCheck.GetBlockType));
+                            }
+                            catch { }// Chances are we can't get modded blocks with this
+                                     //DebugRandAddi.Log("RandomAdditions: Searched silo (Blocks)");
+                        }*/
+                        ModuleCheck.WasSearched = true;
                     }
                 }
             }
