@@ -22,6 +22,7 @@ namespace RandomAdditions
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         // Game tweaks
+
         internal static class TankBlockPatches
         {
             internal static Type target = typeof(TankBlock);

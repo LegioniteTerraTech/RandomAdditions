@@ -1,14 +1,15 @@
 ﻿using System;
-using System.Reflection;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
-using HarmonyLib;
-using UnityEngine;
-using UnityEngine.UI;
 using FMOD.Studio;
+using HarmonyLib;
 using RandomAdditions.Minimap;
 using TerraTechETCUtil;
 using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+using static ManTechMaterialSwap;
 
 namespace RandomAdditions
 {
@@ -455,6 +456,34 @@ namespace RandomAdditions
                 return true;
             }
         }
+
+
+        /// <summary>
+        /// This solely exists because there exists edge-cases where the MaterialSwapper can get called on m_Renderers which have had one of their
+        ///   listed renderers removed by inproperly setup blocks that have a render that removed AFTER they are spawned!  
+        ///   May have a performance hit when handling C&S and I don't like that at all but better than a crash!
+        /// </summary>
+        [HarmonyPatch(typeof(MaterialSwapper))]
+        [HarmonyPriority(9001)]
+        [HarmonyPatch("SetMaterialPropertiesOnRenderers", new Type[] { typeof(float), typeof(float),
+        typeof(Vector2),typeof(MaterialSwapper.VariableColorOverrides),typeof(List<Renderer>),})]
+        private static class MaterialSwapperFix
+        {
+            internal static void Prefix(ref List<Renderer> renderers)
+            {
+                renderers.RemoveAll(renderer =>
+                {
+                    if (renderer == null)
+                    {
+                        DebugRandAddi.Assert("Null renderer in SetMaterialPropertiesOnRenderers call.\nWE SHOULD NOT BE LOOKING FOR THESE!!! - " +
+                            StackTraceUtility.ExtractStackTrace());
+                        return true;
+                    }
+                    return false;
+                } );
+            }
+        }
+        
 
 
 
