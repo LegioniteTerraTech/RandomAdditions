@@ -1,24 +1,96 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Timers;
+using FMOD;
+using HarmonyLib;
+using RandomAdditions.Minimap;
+using RandomAdditions.RailSystem;
+using SafeSaves;
+using TerraTechETCUtil;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using System.Reflection;
-using TerraTechETCUtil;
-using RandomAdditions.Minimap;
-using HarmonyLib;
-using FMOD;
-using System.Timers;
-using System.Diagnostics;
-using RandomAdditions.RailSystem;
+using static Mode;
+using static Tank.CollisionInfo;
 
 namespace RandomAdditions
 {
     internal class GlobalPatches
     {
+        // BUGFIXES
+
+        internal static class FuckYouEpicOnlineServices
+        {
+            internal static Type target = typeof(ManEOS);
+
+            [HarmonyPriority(-9001)]
+            internal static bool DoFullLogin_Prefix(ManEOS __instance, Action onLogAttemptedCallback)
+            {
+                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
+                {
+                    DebugRandAddi.Log("RandomAdditions: ManEOS.DoFullLogin was called!  You don't trust them so we deny the send request");
+                    if (onLogAttemptedCallback != null)
+                        onLogAttemptedCallback();
+                    return false;
+                }
+                return true;
+            }
+            /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
+            internal static bool SetOfflineMode_Prefix(ManEOS __instance, bool isOffline)
+            {
+                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
+                {
+                    if (!isOffline)
+                    {
+                        DebugRandAddi.Assert("RandomAdditions: ManEOS.SetOfflineMode was called!  You don't trust them so we deny the re-enable request");
+
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }//*/
+
+        //*
+        internal static class ModeSettingsPatches
+        {
+            internal static Type target = typeof(ManGameMode.ModeSettings);
+            /// <summary>
+            /// Fix the bloody settings issue!
+            /// </summary>
+            /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
+            internal static void SwitchToMode_Postfix(ManGameMode.ModeSettings __instance)
+            {
+                string nextMode = Singleton.Manager<ManGameMode>.inst.GetModeInitSetting("ModeName") as string;
+
+                foreach (ModeMisc.ModeSpec modeSpec in ModeMisc.inst.m_ModeSettings)
+                {
+                    if (modeSpec.name.EqualsNoCase(nextMode) && modeSpec.m_MyType == ManGameMode.GameType.RaD)
+                    {
+                        if (__instance.GetModeInitSetting("BuildSizeLimit", out object data) && data is int)
+                        {
+                            EmergPatches.TrySaveAndLockSizeLimit();
+                        }
+                        else if (!EmergPatches.HasSizeLimitSet())
+                        {   // WE FORCE THE SIZE SETTINGS
+                            //__instance.AddModeInitSetting("BuildSizeLimit", 256);
+                            //Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", 256);
+                            DebugRandAddi.Assert("Our R&D mode had NO BuildSizeLimit SET!!!");
+                        }
+                        break;
+                    }
+                }
+            }
+        }//*/
+
+
         //-----------------------------------------------------------------------------------------------
         //-----------------------------------------------------------------------------------------------
         // Game tweaks

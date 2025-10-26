@@ -59,8 +59,7 @@ namespace RandomAdditions
             TrackTypeLate<MB_LateUpdate>("LateUpdate");
             TrackTypeUpdate<ManMods>("Update");
             TrackTypeFixed<ManMods>("FixedUpdate");
-            TrackTypeUpdate<ManTileLoader>("Update");
-            TrackTypeFixed<ManMods>("FixedUpdate");
+            //TrackTypeUpdate<ManTileLoader>("Update");// Doesn't exists
             TrackTypeUpdate<Tank>("Update");
             TrackTypeFixed<Tank>("FixedUpdate");
             TrackTypeUpdate<HoverJet>("OnUpdate");
@@ -216,6 +215,10 @@ namespace RandomAdditions
         public static void BeginTrackingUpdate3<T>() => BeginTrackingUpdate_Internal<T>(3);
         public static void BeginTrackingUpdate4<T>() => BeginTrackingUpdate_Internal<T>(4);
         public static void BeginTrackingUpdate5<T>() => BeginTrackingUpdate_Internal<T>(5);
+        public static void BeginTrackingUpdate6<T>() => BeginTrackingUpdate_Internal<T>(6);
+        public static void BeginTrackingUpdate7<T>() => BeginTrackingUpdate_Internal<T>(7);
+        public static void BeginTrackingUpdate8<T>() => BeginTrackingUpdate_Internal<T>(8);
+        public static void BeginTrackingUpdate9<T>() => BeginTrackingUpdate_Internal<T>(9);
         // DeltaTime
         private static void BeginTrackingUpdate_Internal<T>(int index)
         {
@@ -244,6 +247,10 @@ namespace RandomAdditions
         public static void EndTrackingUpdate3<T>() => EndTrackingUpdate_Internal<T>(3);
         public static void EndTrackingUpdate4<T>() => EndTrackingUpdate_Internal<T>(4);
         public static void EndTrackingUpdate5<T>() => EndTrackingUpdate_Internal<T>(5);
+        public static void EndTrackingUpdate6<T>() => EndTrackingUpdate_Internal<T>(6);
+        public static void EndTrackingUpdate7<T>() => EndTrackingUpdate_Internal<T>(7);
+        public static void EndTrackingUpdate8<T>() => EndTrackingUpdate_Internal<T>(8);
+        public static void EndTrackingUpdate9<T>() => EndTrackingUpdate_Internal<T>(9);
         private static void EndTrackingUpdate_Internal<T>(int index)
         {
             Type type = typeof(T);
@@ -425,7 +432,7 @@ namespace RandomAdditions
                 var inline = FixedDeltaTime.ElementAt(i).Value;
                 for (int j = 0; j < inline.Count; j++)
                 {
-                    var item = inline.ElementAt(i);
+                    var item = inline.ElementAt(j);
                     var secs = item.Value.timer.ElapsedMilliseconds;
                     if (secs > 0)
                         item.Value.totalCycle = secs;
@@ -459,7 +466,7 @@ namespace RandomAdditions
                 var inline = LateDeltaTime.ElementAt(i).Value;
                 for (int j = 0; j < inline.Count; j++)
                 {
-                    var item = inline.ElementAt(i);
+                    var item = inline.ElementAt(j);
                     var secs = item.Value.timer.ElapsedMilliseconds;
                     if (secs > 0)
                         item.Value.totalCycle = secs;
@@ -538,6 +545,7 @@ namespace RandomAdditions
                 KickStart.harmonyInstance.Patch(target,
                     new HarmonyMethod(AccessTools.Method(typeof(Optimax), "BeginTrackingUpdate" + depth.ToString(), null, new Type[] { adder })),
                     new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingUpdate" + depth.ToString(), null, new Type[] { adder })));
+                DebugRandAddi.Log(KickStart.ModName + ": Tracking " + ToPatch.Name + " for function - " + targetFunc);
             }
             catch (Exception e)
             {
@@ -618,7 +626,7 @@ namespace RandomAdditions
                         depth = 0;
                         for (; depth < 6; depth++)
                         {
-                            if (!DeltaTime.TryGetValue(depth, out var next) || !next.ContainsKey(ToPatch))
+                            if (!FixedDeltaTime.TryGetValue(depth, out var next) || !next.ContainsKey(ToPatch))
                                 goto skipper;
                         }
                     }
@@ -629,7 +637,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    while (DeltaTime.TryGetValue(depth, out var next) && next.ContainsKey(ToPatch))
+                    while (FixedDeltaTime.TryGetValue(depth, out var next) && next.ContainsKey(ToPatch))
                         depth++;
                 }
                 FixedDeltaTime.AddInlined(depth, adder, new DurationTracker
@@ -639,8 +647,8 @@ namespace RandomAdditions
                     totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
-                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
-                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingUpdate" + depth.ToString(), null, new Type[] { adder })));
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "BeginTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })));
             }
             catch (Exception e)
             {
@@ -663,8 +671,8 @@ namespace RandomAdditions
                     totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
-                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
-                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingUpdate" + depth.ToString(), null, new Type[] { adder })));
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "BeginTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })));
             }
             catch (Exception e)
             {
@@ -687,7 +695,7 @@ namespace RandomAdditions
                         depth = 0;
                         for (; depth < 6; depth++)
                         {
-                            if (!DeltaTime.TryGetValue(depth, out var next) || !next.ContainsKey(ToPatch))
+                            if (!LateDeltaTime.TryGetValue(depth, out var next) || !next.ContainsKey(ToPatch))
                                 goto skipper;
                         }
                     }
@@ -698,7 +706,7 @@ namespace RandomAdditions
                 }
                 else
                 {
-                    while (DeltaTime.TryGetValue(depth, out var next) && next.ContainsKey(ToPatch))
+                    while (LateDeltaTime.TryGetValue(depth, out var next) && next.ContainsKey(ToPatch))
                         depth++;
                 }
                 LateDeltaTime.AddInlined(depth, adder, new DurationTracker
@@ -708,8 +716,8 @@ namespace RandomAdditions
                     totalCycle = 0,
                 });
                 KickStart.harmonyInstance.Patch(target,
-                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingFixedUpdate" + depth.ToString(), null, new Type[] { adder })),
-                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingUpdate" + depth.ToString(), null, new Type[] { adder })));
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "BeginTrackingLateUpdate" + depth.ToString(), null, new Type[] { adder })),
+                    new HarmonyMethod(AccessTools.Method(typeof(Optimax), "EndTrackingLateUpdate" + depth.ToString(), null, new Type[] { adder })));
             }
             catch (Exception e)
             {

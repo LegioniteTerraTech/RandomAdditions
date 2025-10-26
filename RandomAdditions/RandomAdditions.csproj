@@ -229,6 +229,7 @@
     <Compile Include="CustomRecipe.cs" />
     <Compile Include="CustomScenery.cs" />
     <Compile Include="CustomSceneryMaker.cs" />
+    <Compile Include="EmergPatches.cs" />
     <Compile Include="GeneralComponents\AOEField.cs" />
     <Compile Include="Audio\SFXAddition.cs" />
     <Compile Include="GlobalChanges\RandomWorld.cs" />

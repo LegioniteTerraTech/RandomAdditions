@@ -50,7 +50,7 @@ namespace RandomAdditions
         public void Update()
         {
             if (!ManGameMode.inst.GetIsInPlayableMode())
-                MaintainPlayerTech();
+                HostMaintainPlayerTech();
         }*/
 
         private static readonly float EmergencyTileLoad = 0.4f; // In seconds

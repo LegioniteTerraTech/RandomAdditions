@@ -67,6 +67,7 @@ namespace RandomAdditions
         public static bool AllowIngameQuitToDesktop = false;
         public static bool FastestPhysics = false;
         public static bool ColliderDisable2 = false;
+        public static bool IDontTrustEpicAtAll = false;
 
         // CHEATS
 
@@ -367,6 +368,7 @@ namespace RandomAdditions
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
             //PrintDataBase();
 #endif
+            CheckShouldDisableEOS();
             //ResourcesHelper.PostBlocksLoadEvent.Subscribe(ManSFXExtRand.GetAllSoundsRegistered);
             // crash testers
             //ResourcesHelper.SerialGO goCrash = new ResourcesHelper.SerialGO(null, null);
@@ -523,9 +525,11 @@ namespace RandomAdditions
                 ManTileLoader.OnWorldSave();
                 ManRails.PrepareForSaving();
                 RandomWorld.PrepareForSaving();
+                EmergPatches.PrepareForSaving();
             }
             else
             {
+                EmergPatches.FinishedSaving();
                 ManRails.FinishedSaving();
                 ManTileLoader.OnWorldFinishSave();
                 ManModChunks.inst.FinishedSaving();
@@ -556,9 +560,11 @@ namespace RandomAdditions
             {
                 ManModChunks.inst.PrepareForLoading();
                 ManModScenery.inst.PrepareForLoading();
+                EmergPatches.PrepareForLoading();
             }
             else
             {
+                EmergPatches.FinishedLoading();
                 ManTileLoader.OnWorldLoad();
                 ManRails.FinishedLoading();
                 ManModChunks.inst.FinishedLoading();
@@ -762,6 +768,25 @@ namespace RandomAdditions
                 TryMakeMPSaveLobby((ManGameMode.GameType)quickData.gameMode, quickData.lastMPSaveName);
             }
         }
+
+
+        private static MethodInfo stopIt = typeof(ManEOS).GetMethod("SetOfflineMode", BindingFlags.NonPublic | BindingFlags.Instance);
+        public static void CheckShouldDisableEOS()
+        {
+            if (IDontTrustEpicAtAll && !ManEOS.inst.IsCrossplayRequestedActive)
+            {
+                if (SKU.IsSteam)
+                {
+                    DebugRandAddi.Log("RandomAdditions: EpicOnlineServices attempted to start up and continue tracking even after crossplay is disabled ON STEAM.  The attempt was fucking stopped.");
+                    stopIt.Invoke(ManEOS.inst, new object[] { true });
+                }
+                else
+                {
+                    DebugRandAddi.Log("RandomAdditions: Uhh the mod was launched on a Non-steam platform.  We will let EpicOnlineServices continue working because it is needed.");
+                }
+            }
+        }
+
         private static void TryMakeMPSaveLobby(ManGameMode.GameType mode, string saveName)
         {
             Singleton.Manager<ManUI>.inst.ExitAllScreens();
@@ -998,6 +1023,7 @@ namespace RandomAdditions
         public static OptionKey hangarKey;
 
         // DEVELOPMENT
+        public static OptionToggle fakeOfflineEpic;
         public static OptionKey blockSnap;
         public static OptionToggle allowQuitFromIngameMenu;
         public static OptionToggle allowPopups;
@@ -1074,6 +1100,7 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "_hangarButton");
 
                 // DEVELOPMENT
+                thisModConfig.BindConfig<KickStart>(null, "IDontTrustEpicAtAll");
                 thisModConfig.BindConfig<BlockDebug>(null, "DebugPopups");
                 thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
                 thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
@@ -1139,7 +1166,18 @@ namespace RandomAdditions
                 });
 
                 var RandomDev = KickStart.ModName + " - Development";
-               
+
+                fakeOfflineEpic = new OptionToggle("Force Epic Online Services Offline [Slows MP Lobby Loading!]", RandomDev, KickStart.IDontTrustEpicAtAll);
+                fakeOfflineEpic.onValueSaved.AddListener(() =>
+                {
+                    KickStart.IDontTrustEpicAtAll = fakeOfflineEpic.SavedValue;
+                    if (KickStart.IDontTrustEpicAtAll == true)
+                    {
+                        KickStart.CheckShouldDisableEOS();
+                        if (ManEOS.inst.IsCrossplayRequestedActive)
+                            ManModGUI.ShowErrorPopup("RandomAddtions: Force Epic Online Services Offline cannot do it's job if Crossplay is set to be active.\nMake sure to launch TerraTech WITHOUT Crossplay!");
+                    }
+                });
                 fastPhysics = new OptionToggle("Fast Physics (MIGHT BREAK GAME)", RandomDev, KickStart.FastestPhysics);
                 fastPhysics.onValueSaved.AddListener(() =>
                 {
