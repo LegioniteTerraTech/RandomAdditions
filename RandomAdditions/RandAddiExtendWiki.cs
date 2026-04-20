@@ -27,19 +27,22 @@ namespace RandomAdditions
             {Languages.Japanese, "マルチテックの概要" }});
         internal static void InitWiki()
         {
-            ExtendedWiki.OnExtendWikiCall.Subscribe(AutoPopulateWikiExtras);
+            ExtendedWiki.SubToExtendWiki(AutoPopulateWikiExtras);
         }
         internal static void DeInit()
         {
-            ExtendedWiki.OnExtendWikiCall.Unsubscribe(AutoPopulateWikiExtras);
+            ExtendedWiki.UnsubToExtendWiki(AutoPopulateWikiExtras);
         }
         internal static void AutoPopulateWikiExtras(Wiki wiki)
         {
-            WikiPageGroup WPGAdvanced = new WikiPageGroup(wiki.ModID, LOC_Advanced);
-            var advMain = new WikiPageInfo(wiki.ModID, LOC_Advanced_desc, null, DisplayAdvMain, WPGAdvanced);
-            WPGAdvanced.onOpen = () => { advMain.GoHere(); };
-            AutoPopulateWikiAdvanced(wiki, WPGAdvanced);
-            AutoPopulateWikiMultiTechs(wiki, WPGAdvanced);
+            if (wiki.ModID == ManIngameWiki.VanillaGameName)
+            {
+                WikiPageGroup WPGAdvanced = new WikiPageGroup(wiki.ModID, LOC_Advanced);
+                var advMain = new WikiPageInfo(wiki.ModID, LOC_Advanced_desc, null, DisplayAdvMain, WPGAdvanced);
+                WPGAdvanced.onOpen = () => { advMain.GoHere(); };
+                AutoPopulateWikiAdvanced(wiki, WPGAdvanced);
+                AutoPopulateWikiMultiTechs(wiki, WPGAdvanced);
+            }
         }
 
         private static void DisplayAdvMain()

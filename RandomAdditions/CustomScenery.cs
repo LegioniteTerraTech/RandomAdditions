@@ -10,22 +10,20 @@ using TerraTechETCUtil;
 public class CustomScenery : ModLoadable
 {
     [JsonIgnore]
-    internal Transform prefab;
+    internal TerrainObject prefab;
     [JsonIgnore]
     internal string ID
     {
         get => fileName; 
         set => fileName = value;
     }
-    [JsonIgnore]
-    internal ModContainer mod;
 
     [Doc("The name of the scenery. Note the filename will be the actual ID of the scenery")]
     public string Name = "Barry";
     [Doc("The description to display for the scenery")]
     public string Description = "A basic tree scenery";
     [Doc("The ingame Prefab to use for this. See the _Export folder for exported Scenery for more details.")]
-    public string PrefabName = SceneryTypes.ConeTree.ToString();
+    public string PrefabName = "Biome7Tree05";
     [Doc("The custom mesh name to use for the full HP visual stage")]
     public string MeshName = "BarryMesh";
     [Doc("The custom texture/material to use for ALL stages")]

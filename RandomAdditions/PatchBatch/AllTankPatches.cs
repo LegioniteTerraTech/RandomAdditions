@@ -57,5 +57,17 @@ namespace RandomAdditions
                 }
             }
         }
+        internal static class TechWeaponPatches
+        {
+            internal static Type target = typeof(TechWeapon);
+            /// <summary>
+            /// DisableAiming
+            /// </summary>
+            [HarmonyPriority(-9001)]
+            private static bool OnUpdate_Prefix(TechWeapon __instance)
+            {
+                return ManNetwork.IsNetworked || !KickStart.disableAiming;
+            }
+        }
     }
 }

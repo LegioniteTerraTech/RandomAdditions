@@ -57,7 +57,8 @@ namespace RandomAdditions
                 {
                     displayBlock = siloMain.GetBlockType;
                     var meshR = gameObject.GetComponent<MeshRenderer>();
-                    meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(new ItemTypeInfo(ObjectTypes.Block, (int)displayBlock)).texture);
+                    meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(
+                        new ItemTypeInfo(ObjectTypes.Block, (int)displayBlock)).texture);
                 }
             }
             else
@@ -66,7 +67,8 @@ namespace RandomAdditions
                 {
                     displayChunk = siloMain.GetChunkType;
                     var meshR = gameObject.GetComponent<MeshRenderer>();
-                    meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(new ItemTypeInfo(ObjectTypes.Chunk, (int)displayChunk)).texture);
+                    meshR.material.SetTexture("_MainTex", Singleton.Manager<ManUI>.inst.GetSprite(
+                        new ItemTypeInfo(ObjectTypes.Chunk, (int)displayChunk)).texture);
                 }
             }
         }

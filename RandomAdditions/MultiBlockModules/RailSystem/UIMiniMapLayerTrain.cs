@@ -59,9 +59,10 @@ namespace RandomAdditions.RailSystem
 		{
 			if (WorldMap && ManRails.fakeNodeStart != null)
 				UpdateTrainRouteStep(ManRails.fakeNodeStart, false, true);
-			while (trainRouteStep < ManRails.AllRailNodes.Count)
+			var tempList = ManRails.AllRailNodes.Values.ToList();
+            while (trainRouteStep < ManRails.AllRailNodes.Count)
 			{
-				UpdateTrainRouteStep(ManRails.AllRailNodes.Values.ToList().ElementAt(trainRouteStep), WorldMap, false);
+				UpdateTrainRouteStep(tempList.ElementAt(trainRouteStep), WorldMap, false);
 				trainRouteStep++;
 			}
 			ClearUnusedIcons();

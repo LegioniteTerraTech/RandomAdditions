@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using HarmonyLib;
@@ -10,11 +11,52 @@ using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 using TMPro;
 using UnityEngine;
+using static LocalisationEnums;
 
 namespace RandomAdditions.PatchBatch
 {
     internal class UIPatches
     {
+#if !STEAM
+        /// <summary>
+        /// Will be implemented later on.... - might already be in CHECK
+        /// </summary>
+        internal static class WikiPageBlockPatches
+        {
+            internal static Type target = typeof(WikiPageBlock);
+
+            internal static void DisplayGUI_Postfix(WikiPageBlock block)
+            {
+                if (block.inst != null)
+                {
+                    var weapon = block.inst.GetComponent<ModuleWeapon>();
+                    var weaponI = block.inst.GetComponent<IModuleDamager>();
+                    if (weapon && weaponI != null)
+                    {
+                        ManDamage.DamageType damageType = ManDamage.DamageType.Standard;
+                        float DPS = 0;
+                        GUILayout.BeginVertical(AltUI.TextfieldBordered);
+                        damageType = weaponI.DamageType;
+                        DPS = weaponI.GetHitDamage() * weaponI.GetHitsPerSec();
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Label("DPS: ", AltUI.LabelBlackTitle);
+                        GUILayout.Label(DPS.ToString("0.0"), AltUI.LabelBlackTitle);
+                        GUILayout.FlexibleSpace();
+                        GUILayout.EndHorizontal();
+
+                        GUILayout.BeginHorizontal();
+                        GUILayout.Label("Type", AltUI.LabelWhite);
+                        GUILayout.Label(": ", AltUI.LabelWhite);
+                        new ManIngameWiki.WikiIconInfo(Singleton.Manager<ManUI>.inst.GetDamageTypeIcon(damageType),
+                            Localisation.inst.GetLocalisedString((LocalisationEnums.DamageTypeNames)damageType)).
+                            OnGUILarge(AltUI.TextfieldBorderedBlue, AltUI.LabelWhite);
+                        GUILayout.FlexibleSpace();
+                        GUILayout.EndHorizontal();
+                    }
+                }
+            }
+        }
+#endif
 
         internal static class ManUIPatches
         {

@@ -80,7 +80,7 @@ namespace RandomAdditions.RailSystem
         internal static Transform AssembleSegmentGroundInstance(ModContainer MC, RailType Type, string Name, string ModelNameNoExt, FactionSubTypes faction, out Transform lightInst)
         {
             DebugRandAddi.Log("Making Track for " + Name);
-            GameObject GO = UnityEngine.Object.Instantiate(new GameObject(Name + "_Seg"), null);
+            GameObject GO = new GameObject(Name + "_Seg");
             RailSegmentGround RS = GO.AddComponent<RailSegmentGround>();
             RS.BaseInit();
             Transform Trans = RS.transform;

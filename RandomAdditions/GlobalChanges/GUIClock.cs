@@ -31,7 +31,7 @@ namespace RandomAdditions
                 return;
             Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Subscribe(OnPlayerSwap);
 
-            inst = Instantiate(new GameObject()).AddComponent<GUIClock>();
+            inst = new GameObject().AddComponent<GUIClock>();
             GUIWindow = new GameObject();
             GUIWindow.AddComponent<GUIDisplay>();
             GUIWindow.SetActive(false);
@@ -123,8 +123,14 @@ namespace RandomAdditions
                 if (KickStart.IsIngame && isCurrentlyOpen)
                 {
                     AltUI.StartUI();
-                    TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>", AltUI.MenuCenter);
-                    AltUI.EndUI();
+                    try
+                    {
+                        TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>", AltUI.MenuCenter);
+                    }
+                    finally
+                    {
+                        AltUI.EndUI();
+                    }
                 }
             }
         }

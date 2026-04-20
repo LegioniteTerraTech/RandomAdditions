@@ -32,7 +32,7 @@ namespace RandomAdditions
         {
             if (inst)
                 return;
-            inst = Instantiate(new GameObject("RandAddDebugGUI"), null).AddComponent<RandAddDebugGUI>();
+            inst = new GameObject("RandAddDebugGUI").AddComponent<RandAddDebugGUI>();
             debugGUI = new GameObject();
             debugGUI.AddComponent<GUIDisplayDebugger>();
             debugGUI.SetActive(false);
@@ -71,7 +71,7 @@ namespace RandomAdditions
                 if (UIIsCurrentlyOpen && KickStart.CanUseMenu)
                 {
                     HotWindow = AltUI.Window(RANDDebugID, HotWindow, GUIHandler, 
-                        "Random Additions DEBUG", CloseMenu);
+                        "Random Additions DEBUG", CloseMenu, true, true);
                 }
             }
         }

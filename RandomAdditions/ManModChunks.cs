@@ -31,6 +31,19 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
     {
         WikiPageChunk.GetChunkModName = ChunkModNameWrapper;
     }
+
+    private static int DefaultChunkCount;
+    public static void SanityCheck()
+    {
+        if (ResLook == null)
+            throw new NullReferenceException(nameof(ResLook));
+        if (ResLook2 == null)
+            throw new NullReferenceException(nameof(ResLook2));
+        if (ResRare == null)
+            throw new NullReferenceException(nameof(ResRare));
+        if (poolStart2 == null)
+            throw new NullReferenceException(nameof(poolStart2));
+    }
     protected override void Init_Internal()
     {
     }
@@ -54,11 +67,8 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
     }
 
 
-
-    private const BindingFlags spamFlags = BindingFlags.NonPublic | BindingFlags.Instance;
     private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_ChunkNames", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_ChunkDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
-    private static readonly FieldInfo ResData = typeof(ResourceManager).GetField("m_DefinitionTable", spamFlags);
     private static readonly FieldInfo ResRare = typeof(ResourcePickup).GetField("m_ChunkRarity", spamFlags);
     private static readonly MethodInfo poolStart2 = typeof(ResourcePickup).GetMethod("OnPool", spamFlags);
 
@@ -322,7 +332,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkName, stepper, "Alloy Exp Res");//Abstractum
                         LocalisationExt.RegisterRawEng(StringBanks.ChunkDescription, stepper,
                             "Better known as Bulkhead Alloy, this alloy is famous for having \"more hitpoints than god\"," +
-                            "seemingly able to take on anything in the galaxy without a dent." +
+                            " seemingly able to take on anything in the galaxy without a dent." +
                             "\nProcuring this however is nearly impossible as it's a deeply guarded trade secret by the highest of " +
                             "empires, and the most mighty of space pirateers."
                         /*
@@ -487,6 +497,12 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
         };
     }
 
+
+    protected override void FinalAssignmentStarting()
+    {
+        if (DefaultChunkCount == 0)
+            DefaultChunkCount = SpawnHelper.GetResourceChunkPrefabs().Length;
+    }
     protected override void FinalAssignment(CustomChunk chunk, ChunkTypes AssignedID)
     {
         Visible vis = chunk.prefab.GetComponent<Visible>();
@@ -528,9 +544,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                 throw new Exception(typeof(ManModChunks).Name + ": Error when registering \"" + chunk.Name +
                     ", (" + AssignedIDInt + ")", e);
             }
-            chunk.prefabBase.def.m_ChunkType = AssignedID;
-            var List = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
-            List.Add(AssignedID, chunk.prefabBase);
+            chunk.runtimePrefabBase.m_ChunkType = AssignedID;
             vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, AssignedIDInt);
             try
             {
@@ -543,7 +557,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             }
             try
             {
-                modChunksModNames.Add(AssignedIDInt, chunk.mod.ModID);
+                modChunksModNames.Add(AssignedIDInt, chunk.runtimeMod.ModID);
             }
             catch (Exception e)
             {
@@ -552,12 +566,26 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             }
             chunk.prefab.CreatePool(4);
             DebugRandAddi.Log("ManModChunks: Assigned Custom Chunk " + chunk.Name + " to ID " + AssignedIDInt);
-            var group = ManIngameWiki.InsureWikiGroup(chunk.mod.ModID, "Chunks", ManIngameWiki.ChunksSprite);
+            var group = ManIngameWiki.InsureChunksWikiGroup(chunk.runtimeMod.ModID);
             new WikiPageChunk(AssignedIDInt, group);
         }
     }
 
-    protected override void CreateInstanceFile(ModContainer Mod, string path, bool Reload = false)
+    protected override void FinalAssignmentFinished()
+    {
+        var Prefabs = SpawnHelper.GetResourceChunkPrefabs();
+        if (Prefabs.Length != DefaultChunkCount + Registered.Count)
+            Array.Resize(ref Prefabs, DefaultChunkCount + Registered.Count);
+        for (int i = 0; i < Registered.Count; i++)
+        {
+            var pair = Active.ElementAt(i);
+            Prefabs[i + DefaultChunkCount] = pair.Value.runtimePrefabBase;
+        }
+        SpawnHelper.OverrideResourceChunkPrefabs(Prefabs);
+    }
+
+
+    protected override void LoadInstanceFile(ModContainer Mod, string path, bool Reload = false)
     {
         string fileName = Path.GetFileName(path);
         string text;
@@ -570,121 +598,14 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             chunk = JsonConvert.DeserializeObject<CustomChunk>(text);//, new JSONConverterUniversal());
             if (chunk == null)
                 throw new NullReferenceException("Chunk file " + fileName + " is corrupted!");
-            chunk.mod = Mod;
+            chunk.runtimeMod = Mod;
         }
         if (!Reload && chunk.prefab != null)
             return;
         Active.Remove(fileName);
-        if (ResourceManager.inst == null)
-            throw new NullReferenceException("ResourceManager.inst is NULL - cannot continue!");
-        var Prefabs = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
-        if (Prefabs == null)
-            throw new NullReferenceException("Chunk lookup is NULL - cannot continue!");
-        ChunkTypes prefabType;
-        if (chunk.PrefabName == null)
-        {
-            throw new NullReferenceException("Chunk PrefabName for file " + fileName + " does not exists!" +
-                "  A chunk NEEDS a valid prefab to exist!");
-        }
-        else if (chunk.Mass <= 0)
-        {
-            throw new NullReferenceException("Chunk PrefabName \"" + chunk.PrefabName + "\" cannot have Mass of " + chunk.Mass.ToString() + ", " +
-                "  A chunk NEEDS Mass greater than 0!");
-        }
-        else if (!EnumTryGetTypeFlexable(chunk.PrefabName, out prefabType))
-            prefabType = ChunkTypes.Wood;
-        if (Prefabs.TryGetValue(prefabType, out ResourceManager.ResourceDefWrapper PrefabOutter) &&
-            PrefabOutter?.def?.basePrefab != null)
-        {
-            Transform Prefab = PrefabOutter.def.basePrefab;
-            Transform Instance = Prefab.UnpooledSpawn();
-            if (!Instance)
-                throw new NullReferenceException("Instance is null");
-
-            try
-            {
-                chunk.fileName = fileName;
-                chunk.mod = Mod;
-                Visible vis = Instance.GetComponent<Visible>();
-                if (!vis)
-                    throw new NullReferenceException("Vis is null");
-
-                vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, -1);
-                Rigidbody rbody = Instance.GetComponent<Rigidbody>();
-                if (!rbody)
-                    throw new NullReferenceException("rbody is null");
-                rbody.mass = chunk.Mass;
-                ResourcePickup RP = Instance.GetComponent<ResourcePickup>();
-                if (!RP)
-                    throw new NullReferenceException("ResourcePickup is null");
-                ResRare.SetValue(RP, chunk.Rarity);
-
-                try
-                {
-                    var meshR = Mod.GetMaterialFromModAssetBundle(chunk.TextureName, false);
-                    if (!meshR)
-                        meshR = ResourcesHelper.GetMaterialFromBaseGameAllDeep(chunk.TextureName, false);
-                    Instance.GetComponent<MeshRenderer>().sharedMaterial = meshR;
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("MeshRenderer null");
-                }
-                try
-                {
-                    var meshF = Mod.GetMeshFromModAssetBundle(chunk.MeshName, false);
-                    if (meshF)
-                        Instance.GetComponent<MeshFilter>().sharedMesh = meshF;
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("MeshFilter null");
-                }
-                var dmg = Instance.GetComponent<Damageable>();
-                if (!dmg)
-                    throw new NullReferenceException("Damageable is null");
-                healthMain.SetValue(dmg, (int)(chunk.Health * 4096));
-
-
-                poolStart.Invoke(vis, new object[] { });
-                poolStart2.Invoke(RP, new object[] { });
-
-                chunk.prefab = Instance;
-                Instance.gameObject.SetActive(false);
-                ResourceTable.Definition InstanceDef = new ResourceTable.Definition
-                {
-                    basePrefab = Instance,
-                    frictionDynamic = chunk.DynamicFriction,
-                    frictionStatic = chunk.StaticFriction,
-                    mass = chunk.Mass,
-                    saleValue = chunk.Cost,
-                    m_ChunkType = (ChunkTypes)(-1),
-                    name = chunk.Name,
-                    restitution = chunk.Restitution,
-                };
-                ResourceManager.ResourceDefWrapper InstanceOutter = new ResourceManager.ResourceDefWrapper()
-                {
-                    def = InstanceDef,
-                };
-                InstanceOutter.InitMaterials();
-                chunk.prefabBase = InstanceOutter;
-
-                Active.Add(fileName, chunk);
-                DebugRandAddi.Log("Created " + chunk.Name + " instance.");
-
-            }
-            catch (Exception e)
-            {
-                UnityEngine.Object.Destroy(Instance.gameObject);
-                DebugRandAddi.Log("Failed to create " + chunk.Name + " instance - " + e);
-            }
-        }
-        else
-            throw new NullReferenceException("Chunk PrefabName \"" + chunk.PrefabName + "\" does not have a valid prefab instance!" +
-                "  A chunk NEEDS a valid prefab to exist!");
-
+        LoadInstance(Mod, fileName, chunk);
     }
-    protected override void CreateInstanceAsset(ModContainer Mod, TextAsset path, bool Reload = false)
+    protected override void LoadInstanceAsset(ModContainer Mod, TextAsset path, bool Reload = false)
     {
         string fileName = path.name;
         string text = null;
@@ -694,41 +615,81 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             JSONConverterUniversal.Foundation = null;
             JSONConverterUniversal.CreateNew = true;
             text = path.text;
-            JsonConvert.DeserializeObject<CustomChunk>(text, new JSONConverterUniversal());
+            chunk = JsonConvert.DeserializeObject<CustomChunk>(text, new JSONConverterUniversal());
+            if (chunk == null)
+                throw new NullReferenceException("Chunk file " + fileName + " is corrupted!");
+            chunk.runtimeMod = Mod;
         }
         if (!Reload && chunk.prefab != null)
             return;
-        var Prefabs = (Dictionary<ChunkTypes, ResourceManager.ResourceDefWrapper>)ResData.GetValue(ResourceManager.inst);
+        Active.Remove(fileName);
+        LoadInstance(Mod, fileName, chunk);
+    }
+    /// <inheritdoc/>
+    protected override void LoadInstance(ModContainer Mod, string ID, CustomChunk chunk)
+    {
+        if (ResourceManager.inst == null)
+            throw new NullReferenceException("ResourceManager.inst is NULL - cannot continue!");
+        if (Mod == null)
+            throw new NullReferenceException("Mod is NULL - cannot continue!");
+        if (ID.NullOrEmpty())
+            throw new NullReferenceException("ID is NULL - cannot continue!");
+        if (chunk == null)
+            throw new NullReferenceException("CustomChunk is NULL - cannot continue!");
+        var Prefabs = SpawnHelper.GetResourceChunkPrefabs();
+        if (Prefabs == null)
+            throw new NullReferenceException("Chunk lookup is NULL - cannot continue!");
         ChunkTypes prefabType;
         if (chunk.PrefabName == null)
         {
-            Debug.Log("Chunk PrefabName <FIELD IS NULL> does not exists!" +
+            throw new NullReferenceException("Chunk PrefabName for file " + ID + " does not exists!" +
                 "  A chunk NEEDS a valid prefab to exist!");
-            return;
         }
         else if (chunk.Mass <= 0)
         {
-            Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" cannot have Mass of " + chunk.Mass.ToString() + ", " +
+            throw new NullReferenceException("Chunk PrefabName \"" + chunk.PrefabName + 
+                "\" cannot have Mass of " + chunk.Mass.ToString() + ", " +
                 "  A chunk NEEDS Mass greater than 0!");
-            return;
         }
         else if (!EnumTryGetTypeFlexable(chunk.PrefabName, out prefabType))
             prefabType = ChunkTypes.Wood;
-        if (Prefabs.TryGetValue(prefabType, out ResourceManager.ResourceDefWrapper PrefabOutter) &&
-            PrefabOutter.def != null && PrefabOutter.def.basePrefab != null)
+        if (Prefabs.FirstOrDefault(x => x?.basePrefab != null && x.m_ChunkType == prefabType) 
+            is ResourceTable.Definition PrefabInner && PrefabInner != null)
         {
-            Transform Prefab = PrefabOutter.def.basePrefab;
-            Transform Instance = Prefab.UnpooledSpawn();
+            Transform Prefab = PrefabInner.basePrefab;
+            if (Prefab == null)
+                throw new NullReferenceException("Prefab is null");
+            Transform Instance = UnityEngine.Object.Instantiate(Prefab, null);
+            if (Instance == null)
+                throw new NullReferenceException("Instance is null");
+
+            int failPoint = 0;
             try
             {
-                chunk.mod = Mod;
-                chunk.fileName = fileName;
+                chunk.fileName = ID;
+                failPoint++;
+                chunk.runtimeMod = Mod;
+                failPoint++;
                 Visible vis = Instance.GetComponent<Visible>();
+                if (!vis)
+                    throw new NullReferenceException("Vis is null");
+                failPoint++;
+
                 vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Chunk, -1);
+                failPoint++;
                 Rigidbody rbody = Instance.GetComponent<Rigidbody>();
+                if (!rbody)
+                    throw new NullReferenceException("rbody is null");
+                failPoint++;
                 rbody.mass = chunk.Mass;
+                failPoint++;
                 ResourcePickup RP = Instance.GetComponent<ResourcePickup>();
+                if (!RP)
+                    throw new NullReferenceException("ResourcePickup is null");
+                failPoint++;
                 ResRare.SetValue(RP, chunk.Rarity);
+
+                failPoint++;
                 try
                 {
                     var meshR = Mod.GetMaterialFromModAssetBundle(chunk.TextureName, false);
@@ -740,6 +701,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                 {
                     DebugRandAddi.Log("MeshRenderer null");
                 }
+                failPoint++;
                 try
                 {
                     var meshF = Mod.GetMeshFromModAssetBundle(chunk.MeshName, false);
@@ -750,14 +712,26 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                 {
                     DebugRandAddi.Log("MeshFilter null");
                 }
-                healthMain.SetValue(Instance.GetComponent<Damageable>(), (int)(chunk.Health * 4096));
+                failPoint++;
+                var dmg = Instance.GetComponent<Damageable>();
+                if (!dmg)
+                    throw new NullReferenceException("Damageable is null");
+                failPoint++;
+                healthMain.SetValue(dmg, (int)(chunk.Health * 4096));
 
 
+                failPoint++;
                 poolStart.Invoke(vis, new object[] { });
+                failPoint++;
                 poolStart2.Invoke(RP, new object[] { });
 
+                Instance.CreatePool(4);
+                failPoint++;
+
                 chunk.prefab = Instance;
+                failPoint++;
                 Instance.gameObject.SetActive(false);
+                failPoint++;
                 ResourceTable.Definition InstanceDef = new ResourceTable.Definition
                 {
                     basePrefab = Instance,
@@ -769,25 +743,22 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                     name = chunk.Name,
                     restitution = chunk.Restitution,
                 };
-                ResourceManager.ResourceDefWrapper InstanceOutter = new ResourceManager.ResourceDefWrapper()
-                {
-                    def = InstanceDef,
-                };
-                InstanceOutter.InitMaterials();
-                chunk.prefabBase = InstanceOutter;
+                failPoint++;
+                chunk.runtimePrefabBase = InstanceDef;
+                failPoint++;
 
-                Active.Add(fileName, chunk);
-
+                Active.Add(ID, chunk);
+                failPoint++;
+                DebugRandAddi.Log("Created " + chunk.Name + " instance.");
             }
             catch (Exception e)
             {
                 UnityEngine.Object.Destroy(Instance.gameObject);
-                DebugRandAddi.Log("Failed to create " + chunk.Name + " instance - " + e);
+                DebugRandAddi.Log("Failed to create " + chunk.Name + " instance (" + failPoint + ") - " + e);
             }
         }
         else
-            Debug.Log("Chunk PrefabName \"" + chunk.PrefabName + "\" does not have a valid prefab instance!" +
+            throw new NullReferenceException("Chunk PrefabName \"" + chunk.PrefabName + "\" does not have a valid prefab instance!" +
                 "  A chunk NEEDS a valid prefab to exist!");
-
     }
 }

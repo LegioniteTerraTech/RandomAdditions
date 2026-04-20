@@ -71,6 +71,7 @@ namespace RandomAdditions
         protected override void Pool()
         {
             //barrelMountPrefab = KickStart.HeavyObjectSearch(transform, "_barrelMountPrefab");
+            // WIP
             legs = GetComponentsInChildren<SimpleLeg>().ToList();
         }
 
@@ -137,20 +138,23 @@ namespace RandomAdditions
     /// <summary>
     /// Note: only the Thigh to the block and the last leg to the foot should articulate and aim!
     /// </summary>
-    public interface ILegPart
+    public interface IIKJointPart
     {
         /// <summary>
         /// FOOT HAS THIS NULL
         /// </summary>
-        ILegPart child { get; set; }
+        IIKJointPart child { get; set; }
+        /// <summary> The next transform this joint part rotates </summary>
         Transform ourTrans { get; }
+        /// <summary> Local Rotation </summary>
         Quaternion originalRot { get; set; }
+        /// <summary> Local Rotation </summary>
         Quaternion activeRot { get; set; }
         int partIndex { get; set; }
         float DistanceToChild { get; set; }
         float MovementPriority { get; set; }
         float OurAngleRadians { get; set; }
-        void AttachToLegPart(Transform rootTrans, ILegPart part, bool uprightLegs);
+        void AttachToJointPart(Transform rootTrans, IIKJointPart part, bool uprightJoints);
         /// <summary>
         /// Positive should be forwards, negative should be backwards
         /// </summary>
@@ -159,12 +163,12 @@ namespace RandomAdditions
         void SetChildCorrectiveAngleIfAny(float angleRadians);
     }
 
-    public class SimpleLeg : MonoBehaviour, ILegPart
+    public class SimpleLeg : MonoBehaviour, IIKJointPart
     {
         private ModuleSimpleLegs MSL;
         private Quaternion startRotCab = Quaternion.identity;
         private Vector3 tankCOMLocal = Vector3.zero;
-        private ILegPart Foot;
+        private IIKJointPart Foot;
         private Vector3 FootWorldPos
         {
             get
@@ -190,7 +194,7 @@ namespace RandomAdditions
         private Vector3 DefaultLocalLegPosition = Vector3.zero;
         private Vector3 RetractedLocalLegPosition = Vector3.zero;
 
-        private List<ILegPart> LegPartsByPriority = new List<ILegPart>();
+        private List<IIKJointPart> LegPartsByPriority = new List<IIKJointPart>();
 
         internal Vector3 TargetPhysicalPositionWorld = Vector3.zero;
         /// <summary>
@@ -224,26 +228,26 @@ namespace RandomAdditions
         }
         private void CalibrateMinAndMaxDistance()
         {
-            foreach (var part in IteratePosableLegParts(LegPartsByPriority))
+            foreach (var part in IteratePosableJointParts(LegPartsByPriority))
             {
-                TryExtendLegPair(part, part.child, 0, ref MinLegExtension);
+                TryExtendJointPair(part, part.child, 0, ref MinLegExtension);
             }
-            foreach (var part in IteratePosableLegParts(LegPartsByPriority))
+            foreach (var part in IteratePosableJointParts(LegPartsByPriority))
             {
-                TryExtendLegPair(part, part.child, float.MaxValue / 2f, ref MaxLegExtension);
+                TryExtendJointPair(part, part.child, float.MaxValue / 2f, ref MaxLegExtension);
             }
             DefaultLegExtension = (MinLegExtension + MaxLegExtension) / 2f;
             EffectiveStrideRadius = DefaultLegExtension - MinLegExtension;
             float targetExtension = MinLegExtension;
-            foreach (var part in IteratePosableLegParts(LegPartsByPriority))
+            foreach (var part in IteratePosableJointParts(LegPartsByPriority))
             {
-                TryExtendLegPair(part, part.child, targetExtension, ref targetExtension);
+                TryExtendJointPair(part, part.child, targetExtension, ref targetExtension);
             }
             RetractedLocalLegPosition = transform.InverseTransformPoint(FootWorldPos);
             targetExtension = DefaultLegExtension;
-            foreach (var part in IteratePosableLegParts(LegPartsByPriority))
+            foreach (var part in IteratePosableJointParts(LegPartsByPriority))
             {
-                TryExtendLegPair(part, part.child, targetExtension, ref targetExtension);
+                TryExtendJointPair(part, part.child, targetExtension, ref targetExtension);
             }
             DefaultLocalLegPosition = transform.InverseTransformPoint(FootWorldPos);
         }
@@ -258,7 +262,7 @@ namespace RandomAdditions
         public float PreMaxLegExtend => EffectiveStrideRadius * 0.9f;
         public float SafeMaxLegExtend => EffectiveStrideRadius * 0.95f;
 
-        private bool HasPhysicalFootTarget(out Rigidbody surfColliderRbody)
+        private bool HasPhysicalJointEndTarget(out Rigidbody surfColliderRbody)
         {
             surfColliderRbody = null;
             if (SurfaceCollider != null && !(SurfaceCollider is TerrainCollider))
@@ -271,9 +275,9 @@ namespace RandomAdditions
             }
             return surfColliderRbody;
         }
-        private bool HasPhysicalFootTarget(out Rigidbody surfColliderRbody, out Vector3 posSpace)
+        private bool HasPhysicalJointEndTarget(out Rigidbody surfColliderRbody, out Vector3 posSpace)
         {
-            if (HasPhysicalFootTarget(out surfColliderRbody))
+            if (HasPhysicalJointEndTarget(out surfColliderRbody))
             {
                 posSpace = SurfaceCollider.transform.InverseTransformPoint(SurfaceColliderStepPos);
                 return true;
@@ -281,7 +285,7 @@ namespace RandomAdditions
             posSpace = Vector3.zero;
             return false;
         }
-        private void HandleFootLifting(bool TryLift, ManSimpleLegs.TankSimpleLegs TSL)
+        private void HandleJointEndLifting(bool TryLift, ManSimpleLegs.TankSimpleLegs TSL)
         {
             if (TryLift)
             {
@@ -300,37 +304,37 @@ namespace RandomAdditions
                 }
             }
         }
-        private void MovePhysicsLegPoint(Vector3 posLocal, ManSimpleLegs.TankSimpleLegs TSL)
+        private void MovePhysicsJointEndPoint(Vector3 posLocal, ManSimpleLegs.TankSimpleLegs TSL)
         {
             TargetPhysicalPositionLocal = posLocal;
             if (LegPhysicalLocalPointThisFrame.Approximately(DefaultLocalLegPosition, 0.05f))
             {
-                HandleFootLifting(false, TSL);
+                HandleJointEndLifting(false, TSL);
             }
             else
             {   // We MOVE here to DefaultLocalLegPosition
-                HandleFootLifting(true, TSL);
+                HandleJointEndLifting(true, TSL);
             }
             TargetPhysicalPositionWorld = transform.TransformPoint(TargetPhysicalPositionLocal);
         }
-        public void UpdateLegManagement(ManSimpleLegs.TankSimpleLegs TSL)
+        public void UpdateIKManagement(ManSimpleLegs.TankSimpleLegs TSL)
         {
             if (CloseToGround)
             {
                 if (DriveStride.ApproxZero())
                 {   // We call the legs back to origin
-                    MovePhysicsLegPoint(DefaultLocalLegPosition, TSL);
+                    MovePhysicsJointEndPoint(DefaultLocalLegPosition, TSL);
                 }
                 else
                 {
                     float legExtendDist = (LegPhysicalLocalPointThisFrame - DefaultLocalLegPosition).magnitude;
                     if (legExtendDist > SafeMaxLegExtend)
                     {   // Trigger Leg to step forwards IMMEDEATELY next frame
-                        MovePhysicsLegPoint(DefaultLocalLegPosition + (DriveStride * PreMaxLegExtend), TSL);
+                        MovePhysicsJointEndPoint(DefaultLocalLegPosition + (DriveStride * PreMaxLegExtend), TSL);
                     }
                     else
                     {   // Follow our last position world
-                        if (HasPhysicalFootTarget(out Rigidbody surfColliderRbody, out Vector3 posWorld))
+                        if (HasPhysicalJointEndTarget(out Rigidbody surfColliderRbody, out Vector3 posWorld))
                             TargetPhysicalPositionWorld = posWorld;
                         TargetPhysicalPositionLocal = transform.InverseTransformPoint(TargetPhysicalPositionWorld);
                     }
@@ -338,10 +342,10 @@ namespace RandomAdditions
             }
             else
             {   // Retract and don't move
-                MovePhysicsLegPoint(RetractedLocalLegPosition + (DriveStride * PreMaxLegExtend), TSL);
+                MovePhysicsJointEndPoint(RetractedLocalLegPosition + (DriveStride * PreMaxLegExtend), TSL);
             }
         }
-        public void UpdateLegMoveLerp()
+        public void UpdateIKMoveLerp()
         {
             Vector3 Offset = RaisedFoot ? Vector3.up * MSL.StepUpRetraction : Vector3.zero;
             if (GroundContact)
@@ -358,7 +362,7 @@ namespace RandomAdditions
                 LegVisualPositionLocal = Vector3.Lerp(LegPhysicalLocalPointThisFrame, TargetPhysicalPositionLocal + Offset, time);
             }
         }
-        public void UpdateVisualLegTarget()
+        public void UpdateVisualIKTarget()
         {
             CloseToGround = false;
             Vector3 legCurPos = transform.InverseTransformPoint(LegPhysicalLocalPointThisFrame); //Foot.ourTrans.position;
@@ -392,9 +396,9 @@ namespace RandomAdditions
         }
         public void FirstFixedUpdate(ManSimpleLegs.TankSimpleLegs TSL)
         {
-            UpdateLegManagement(TSL);
-            UpdateLegMoveLerp();
-            UpdateVisualLegTarget();
+            UpdateIKManagement(TSL);
+            UpdateIKMoveLerp();
+            UpdateVisualIKTarget();
         }
         public void LastFixedUpdate(float invMass, float stabDelta)
         {
@@ -413,7 +417,7 @@ namespace RandomAdditions
                 float appliedVeloY = Mathf.Abs(localForce.y * invMass);
                 if (appliedVeloY > MSL.LegMaxVerticalSpringAcceleration)
                     localForce.y *= MSL.LegMaxVerticalSpringAcceleration / appliedVeloY;
-                if (HasPhysicalFootTarget(out Rigidbody surfColliderRbody))
+                if (HasPhysicalJointEndTarget(out Rigidbody surfColliderRbody))
                 {
                     float stabSurf = surfColliderRbody.GetMaxStableForceThisFixedFrame();
                     stabDelta = Mathf.Min(stabDelta, stabSurf);
@@ -435,7 +439,7 @@ namespace RandomAdditions
         public void LastLastFixedUpdate()
         {
             Vector3 force = transform.TransformVector(AppliedForceLeg);
-            if (HasPhysicalFootTarget(out Rigidbody surfColliderRbody))
+            if (HasPhysicalJointEndTarget(out Rigidbody surfColliderRbody))
             {
                 surfColliderRbody.AddForceAtPosition(-force, FootWorldPos, ForceMode.Force);
             }
@@ -461,11 +465,12 @@ namespace RandomAdditions
             RaisedFoot = raiseFoot;
         }
 
-        internal static void DoAttachToLegPart(Transform rootTrans, ILegPart parent, ILegPart child, bool uprightLegs, int partIndex, float partWeight)
+        internal static void DoAttachToJointPart(Transform rootTrans, IIKJointPart parent, IIKJointPart child, 
+            bool uprightEnds, int partIndex, float partWeight)
         {
             parent.child = child;
             parent.originalRot = child.ourTrans.localRotation;
-            if (uprightLegs)
+            if (uprightEnds)
             {
                 parent.activeRot = Quaternion.LookRotation(Vector3.up, Vector3.back);
             }
@@ -480,13 +485,13 @@ namespace RandomAdditions
         }
         public void OnUpdate()
         {
-            UpdateCycle(transform.TransformPoint(LegVisualPositionLocal), this, LegPartsByPriority, GetFootUpright(), FootHeight);
+            UpdateCycle(transform.TransformPoint(LegVisualPositionLocal), this, LegPartsByPriority, GetJointEndUpright(), FootHeight);
         }
-        private Vector3 GetFootUpright()
+        private Vector3 GetJointEndUpright()
         {
             return Vector3.up;
         }
-        private void ResetLegAngles()
+        private void ResetJointAngles()
         {
             foreach (var item in LegPartsByPriority)
             {
@@ -495,44 +500,45 @@ namespace RandomAdditions
             }
         }
 
-        private static List<ILegPart> legIterator = new List<ILegPart>();
-        private static IEnumerable<ILegPart> IteratePosableLegParts(List<ILegPart> legPartsOrdered)
+        private static List<IIKJointPart> jointIterator = new List<IIKJointPart>();
+        private static IEnumerable<IIKJointPart> IteratePosableJointParts(List<IIKJointPart> jointPartsOrdered)
         {
-            legIterator.AddRange(legPartsOrdered);
+            jointIterator.AddRange(jointPartsOrdered);
             // We want to articulate our legs so that they extend in relation to the origin
-            while (legIterator.Any())
+            while (jointIterator.Any())
             {
-                ILegPart part = legIterator.First();
+                IIKJointPart part = jointIterator.First();
                 if (part.child?.child != null)
                 {// We can double-team these to act as a linear pair
-                    legIterator.RemoveAt(0);
-                    legIterator.Remove(part.child);
+                    jointIterator.RemoveAt(0);
+                    jointIterator.Remove(part.child);
                     yield return part;
                 }
                 else
-                    legIterator.RemoveAt(0);
+                    jointIterator.RemoveAt(0);
             }
-            legIterator.Clear();
+            jointIterator.Clear();
         }
         // Leg calculation - we know how far we want to reach, now to articulate all hinges to match the distance
         /// <summary>
         /// Move the leg to a specific position.  
         ///  We do this for our next Update() with the deltas to follow
         /// </summary>
-        /// <param name="footFlooredPosScene">Where the foot contacts the ground</param>
-        /// <param name="legPartsOrdered">A list of all LegParts from highest to lowest </param>
-        /// <param name="footGroundOffset"></param>
+        /// <param name="endFlooredPosScene">Where the foot contacts the ground</param>
+        /// <param name="jointPartsOrdered">A list of all LegParts from highest to lowest </param>
+        /// <param name="endGroundOffset"></param>
         /// <returns>true if we could reach all the way to our target</returns>
-        private static bool UpdateCycle(Vector3 footFlooredPosScene, SimpleLeg thigh, List<ILegPart> legPartsOrdered, Vector3 footUpright, float footGroundOffset)
+        private static bool UpdateCycle(Vector3 endFlooredPosScene, SimpleLeg thigh,
+            List<IIKJointPart> jointPartsOrdered, Vector3 endUpright, float endGroundOffset)
         {
             Vector3 ThighOrigin = thigh.ourTrans.position;
-            footFlooredPosScene += footUpright * -footGroundOffset;
-            float distance = (ThighOrigin - footFlooredPosScene).magnitude;
+            endFlooredPosScene += endUpright * -endGroundOffset;
+            float distance = (ThighOrigin - endFlooredPosScene).magnitude;
             // We want to articulate our legs so that they extend in relation to the origin
             bool acted = false;
-            foreach (var part in IteratePosableLegParts(legPartsOrdered))
+            foreach (var part in IteratePosableJointParts(jointPartsOrdered))
             {
-                TryExtendLegPair(part, part.child, distance, ref distance);
+                TryExtendJointPair(part, part.child, distance, ref distance);
             }
             if (!acted)
                 throw new InvalidOperationException("Leg was assembled properly, but Cycle didn't invoke TryExtendLegPair() in an entire iteration!" +
@@ -551,7 +557,7 @@ namespace RandomAdditions
         {
             return Mathf.Acos(((adjacent1 * adjacent1) + (adjacent2 * adjacent2) - (opposite * opposite)) / (2 * adjacent1 * adjacent2));
         }
-        internal static void TryExtendLegPair(ILegPart parent, ILegPart child, float DistToExtend, ref float leftoverDistance)
+        internal static void TryExtendJointPair(IIKJointPart parent, IIKJointPart child, float DistToExtend, ref float leftoverDistance)
         {
             float maxDistParent = parent.DistanceToChild;
             float maxDistChild = child.DistanceToChild;
@@ -607,7 +613,7 @@ namespace RandomAdditions
             leftoverDistance -= DistToExtend;
         }
 
-        public ILegPart child { get; set; }
+        public IIKJointPart child { get; set; }
         public Transform ourTrans => transform;
         public Quaternion originalRot { get; set; }
         public Quaternion activeRot { get; set; }
@@ -615,9 +621,9 @@ namespace RandomAdditions
         public float DistanceToChild { get; set; }
         public float MovementPriority { get; set; }
         public float OurAngleRadians { get; set; }
-        public void AttachToLegPart(Transform rootTrans, ILegPart part, bool uprightLegs)
+        public void AttachToJointPart(Transform rootTrans, IIKJointPart part, bool uprightLegs)
         {
-            DoAttachToLegPart(rootTrans, this, part, uprightLegs, 0, 9001f);
+            DoAttachToJointPart(rootTrans, this, part, uprightLegs, 0, 9001f);
         }
         public void SetHingeAngleDelta(float angleRadians)
         {
@@ -628,9 +634,9 @@ namespace RandomAdditions
             if (child != null)
                 child.OurAngleRadians += angleRadians;
         }
-        public class LegPart : ILegPart
-        {   // Keeps track of a leg part  
-            public ILegPart child { get; set; }
+        public class IKJointPart : IIKJointPart
+        {   // Keeps track of a joint part  
+            public IIKJointPart child { get; set; }
             public Transform ourTrans { get; }
             public Quaternion originalRot { get; set; }
             public Quaternion activeRot { get; set; }
@@ -638,13 +644,13 @@ namespace RandomAdditions
             public float DistanceToChild { get; set; }
             public float MovementPriority { get; set; }
             public float OurAngleRadians { get; set; }
-            public LegPart(Transform trans)
+            public IKJointPart(Transform trans)
             {
                 ourTrans = trans;
             }
-            public void AttachToLegPart(Transform rootTrans, ILegPart part, bool uprightLegs)
+            public void AttachToJointPart(Transform rootTrans, IIKJointPart part, bool uprightLegs)
             {
-                DoAttachToLegPart(rootTrans, this, part, uprightLegs, partIndex, MovementPriority);
+                DoAttachToJointPart(rootTrans, this, part, uprightLegs, partIndex, MovementPriority);
             }
             public void SetHingeAngleDelta(float angleRadians)
             {
@@ -656,6 +662,11 @@ namespace RandomAdditions
                     child.OurAngleRadians += angleRadians;
             }
         }
+        /// <summary>
+        /// Finds the next transform immedeately labeled with "l_" to determine the next leg section
+        /// </summary>
+        /// <param name="trans"></param>
+        /// <returns></returns>
         private Transform FindNextLegPart(Transform trans)
         {
             for (int i = 0; i < trans.childCount; i++)
@@ -675,15 +686,15 @@ namespace RandomAdditions
             if (ourTrans.parent != MSL.transform)
                 throw new NullReferenceException("Thigh is not directly attached to target block");
             Transform nextTrans = ourTrans;
-            ILegPart prevLegPart = this;
-            ILegPart nextLegPart = null;
+            IIKJointPart prevLegPart = this;
+            IIKJointPart nextLegPart = null;
             do
             {
                 nextTrans = FindNextLegPart(nextTrans);
                 if (nextTrans != null)
                 {
-                    nextLegPart = new LegPart(nextTrans);
-                    prevLegPart.AttachToLegPart(rootBlockTrans, nextLegPart, MSL.RotateUpwards90);
+                    nextLegPart = new IKJointPart(nextTrans);
+                    prevLegPart.AttachToJointPart(rootBlockTrans, nextLegPart, MSL.RotateUpwards90);
                     LegPartsByPriority.Add(prevLegPart);
                     prevLegPart = nextLegPart;
                 }
@@ -694,12 +705,12 @@ namespace RandomAdditions
             if (nextLegPart == null)
                 throw new NullReferenceException("Foot is missing");
             Foot = nextLegPart;
-            foreach (LegPart part in LegPartsByPriority.OrderBy(x => x.MovementPriority))
-                legIterator.Add(part);
+            foreach (IKJointPart part in LegPartsByPriority.OrderBy(x => x.MovementPriority))
+                jointIterator.Add(part);
             LegPartsByPriority.Clear();
             var temp = LegPartsByPriority;
-            LegPartsByPriority = legIterator;
-            legIterator = temp;
+            LegPartsByPriority = jointIterator;
+            jointIterator = temp;
         }
 
 

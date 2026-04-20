@@ -841,7 +841,7 @@ namespace RandomAdditions.RailSystem
                     foreach (var item2 in tank.blockman.IterateBlocks())
                     {
                         var t = item2.GetComponent<ModuleTechTether>();
-                        if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                        if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                             Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
                         {
                             yield return t;
@@ -853,7 +853,7 @@ namespace RandomAdditions.RailSystem
                     foreach (var item2 in tank.blockman.IterateBlocks())
                     {
                         var t = item2.GetComponent<ModuleTechTether>();
-                        if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                        if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                             Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
                         {
                             yield return t;
@@ -879,7 +879,7 @@ namespace RandomAdditions.RailSystem
                 foreach (var item2 in tank.blockman.IterateBlocks())
                 {
                     var t = item2.GetComponent<ModuleTechTether>();
-                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                    if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                         Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
                     {
                         float pos = (fwdRot * t.GetTetherBlockMassPosLocal).z;
@@ -901,7 +901,7 @@ namespace RandomAdditions.RailSystem
                 foreach (var item2 in tank.blockman.IterateBlocks())
                 {
                     var t = item2.GetComponent<ModuleTechTether>();
-                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                    if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                         Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
                     {
                         float pos = (fwdRot * t.GetTetherBlockMassPosLocal).z;
@@ -935,7 +935,7 @@ namespace RandomAdditions.RailSystem
                 foreach (var item2 in tank.blockman.IterateBlocks())
                 {
                     var t = item2.GetComponent<ManTethers.ModuleTechTether>();
-                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                    if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                         Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
                     {
                         Vector3 pos = Quaternion.Inverse(Quaternion.LookRotation(fwd)) * t.GetTetherBlockMassPosLocal;
@@ -962,7 +962,7 @@ namespace RandomAdditions.RailSystem
                 foreach (var item2 in tank.blockman.IterateBlocks())
                 {
                     var t = item2.GetComponent<ManTethers.ModuleTechTether>();
-                    if (t && (!LinkedOnly || (t.IsConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
+                    if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                         Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
                     {
                         Vector3 pos = Quaternion.Inverse(Quaternion.LookRotation(fwd)) * t.GetTetherBlockMassPosLocal;
@@ -1254,7 +1254,7 @@ namespace RandomAdditions.RailSystem
             MasterSortByPositionForwards();
 
             //DebugRandAddi.Assert("TankLocomotive: SortAndRegisterLocomotivesInfo has " + toProccess.Count + " entries");
-            List<TankLocomotive> sortedCars = toProcess.OrderBy(x => x.CarNumber).ToList();
+            List<TankLocomotive> sortedCars = toProcess.OrderBy(x => x.CarNumber).ToList(); // RARE CALL
 
             // We use the sorted cars to find the MasterCar, or controlling Tech in the train
             var carBest = sortedCars.Find(x => x.tank.PlayerFocused);

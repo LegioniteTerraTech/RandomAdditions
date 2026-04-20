@@ -134,13 +134,13 @@ namespace RandomAdditions.RailSystem
                     foundationPoints.Add(pos + extender);
 
                     RailMeshBuilder.ChangeTrackIronGameObject(transform, ref leftIron, Type, "leftIron",
-                        leftIronPoints.ToArray(), false);
+                        leftIronPoints, false);
                     RailMeshBuilder.ChangeTrackIronGameObject(transform, ref rightIron, Type, "rightIron",
-                        rightIronPoints.ToArray(), true);
+                        rightIronPoints, true);
                     RailMeshBuilder.SetTrackSkin(transform, Type, skinIndex);
                     if (Track.Space == RailSpace.World)
                         RailMeshBuilder.ChangeTrackFoundationGameObject(transform, ref railFoundation, Type,
-                            foundationPoints.ToArray());
+                            foundationPoints);
                 }
                 else
                     DebugRandAddi.Assert("UpdateTrackVisual could not get prefab for " + Type.ToString());
@@ -187,13 +187,13 @@ namespace RandomAdditions.RailSystem
                 foundationPoints.Add(pos + extender);
 
                 RailMeshBuilder.ChangeTrackIronGameObject(transform, ref leftIron, Type, "leftIron",
-                    leftIronPoints.ToArray(), false);
+                    leftIronPoints, false);
                 RailMeshBuilder.ChangeTrackIronGameObject(transform, ref rightIron, Type, "rightIron",
-                    rightIronPoints.ToArray(), true);
+                    rightIronPoints, true);
                 RailMeshBuilder.SetTrackSkin(transform, Type, skinIndex);
                 if (Track.Space == RailSpace.World)
                     RailMeshBuilder.ChangeTrackFoundationGameObject(transform, ref railFoundation, Type,
-                        foundationPoints.ToArray());
+                        foundationPoints);
             }
         }
 
@@ -243,7 +243,7 @@ namespace RandomAdditions.RailSystem
             ModContainer MC = ManMods.inst.FindMod("Random Additions");
             ResourcesHelper.LookIntoModContents(MC);
 
-            GameObject GO = Instantiate(new GameObject("Beam_Seg"), null);
+            GameObject GO = new GameObject("Beam_Seg");
             RailSegmentBeam RS = GO.AddComponent<RailSegmentBeam>();
             RS.BaseInit();
             Transform Trans = RS.transform;

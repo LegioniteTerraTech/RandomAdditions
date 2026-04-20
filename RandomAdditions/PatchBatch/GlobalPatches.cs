@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -24,22 +25,95 @@ namespace RandomAdditions
     {
         // BUGFIXES
 
+        internal static class SeeIfPoolLaggy
+        {
+            internal static Type target = typeof(ComponentPool);
+
+
+            /* // Turning off the repooler does indeed increase lag
+            [HarmonyPriority(-9001)]
+            internal static bool LateUpdate_Prefix(ComponentPool __instance)
+            {
+                return false;
+            }//*/
+            
+
+            public static Stopwatch watch = new Stopwatch();
+            [HarmonyPriority(-9001)]
+            internal static void DepoolForMemory_Prefix(ComponentPool __instance)
+            {
+                watch.Restart();
+            }
+            [HarmonyPriority(-9001)]
+            internal static void DepoolForMemory_Postfix(ComponentPool __instance)
+            {
+                watch.Stop();
+                if (watch.ElapsedMilliseconds > 5)
+                    DebugRandAddi.Log("ComponentPool.DepoolForMemory() took " +  watch.ElapsedMilliseconds + "ms on path " + StackTraceUtility.ExtractStackTrace());
+            }
+
+
+            public static Stopwatch watch2 = new Stopwatch();
+            [HarmonyPriority(-9001)]
+            internal static void UpdatePoolHeap_Prefix(ComponentPool __instance)
+            {
+                watch2.Restart();
+            }
+            [HarmonyPriority(-9001)]
+            internal static void UpdatePoolHeap_Postfix(ComponentPool __instance)
+            {
+                watch2.Stop();
+                if (watch2.ElapsedMilliseconds > 5)
+                    DebugRandAddi.Log("ComponentPool.UpdatePoolHeap() took " + watch2.ElapsedMilliseconds + "ms on path " + StackTraceUtility.ExtractStackTrace());
+            }
+
+            public static Stopwatch watch3 = new Stopwatch();
+            [HarmonyPriority(-9001)]
+            internal static void LateUpdate_Prefix(ComponentPool __instance)
+            {
+                watch3.Restart();
+            }
+            [HarmonyPriority(-9001)]
+            internal static void LateUpdate_Postfix(ComponentPool __instance)
+            {
+                watch3.Stop();
+                if (watch.ElapsedMilliseconds > 5)
+                    DebugRandAddi.Log("ComponentPool.LateUpdate() took " + watch.ElapsedMilliseconds + "ms on path " + StackTraceUtility.ExtractStackTrace());
+            }
+
+            public static Stopwatch watch4 = new Stopwatch();
+            [HarmonyPriority(-9001)]
+            internal static void InterrogatePoolInterface_Prefix(ComponentPool __instance)
+            {
+                watch4.Restart();
+            }
+            [HarmonyPriority(-9001)]
+            internal static void InterrogatePoolInterface_Postfix(ComponentPool __instance)
+            {
+                watch4.Stop();
+                if (watch.ElapsedMilliseconds > 5)
+                    DebugRandAddi.Log("ComponentPool.InterrogatePoolInterface() took " + watch.ElapsedMilliseconds + "ms on path " + StackTraceUtility.ExtractStackTrace());
+            }
+
+            public static Stopwatch watch5 = new Stopwatch();
+            [HarmonyPriority(-9001)]
+            internal static void LookupPool_Prefix(ComponentPool __instance)
+            {
+                watch5.Restart();
+            }
+            [HarmonyPriority(-9001)]
+            internal static void LookupPool_Postfix(ComponentPool __instance)
+            {
+                watch5.Stop();
+                if (watch.ElapsedMilliseconds > 5)
+                    DebugRandAddi.Log("ComponentPool.LookupPool() took " + watch.ElapsedMilliseconds + "ms on path " + StackTraceUtility.ExtractStackTrace());
+            }
+        }
+
         internal static class FuckYouEpicOnlineServices
         {
             internal static Type target = typeof(ManEOS);
 
-            [HarmonyPriority(-9001)]
-            internal static bool DoFullLogin_Prefix(ManEOS __instance, Action onLogAttemptedCallback)
-            {
-                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
-                {
-                    DebugRandAddi.Log("RandomAdditions: ManEOS.DoFullLogin was called!  You don't trust them so we deny the send request");
-                    if (onLogAttemptedCallback != null)
-                        onLogAttemptedCallback();
-                    return false;
-                }
-                return true;
-            }
             /// <param name="__instance"></param>
             [HarmonyPriority(-9001)]
             internal static bool SetOfflineMode_Prefix(ManEOS __instance, bool isOffline)
@@ -57,10 +131,137 @@ namespace RandomAdditions
             }
         }//*/
 
+
+        private static void PopYouHaveTooManySavesInYourFolderWarning(ManGameMode.GameType type)
+        {
+            string theMessage = "TerraTech wasn't able to load the savefile correctly.\n" +
+                "The issue is caused by something not sending any savedata over\n" +
+                "when there are too many mods installed (boot > 1 minute)\n" +
+                "or when there are too many saves for the game to load.\n\n" +
+                "Check your ram usage and move any save files you aren't \n" +
+                "using out of our saves folder to reduce the odds of this error.\n" +
+                "It is also VERY possible if your ram is full and paging is disabled, \n" +
+                "your computer will no longer be able load the save.\n\n";
+            var target = ManSaveGame.GetCurrentUserGameSaveDir(type);
+            if (Directory.Exists(target))
+            {
+                ManModGUI.ShowErrorPopup(theMessage +
+                    "Press [Fix] to open your file system to your saves directory.", true,
+                    () => {
+                        if (Directory.Exists(target))
+                            KickStart.OpenInExplorer(target);
+                    });
+            }
+            else
+            {
+                ManModGUI.ShowErrorPopup(theMessage +
+                    "For some reason the saves folder does not exist?", true);
+            }
+        }
+        private static FieldInfo getTheTypeSaves = AccessTools.Field(typeof(UIScreenLoadSave), "m_GameTypeOfSaves");
+
+        internal static class UIScreenLoadSavePatches
+        {
+            internal static Type target = typeof(UIScreenLoadSave);
+
+            [HarmonyPriority(-9001)]
+            internal static void OnSaveSelected_Prefix(UIScreenLoadSave __instance, UISave selectedSave)
+            {
+                if (selectedSave == null)
+                {
+                    DebugRandAddi.FatalError("selectedSave IS NULL");
+                }
+                else if (selectedSave.SaveInfo == null)
+                {
+                    DebugRandAddi.FatalError("selectedSave.SaveInfo IS NULL");
+                }
+                else if (!selectedSave.SaveInfo.CanLoadSave())
+                {
+                    DebugRandAddi.FatalError("selectedSave.SaveInfo cannot load save!!!");
+                }
+            }
+
+
+            [HarmonyPriority(-9001)]
+            internal static void SetSavedGameToLoad_Prefix(UIScreenLoadSave __instance,
+                ToggleGroup ___m_ToggleGroup, UISave ___m_ActiveSave)
+            {
+                if (___m_ToggleGroup == null)
+                {
+                    DebugRandAddi.FatalError("m_ToggleGroup IS NULL");
+                }
+                else if (!___m_ToggleGroup.AnyTogglesOn())
+                {   // This happens but it doesn't seem to negatively affect anything...
+                    //DebugRandAddi.FatalError("m_ToggleGroup does not have any toggles selected!");
+                    //DebugRandAddi.Assert("SwitchToMode call has null m_SwitchAction when it should have one!");
+                }
+                if (___m_ActiveSave == null)
+                {
+                    PopYouHaveTooManySavesInYourFolderWarning((ManGameMode.GameType)getTheTypeSaves.GetValue(__instance));
+                    DebugRandAddi.FatalError("m_ActiveSave IS NULL");
+                    //DebugRandAddi.Assert("SwitchToMode call has null m_SwitchAction when it should have one!");
+                }
+            }
+        }
+        internal static class ManGameModePatches
+        {
+            internal static Type target = typeof(ManGameMode);
+
+            [HarmonyPriority(-9001)]
+            internal static void SetupModeSwitchAction_Postfix(ManGameMode __instance, 
+                ManGameMode.ModeSettings modeSettings, ManGameMode.GameType modeToSet, 
+                string miscSubMode = null)
+            {
+                if (__instance == null)
+                {
+                    DebugRandAddi.FatalError("ManGameMode IS NULL");
+                }
+                else if (modeSettings == null)
+                {
+                    DebugRandAddi.FatalError("ManGameMode.SetupModeSwitchAction() resulted in " +
+                        "NULL modeSettings!?! - Target mode is [" + modeToSet.ToString() + 
+                        "], miscSubMode [" + miscSubMode +"]");
+                }
+                else if (modeSettings.m_SwitchAction == null)
+                {
+                    DebugRandAddi.FatalError("ManGameMode.SetupModeSwitchAction() resulted in " +
+                        "NULL modeSettings.m_SwitchAction and target mode is [" + modeToSet.ToString() +
+                        "], miscSubMode [" + miscSubMode + "]");
+                }
+            }
+        }
         //*
         internal static class ModeSettingsPatches
         {
             internal static Type target = typeof(ManGameMode.ModeSettings);
+            internal static FieldInfo field = typeof(ManGameMode.ModeSettings).GetField("m_nextModeCachedSettings",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+            /// <summary>
+            /// SANITY CHECK
+            /// </summary>
+            /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
+            internal static void SwitchToMode_Prefix(ManGameMode.ModeSettings __instance)
+            {
+                if (__instance == null)
+                {
+                    DebugRandAddi.FatalError("SwitchToMode call was called on a NULL ModeSettings!");
+                }
+                else
+                {
+                    if (__instance.m_SwitchAction == null)
+                    {
+                        DebugRandAddi.FatalError("SwitchToMode call has null m_SwitchAction when it should have one!");
+                        //DebugRandAddi.Assert("SwitchToMode call has null m_SwitchAction when it should have one!");
+                    }
+                    if (field.GetValue(__instance) == null)
+                    {
+                        DebugRandAddi.FatalError("SwitchToMode call has null m_nextModeCachedSettings when it should have one!");
+                    }
+                }
+            }
+
             /// <summary>
             /// Fix the bloody settings issue!
             /// </summary>
@@ -68,26 +269,53 @@ namespace RandomAdditions
             [HarmonyPriority(-9001)]
             internal static void SwitchToMode_Postfix(ManGameMode.ModeSettings __instance)
             {
-                string nextMode = Singleton.Manager<ManGameMode>.inst.GetModeInitSetting("ModeName") as string;
-
-                foreach (ModeMisc.ModeSpec modeSpec in ModeMisc.inst.m_ModeSettings)
+                if (__instance == null)
                 {
-                    if (modeSpec.name.EqualsNoCase(nextMode) && modeSpec.m_MyType == ManGameMode.GameType.RaD)
+                    DebugRandAddi.Assert("__instance IS NULL");
+                    return;
+                }
+                try
+                {
+                    string nextMode = Singleton.Manager<ManGameMode>.inst.GetModeInitSetting("ModeName") as string;
+                    try
                     {
-                        if (__instance.GetModeInitSetting("BuildSizeLimit", out object data) && data is int)
+                        if (ModeMisc.inst.m_ModeSettings == null)
                         {
-                            EmergPatches.TrySaveAndLockSizeLimit();
+                            DebugRandAddi.Assert("No mode settings");
                         }
-                        else if (!EmergPatches.HasSizeLimitSet())
-                        {   // WE FORCE THE SIZE SETTINGS
-                            //__instance.AddModeInitSetting("BuildSizeLimit", 256);
-                            //Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", 256);
-                            DebugRandAddi.Assert("Our R&D mode had NO BuildSizeLimit SET!!!");
+                        else
+                        {
+                            foreach (ModeMisc.ModeSpec modeSpec in ModeMisc.inst.m_ModeSettings)
+                            {
+                                if (modeSpec?.name != null && modeSpec.name.EqualsNoCase(nextMode) &&
+                                    modeSpec.m_MyType == ManGameMode.GameType.RaD)
+                                {
+                                    if (__instance.GetModeInitSetting("BuildSizeLimit", out object data) && data is int)
+                                    {
+                                        EmergPatches.TrySaveAndLockSizeLimit();
+                                    }
+                                    else if (!EmergPatches.HasSizeLimitSet())
+                                    {   // WE FORCE THE SIZE SETTINGS
+                                        //__instance.AddModeInitSetting("BuildSizeLimit", 256);
+                                        //Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", 256);
+                                        DebugRandAddi.Assert("Our R&D mode had NO BuildSizeLimit SET!!!");
+                                    }
+                                    break;
+                                }
+                            }
                         }
-                        break;
+                    }
+                    catch (Exception e2)
+                    {
+                        DebugRandAddi.LogError("Failed to get mode settings for mode, skipping R&D check - " + e2);
                     }
                 }
+                catch (Exception e)
+                {
+                    DebugRandAddi.LogError("Failed to get any settings for mode, skipping R&D check - " + e);
+                }
             }
+
         }//*/
 
 
@@ -126,7 +354,7 @@ namespace RandomAdditions
             [HarmonyPriority(-9001)]
             internal static void OnPool_Delayed(TankBlock block)
             {
-                new WikiPageBlock((int)block.GetComponent<Visible>().ItemType);
+                new WikiPageBlock((int)block.GetComponent<Visible>().ItemType, block.name);
             }
 
             /// <summary>
@@ -136,8 +364,28 @@ namespace RandomAdditions
             [HarmonyPriority(-9001)]
             internal static void OnSpawn_Postfix(TankBlock __instance)
             {
-                OptimizeOutline.FlagNonRendTrans(__instance.transform);
+                try
+                {
+                    if (__instance?.transform != null)
+                        ModdedBlockFixes.FixBlock(__instance);
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.FatalError("Failed to apply ModdedBlockFixes.FixBlock() for \"" + 
+                        (__instance.name.NullOrEmpty() ? "<NULL>" : __instance.name) + "\" - " + e);
+                }
             }
+
+            /*
+            /// <summary>
+            /// TrySeeIfThisIsLaggy
+            /// </summary>
+            /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
+            internal static bool ForeachConnectedBlock_Prefix(TankBlock __instance)
+            {
+                return false;
+            }*/
         }
 
         internal static class VisiblePatches
@@ -245,7 +493,7 @@ namespace RandomAdditions
             internal static Type target = typeof(ObjectSpawner);
 
             [HarmonyPriority(-9001)]
-            private static void TrySpawn_Prefix(ref ManSpawn.ObjectSpawnParams objectSpawnParams, ref ManFreeSpace.FreeSpaceParams freeSpaceParams)
+            internal static void TrySpawn_Prefix(ref ManSpawn.ObjectSpawnParams objectSpawnParams, ref ManFreeSpace.FreeSpaceParams freeSpaceParams)
             {
                 if ((ManNetwork.IsHost || !ManNetwork.IsNetworked) && objectSpawnParams != null)
                 {
@@ -492,36 +740,15 @@ namespace RandomAdditions
             }
             */
         }
-
-        internal static class ManGameMode_ModeSettingsPatches
+        internal static class TerrainObjectTablePatches
         {
-            internal static Type target = typeof(ManGameMode.ModeSettings);
-            internal static FieldInfo field = typeof(ManGameMode.ModeSettings).GetField("m_nextModeCachedSettings", 
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            /// <summary>
-            /// SANITY CHECK
-            /// </summary>
-            /// <param name="__instance"></param>
-            [HarmonyPriority(-9001)]
-            private static void SwitchToMode_Prefix(ManGameMode.ModeSettings __instance)
-            {
-                if (__instance == null)
-                {
-                    DebugRandAddi.FatalError("SwitchToMode call was called on a NULL ModeSettings!");
-                }
-                else
-                {
-                    if (__instance.m_SwitchAction == null)
-                    {
-                        DebugRandAddi.FatalError("SwitchToMode call has null m_SwitchAction when it should have one!");
-                    }
-                    if (field.GetValue(__instance) == null)
-                    {
-                        DebugRandAddi.FatalError("SwitchToMode call has null m_nextModeCachedSettings when it should have one!");
-                    }
-                } 
-            }
+            internal static Type target = typeof(TerrainObjectTable);
 
+            [HarmonyPriority(-9001)]
+            internal static void InitLookupTable_Postfix(Dictionary<string, TerrainObject> ___m_GUIDToPrefabLookup)
+            {
+                ManModScenery.AddOurSceneryNOW(___m_GUIDToPrefabLookup);
+            }
         }
 
     }

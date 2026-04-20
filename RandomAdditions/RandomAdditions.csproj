@@ -73,6 +73,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="TerraTechETCUtil, Version=1.4.104.25, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\TTETCUtil\TerraTechETCUtil\TerraTechETCUtil\bin\Steam\TerraTechETCUtil.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\Unity.TextMeshPro.dll</HintPath>
       <Private>False</Private>
@@ -170,9 +174,6 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\285920\2757919307\WaterMod.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="TerraTechETCUtil">
-      <HintPath>..\..\TTETCUtil\TerraTechETCUtil\TerraTechETCUtil\obj\Steam\TerraTechETCUtil.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)'=='Release'OR'$(Configuration)'=='Debug'">
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
@@ -229,11 +230,20 @@
     <Compile Include="CustomRecipe.cs" />
     <Compile Include="CustomScenery.cs" />
     <Compile Include="CustomSceneryMaker.cs" />
-    <Compile Include="EmergPatches.cs" />
+    <Compile Include="GameFixes\EmergPatches.cs" />
     <Compile Include="GeneralComponents\AOEField.cs" />
     <Compile Include="Audio\SFXAddition.cs" />
+    <Compile Include="GameFixes\ModdedBlockFixes.cs" />
     <Compile Include="GlobalChanges\RandomWorld.cs" />
     <Compile Include="LocHelper.cs" />
+    <Compile Include="MultiBlockModules\Roleplay\ManReplicas.cs" />
+    <Compile Include="MultiBlockModules\Roleplay\ModuleReplica.cs" />
+    <Compile Include="MultiBlockModules\Roleplay\ModuleReplicaImgUp.cs" />
+    <Compile Include="MultiBlockModules\Roleplay\ModuleReplicaPoster.cs" />
+    <Compile Include="MultiBlockModules\Roleplay\ModuleTrajectoryReplica.cs" />
+    <Compile Include="OptiScience\HoverOpti.cs" />
+    <None Include="OptiScience\TechColliderIgnorer.cs" />
+    <Compile Include="TempPortedGUI.cs" />
     <Compile Include="TonyRailsWiki.cs" />
     <None Include="ManModRecipes.cs" />
     <Compile Include="ManModScenery.cs" />
@@ -243,7 +253,7 @@
     <Compile Include="GlobalChanges\Pyromanic.cs" />
     <Compile Include="GlobalChanges\ITankCompAuto.cs" />
     <Compile Include="GlobalChanges\IngameQuit.cs" />
-    <None Include="ManRapidModReloader.cs" />
+    <Compile Include="ManRapidModReloader.cs" />
     <Compile Include="ModLoaderSystem.cs" />
     <Compile Include="MultiBlockModules\RailSystem\ModuleRailComputer.cs" />
     <Compile Include="MultiBlockModules\RailSystem\PrefabTrain.cs" />
@@ -254,7 +264,7 @@
     <Compile Include="MultiBlockModules\RailSystem\RailTypeStats.cs" />
     <Compile Include="MultiBlockModules\RailSystem\UnstableTrack.cs" />
     <Compile Include="NetUtil.cs" />
-    <Compile Include="Optimax.cs" />
+    <Compile Include="OptiScience\Optimax.cs" />
     <Compile Include="PatchBatch\BugReportPatches.cs" />
     <Compile Include="PatchBatch\NuterraPatches.cs" />
     <Compile Include="PatchBatch\ModOptimizationPatches.cs" />
@@ -334,7 +344,7 @@
     <Compile Include="KickStartRandomAdditions.cs" />
     <Compile Include="ModHelpers.cs" />
     <Compile Include="ReliantBlockModules\ModuleMoveGimbal.cs" />
-    <Compile Include="OptimizeCake.cs" />
+    <Compile Include="OptiScience\OptimizeCake.cs" />
     <Compile Include="PatchBatch\GlobalPatches.cs" />
     <Compile Include="PatchBatch\MassPatcherRA.cs" />
     <Compile Include="PatchBatch\ModulePatches.cs" />

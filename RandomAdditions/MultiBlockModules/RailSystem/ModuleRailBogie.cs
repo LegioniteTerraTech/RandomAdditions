@@ -187,7 +187,8 @@ namespace RandomAdditions
                 catch { }
                 if (BogieRemote == null)
                 {
-                    BogieRemote = Instantiate(new GameObject("_bogieGuidePoint"), transform).transform;
+                    BogieRemote = new GameObject("_bogieGuidePoint").transform;
+                    BogieRemote.parent = transform;
                     BogieRemote.localPosition = Vector3.zero;
                     BogieRemote.localRotation = Quaternion.identity;
                     BogieRemote.localScale = Vector3.one;

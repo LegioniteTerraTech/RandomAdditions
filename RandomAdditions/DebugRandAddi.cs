@@ -87,7 +87,7 @@ namespace RandomAdditions
 
         internal static void DrawDirIndicator(Vector3 posScene, Vector3 vectorWorld, Color color, float duration = 2)
         {
-            GameObject gO = Instantiate(new GameObject("DebugLine"), null, false);
+            GameObject gO = new GameObject("DebugLine");
 
             var lr = gO.GetComponent<LineRenderer>();
             if (!(bool)lr)

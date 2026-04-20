@@ -12,7 +12,8 @@ namespace RandomAdditions
     { 
         Always,
         SameTeam,
-        CurrentTech
+        CurrentTech,
+        Never
     }
     /// <summary>
     /// Shows a rough line of the optimal predicted flight path of a ballistic projectile [WIP]
@@ -20,7 +21,16 @@ namespace RandomAdditions
     [Doc("Shows a rough line of the optimal predicted flight path of a ballistic projectile")]
     public class ModuleTrajectory : ExtModule
     {
-
+        protected Transform altCastSource = null;
+        public Transform ToCastFrom
+        {
+            get
+            {
+                if (altCastSource == null)
+                    return gameObject.transform;
+                return altCastSource;
+            }
+        }
         private LineRenderer Liner;
         private Vector3[] pos;
         private float distTimeDeltaCalc;
@@ -29,6 +39,7 @@ namespace RandomAdditions
 
         public TrajectoryVisibility VisibleCondition = TrajectoryVisibility.Always;
         public bool HideOnLockOn = true;
+        public bool HideOnDetach = true;
         public float Distance = 10;
         public float LaunchVelocity = 10;
         public float GravityMultiplier = -1;
@@ -41,49 +52,48 @@ namespace RandomAdditions
         public static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleTrajectory", LOC_ModuleTrajectory_desc);
 
 
-        public void OnPool()
+        protected override void Pool()
         {
             Liner = transform.HeavyTransformSearch("_tracer")?.GetComponent<LineRenderer>();
-            var MWG = GetComponent<ModuleWeaponGun>();
-            var FD = GetComponent<FireData>();
             if (Liner == null)
             {
                 Liner = new GameObject("TracerLine").AddComponent<LineRenderer>();
                 Liner.material = ResourcesHelper.GetMaterialFromBaseGameAllFast("default");
                 Liner.positionCount = 16;
-                Liner.startColor = new Color(1, 1, 1, 0.8f);
-                Liner.endColor = new Color(1, 1, 1, 0.8f);
+                Liner.startColor = new Color(1, 0.2f, 0.2f, 0.95f);
+                Liner.endColor = new Color(1, 0.2f, 0.2f, 0.95f);
                 Liner.startWidth = 0.35f;
                 Liner.endWidth = 0.5f;
-                if (MWG?.GetFireTransform() && FD.m_BulletPrefab?.GetComponent<Rigidbody>())
+                Liner.transform.SetParent(transform, false);
+                Liner.transform.localRotation = Quaternion.identity;
+                Liner.transform.localPosition = Vector3.zero;
+                Liner.transform.localScale = Vector3.one;
+            }
+            pos = new Vector3[Liner.positionCount];
+            RecalibrateLine(gameObject);
+        }
+        protected virtual void RecalibrateLine(GameObject targetBlock)
+        {
+            var MWG = targetBlock.GetComponent<ModuleWeaponGun>();
+            var FD = targetBlock.GetComponent<FireData>();
+            if (FD?.m_BulletPrefab?.GetComponent<Rigidbody>())
+            {
+                var proj = FD.m_BulletPrefab;
+                if (proj.GetComponent<Rigidbody>().useGravity)
                 {
-                    var fTrans = MWG.GetFireTransform();
-                    Liner.transform.SetParent(fTrans, false);
-                    Liner.transform.localRotation = Quaternion.identity;
-                    Liner.transform.localPosition = Vector3.zero;
-                    Liner.transform.localScale = Vector3.one;
-                    var proj = FD.m_BulletPrefab;
-                    if (proj.GetComponent<Rigidbody>().useGravity)
-                    {
-                        GravityMultiplier = 1;
-                    }
-                    else
-                        GravityMultiplier = 0;
+                    GravityMultiplier = 1;
                 }
                 else
-                {
-                    if (GravityMultiplier < 0)
-                        GravityMultiplier = 0;
-                }
+                    GravityMultiplier = 0;
             }
             else
             {
                 if (GravityMultiplier < 0)
                     GravityMultiplier = 0;
             }
-            if (FD.m_BulletPrefab)
+            gp = null;
+            if (FD?.m_BulletPrefab)
                 gp = FD.m_BulletPrefab.GetComponent<GravitateProjectile>();
-            pos = new Vector3[Liner.positionCount];
             distTimeDeltaCalc = Distance / (Liner.positionCount * LaunchVelocity);
             distGravTimeDeltaCalc = distTimeDeltaCalc * GravityMultiplier;
         }
@@ -104,7 +114,6 @@ namespace RandomAdditions
         }
         public override void OnDetach()
         {
-            SetShown(false);
             switch (VisibleCondition)
             {
                 case TrajectoryVisibility.SameTeam:
@@ -114,6 +123,8 @@ namespace RandomAdditions
                     ManTechs.inst.TankDriverChangedEvent.Unsubscribe(Revalidate);
                     break;
             }
+            if (HideOnDetach)
+                SetShown(false);
         }
 
         public void SetShown(bool state)
@@ -147,7 +158,9 @@ namespace RandomAdditions
                         return;
                     }
                     break;
-                case TrajectoryVisibility.Always:
+                case TrajectoryVisibility.Never:
+                    SetShown(false);
+                    return;
                 default:
                     SetShown(true);
                     return;
@@ -158,8 +171,10 @@ namespace RandomAdditions
 
         public void FixedUpdate()
         {
-            Vector3 precalcPos = gameObject.transform.position;
-            Vector3 veloFrame = gameObject.transform.forward * LaunchVelocity;
+            Liner.transform.position = ToCastFrom.position;
+            Liner.transform.rotation = ToCastFrom.rotation;
+            Vector3 precalcPos = Liner.transform.position;
+            Vector3 veloFrame = Liner.transform.forward * LaunchVelocity;
             pos[0] = precalcPos;
             for (int i = 1; i < pos.Length; i++)
             {

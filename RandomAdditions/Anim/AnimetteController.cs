@@ -103,7 +103,7 @@ namespace RandomAdditions
             if (fetched)
                 return;
             AniLinear[] temp = GetComponentsInChildren<AniLinear>(true);
-            List<AniLinear> lins = new List<AniLinear>();
+            List<AniLinear> lins = new List<AniLinear>();// ONLY ONCE AFTER CREATION
             foreach (var item in temp)
             {
                 if (item.GetComponentInParents<AnimetteController>(false) == this)
@@ -112,7 +112,7 @@ namespace RandomAdditions
                     lins.Add(item);
                 }
             }
-            lin = lins.ToArray();
+            lin = lins.ToArray();// ONLY ONCE AFTER SPAWN
             if (lin != null && lin.Length > 0)
             {
                 digits = true;

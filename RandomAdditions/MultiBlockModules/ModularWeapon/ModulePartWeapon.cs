@@ -235,7 +235,7 @@ namespace RandomAdditions
         public Color GetRandomDamage(float dmgBudgetPercent, out List<WeaponTypeStats> randWeapStats)
         {
             randWeapStats = new List<WeaponTypeStats>();
-            List <WeaponTypeStats> randWeaps = DamageTypeDistrib.Values.ToList();
+            List <WeaponTypeStats> randWeaps = DamageTypeDistrib.Values.ToList(); // CHECK LATER
             randWeaps.Shuffle();
             dmgBudgetPercent *= TotalDamage;
             foreach (var item in randWeaps)
@@ -681,7 +681,7 @@ namespace RandomAdditions
             newBarrel.localPosition = Vector3.zero;
             newBarrel.localRotation = Quaternion.identity;
             newBarrel.localScale = Vector3.one;
-            Transform barrelOffset = Instantiate(new GameObject("_barrelVis"), newBarrel).transform;
+            Transform barrelOffset = new GameObject("_barrelVis").transform;
             DebugRandAddi.Assert(!barrelOffset, "barrelOffset null");
             barrelOffset.localPosition = Vector3.zero;
             barrelOffset.localRotation = Quaternion.identity;

@@ -47,7 +47,7 @@ namespace RandomAdditions.RailSystem
                             SW.Flush();
                         }
                     }
-                    infoBytes = FS.ToArray();
+                    infoBytes = FS.ToArray();// ONLY ON SAVE
                 }
             }
             public string GetMessage()
@@ -195,7 +195,7 @@ namespace RandomAdditions.RailSystem
         {
             if (inst)
                 return;
-            inst = Instantiate(new GameObject("ManRails"), null).AddComponent<ManRails>();
+            inst = new GameObject("ManRails").AddComponent<ManRails>();
             inst.gameObject.SetActive(false);
         }
 
@@ -1365,13 +1365,13 @@ namespace RandomAdditions.RailSystem
                 DebugRandAddi.Assert(MaterialName + " could not be found!  Unable to load track stop visual texture");
                 return;
             }
-            GameObject prefab = Instantiate(new GameObject("TrackStop" + name), null, true);
+            GameObject prefab = new GameObject("TrackStop" + name);
             Transform transMain = prefab.transform;
             transMain.localPosition = Vector3.zero;
             transMain.localRotation = Quaternion.identity;
             transMain.localScale = Vector3.one;
 
-            GameObject prefabSide = Instantiate(new GameObject("Side1"), transMain, true);
+            GameObject prefabSide = new GameObject("Side1");
             prefabSide.layer = 0;
             Transform transSide = prefabSide.transform;
             transSide.localPosition = new Vector3(dualOffset, 0.2f, 0);
@@ -2069,7 +2069,7 @@ namespace RandomAdditions.RailSystem
                 if (item != null && item.NodeID != -1)
                     validJsons.Add(new RailNodeJSON(item));
             }
-            inst.RailNodeSerials = validJsons.ToArray();
+            inst.RailNodeSerials = validJsons.ToArray();// ONLY ON SAVE
             validJsons.Clear();
             DebugRandAddi.Log("ManRails - Saved " + inst.RailNodeSerials.Length + " RailNodes to save.");
             foreach (var item in ManagedTracks.Values)
@@ -2077,7 +2077,7 @@ namespace RandomAdditions.RailSystem
                 if (item != null)
                     validJsons2.Add(new RailTrackJSON(item));
             }
-            inst.RailTrackSerials = validJsons2.ToArray();
+            inst.RailTrackSerials = validJsons2.ToArray();// ONLY ON SAVE
             validJsons2.Clear();
             DebugRandAddi.Log("ManRails - Saved " + inst.RailTrackSerials.Length + " RailTracks to save.");
 
@@ -2098,7 +2098,7 @@ namespace RandomAdditions.RailSystem
                     trainTiles.Add(pos);
             }
             if (trainTiles.Count != 0)
-                inst.RailEngineTiles = trainTiles.ToArray();
+                inst.RailEngineTiles = trainTiles.ToArray();// ONLY ON SAVE
             inst.PathfindRequestsActive = ManTrainPathing.GetAllPathfindingRequestsToSave();
         }
         internal static void FinishedSaving()
@@ -2149,7 +2149,7 @@ namespace RandomAdditions.RailSystem
                         NodeIDStep = item.Key;
                 }
                 inst.RailNodeSerials = null;
-                inst.firstLoad = AllRailNodes.Keys.ToList();
+                inst.firstLoad = AllRailNodes.Keys.ToList(); // ONCE ON WORLD LOAD
 
                 // Load Present next update - Get highest node
                 foreach (var item in AllRailNodes.Values)

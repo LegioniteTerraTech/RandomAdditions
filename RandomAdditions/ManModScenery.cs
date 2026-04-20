@@ -1,18 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Reflection;
-using UnityEngine;
-using TerraTechETCUtil;
-using SafeSaves;
-using RandomAdditions;
-using Newtonsoft.Json;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using Newtonsoft.Json;
+using RandomAdditions;
+using SafeSaves;
+using TerraTechETCUtil;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using static BlockManager;
 
 /// <summary>
 /// Remember that Scenery is stored in the game by it's GameObject name, not by it's own SceneryType 
-///   (SceneryTypes is used by other utilities like Advanced AI to determine interactivity)
+///   <para>(SceneryTypes is used by other utilities like Advanced AI to determine interactivity)</para>
+///   <para>For other experimental matters see <seealso cref="CustomSceneryMaker"/></para>
 /// </summary>
 [AutoSaveManager]
 public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, CustomScenery>
@@ -25,12 +28,19 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
     internal static TerrainObjectTable table;
     public ManModScenery()
     {
-        FieldInfo sce = typeof(ManSpawn).GetField("m_TerrainObjectTable", BindingFlags.NonPublic | BindingFlags.Instance);
-        FieldInfo sce2 = typeof(TerrainObjectTable).GetField("m_GUIDToPrefabLookup", BindingFlags.NonPublic | BindingFlags.Instance);
-        table = (TerrainObjectTable)sce.GetValue(ManSpawn.inst);
-        if (table == null) 
-            throw new NullReferenceException("ManModScenery: ManSpawn.inst has not allocated m_TerrainObjectTable for some reason and ManModScenery setup failed");
+        table = SpawnHelper.GetAllTerrainObjectPrefabTable();
         WikiPageScenery.GetSceneryModName = SceneryModNameWrapper;
+    }
+    public static void SanityCheck()
+    {
+        if (ResLook == null)
+            throw new NullReferenceException(nameof(ResLook));
+        if (ResLook2 == null)
+            throw new NullReferenceException(nameof(ResLook2));
+        if (poolStart2 == null)
+            throw new NullReferenceException(nameof(poolStart2));
+        if (poolStart3 == null)
+            throw new NullReferenceException(nameof(poolStart3));
     }
     protected override void Init_Internal()
     {
@@ -55,11 +65,18 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
     }
 
 
-    private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_ChunkNames", BindingFlags.NonPublic | BindingFlags.Static);
-    private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_ChunkDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
+    private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_SceneryNames", BindingFlags.NonPublic | BindingFlags.Static);
+    private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_SceneryDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly MethodInfo poolStart2 = typeof(TerrainObject).GetMethod("OnPool", spamFlags);
     private static readonly MethodInfo poolStart3 = typeof(ResourceDispenser).GetMethod("OnPool", spamFlags);
 
+
+    protected override void FinalAssignmentStarting()
+    {
+        var tableCached = table.GetLookupList();
+        foreach (var item in Active)
+            tableCached.Remove(item.Key);
+    }
     protected override void FinalAssignment(CustomScenery scenery, SceneryTypes AssignedID)
     {
         Visible vis = scenery.prefab.GetComponent<Visible>();
@@ -113,7 +130,7 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             }
             try
             {
-                modSceneryModNames.Add(AssignedIDInt, scenery.mod.ModID);
+                modSceneryModNames.Add(AssignedIDInt, scenery.runtimeMod.ModID);
             }
             catch (Exception e)
             {
@@ -122,10 +139,18 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             }
             scenery.prefab.CreatePool(4);
             DebugRandAddi.Log("ManModScenery: Assigned Custom Scenery " + scenery.Name + " to ID " + AssignedIDInt);
-            var group = ManIngameWiki.InsureWikiGroup(scenery.mod.ModID, "Resources", ManIngameWiki.ScenerySprite);
+            var group = ManIngameWiki.InsureSceneryWikiGroup(scenery.runtimeMod.ModID);
             new WikiPageScenery(AssignedIDInt, group);
         }
     }
+
+    protected override void FinalAssignmentFinished()
+    {
+        table.InitLookupTable();
+        /// Then it goes to <see cref="AddOurSceneryNOW(Dictionary{string, TerrainObject})"/>
+    }
+
+
 
     internal static CustomScenery ExtractFromExisting(TerrainObject objTarget)
     {
@@ -202,7 +227,7 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             };
         }
     }
-    protected override void CreateInstanceFile(ModContainer Mod, string path, bool Reload = false)
+    protected override void LoadInstanceFile(ModContainer Mod, string path, bool Reload = false)
     {
         string fileName = Path.GetFileName(path);
         string text = null;
@@ -215,100 +240,14 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             scenery = JsonConvert.DeserializeObject<CustomScenery>(text);//, new JSONConverterUniversal());
             if (scenery == null)
                 throw new NullReferenceException("Scenery file " + fileName + " is corrupted!");
-            scenery.mod = Mod;
+            scenery.runtimeMod = Mod;
         }
         if (!Reload && scenery.prefab != null)
             return;
         Active.Remove(fileName);
-        if (scenery.PrefabName == null)
-        {
-            throw new NullReferenceException("Scenery PrefabName for file " + fileName + " does not exists!" +
-                "  Scenery NEEDS a valid prefab to exist!");
-        }
-        TerrainObject PrefabTO = SpawnHelper.GetResourceNodePrefab(scenery.PrefabName);// table.GetPrefabFromSavedGUID(scenery.PrefabName);
-        if (PrefabTO)
-        {
-            try
-            {
-                scenery.mod = Mod;
-                scenery.fileName = fileName;
-                Transform Prefab = PrefabTO.transform;
-                Transform Instance = Prefab.UnpooledSpawn();
-
-                Visible vis = Instance.GetComponent<Visible>();
-                vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Scenery, -1);
-
-                try
-                {
-                    var meshR = Mod.GetMaterialFromModAssetBundle(scenery.TextureName, false);
-                    if (!meshR)
-                        meshR = ResourcesHelper.GetMaterialFromBaseGameAllDeep(scenery.TextureName, false);
-                    if (meshR != null)
-                        Instance.GetComponent<MeshRenderer>().sharedMaterial = meshR;
-                    else
-                        DebugRandAddi.Assert("Texture null for " + fileName + "!!!");
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("MeshRenderer null");
-                }
-                try
-                {
-                    var meshF = Mod.GetMeshFromModAssetBundle(scenery.MeshName, false);
-                    if (meshF)
-                        Instance.GetComponent<MeshFilter>().sharedMesh = meshF;
-                    else
-                        DebugRandAddi.Assert("Mesh null for " + fileName + "!!!");
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("MeshFilter null");
-                }
-                var dmg = Instance.GetComponent<Damageable>();
-                if (dmg)
-                {
-                    if (scenery.Health <= 0)
-                        healthMain.SetValue(dmg, (int)(9001 * 4096));
-                    else
-                        healthMain.SetValue(dmg, (int)(scenery.Health * 4096));
-                    dmg.m_DamageableType = scenery.DamageableType;
-                }
-                else if (scenery.Health > 0)
-                    DebugRandAddi.Assert("Health set > 0 for " + fileName + ", but reference prefab has no Damageable!!!" +
-                        "\n Change to a prefab that has a Damageable (destructable scenery)");
-
-                TerrainObject TO = Instance.GetComponent<TerrainObject>();
-                ResourceDispenser RD = Instance.GetComponent<ResourceDispenser>();
-
-                poolStart.Invoke(vis, new object[] { });
-                poolStart2.Invoke(TO, new object[] { });
-                poolStart3.Invoke(RD, new object[] { });
-
-                scenery.prefab = Instance;
-                Instance.gameObject.SetActive(false);
-
-                JSONConverterUniversal.Foundation = Instance.gameObject;
-                JSONConverterUniversal.CreateNew = false;
-                if (text == null)
-                    text = File.ReadAllText(path);
-                JsonConvert.DeserializeObject<CustomScenery>(text, new JSONConverterUniversal());
-
-                Active.Add(fileName, scenery);
-                DebugRandAddi.Log("Created " + scenery.Name + " instance.");
-
-            }
-            catch (Exception e)
-            {
-                UnityEngine.Object.Destroy(PrefabTO.gameObject);
-                DebugRandAddi.Log("Failed to create " + scenery.Name + " instance - " + e);
-            }
-        }
-        else
-            throw new NullReferenceException("Scenery PrefabName \"" + scenery.PrefabName + "\" does not have a valid prefab instance!" +
-                "  A chunk NEEDS a valid prefab to exist!");
-
+        LoadInstance(Mod, fileName, scenery);
     }
-    protected override void CreateInstanceAsset(ModContainer Mod, TextAsset path, bool Reload = false)
+    protected override void LoadInstanceAsset(ModContainer Mod, TextAsset path, bool Reload = false)
     {
         string fileName = path.name;
         string text = null;
@@ -318,34 +257,51 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             JSONConverterUniversal.Foundation = null;
             JSONConverterUniversal.CreateNew = true;
             text = path.text;
-            JsonConvert.DeserializeObject<CustomScenery>(text, new JSONConverterUniversal());
+            scenery = JsonConvert.DeserializeObject<CustomScenery>(text, new JSONConverterUniversal());
+            if (scenery == null)
+                throw new NullReferenceException("Scenery file " + fileName + " is corrupted!");
+            scenery.runtimeMod = Mod;
         }
         if (!Reload && scenery.prefab != null)
             return;
         Active.Remove(fileName);
+        LoadInstance(Mod, fileName, scenery);
+    }
+
+    /// <inheritdoc/>
+    protected override void LoadInstance(ModContainer Mod, string ID, CustomScenery scenery)
+    {
+        if (Mod == null)
+            throw new NullReferenceException("Mod is NULL - cannot continue!");
+        if (ID.NullOrEmpty())
+            throw new NullReferenceException("ID is NULL - cannot continue!");
+        if (scenery == null)
+            throw new NullReferenceException("CustomScenery is NULL - cannot continue!");
         if (scenery.PrefabName == null)
         {
             Debug.Log("Scenery PrefabName <FIELD IS NULL> does not exists!" +
-                "  A chunk NEEDS a valid prefab to exist!");
+                "  scenery NEEDS a valid prefab to exist!");
             return;
         }
-        TerrainObject PrefabTO = table.GetPrefabFromSavedGUID(scenery.PrefabName);
-        if (PrefabTO)
+        TerrainObject PrefabTO = SpawnHelper.GetResourceNodePrefab(scenery.PrefabName);
+        if (PrefabTO != null)
         {
             try
             {
-                scenery.mod = Mod;
-                scenery.fileName = fileName;
+                scenery.runtimeMod = Mod;
+                scenery.fileName = ID;
                 Transform Prefab = PrefabTO.transform;
-                Transform Instance = Prefab.UnpooledSpawn();
+                if (Prefab == null)
+                    throw new NullReferenceException("Prefab is null");
+                Transform Instance = UnityEngine.Object.Instantiate(Prefab, null);
+                if (Instance == null)
+                    throw new NullReferenceException("Instance is null");
 
                 Visible vis = Instance.GetComponent<Visible>();
+                if (vis == null)
+                    throw new NullReferenceException("Visible is null");
                 vis.m_ItemType = new ItemTypeInfo(ObjectTypes.Scenery, -1);
 
-                Instance.GetComponent<MeshRenderer>().sharedMaterial =
-                    Mod.GetMaterialFromModAssetBundle(scenery.TextureName);
-                Instance.GetComponent<MeshFilter>().sharedMesh =
-                    Mod.GetMeshFromModAssetBundle(scenery.MeshName);
                 try
                 {
                     var meshR = Mod.GetMaterialFromModAssetBundle(scenery.TextureName, false);
@@ -367,24 +323,24 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
                 {
                     DebugRandAddi.Log("MeshFilter null");
                 }
-                healthMain.SetValue(Instance.GetComponent<Damageable>(), (int)(scenery.Health * 4096));
+                var dmg = Instance.GetComponent<Damageable>();
+                if (dmg == null)
+                    throw new NullReferenceException("Damageable is null");
+                healthMain.SetValue(dmg, (int)(scenery.Health * 4096));
 
                 TerrainObject TO = Instance.GetComponent<TerrainObject>();
+                if (TO == null)
+                    throw new NullReferenceException("TerrainObject is null");
 
                 poolStart.Invoke(vis, new object[] { });
                 poolStart2.Invoke(TO, new object[] { });
 
-                scenery.prefab = Instance;
+                Instance.CreatePool(4);
+
+                scenery.prefab = TO;
                 Instance.gameObject.SetActive(false);
 
-                JSONConverterUniversal.Foundation = Instance.gameObject;
-                JSONConverterUniversal.CreateNew = false;
-                if (text == null)
-                    text = path.text;
-                JsonConvert.DeserializeObject<CustomScenery>(text, new JSONConverterUniversal());
-
-                Active.Add(fileName, scenery);
-
+                Active.Add(ID, scenery);
             }
             catch (Exception e)
             {
@@ -396,5 +352,26 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             Debug.Log("Chunk PrefabName \"" + scenery.PrefabName + "\" does not have a valid prefab instance!" +
                 "  A chunk NEEDS a valid prefab to exist!");
 
+    }
+
+    public static void AddOurSceneryNOW(Dictionary<string, TerrainObject> tableMainGame)
+    {
+        //CustomSceneryMaker.MakeScenery(tableMainGame);
+        foreach (var item in inst.Registered)
+        {
+            if (inst.Active.TryGetValue(item.Key, out var cust))
+            {
+                if (tableMainGame.ContainsKey(item.Key))
+                {
+                    DebugRandAddi.LogError("We tried to add Scenery of name " + item +
+                        " but we failed because it was still registered even when it shouldn't be.  We will now be out of sync");
+                }
+                else
+                    tableMainGame.Add(item.Key, cust.prefab);
+            }
+            else
+                DebugRandAddi.LogError("We tried to add Scenery of name " + item +
+                    " but we failed because it does't actually exist(???).  We will now be out of sync");
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using CustomModules;
 using CustomModules.LegacyModule;
 using HarmonyLib;
 
@@ -17,7 +18,7 @@ namespace RandomAdditions.PatchBatch
             internal static FieldInfo targetTime = typeof(ModuleCustomBlock).GetField("emissionTimeDelay", BindingFlags.Instance | BindingFlags.NonPublic);
 
             [HarmonyPriority(-9001)]
-            private static void Update_Postfix(ModuleCustomBlock __instance)
+            internal static void Update_Postfix(ModuleCustomBlock __instance)
             {
                 if (__instance != null && (float)targetTime.GetValue(__instance) <= 0)
                 {   // SLEEP and save valuable CPU cycles!
@@ -25,11 +26,25 @@ namespace RandomAdditions.PatchBatch
                 }
             }
             [HarmonyPriority(-9001)]
-            private static void ChangeTimeEmission_Postfix(ModuleCustomBlock __instance)
+            internal static void ChangeTimeEmission_Postfix(ModuleCustomBlock __instance)
             {   // Wake it up!
                 if (__instance != null)
                     __instance.enabled = true;
             }
         }
+        /*
+        internal static class NuterraModuleLoaderPatches
+        {
+            internal static Type target = typeof(NuterraModuleLoader);
+
+            [HarmonyPriority(-9001)]
+            private static void ParseRecipe_Postfix(ModuleCustomBlock __instance)
+            {
+                if (__instance != null && (float)targetTime.GetValue(__instance) <= 0)
+                {   // SLEEP and save valuable CPU cycles!
+                    __instance.enabled = false;
+                }
+            }
+        }*/
     }
 }

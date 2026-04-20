@@ -446,7 +446,7 @@ namespace RandomAdditions
         }
         internal override TankBlock[] GetReachableConnections()
         {
-            List<TankBlock> blocks = new List<TankBlock>();
+            List<TankBlock> blocks = new List<TankBlock>();// WIP
 
             TankBlock blockRemote = GetRemoteConnection();
             if (blockRemote)
@@ -456,7 +456,7 @@ namespace RandomAdditions
             if (getCase != null)
                 blocks.AddRange(getCase);
             if (blocks.Count > 0)
-                return blocks.ToArray();
+                return blocks.ToArray();// WIP
             return null;
         }
     }

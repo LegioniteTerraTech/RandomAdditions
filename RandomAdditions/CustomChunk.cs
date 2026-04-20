@@ -10,9 +10,7 @@ public class CustomChunk : ModLoadable
     [JsonIgnore]
     internal Transform prefab;
     [JsonIgnore]
-    internal ResourceManager.ResourceDefWrapper prefabBase;
-    [JsonIgnore]
-    internal ModContainer mod;
+    internal ResourceTable.Definition runtimePrefabBase;
 
     [Doc("The name of the resource chunk")]
     public string Name = "Terry";

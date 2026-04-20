@@ -392,9 +392,9 @@ namespace RandomAdditions
                 {
                     Tank playerTank = playerSelected.block.tank;
                     if (!playerTank.Vision.GetFirstVisibleTechIsEnemy(playerTank.Team))
-                        HotWindow = AltUI.Window(GUIJumperID, HotWindow, GUIHandler, "Jump Target Menu", CloseMenu);
+                        HotWindow = AltUI.Window(GUIJumperID, HotWindow, GUIHandler, "Jump Target Menu", CloseMenu, true, true);
                     else
-                        HotWindow = AltUI.Window(GUIJumperID, HotWindow, GUIHandlerJammed, "Jump Target Menu", CloseMenu);
+                        HotWindow = AltUI.Window(GUIJumperID, HotWindow, GUIHandlerJammed, "Jump Target Menu", CloseMenu, true, true);
                 }
                 else
                     gameObject.SetActive(false);

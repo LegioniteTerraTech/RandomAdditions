@@ -7,6 +7,9 @@ using Newtonsoft.Json;
 
 namespace RandomAdditions
 {
+    /// <summary>
+    /// It now does much more than just audio...
+    /// </summary>
     public class CorpExtAudio
     {
         public int ID;
@@ -24,5 +27,9 @@ namespace RandomAdditions
         public FMOD.Sound CorpEngineAudioRunning;
         public FMOD.Sound CorpEngineAudioStart;
         public FMOD.Sound CorpEngineAudioStop;
+
+        // OTHERS:
+        /// <summary> Make all the APs on the weapon block C&S triggered </summary>
+        public bool AllWeaponAPsAreCnS = false;
     }
 }

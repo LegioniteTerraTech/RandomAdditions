@@ -86,7 +86,7 @@ public class JSONConverterUniversal : JsonConverter
 public abstract class ModLoadable
 {
     [JsonIgnore]
-    public ModContainer mod;
+    public ModContainer runtimeMod;
     [JsonIgnore]
     public string fileName;
     [Doc("The advanced fields for fine alterations to this item")]
@@ -124,10 +124,23 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
     /// This is automatically called before the save system loads anything
     /// </summary>
     protected abstract void Init_Internal();
+
+
+    /// <summary>
+    /// Use this to clear lists and whatnot
+    /// </summary>
+    protected abstract void FinalAssignmentStarting();
+
     /// <summary>
     /// This is automatically called for each Active type "A" to insert them into the world loading.
     /// </summary>
     protected abstract void FinalAssignment(A instance, V type);
+    /// <summary>
+    /// Use this to rebuild lists and whatnot
+    /// </summary>
+    protected abstract void FinalAssignmentFinished();
+
+
     /// <summary>
     /// Call this when the game has started saving it's SafeSaves serialization for this system
     /// </summary>
@@ -163,7 +176,7 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
         }
         catch (Exception e)
         {
-            DebugRandAddi.Log("Cascade crash of " + typeof(T) + ".PrepareForLoading(): " + e);
+            DebugRandAddi.Log("Cascade crash of " + typeof(T) + ".Init_Internal(): " + e);
         }
     }
     /// <summary>
@@ -222,7 +235,7 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
     /// <param name="path">The file path of the type</param>
     public void CreateLocal(bool reload, string path)
     {
-        var MC = ResourcesHelper.GetModContainer("Random Additions", out _);
+        var MC = ResourcesHelper.GetModContainer("Random Additions");
         foreach (var item in Directory.GetFiles(path))
         {
             string filename = Path.GetFileNameWithoutExtension(item);
@@ -230,7 +243,7 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
             {
                 try
                 {
-                    CreateInstanceFile(MC, item, reload);
+                    LoadInstanceFile(MC, item, reload);
                 }
                 catch (Exception e)
                 {
@@ -258,7 +271,7 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
             {
                 try
                 {
-                    CreateInstanceAsset(contain, item2 as TextAsset, reload);
+                    LoadInstanceAsset(contain, item2 as TextAsset, reload);
                 }
                 catch (Exception e)
                 {
@@ -274,13 +287,17 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
     /// </summary>
     protected abstract A ExtractFromExisting(object target);
     /// <summary>
-    /// Saves a new instance file to the disk as JSON
+    /// Loads <typeparamref name="A"/> instance from the file path to the game
     /// </summary>
-    protected abstract void CreateInstanceFile(ModContainer Mod, string path, bool Reload = false);
+    protected abstract void LoadInstanceFile(ModContainer Mod, string path, bool Reload = false);
     /// <summary>
-    /// Saves a new instance file to the disk as an AssetBundle
+    /// Loads <typeparamref name="A"/> instance from the AssetBundle to the game
     /// </summary>
-    protected abstract void CreateInstanceAsset(ModContainer Mod, TextAsset asset, bool Reload = false);
+    protected abstract void LoadInstanceAsset(ModContainer Mod, TextAsset asset, bool Reload = false);
+    /// <summary>
+    /// Loads <typeparamref name="A"/> instance from given class to the game
+    /// </summary>
+    protected abstract void LoadInstance(ModContainer Mod, string ID, A Data);
 
 
     public static bool EnumTryGetTypeFlexable<T>(string name, out T output) where T : struct
@@ -503,7 +520,7 @@ public abstract class ModLoaderSystem<T, A> where T : ModLoaderSystem<T, A>, new
     /// <param name="path">The file path of the type</param>
     public void CreateLocal(bool reload, string path)
     {
-        var MC = ResourcesHelper.GetModContainer("Random Additions", out _);
+        var MC = ResourcesHelper.GetModContainer("Random Additions");
         foreach (var item in Directory.GetFiles(path))
         {
             string filename = Path.GetFileNameWithoutExtension(item);

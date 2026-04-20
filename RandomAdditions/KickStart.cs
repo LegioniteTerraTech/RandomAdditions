@@ -1,25 +1,22 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Diagnostics;
 using System.IO;
-using HarmonyLib;
-using UnityEngine;
-using TerraTechETCUtil;
-#if !STEAM
-using ModHelper.Config;
-#else
-using ModHelper;
-#endif
-using Nuterra.NativeOptions;
-using RandomAdditions.RailSystem;
-using RandomAdditions.PhysicsTethers;
-using RandomAdditions.Minimap;
-using UnityEngine.Events;
-using UnityEngine.UI;
+using System.Linq;
+using System.Reflection;
 using System.Text;
-using TerraTech.Network;
+using HarmonyLib;
+using RandomAdditions.Minimap;
 using RandomAdditions.PatchBatch;
+using RandomAdditions.PhysicsTethers;
+using RandomAdditions.RailSystem;
+using TerraTech.Network;
+using TerraTechETCUtil;
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.Profiling.Memory.Experimental;
+using UnityEngine.UI;
+using static UnityEngine.UI.CanvasScaler;
 
 
 namespace RandomAdditions
@@ -33,7 +30,7 @@ namespace RandomAdditions
         internal const string ModID = "Random Additions";
         internal const float TerrainLowestAlt = -50;
 
-        public class KickStartRAData : TinySettings
+        public class KickStartRAData : ITinySettings
         {
             public string DirectoryInExtModSettings => "RandomAdditions";
             public string lastMPSaveName;
@@ -61,6 +58,7 @@ namespace RandomAdditions
         //public static bool CheapInterception = false;   // Force the Point-Defense Systems to grab the first target it "finds"
         public static float ProjectileHealthMultiplier = 10;
         public static int GlobalBlockReplaceChance = 50;
+        public static float ModWrenchScale = 1;
         public static bool MandateSeaReplacement = true;
         public static bool MandateLandReplacement = false;
         public static int ForceIntoModeStartup = 0;
@@ -82,6 +80,15 @@ namespace RandomAdditions
         public static int _snapBlockButton = (int)SnapBlockButton;
         public static KeyCode HangarButton = KeyCode.H;
         public static int _hangarButton = (int)HangarButton;
+
+        public static int FastenerSpeed = 0;
+
+        public static bool hideHov = false;
+        public static bool noCircuits = false;
+        public static bool smrtCircuits = false;
+        public static bool smrtCol = false;
+        public static int smrtHov = 0;
+        public static bool disableAiming = false;
 
         // EVENTS
         public static bool CanUseMenu { get { return !ManPauseGame.inst.IsPaused; } }
@@ -269,7 +276,7 @@ namespace RandomAdditions
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log("RandomAdditions: Error on Prepping Quick Start");
+                DebugRandAddi.Log("RandomAdditions: Error on Prepping Quick Start: " + e);
             }
             if (!OfficialEarlyInited)
             {
@@ -347,6 +354,15 @@ namespace RandomAdditions
             RandAddiWiki.InitWiki();
             RandAddiExtendWiki.InitWiki();
 
+
+            // Doesn't work, TT is too spagetti coded
+            /*
+            if (smrtCol)
+                TechColliderIgnorer.Init();
+            */
+            if (smrtHov > 0)
+                HoverOpti.Init();
+
             if (quickData.failedLastBoot)
             {
                 DebugRandAddi.Log("RandomAdditions: We failed on last startup, so we skipped loading this time");
@@ -364,7 +380,21 @@ namespace RandomAdditions
                 Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
                 doQuickstart = true;
             }
+            ManGameMode.inst.ModeStartEvent.Subscribe(OnModeStart);
+            ManGameMode.inst.ModeFinishedEvent.Subscribe(OnModeEnd);
+
+            ManModChunks.enabled = true;
+            ManModScenery.enabled = true;
+
+
+
 #if DEBUG
+            var tableCached = SpawnHelper.GetAllTerrainObjectPrefabList();
+            DebugRandAddi.Log("Getting scenery...");
+            foreach (var kvp in tableCached)
+            {
+                DebugRandAddi.Log("- " + kvp.Key + ": " + (kvp.Value.name.NullOrEmpty() ? "<NULL>" : kvp.Value.name));
+            }
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
             //PrintDataBase();
 #endif
@@ -374,11 +404,98 @@ namespace RandomAdditions
             //ResourcesHelper.SerialGO goCrash = new ResourcesHelper.SerialGO(null, null);
             //object blockCRasher = null;
             //blockCRasher.GetType();
+
+            //ResourcesHelper.BlocksPostChangeEvent.Subscribe(GiveMeTheStrongest);
         }
+        internal static void OnModeStart(Mode mode)
+        {
+#if DEBUG
+            
+            //Optimax.SetActive(true);
+            //ComponentPool.GeneratePoolingAnalysisTool();//!!!!!!!!!!!!!!!!!!!!!!!!!
+            //InvokeHelper.InvokeSingleRepeat(CheckTheCalls, 0.01f);
+            //ManFTUE.inst.StartShowSequence();
+            //ManRandDScript.inst.ActiveScriptObject = null;
+#endif
+        }
+        private static void CheckTheCalls()
+        {
+            /*
+            if (Patches.UpdateConnexionLinksCalls > 0)
+            {
+                DebugRandAddi.Log("UpdateConnexionLinksCalls count " + Patches.UpdateConnexionLinksCalls);
+                Patches.UpdateConnexionLinksCalls = 0;
+            }//*/
+        }
+        internal static void OnModeEnd(Mode mode)
+        {
+        }
+
+
+        private static float DPSGet(Transform value)
+        {
+            var weapon = value.GetComponent<ModuleWeapon>();
+            var weaponI = value.GetComponent<IModuleDamager>();
+            if (weapon && weaponI != null)
+            {
+                float DPS = weaponI.GetHitDamage() * weaponI.GetHitsPerSec();
+                return DPS;
+            }
+            return -1;
+        }
+        private static float AlphaGet(Transform value)
+        {
+            var weapon = value.GetComponent<ModuleWeapon>();
+            var weaponI = value.GetComponent<IModuleDamager>();
+            if (weapon && weaponI != null)
+            {
+                float DPS = weaponI.GetHitDamage();
+                return DPS;
+            }
+            return -1;
+        }
+#if DEBUG
+        private static void GiveMeTheStrongest()
+        {
+            var allPrefabs = (Dictionary<int, Transform>)AccessTools.Field(typeof(ManSpawn), "m_BlockPrefabs").GetValue(ManSpawn.inst);
+
+            DebugRandAddi.Log("Best DPS:");
+            foreach (var caser in allPrefabs.Where(x => x.Value?.GetComponent<ModuleWeapon>() != null).OrderByDescending(x =>
+            {
+                return DPSGet(x.Value);
+            }))
+                DebugRandAddi.Log(caser.Value.name + ": " + DPSGet(caser.Value).ToString("0.000"));
+            DebugRandAddi.Log("\nBest Alpha:");
+            foreach (var caser in allPrefabs.Where(x => x.Value?.GetComponent<ModuleWeapon>() != null).OrderByDescending(x =>
+            {
+                return AlphaGet(x.Value);
+            }))
+                DebugRandAddi.Log(caser.Value.name + ": " + AlphaGet(caser.Value).ToString("0.000"));
+        }
+#endif
+
         public static void PrepExternalChunksAndScenery(bool reload = false)
         {
-            ManModChunks.PrepareAllChunks(reload);
-            ManModScenery.PrepareAllScenery(reload);
+            try
+            {
+                ManModChunks.SanityCheck();
+                ManModChunks.PrepareAllChunks(reload);
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.FatalError("Failed to launch " + nameof(ManModChunks) + " - " + e);
+                ManModChunks.enabled = false;
+            }
+            try
+            {
+                ManModScenery.SanityCheck();
+                ManModScenery.PrepareAllScenery(reload);
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.FatalError("Failed to launch " + nameof(ManModScenery) + " - " + e);
+                ManModScenery.enabled = false;
+            }
         }
 
 #if DEBUG
@@ -431,6 +548,16 @@ namespace RandomAdditions
                 DebugRandAddi.Log(e);
             }
             ModHelpers.ClickEventSimple.Unsubscribe(ExtModuleClickable.OnClick);
+            ManGameMode.inst.ModeFinishedEvent.Unsubscribe(OnModeEnd);
+            ManGameMode.inst.ModeStartEvent.Unsubscribe(OnModeStart);
+
+            if (smrtHov > 0)
+                HoverOpti.DeInit();
+            // Doesn't work, TT is too spagetti coded
+            /*
+            if (smrtCol)
+                TechColliderIgnorer.DeInit();
+            */
             RandAddDebugGUI.DeInit();
             ManRadio.DeInit();
             CircuitExt.Unload();
@@ -526,6 +653,15 @@ namespace RandomAdditions
                 ManRails.PrepareForSaving();
                 RandomWorld.PrepareForSaving();
                 EmergPatches.PrepareForSaving();
+                bool PRUNED = false;
+                while (ManTechs.inst.IterateTechsWhere(x => x.blockman.blockCount == 0).FirstOrDefault() != null)
+                {
+                    ManTechs.inst.IterateTechsWhere(x => x.blockman.blockCount == 0).FirstOrDefault().blockman.RecycleAll();
+                    PRUNED = true;
+                }
+                if (PRUNED)
+                    ManModGUI.ShowErrorPopup("RandomAdditions - WARNING: Techs with no blocks detected\n" +
+                        "and removed in the scene when saving.  This is fixed automatically");
             }
             else
             {
@@ -609,6 +745,21 @@ namespace RandomAdditions
             });
         }
 
+        internal static void OpenInExplorer(string directory)
+        {
+            switch (SystemInfo.operatingSystemFamily)
+            {
+                case OperatingSystemFamily.MacOSX:
+                    Process.Start(new ProcessStartInfo("file://" + directory));
+                    break;
+                case OperatingSystemFamily.Linux:
+                case OperatingSystemFamily.Windows:
+                    Process.Start(new ProcessStartInfo("explorer.exe", directory));
+                    break;
+                default:
+                    throw new Exception("This operating system is UNSUPPORTED by RandomAdditions");
+            }
+        }
         public static void GetAvailSFX()
         {
             DebugRandAddi.Log("----- GETTING ALL SFX -----");
@@ -627,12 +778,14 @@ namespace RandomAdditions
         // Additional section for immedeate game entering
         public static bool didQuickstart = false;
         private static bool doQuickstart = false;
-        public static bool ShouldQuickStartGame() => doQuickstart;
+        public static bool ShouldHoldOffWeAreQuickStarting() => doQuickstart;
         public static bool QuickStartGame()
         {
-            if (didQuickstart || !doQuickstart)
+            if (didQuickstart)
                 return true;
             didQuickstart = true;
+            if (!doQuickstart)
+                return true;
 #if DEBUG
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
 #endif
@@ -711,17 +864,27 @@ namespace RandomAdditions
                             }
                             if (LoadSPSaveOrNewGame)
                             {
-                                DebugRandAddi.Log("RandomAdditions: Next mode, " + GT.ToString());
-                                ManUI.inst.ExitAllScreens();
-                                ManGameMode.inst.ClearModeInitSettings();
-                                if (saveName.NullOrEmpty())
-                                    ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
+                                var targFile = ManSaveGame.CreateGameSaveFilePath(GT, prof.m_LastUsedSaveName);
+
+                                if (File.Exists(targFile))
+                                {
+                                    DebugRandAddi.Log("RandomAdditions: Next mode, " + GT.ToString());
+                                    ManUI.inst.ExitAllScreens();
+                                    ManGameMode.inst.ClearModeInitSettings();
+                                    if (saveName.NullOrEmpty())
+                                        ManGameMode.inst.SetupModeSwitchAction(ManGameMode.inst.NextModeSetting, GT);
+                                    else
+                                        ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
+                                    ManGameMode.inst.NextModeSetting.SwitchToMode();
+                                    ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
+                                    //ManUI.inst.FadeToBlack(0.25f, false);
+                                    DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
+                                }
                                 else
-                                    ManGameMode.inst.SetupSaveGameToLoad(GT, prof.m_LastUsedSaveName, prof.m_LastUsedSave_WorldGenVersionData);
-                                ManGameMode.inst.NextModeSetting.SwitchToMode();
-                                ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
-                                //ManUI.inst.FadeToBlack(0.25f, false);
-                                DebugRandAddi.Log("RandomAdditions: Success on QuickStartGame");
+                                {
+                                    ManModGUI.ShowErrorPopup("RandomAdditions: Failed to find save file \"" + 
+                                        prof.m_LastUsedSaveName + "\", was it deleted or misplaced?");
+                                }
                             }
                         }
                         else
@@ -777,12 +940,12 @@ namespace RandomAdditions
             {
                 if (SKU.IsSteam)
                 {
-                    DebugRandAddi.Log("RandomAdditions: EpicOnlineServices attempted to start up and continue tracking even after crossplay is disabled ON STEAM.  The attempt was fucking stopped.");
+                    DebugRandAddi.Log("RandomAdditions: EpicOnlineServices attempted to start up and continue tracking even after crossplay is disabled ON STEAM.  The attempt was f*broning stopped.");
                     stopIt.Invoke(ManEOS.inst, new object[] { true });
                 }
                 else
                 {
-                    DebugRandAddi.Log("RandomAdditions: Uhh the mod was launched on a Non-steam platform.  We will let EpicOnlineServices continue working because it is needed.");
+                    DebugRandAddi.Log("RandomAdditions: Uhh the mod was launched on a non-Steam platform (This Steam mod was launched on a non-Steam client!?!).  We will let EpicOnlineServices continue working because it is needed.");
                 }
             }
         }
@@ -903,7 +1066,7 @@ namespace RandomAdditions
                     if (MAs.Count > 0)
                     {
                         DebugRandAddi.Info("RandomAdditions: FetchAnimette - fetched " + MAs.Count + " animettes");
-                        return MAs.ToArray();
+                        return MAs.ToArray(); // RARE CALL
                     }
                 }
             }
@@ -995,45 +1158,58 @@ namespace RandomAdditions
 
     public class KickStartOptions
     {
-        internal static ModConfig config;
+#if !STEAM
+        internal static ModHelper.Config.ModConfig config;
+#else
+        internal static ModHelper.ModConfig config;
+#endif
 
         // NativeOptions Parameters
         // GENERAL
-        public static OptionToggle altDateFormat;
-        public static OptionToggle noCameraShake;
-        public static OptionToggle scaleBlocksInSCU;
-        public static OptionToggle realShields;
-        public static OptionToggle moddedPopupReset;
+        public static Nuterra.NativeOptions.OptionToggle altDateFormat;
+        public static Nuterra.NativeOptions.OptionToggle noCameraShake;
+        public static Nuterra.NativeOptions.OptionToggle scaleBlocksInSCU;
+        public static Nuterra.NativeOptions.OptionToggle realShields;
+        public static Nuterra.NativeOptions.OptionToggle moddedPopupReset;
+        public static Nuterra.NativeOptions.OptionRange modWrenchIconScale;
 
-        public static OptionRange replaceChance;
-        public static OptionToggle rpSea;
-        public static OptionToggle rpLand;
+        public static Nuterra.NativeOptions.OptionRange replaceChance;
+        public static Nuterra.NativeOptions.OptionToggle rpSea;
+        public static Nuterra.NativeOptions.OptionToggle rpLand;
 
         // CHEATS
-        public static OptionToggle AlteredVanilla;
-        public static OptionRange XpMulti;
-        public static OptionRange BBMulti;
-        public static OptionRange BlocksMulti;
+        public static Nuterra.NativeOptions.OptionToggle AlteredVanilla;
+        public static Nuterra.NativeOptions.OptionRange XpMulti;
+        public static Nuterra.NativeOptions.OptionRange BBMulti;
+        public static Nuterra.NativeOptions.OptionRange BlocksMulti;
 
         // CONTROLS
-        public static OptionToggle lockP_BoostProps;
-        public static OptionToggle lockP_Pitch;
-        public static OptionToggle lockP_Yaw;
-        public static OptionToggle lockP_Roll;
-        public static OptionKey hangarKey;
+        public static Nuterra.NativeOptions.OptionToggle lockP_BoostProps;
+        public static Nuterra.NativeOptions.OptionToggle lockP_Pitch;
+        public static Nuterra.NativeOptions.OptionToggle lockP_Yaw;
+        public static Nuterra.NativeOptions.OptionToggle lockP_Roll;
+        public static Nuterra.NativeOptions.OptionKey hangarKey;
 
         // DEVELOPMENT
-        public static OptionToggle fakeOfflineEpic;
-        public static OptionKey blockSnap;
-        public static OptionToggle allowQuitFromIngameMenu;
-        public static OptionToggle allowPopups;
-        public static OptionList<string> startup;
-        public static OptionToggle fastPhysics;
-        public static OptionToggle disColliders;
+        public static Nuterra.NativeOptions.OptionToggle fakeOfflineEpic;
+        public static Nuterra.NativeOptions.OptionKey blockSnap;
+        public static Nuterra.NativeOptions.OptionToggle allowQuitFromIngameMenu;
+        public static Nuterra.NativeOptions.OptionToggle allowPopups;
+        public static Nuterra.NativeOptions.OptionList<string> startup;
+        public static Nuterra.NativeOptions.OptionToggle fastPhysics;
+        public static Nuterra.NativeOptions.OptionToggle disColliders;
+        public static Nuterra.NativeOptions.OptionToggle hideHoverParticles;
+        public static Nuterra.NativeOptions.OptionToggle smartCircuits;
+        public static Nuterra.NativeOptions.OptionToggle disableCircuits;
+        public static Nuterra.NativeOptions.OptionRange smartHovers;
+        public static Nuterra.NativeOptions.OptionToggle smartColliders;
+        public static Nuterra.NativeOptions.OptionToggle ignoreAiming;
+
+        public static Nuterra.NativeOptions.OptionRange fastnerFast;
 
         // Tony Rails
-        public static OptionRange RailRenderRange;
-        public static OptionRange RailPathingUpdateSpeed;
+        public static Nuterra.NativeOptions.OptionRange RailRenderRange;
+        public static Nuterra.NativeOptions.OptionRange RailPathingUpdateSpeed;
 
 
         private static bool launched = false;
@@ -1079,11 +1255,16 @@ namespace RandomAdditions
             //Initiate the madness
             try
             {
-                ModConfig thisModConfig = new ModConfig();
+#if !STEAM
+                ModHelper.Config.ModConfig thisModConfig = new ModHelper.ModConfig();
+#else
+                ModHelper.ModConfig thisModConfig = new ModHelper.ModConfig();
+#endif
                 thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
                 thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
                 thisModConfig.BindConfig<KickStart>(null, "NoShake");
                 thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
+                thisModConfig.BindConfig<KickStart>(null, "ModWrenchScale");
 #if !STEAM
                 thisModConfig.BindConfig<KickStart>(null, "TrueShields");
 #endif
@@ -1108,6 +1289,17 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<KickStart>(null, "FastestPhysics");
                 thisModConfig.BindConfig<KickStart>(null, "ColliderDisable2");
 
+                thisModConfig.BindConfig<KickStart>(null, "FastenerSpeed");
+
+                thisModConfig.BindConfig<KickStart>(null, "noCircuits");
+                thisModConfig.BindConfig<KickStart>(null, "smrtCircuits");
+                thisModConfig.BindConfig<KickStart>(null, "hideHov");
+                thisModConfig.BindConfig<KickStart>(null, "smrtHov");
+                /*  // Doesn't work, TT is too spagetti coded
+                thisModConfig.BindConfig<KickStart>(null, "smrtCol");
+                thisModConfig.BindConfig<KickStart>(null, "disableAiming");
+                */
+
                 // Tony Rails
                 thisModConfig.BindConfig<ManRails>(null, "MaxRailLoadRange");
                 thisModConfig.BindConfig<ManTrainPathing>(null, "QueueStepRepeatTimes");
@@ -1120,14 +1312,14 @@ namespace RandomAdditions
                 realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
                 realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
 #endif
-                OptionToggle togTest = new OptionToggle("Clock Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
+                Nuterra.NativeOptions.OptionToggle togTest = new Nuterra.NativeOptions.OptionToggle("Clock Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
                 togTest.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = togTest.SavedValue; });
                 altDateFormat = togTest;
-                noCameraShake = new OptionToggle("Disable Damage Feedback Rattle", RandomProperties, KickStart.NoShake);
+                noCameraShake = new Nuterra.NativeOptions.OptionToggle("Disable Damage Feedback Rattle", RandomProperties, KickStart.NoShake);
                 noCameraShake.onValueSaved.AddListener(() => { KickStart.NoShake = noCameraShake.SavedValue; });
-                scaleBlocksInSCU = new OptionToggle("Shrink Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);
+                scaleBlocksInSCU = new Nuterra.NativeOptions.OptionToggle("Shrink Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);
                 scaleBlocksInSCU.onValueSaved.AddListener(() => { KickStart.AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
-                moddedPopupReset = new OptionToggle("Reset All Mod Hints", RandomProperties, KickStart.ResetModdedPopups);
+                moddedPopupReset = new Nuterra.NativeOptions.OptionToggle("Reset All Mod Hints", RandomProperties, KickStart.ResetModdedPopups);
                 moddedPopupReset.onValueSaved.AddListener(() => {
                     if (moddedPopupReset.SavedValue)
                     {
@@ -1135,6 +1327,12 @@ namespace RandomAdditions
                         moddedPopupReset.ResetValue();
                     }
                 });
+                modWrenchIconScale = SuperNativeOptions.OptionRangeAutoDisplay("Modded Block Wrench Icon Size",
+                    RandomProperties, KickStart.ModWrenchScale, 0.25f, 1f, 0.125f, (float value) =>
+                    {
+                        return value.ToString("P");
+                    });
+                modWrenchIconScale.onValueSaved.AddListener(() => { KickStart.ModWrenchScale = Mathf.RoundToInt(modWrenchIconScale.SavedValue); });
 
                 var RandomBlocks = KickStart.ModName + " - Population Tweaks";
                 replaceChance = SuperNativeOptions.OptionRangeAutoDisplay("Chance for Custom Block replacement", 
@@ -1143,23 +1341,23 @@ namespace RandomAdditions
                         return value.ToString("0") + "%";
                     });
                 replaceChance.onValueSaved.AddListener(() => { KickStart.GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
-                rpLand = new OptionToggle("Force Land Custom Block", RandomBlocks, KickStart.MandateLandReplacement);
+                rpLand = new Nuterra.NativeOptions.OptionToggle("Force Land Custom Block", RandomBlocks, KickStart.MandateLandReplacement);
                 rpLand.onValueSaved.AddListener(() => { KickStart.MandateLandReplacement = rpLand.SavedValue; });
-                rpSea = new OptionToggle("Force Sea Custom Block Replacement", RandomBlocks, KickStart.MandateSeaReplacement);
+                rpSea = new Nuterra.NativeOptions.OptionToggle("Force Sea Custom Block Replacement", RandomBlocks, KickStart.MandateSeaReplacement);
                 rpSea.onValueSaved.AddListener(() => { KickStart.MandateSeaReplacement = rpSea.SavedValue; });
 
 
                 var RandomControls = KickStart.ModName + " - Controls";
-                lockP_BoostProps = new OptionToggle("Lock Propeller Steering Only When Pressing Prop Button", RandomControls, KickStart.LockPropWhenPropBoostOnly);
+                lockP_BoostProps = new Nuterra.NativeOptions.OptionToggle("Lock Propeller Steering Only When Pressing Prop Button", RandomControls, KickStart.LockPropWhenPropBoostOnly);
                 lockP_BoostProps.onValueSaved.AddListener(() => { KickStart.LockPropWhenPropBoostOnly = lockP_BoostProps.SavedValue; });
-                lockP_Pitch = new OptionToggle("Lock Propellers Pitch Steering", RandomControls, KickStart.LockPropPitch);
+                lockP_Pitch = new Nuterra.NativeOptions.OptionToggle("Lock Propellers Pitch Steering", RandomControls, KickStart.LockPropPitch);
                 lockP_Pitch.onValueSaved.AddListener(() => { KickStart.LockPropPitch = lockP_Pitch.SavedValue; });
-                lockP_Roll = new OptionToggle("Lock Propellers Roll Steering", RandomControls, KickStart.LockPropRoll);
+                lockP_Roll = new Nuterra.NativeOptions.OptionToggle("Lock Propellers Roll Steering", RandomControls, KickStart.LockPropRoll);
                 lockP_Roll.onValueSaved.AddListener(() => { KickStart.LockPropRoll = lockP_Roll.SavedValue; });
-                lockP_Yaw = new OptionToggle("Lock Propellers Yaw Steering", RandomControls, KickStart.LockPropYaw);
+                lockP_Yaw = new Nuterra.NativeOptions.OptionToggle("Lock Propellers Yaw Steering", RandomControls, KickStart.LockPropYaw);
                 lockP_Yaw.onValueSaved.AddListener(() => { KickStart.LockPropYaw = lockP_Yaw.SavedValue; });
 
-                hangarKey = new OptionKey("Hangar Docking Hotkey [+ Left Click]", RandomControls, KickStart.HangarButton);
+                hangarKey = new Nuterra.NativeOptions.OptionKey("Hangar Docking Hotkey [+ Left Click]", RandomControls, KickStart.HangarButton);
                 hangarKey.onValueSaved.AddListener(() => {
                     KickStart.HangarButton = hangarKey.SavedValue;
                     KickStart._hangarButton = (int)hangarKey.SavedValue;
@@ -1167,7 +1365,7 @@ namespace RandomAdditions
 
                 var RandomDev = KickStart.ModName + " - Development";
 
-                fakeOfflineEpic = new OptionToggle("Force Epic Online Services Offline [Slows MP Lobby Loading!]", RandomDev, KickStart.IDontTrustEpicAtAll);
+                fakeOfflineEpic = new Nuterra.NativeOptions.OptionToggle("Force Epic Online Services Offline [Slows MP Lobby Loading!]", RandomDev, KickStart.IDontTrustEpicAtAll);
                 fakeOfflineEpic.onValueSaved.AddListener(() =>
                 {
                     KickStart.IDontTrustEpicAtAll = fakeOfflineEpic.SavedValue;
@@ -1178,18 +1376,82 @@ namespace RandomAdditions
                             ManModGUI.ShowErrorPopup("RandomAddtions: Force Epic Online Services Offline cannot do it's job if Crossplay is set to be active.\nMake sure to launch TerraTech WITHOUT Crossplay!");
                     }
                 });
-                fastPhysics = new OptionToggle("Fast Physics (MIGHT BREAK GAME)", RandomDev, KickStart.FastestPhysics);
+                fastPhysics = new Nuterra.NativeOptions.OptionToggle("Fast Physics (MIGHT BREAK GAME)", RandomDev, KickStart.FastestPhysics);
                 fastPhysics.onValueSaved.AddListener(() =>
                 {
                     KickStart.FastestPhysics = fastPhysics.SavedValue;
                     Optimax.PrematureOptimization(KickStart.FastestPhysics);
                 });
-                disColliders = new OptionToggle("Disable Tech Colliders", RandomDev, KickStart.ColliderDisable2);
+                disColliders = new Nuterra.NativeOptions.OptionToggle("Disable Tech Colliders", RandomDev, KickStart.ColliderDisable2);
                 disColliders.onValueSaved.AddListener(() =>
                 {
                     KickStart.ColliderDisable2 = disColliders.SavedValue;
                     Optimax.UpdateColliders();
-                }); 
+                });
+                fastnerFast = SuperNativeOptions.OptionRangeAutoDisplay("C&S Fastener Speed", RandomDev, KickStart.FastenerSpeed,
+                    0, 20, 1, (float val) =>
+                    {
+                        if (val == 0)
+                            return "Default";
+                        if (val > 5)
+                            return (10f / (val + 10f)).ToString("P") + " time [UNSAFE]";
+                        return (10f / (val + 10f)).ToString("P") + " time";
+                    });
+                fastnerFast.onValueSaved.AddListener(() =>
+                {
+                    KickStart.FastenerSpeed = Mathf.RoundToInt(fastnerFast.SavedValue);
+                });
+                
+
+                var LagSolutions = KickStart.ModName + " - Lag Reduction";
+                smartCircuits = new Nuterra.NativeOptions.OptionToggle("Smart Circuits (MIGHT BREAK C&S DESIGNS) [REDUCE BIG LAG]", LagSolutions, KickStart.smrtCircuits);
+                smartCircuits.onValueSaved.AddListener(() =>
+                {
+                    KickStart.smrtCircuits = smartCircuits.SavedValue;
+                });
+                disableCircuits = new Nuterra.NativeOptions.OptionToggle("Disable Circuits Entirely (DISABLES C&S) [REDUCES HUGE LAG]", LagSolutions, KickStart.noCircuits);
+                disableCircuits.onValueSaved.AddListener(() =>
+                {
+                    KickStart.noCircuits = disableCircuits.SavedValue;
+                });
+                hideHoverParticles = new Nuterra.NativeOptions.OptionToggle("Hide hover particles [REDUCES SOME LAG]", LagSolutions, KickStart.hideHov);
+                hideHoverParticles.onValueSaved.AddListener(() =>
+                {
+                    KickStart.hideHov = hideHoverParticles.SavedValue;
+                });
+                /*  // Doesn't work, TT is too spagetti coded
+                smartColliders = new Nuterra.NativeOptions.OptionToggle("Smart Tech Colliders [More frames but lag spikes]", LagSolutions, KickStart.smrtCol);
+                smartColliders.onValueSaved.AddListener(() =>
+                {
+                    KickStart.smrtCol = smartColliders.SavedValue;
+                    if (KickStart.smrtCol)
+                        TechColliderIgnorer.Init();
+                    else
+                        TechColliderIgnorer.DeInit();
+                });
+                */
+                smartHovers = SuperNativeOptions.OptionRangeAutoDisplay("Lazy Hovers (LOWERED HOVER RELIABILITY)", LagSolutions, KickStart.smrtHov,
+                    0, 64, 4, (float val) => 
+                    {
+                        if (val == 0)
+                            return "Not Lazy";
+                        return "Only " + val.ToString("0") + " hovers per update";
+                    });
+                smartHovers.onValueSaved.AddListener(() =>
+                {
+                    KickStart.smrtHov = Mathf.RoundToInt(smartHovers.SavedValue);
+                    if (KickStart.smrtHov > 0)
+                        HoverOpti.Init();
+                    else
+                        HoverOpti.DeInit();
+                });
+                ignoreAiming = new Nuterra.NativeOptions.OptionToggle("Disable Tech Aiming [SP]", LagSolutions, KickStart.disableAiming);
+                ignoreAiming.onValueSaved.AddListener(() =>
+                {
+                    KickStart.disableAiming = ignoreAiming.SavedValue;
+                });
+
+
                 try
                 {
                     KickStartOptionsSafeSaves.TryInitOptionAndConfig(RandomDev, thisModConfig);
@@ -1199,9 +1461,9 @@ namespace RandomAdditions
                     DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup SafeSaves");
                     DebugRandAddi.Log(e);
                 }
-                allowPopups = new OptionToggle("Enable custom block debug popups", RandomDev, BlockDebug.DebugPopups);
+                allowPopups = new Nuterra.NativeOptions.OptionToggle("Enable custom block debug popups", RandomDev, BlockDebug.DebugPopups);
                 allowPopups.onValueSaved.AddListener(() => { BlockDebug.DebugPopups = allowPopups.SavedValue; });
-                blockSnap = new OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomDev, KickStart.SnapBlockButton);
+                blockSnap = new Nuterra.NativeOptions.OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomDev, KickStart.SnapBlockButton);
                 blockSnap.onValueSaved.AddListener(() => {
                     KickStart.SnapBlockButton = blockSnap.SavedValue;
                     KickStart._snapBlockButton = (int)blockSnap.SavedValue;
@@ -1214,12 +1476,12 @@ namespace RandomAdditions
                 if (ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
                     gamemodeSwitch.Add("R&D");
                 gamemodeSwitch.Add("Last Save & MP");
-                startup = new OptionList<string>("Skip Title Screen", RandomDev, gamemodeSwitch, KickStart.ForceIntoModeStartup);
+                startup = new Nuterra.NativeOptions.OptionList<string>("Skip Title Screen", RandomDev, gamemodeSwitch, KickStart.ForceIntoModeStartup);
                 startup.onValueSaved.AddListener(() =>
                 {
                     KickStart.ForceIntoModeStartup = startup.SavedValue;
                 });
-                allowQuitFromIngameMenu = new OptionToggle("Quit to Desktop Ingame", RandomDev, KickStart.AllowIngameQuitToDesktop);
+                allowQuitFromIngameMenu = new Nuterra.NativeOptions.OptionToggle("Quit to Desktop Ingame", RandomDev, KickStart.AllowIngameQuitToDesktop);
                 allowQuitFromIngameMenu.onValueSaved.AddListener(() =>
                 {
                     KickStart.AllowIngameQuitToDesktop = allowQuitFromIngameMenu.SavedValue;
@@ -1248,7 +1510,7 @@ namespace RandomAdditions
                 });
 
                 var Cheats = KickStart.ModName + " - Host World Tweaks";
-                AlteredVanilla = new OptionToggle("Enable (CANNOT BE UNDONE)", Cheats, RandomWorld.inst.WorldAltered);
+                AlteredVanilla = new Nuterra.NativeOptions.OptionToggle("Enable (CANNOT BE UNDONE)", Cheats, RandomWorld.inst.WorldAltered);
                 AlteredVanilla.onValueSaved.AddListener(() =>
                 {
                     if (AlteredVanilla.Value)
@@ -1301,7 +1563,7 @@ namespace RandomAdditions
                         RandomWorld.inst.LootBBMulti = BBMulti.SavedValue; 
                 });
 
-                NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
+                Nuterra.NativeOptions.NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
                 if (KickStart.ColliderDisable2)
                     Optimax.UpdateColliders();
             }
@@ -1331,14 +1593,18 @@ namespace RandomAdditions
 
     public class KickStartOptionsSafeSaves
     {
-        public static OptionToggle saveExternal;
-        public static void TryInitOptionAndConfig(string RandomDev, ModConfig thisModConfig)
+        public static Nuterra.NativeOptions.OptionToggle saveExternal;
+#if !STEAM
+        public static void TryInitOptionAndConfig(string RandomDev, ModHelper.Config.ModConfig thisModConfig)
+#else
+        public static void TryInitOptionAndConfig(string RandomDev, ModHelper.ModConfig thisModConfig)
+#endif
         {
             //Initiate the madness
             try
             {
                 thisModConfig.BindConfig<SafeSaves.ManSafeSaves>(null, "DisableExternalBackupSaving");
-                saveExternal = new OptionToggle("Save Mod Information in External File", RandomDev, SafeSaves.ManSafeSaves.DisableExternalBackupSaving);
+                saveExternal = new Nuterra.NativeOptions.OptionToggle("Save Mod Information in External File", RandomDev, SafeSaves.ManSafeSaves.DisableExternalBackupSaving);
                 saveExternal.onValueSaved.AddListener(() => { SafeSaves.ManSafeSaves.DisableExternalBackupSaving = saveExternal.SavedValue; });
             }
             catch (Exception e)
@@ -1353,6 +1619,12 @@ namespace RandomAdditions
 
     internal static class ExtraExtensions
     {
+        /// <summary>
+        /// CREATES GARBAGE
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="GO"></param>
+        /// <returns></returns>
         public static T[] GetComponentsLowestFirst<T>(this GameObject GO) where T : MonoBehaviour
         {
             List<KeyValuePair<int, T>> depthTracker = new List<KeyValuePair<int, T>>();
@@ -1365,9 +1637,9 @@ namespace RandomAdditions
                     depthTracker.Add(new KeyValuePair<int, T>(0, fetch));
                 GetComponentsLowestFirstRecurse<T>(transCase, 1, ref depthTracker);
             }
-            List<T> insure = depthTracker.OrderBy(x => x.Key).ToList().ConvertAll(x => x.Value);
-            if (insure.Count > 0)
-                return insure.ToArray();
+            IEnumerable<T> insure = depthTracker.OrderBy(x => x.Key).Select(x => x.Value);
+            if (insure.Any())
+                return insure.ToArray(); // RARE CALL
             return null;
         }
         private static void GetComponentsLowestFirstRecurse<T>(this Transform trans, int depth, ref List<KeyValuePair<int, T>> depthTracker) where T : MonoBehaviour
@@ -1610,11 +1882,11 @@ namespace RandomAdditions
             internal static Type target = typeof(ModeAttract);
             private static bool EnterGenerateTerrain_Prefix()
             {
-                return !KickStart.ShouldQuickStartGame();
+                return !KickStart.ShouldHoldOffWeAreQuickStarting();
             }
             private static bool UpdateModeImpl_Prefix()
             {
-                return !KickStart.ShouldQuickStartGame();
+                return !KickStart.ShouldHoldOffWeAreQuickStarting();
             }
             /// <summary>
             /// Startup tech spawn blocker
@@ -1622,7 +1894,7 @@ namespace RandomAdditions
             //[HarmonyPatch(MethodType.Normal, new Type[1] { typeof(Type)})]
             private static bool ExitModeImpl_Prefix()
             {
-                return !KickStart.ShouldQuickStartGame();
+                return !KickStart.ShouldHoldOffWeAreQuickStarting();
             }
         }
     }

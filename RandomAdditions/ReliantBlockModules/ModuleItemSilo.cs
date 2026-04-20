@@ -6,11 +6,12 @@ using SafeSaves;
 using TerraTechETCUtil;
 
 
+[AutoSaveComponent]
 public class ModuleItemSilo : RandomAdditions.ModuleItemSilo { };
 namespace RandomAdditions
 {
     [AutoSaveComponent]
-    public class ModuleItemSilo : Module
+    public class ModuleItemSilo : ExtModule
     {
         // A module that acts as a storage for a single type of resource, but lag-free and without colliders
         //   Relies on ModuleItemStore to keep the stacks of a single type, with only one node to stack from
@@ -164,13 +165,12 @@ namespace RandomAdditions
         }*/
 
 
-        public void OnPool()
+        protected override void Pool()
         {
             TankBlock = gameObject.GetComponent<TankBlock>();
-            TankBlock.SubToBlockAttachConnected(OnAttach, OnDetach);
 
-            gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>().ToList();
-            disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>().ToList();
+            gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>().ToList(); // ONCE ON BLOCK CREATION
+            disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>().ToList(); // ONCE ON BLOCK CREATION
             itemStore = gameObject.GetComponent<ModuleItemStore>();
             itemHold = gameObject.GetComponent<ModuleItemHolder>();
             siloSpawn = gameObject.transform.Find("_siloSpawn");
@@ -274,30 +274,29 @@ namespace RandomAdditions
                             "または" + AltUI.ObjectiveString("ブロック") + "の積み重ねを安全に内部に保持します"},
         });
         private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleItemSilo", LOC_ModuleItemSilo_desc);
-        private void OnAttach()
+        public override void OnAttach()
         {
             if (StackSet == 0)
                 itemHold.OverrideStackCapacity(16);
             else
                 itemHold.OverrideStackCapacity(StackSet * 2);  //  MUST be at least 2
-            TankBlock.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            //TankBlock.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
+            TankBlock.serializeEvent.Subscribe(OnSerialize);
+            //TankBlock.serializeTextEvent.Subscribe(OnSerializeText);
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
 
             ResetGaugesAndDisplays();
-            isSaving = false;
             hint.Show();
         }
-        private void OnDetach()
+        public override void OnDetach()
         {
-            TankBlock.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
-            //TankBlock.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerializeText));
+            TankBlock.serializeEvent.Unsubscribe(OnSerialize);
+            //TankBlock.serializeTextEvent.Unsubscribe(OnSerializeText);
 
             //DebugRandAddi.Log("RandomAdditions: isSaving " + isSaving);
-            if (!isSaving || ManTechSwapper.inst.CheckOperatingOnTech(block.tank))
+            if (!ManSaveGame.Storing)// && (!isSaving || ManTechSwapper.inst.CheckOperatingOnTech(block.tank)))
             {   // Only eject when the world is NOT saving
                 if (!StoresBlocksInsteadOfChunks)
-                {
+                {   // Stores chunks
                     if (SavedCount > 0)
                     {
                         ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateOpen);
@@ -333,7 +332,7 @@ namespace RandomAdditions
                 UpdateGaugesAndDisplays();
             }
         }
-        private void OnSpawn()
+        protected void OnSpawn()
         {   // reset for new blocks/new spawns
             GetChunkType = ChunkTypes.Null;
             GetBlockType = BlockTypes.GSOAIController_111;
@@ -341,7 +340,7 @@ namespace RandomAdditions
             SavedGaugeColor = Color.black;
             isSaving = false;
         }
-        private void OnRecycle()
+        protected void OnRecycle()
         {   // reset for new blocks/new spawns
             /*
             DebugRandAddi.Assert(true, "ON RECYCLE " + name);
@@ -647,20 +646,20 @@ namespace RandomAdditions
         private void PlayConsumeSFX()
         {
             block.tank.TechAudio.PlayOneshot(TechAudio.AudioTickData.ConfigureOneshot(
-                this, StoresBlocksInsteadOfChunks ? 
+                block.damage, StoresBlocksInsteadOfChunks ? 
                 TechAudio.SFXType.ItemBlockConsumed :  TechAudio.SFXType.ItemResourceConsumed));
         }
         private void PlayProduceSFX()
         {
             block.tank.TechAudio.PlayOneshot(TechAudio.AudioTickData.ConfigureOneshot(
-                this, StoresBlocksInsteadOfChunks ?
+                block.damage, StoresBlocksInsteadOfChunks ?
                 TechAudio.SFXType.ItemBlockProduced : TechAudio.SFXType.ItemResourceProduced));
         }
 
         // "Animations"
         private void QueueStoreAnim(Visible toManage)
         {
-            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemResourceConsumed);
+            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(block.damage, TechAudio.SFXType.ItemResourceConsumed);
             try
             {
                 TankBlock.tank.TechAudio.PlayOneshot(sound);
@@ -686,7 +685,7 @@ namespace RandomAdditions
         }
         private void QueueReleaseAnim(ModuleItemHolder.Stack stack)
         {
-            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.ItemResourceProduced);
+            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(block.damage, TechAudio.SFXType.ItemResourceProduced);
             try
             {
                 TankBlock.tank.TechAudio.PlayOneshot(sound);
@@ -1074,6 +1073,9 @@ namespace RandomAdditions
 
 
         // Chunk saving
+        /// <summary>
+        /// The block is getting detached and either cannot hold the items while detached OR it is going to get deleted
+        /// </summary>
         public void EmergencyEjectAllContents()
         {
             foreach (Visible toManage in AbsorbAnimating)
@@ -1109,7 +1111,7 @@ namespace RandomAdditions
             ReleaseTargetNode.Clear();
 
             if (!StoresBlocksInsteadOfChunks)
-            {
+            {   // Chunk ejection
                 if (DestroyContentsOnDestruction && TankBlock.damage.AboutToDie)
                 {
                     DebugRandAddi.Log("RandomAdditions: Silo " + gameObject.name + " is unstable on death and has destroyed all their stored contents!");
@@ -1129,9 +1131,12 @@ namespace RandomAdditions
             GetBlockType = BlockTypes.GSOAIController_111;
             GetChunkType = ChunkTypes.Null;
         }
+        /// <summary>
+        /// There is too many chunks in here so we eject the excess
+        /// </summary>
         public void EmergencyEjectRelieve()
         {
-            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(this, TechAudio.SFXType.LightMachineGun);
+            TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(block.damage, TechAudio.SFXType.LightMachineGun);
             try
             {
                 TankBlock.tank.TechAudio.PlayOneshot(sound);
@@ -1147,7 +1152,7 @@ namespace RandomAdditions
         }
 
 
-
+        /*
         // Save operations
         [Serializable]
         private new class SerialData : SerialData<SerialData>
@@ -1158,7 +1163,7 @@ namespace RandomAdditions
             public float savedColorR;
             public float savedColorG;
             public float savedColorB;
-        }
+        }*/
         private void OnSerialize(bool saving, TankPreset.BlockSpec blockSpec)
         {
             try

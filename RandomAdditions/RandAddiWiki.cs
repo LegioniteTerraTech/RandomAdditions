@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using HarmonyLib;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -30,44 +31,31 @@ namespace RandomAdditions
 
         internal static void InitMechanics()
         {
-            new WikiPageInfo(modID, LOC_Tools, ToolsSprite, PageTools);
+            new WikiPageTools(modID, PageTools);
         }
         internal static void InitChunks()
         {
-            var group = InsureWikiGroup(modID, LOC_Chunks, ChunksSprite);
+            var group = ManIngameWiki.InsureChunksWikiGroup(modID);
             foreach (var item in ManModChunks.Resurrected)
             {
                 new WikiPageChunk((int)item, group);
             }
         }
-        internal static void OpenInExplorer(string directory)
-        {
-            switch (SystemInfo.operatingSystemFamily)
-            {
-                case OperatingSystemFamily.MacOSX:
-                    Process.Start(new ProcessStartInfo("file://" + directory));
-                    break;
-                case OperatingSystemFamily.Linux:
-                case OperatingSystemFamily.Windows:
-                    Process.Start(new ProcessStartInfo("explorer.exe", directory));
-                    break;
-                default:
-                    throw new Exception("This operating system is UNSUPPORTED by RandomAdditions");
-            }
-        }
-        private static bool benchmarker = false;
         internal static void PageTools()
         {
             AltUI.Sprite(nullSprite, AltUI.TextfieldBorderedBlue, GUILayout.Height(128), GUILayout.Width(128));
+
+            if (AltUI.Button("PURGE ALL POOLS", ManSFX.UISfxType.CheckBox, AltUI.ButtonOrangeLarge))
+                AccessTools.Method(typeof(ComponentPool), "PurgeUnusedPooledItems").Invoke(null, Array.Empty<object>());
+
             GUILayout.BeginVertical(AltUI.TextfieldBlackHuge);
             GUILayout.Label("Modding Helpers", AltUI.LabelBlueTitle);
-            if (GUILayout.Button("Show Performance", AltUI.ButtonOrangeLarge))
+            if (AltUI.Button("Show Performance", ManSFX.UISfxType.PopUpOpen, AltUI.ButtonOrangeLarge))
             {
-                benchmarker = !benchmarker;
-                Optimax.SetActive(benchmarker);
+                Optimax.SetActive(!Optimax.State);
             }
 #if DEBUG
-            if (GUILayout.Button("Print all SFX data in Logs", AltUI.ButtonOrangeLarge))
+            if (AltUI.Button("Print all SFX data in Logs", ManSFX.UISfxType.AcceptMission, AltUI.ButtonOrangeLarge))
             {
                 KickStart.PrintSoundDataBase();
             }
@@ -76,28 +64,28 @@ namespace RandomAdditions
             {
 #endif
 
-            if (GUILayout.Button("Open Custom Blocks", AltUI.ButtonOrangeLarge))
+            if (AltUI.Button("Open Custom Blocks", ManSFX.UISfxType.Open, AltUI.ButtonOrangeLarge))
                 {
                     string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "Custom Blocks");
                     if (!Directory.Exists(path))
                         Directory.CreateDirectory(path);
-                    OpenInExplorer(path);
+                    KickStart.OpenInExplorer(path);
                 }
 
                 if (ModHelpers.allowQuickSnap > 0)
                 {
-                    if (GUILayout.Button("Click on Block", AltUI.ButtonBlueLargeActive))
+                    if (AltUI.Button("Click on Block", ManSFX.UISfxType.AnchorFailed, AltUI.ButtonBlueLargeActive))
                         ModHelpers.allowQuickSnap = 0;
                 }
-                else if (GUILayout.Button("Snap Block Icon", AltUI.ButtonBlueLarge))
+                else if (AltUI.Button("Snap Block Icon", ManSFX.UISfxType.InfoOpen, AltUI.ButtonBlueLarge))
                     ModHelpers.DoSnapBlock();
             
-                if (GUILayout.Button("Open Block Snapshots", AltUI.ButtonOrangeLarge))
+                if (AltUI.Button("Open Block Snapshots", ManSFX.UISfxType.Open, AltUI.ButtonOrangeLarge))
                 {
                     string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "AutoBlockPNG");
                     if (!Directory.Exists(path))
                         Directory.CreateDirectory(path);
-                    OpenInExplorer(path);
+                    KickStart.OpenInExplorer(path);
                 }
 #if !DEBUG
             }
@@ -108,7 +96,7 @@ namespace RandomAdditions
             GUILayout.Label("Mod Data", AltUI.LabelBlueTitle);
             GUILayout.BeginHorizontal(AltUI.TextfieldBlackHuge);
             GUILayout.Label("Custom Chunks: ", AltUI.LabelBlueTitle);
-            if (GUILayout.Button("Export", AltUI.ButtonBlueLarge))
+            if (AltUI.Button("Export", ManSFX.UISfxType.Enter, AltUI.ButtonBlueLarge))
             {
                 string path = exportsPath;
                 if (!Directory.Exists(path))
@@ -127,21 +115,21 @@ namespace RandomAdditions
                 }
                 File.WriteAllText(path, JsonConvert.SerializeObject(SB, Formatting.Indented));
             }
-            if (GUILayout.Button("Open", AltUI.ButtonBlueLarge))
+            if (AltUI.Button("Open", ManSFX.UISfxType.Open, AltUI.ButtonBlueLarge))
             {
                 string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "Custom Chunks");
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
-                OpenInExplorer(path);
+                KickStart.OpenInExplorer(path);
             }
-            if (GUILayout.Button("Reload", AltUI.ButtonBlueLarge))
+            if (AltUI.Button("Reload", ManSFX.UISfxType.Enter, AltUI.ButtonBlueLarge))
             {
                 ManModChunks.PrepareAllChunks(true);
             }
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal(AltUI.TextfieldBlackHuge);
             GUILayout.Label("Custom Scenery: ", AltUI.LabelBlueTitle);
-            if (GUILayout.Button("Export", AltUI.ButtonBlueLarge))
+            if (AltUI.Button("Export", ManSFX.UISfxType.Enter, AltUI.ButtonBlueLarge))
             {
                 string path = exportsPath;
                 if (!Directory.Exists(path))
@@ -173,14 +161,14 @@ namespace RandomAdditions
                 SpawnHelper.PrintAllRegisteredResourceNodes(SB);
                 File.WriteAllText(path, SB.ToString());
             }
-            if (GUILayout.Button("Open", AltUI.ButtonBlueLarge))
+            if (AltUI.Button("Open", ManSFX.UISfxType.Open, AltUI.ButtonBlueLarge))
             {
                 string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "Custom Scenery");
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
-                OpenInExplorer(path);
+                KickStart.OpenInExplorer(path);
             }
-            if (GUILayout.Button("Reload", AltUI.ButtonBlueLarge))
+            if (AltUI.Button("Reload", ManSFX.UISfxType.Enter, AltUI.ButtonBlueLarge))
             {
                 ManModScenery.PrepareAllScenery(true);
             }
@@ -190,34 +178,34 @@ namespace RandomAdditions
 
             GUILayout.BeginVertical(AltUI.TextfieldBlackHuge);
             GUILayout.Label("Data Utilities", AltUI.LabelBlueTitle);
-            if (KickStart.isSteamManaged && 
-                GUILayout.Button("Open TTSMM Logs", AltUI.ButtonOrangeLarge))
+            if (KickStart.isSteamManaged &&
+                AltUI.Button("Open TTSMM Logs", ManSFX.UISfxType.Open, AltUI.ButtonOrangeLarge))
             {
                 string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "Logs");
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
-                OpenInExplorer(path);
+                KickStart.OpenInExplorer(path);
             }
-            if (GUILayout.Button("Open Local Mods", AltUI.ButtonOrangeLarge))
+            if (AltUI.Button("Open Local Mods", ManSFX.UISfxType.Open, AltUI.ButtonOrangeLarge))
             {
                 string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "LocalMods");
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
-                OpenInExplorer(path);
+                KickStart.OpenInExplorer(path);
             }
-            if (GUILayout.Button("Open Mod Configurations", AltUI.ButtonOrangeLarge))
+            if (AltUI.Button("Open Mod Configurations", ManSFX.UISfxType.Open, AltUI.ButtonOrangeLarge))
             {
                 string path = Path.Combine(new DirectoryInfo(Application.dataPath).Parent.ToString(), "ManagedConfigs");
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
-                OpenInExplorer(path);
+                KickStart.OpenInExplorer(path);
             }
-            if (GUILayout.Button("Open Exported", AltUI.ButtonOrangeLarge))
+            if (AltUI.Button("Open Exported", ManSFX.UISfxType.Open, AltUI.ButtonOrangeLarge))
             {
                 string path = exportsPath;
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
-                OpenInExplorer(path);
+                KickStart.OpenInExplorer(path);
             }
             GUILayout.EndVertical();
 

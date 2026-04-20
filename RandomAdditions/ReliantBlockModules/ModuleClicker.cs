@@ -44,7 +44,7 @@ namespace RandomAdditions
                     AnimetteController AC = GetComponentInParent<AnimetteController>();
                     if (AC)
                     {
-                        int index = anim.ToList().IndexOf(AC);
+                        int index = anim.ToList().IndexOf(AC); // UI CALL
                         if (index != -1)
                         {
                             ActiveState[index] = ActiveState[index] > 0 ? 0 : 1;
@@ -214,7 +214,7 @@ namespace RandomAdditions
                 if (KickStart.IsIngame && playerSelected?.block?.tank && (openTime > 0 || MouseIsOverSubMenu()))
                 {
                     Tank playerTank = playerSelected.block.tank;
-                    HotWindow = AltUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "<b>Block Menu</b>", CloseGUI);
+                    HotWindow = AltUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "<b>Block Menu</b>", CloseGUI, true, true);
                 }
                 else
                     CloseGUI();

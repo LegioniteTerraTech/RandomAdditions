@@ -73,6 +73,7 @@ namespace RandomAdditions
             ManModGUI.ShowErrorPopup(Text, IsSeriousError);
         }
 
+        private static bool forceTheQuit => !KickStart.isSteamManaged;
         private static MethodInfo crsh = typeof(UIScreenBugReport).GetMethod("ShowContinueAfterCrashNotification", BindingFlags.NonPublic | BindingFlags.Instance);
         private static bool threwForceEnd = false;
         /// <summary>
@@ -80,25 +81,30 @@ namespace RandomAdditions
         /// - crashed players can cause cascade crashes along other players in 
         ///   this player's lobby / the games this player joins
         /// </summary>
-        public static void ForceQuitScreen(bool Crashed = true)
+        public static void SuggestQuitScreen(bool Crashed = true)
         {
             if (threwForceEnd)
                 return;
             threwForceEnd = true;
 #if STEAM
             if (Crashed && !KickStart.isNoBugReporterPresent)
-                    DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
-                        "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
-                        " Forcing crash screen!");
+                DebugRandAddi.Log("RandomAdditions: Uhoh we have entered MP or unfavorable conditions in Steam which could " +
+                    "cause serious damage to both this user and the server's inhabitants with a crashed client. " +
+                    " Forcing crash screen!");
 #if !DEBUG
             if (KickStart.isNoBugReporterPresent)
-                DebugRandAddi.Log("RandomAdditions: NoBugReporter is present and it is clear the user does not care about " +
+                ManModGUI.ShowErrorPopup("RandomAdditions: NoBugReporter is present and it is clear the user does not care about " +
                     "the risks of crashing, we shall NOT stop them or trigger the attract switch");
             else
             {
-                UIScreenBugReport UISBR = Singleton.Manager<ManUI>.inst.GetScreen(ManUI.ScreenType.BugReport) as UIScreenBugReport;
-                crsh.Invoke(UISBR, new object[] { });
-                ManGameMode.inst.TriggerSwitch<ModeAttract>();
+                if (forceTheQuit)
+                {
+                    UIScreenBugReport UISBR = Singleton.Manager<ManUI>.inst.GetScreen(ManUI.ScreenType.BugReport) as UIScreenBugReport;
+                    crsh.Invoke(UISBR, new object[] { });
+                    ManGameMode.inst.TriggerSwitch<ModeAttract>();
+                }
+                else
+                    ManModGUI.ShowErrorPopup("RandomAdditions: The game crashed but you are using 0ModManager so the crash issue shouldn't spread to vanilla players.");
             }
 #else
             DebugRandAddi.Log("RandomAdditions: This is the development version of RandomAdditions.  " +
@@ -126,14 +132,14 @@ namespace RandomAdditions
                 logFinal = logString;
                 logFilterNed = "\n" + stackTrace;
                 if (FiredBigDisplay && ManNetwork.IsNetworked)
-                    ForceQuitScreen();
+                    SuggestQuitScreen();
             }
         }
 
         public static void ModeSwitchKeepCrashOut(Mode mode)
         {
             if (mode.IsMultiplayer)
-                ForceQuitScreen();
+                SuggestQuitScreen();
         }
 
         public static string GetMods(out bool tooMany)

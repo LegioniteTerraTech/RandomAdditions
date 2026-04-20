@@ -531,7 +531,7 @@ namespace RandomAdditions.RailSystem
                 list = new List<int>();
                 lastCachedConnections.Add(this, list);
             }
-            foreach (var item in Node.GetALLConnections())
+            foreach (var item in Node.IterateALLConnections())
             {
                 if (item.LinkTrack != null && item.LinkTrack.Exists())
                 {
@@ -1082,9 +1082,9 @@ namespace RandomAdditions.RailSystem
             }
             if (nodeIDs.Count == 0)
                 return null;
-            return nodeIDs.ToArray();
+            return nodeIDs.ToArray(); // CHECK
         }
-        public int[] GetLocalNodeBlockIndiceConnections()
+        private int[] GetLocalNodeBlockIndiceConnections()
         {
             List<int> nodeIndices = new List<int>();
             int[] nodeIDs = GetNodeIDConnections();
@@ -1113,7 +1113,7 @@ namespace RandomAdditions.RailSystem
                 return null;
             }
             //DebugRandAddi.Log("GetLocalNodeBlockIndiceConnections - Get " + nodeIndices.Count);
-            return nodeIndices.ToArray();
+            return nodeIndices.ToArray(); // RARE CALL
         }
 
         [Serializable]

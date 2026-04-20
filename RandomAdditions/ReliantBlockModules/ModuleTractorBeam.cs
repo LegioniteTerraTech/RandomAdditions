@@ -373,7 +373,8 @@ namespace RandomAdditions
                 gO = TO.gameObject;
             if (!(bool)gO)
             {
-                gO = Instantiate(new GameObject("TracLine"), transform, false);
+                gO = new GameObject("TracLine");
+                gO.transform.parent = transform;
                 gO.transform.localPosition = Vector3.zero;
                 gO.transform.localRotation = Quaternion.identity;
             }

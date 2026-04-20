@@ -97,11 +97,11 @@ namespace RandomAdditions
                 BlockDebug.ThrowWarning(false, "ModuleReplace: Block " + block.name + " has too low of a WeightedChance - 1 is minimum");
                 WeightedChance = 1;
             }
-            List<string> check = CanReplace.Distinct().ToList();
-            if (check.Count < CanReplace.Count)
+            IEnumerable<string> check = CanReplace.Distinct();
+            if (check.Count() < CanReplace.Count)
             {
                 BlockDebug.ThrowWarning(false, "ModuleReplace: Block " + block.name + " has duplicate Blocktypes in CanReplace!");
-                CanReplace = check;
+                CanReplace = check.ToList(); // RARE CALL
             }
             DebugRandAddi.Log("ModuleReplace: " + offsetRot.ToString() + " | " + (offsetRot * Vector3.forward).ToString());
             if (CheckIfValid())
@@ -161,7 +161,7 @@ namespace RandomAdditions
                 {
                     rotAPs.Add((offsetRot * vec) + ReplaceOffsetPosition);
                 }
-                if (!Compare(blockCompare.filledCells.ToList(), rotCells))
+                if (!Compare(blockCompare.filledCells, rotCells))
                 {
                     foreach (IntVector3 vect in blockCompare.filledCells)
                     {
@@ -178,7 +178,7 @@ namespace RandomAdditions
                     BlockDebug.ThrowWarning(true, "ModuleReplace: Filled cells for block " + blockO.name + " do not match " + blockCompare.name + "! \n" + blockCompare.filledCells.ToString() + "! | " + blockO.filledCells.ToString());
                     valid = false;
                 }
-                if (!Contains(blockCompare.attachPoints.ToList(), rotAPs))
+                if (!Contains(blockCompare.attachPoints, rotAPs))
                 {
                     foreach (Vector3 vect in blockCompare.attachPoints)
                     {
@@ -202,11 +202,11 @@ namespace RandomAdditions
             }
             return valid;
         }
-        public static bool Contains(List<Vector3> case1, List<Vector3> case2)
+        public static bool Contains(IEnumerable<Vector3> case1, IEnumerable<Vector3> case2)
         {
             foreach (Vector3 vec in case1)
             {
-                if (!case2.Exists(delegate (Vector3 cand)
+                if (!case2.Any(delegate (Vector3 cand)
                 {
                     //DebugRandAddi.Log("ModuleReplace: " + vec.ToString() + " | " + cand.ToString());
                     return vec.x.Approximately(cand.x) && vec.y.Approximately(cand.y) && vec.z.Approximately(cand.z); 
@@ -215,9 +215,9 @@ namespace RandomAdditions
             }
             return true;
         }
-        public static bool Compare(List<IntVector3> case1, List<IntVector3> case2)
+        public static bool Compare(IEnumerable<IntVector3> case1, IEnumerable<IntVector3> case2)
         {
-            if (case1.Count != case2.Count)
+            if (case1.Count() != case2.Count())
                 return false;
             foreach (IntVector3 vec in case1)
             {
@@ -308,7 +308,7 @@ namespace RandomAdditions
             if (!ManNetwork.IsHost && ManNetwork.IsNetworked)
                 return;
             int attempts = 0;
-            List<TankBlock> blocks = tank.blockman.IterateBlocks().ToList();
+            List<TankBlock> blocks = tank.blockman.IterateBlocks().ToList(); // RARE CALL
             HashSet<ModuleReplace> ignore = new HashSet<ModuleReplace>();
             int bCount = blocks.Count();
             DebugRandAddi.Log("RandomAdditions: ReplaceManager(LIVE) - Launched for Tech " + tank.name + ", total blocks " + bCount);
@@ -379,7 +379,7 @@ namespace RandomAdditions
                             step2--;
                         }
                     }
-                    blocks = tank.blockman.IterateBlocks().ToList();
+                    blocks = tank.blockman.IterateBlocks().ToList(); // RARE CALL
                     bCount = blocks.Count;
                 }
                 else

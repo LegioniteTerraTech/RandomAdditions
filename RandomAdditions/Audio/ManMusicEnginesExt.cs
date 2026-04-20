@@ -20,6 +20,13 @@ namespace RandomAdditions
 
         public static Dictionary<int, CorpExtAudio> corps;
 
+        public static bool ShouldAddCnSAPsWeapon(int corpID)
+        {
+            if (corps.TryGetValue(corpID, out var extAudio))
+                return extAudio.AllWeaponAPsAreCnS;
+            return false;
+        }
+
 
         internal void RefreshModCorpAudio_Queued(Mode mode)
         {
@@ -55,6 +62,7 @@ namespace RandomAdditions
                             int cCorp = (int)ManMods.inst.GetCorpIndex(corp.m_ShortName);
                             if (!corps.ContainsKey(cCorp))
                             {
+                                bool foundSoundJSON = false;
                                 CorpExtAudio newCase = new CorpExtAudio
                                 {
                                     ID = cCorp,
@@ -66,78 +74,95 @@ namespace RandomAdditions
                                 {
                                     string fileData = ResourcesHelper.FetchTextData(MC, shortName + ".json", MC.AssetBundlePath);
 
-                                    CorpExtAudioJSON ext = JsonConvert.DeserializeObject<CorpExtAudioJSON>(fileData);
-                                    if (ext.MusicLoopStartOffset != null)
-                                        newCase.MusicLoopStartOffset = ext.MusicLoopStartOffset;
-                                    newCase.CorpEngine = ext.CorpEngine;
-                                    newCase.EnginePitchDeepMulti = ext.EnginePitchDeepMulti;
-                                    newCase.FallbackMusic = ext.CorpFallbackMusic;
-                                    newCase.EnginePitchMax = ext.EnginePitchMax;
-                                    newCase.EngineIdealSpeed = ext.EngineIdealSpeed;
-                                    newCase.EngineVolumeMulti = ext.EngineVolumeMulti;
-                                    DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp json for " + shortName + " (" + cCorp.ToString() + ") loaded correctly");
+                                    if (fileData == null)
+                                        DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - There is no audio json for " + cCorp);
+                                    else
+                                    {
+                                        CorpExtAudioJSON ext = JsonConvert.DeserializeObject<CorpExtAudioJSON>(fileData);
+                                        if (ext == null)
+                                        {
+                                            DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Found audio json for " + cCorp +
+                                                " of name \"" + shortName + ".json\", but it was not a valid corp audio json");
+                                        }
+                                        else
+                                        {
+                                            if (ext.MusicLoopStartOffset != null)
+                                                newCase.MusicLoopStartOffset = ext.MusicLoopStartOffset;
+                                            newCase.CorpEngine = ext.CorpEngine;
+                                            newCase.EnginePitchDeepMulti = ext.EnginePitchDeepMulti;
+                                            newCase.FallbackMusic = ext.CorpFallbackMusic;
+                                            newCase.EnginePitchMax = ext.EnginePitchMax;
+                                            newCase.EngineIdealSpeed = ext.EngineIdealSpeed;
+                                            newCase.EngineVolumeMulti = ext.EngineVolumeMulti;
+                                            DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp json for " + shortName + " (" + cCorp.ToString() + ") loaded correctly");
+                                            foundSoundJSON = true;
+                                        }
+                                    }
                                 }
                                 catch (Exception e)
                                 {
                                     DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Error on Json search " + cCorp + " | " + e);
                                 }
-                                FMOD.Sound addSound;
-                                if (!newCase.CorpEngineAudioIdle.hasHandle() &&
-                                    GetSound2(MC, shortName, "EngineIdle", true, out addSound))
-                                    newCase.CorpEngineAudioIdle = addSound;
-
-                                if (!newCase.CorpEngineAudioRunning.hasHandle() &&
-                                    GetSound2(MC, shortName, "EngineRun", true, out addSound))
-                                    newCase.CorpEngineAudioRunning = addSound;
-
-                                if (!newCase.CorpEngineAudioStart.hasHandle() &&
-                                    GetSound2(MC, shortName, "EngineStart", false, out addSound))
-                                    newCase.CorpEngineAudioStart = addSound;
-
-                                if (!newCase.CorpEngineAudioStop.hasHandle() &&
-                                    GetSound2(MC, shortName, "EngineStop", false, out addSound))
-                                    newCase.CorpEngineAudioStop = addSound;
-                                DebugRandAddi.LogDevOnly("RandomAdditions: RegisterModCorpAudio - Looking in " + MC.AssetBundlePath);
-                                newCase.hasEngineAudio = newCase.CorpEngineAudioIdle.hasHandle() && newCase.CorpEngineAudioRunning.hasHandle() &&
-                                    newCase.CorpEngineAudioStart.hasHandle() && newCase.CorpEngineAudioStop.hasHandle();
-                                int attempts = 0;
-                                while (true)
+                                if (foundSoundJSON)
                                 {
-                                    try
+                                    FMOD.Sound addSound;
+                                    if (!newCase.CorpEngineAudioIdle.hasHandle() &&
+                                        GetSound2(MC, shortName, "EngineIdle", true, out addSound))
+                                        newCase.CorpEngineAudioIdle = addSound;
+
+                                    if (!newCase.CorpEngineAudioRunning.hasHandle() &&
+                                        GetSound2(MC, shortName, "EngineRun", true, out addSound))
+                                        newCase.CorpEngineAudioRunning = addSound;
+
+                                    if (!newCase.CorpEngineAudioStart.hasHandle() &&
+                                        GetSound2(MC, shortName, "EngineStart", false, out addSound))
+                                        newCase.CorpEngineAudioStart = addSound;
+
+                                    if (!newCase.CorpEngineAudioStop.hasHandle() &&
+                                        GetSound2(MC, shortName, "EngineStop", false, out addSound))
+                                        newCase.CorpEngineAudioStop = addSound;
+                                    DebugRandAddi.LogDevOnly("RandomAdditions: RegisterModCorpAudio - Looking in " + MC.AssetBundlePath);
+                                    newCase.hasEngineAudio = newCase.CorpEngineAudioIdle.hasHandle() && newCase.CorpEngineAudioRunning.hasHandle() &&
+                                        newCase.CorpEngineAudioStart.hasHandle() && newCase.CorpEngineAudioStop.hasHandle();
+                                    int attempts = 0;
+                                    while (true)
                                     {
-                                        string fileName = shortName + (attempts == 0 ? "" : attempts.ToString()) + ".wav";
-                                        var newSound = FetchSoundFast(MC, fileName);
-                                        if (newSound != null)
+                                        try
                                         {
-                                            if (newCase.MusicLoopStartOffset.Length > attempts)
+                                            string fileName = shortName + (attempts == 0 ? "" : attempts.ToString()) + ".wav";
+                                            var newSound = FetchSoundFast(MC, fileName);
+                                            if (newSound != null)
                                             {
-                                                newSound.SoundAdvanced.setLoopCount(-1);
-                                                newSound.SoundAdvanced.getLength(out uint pos, FMOD.TIMEUNIT.MS);
-                                                uint loopStart = (uint)Mathf.RoundToInt(Mathf.Clamp(newCase.MusicLoopStartOffset[attempts] * 1000f, 0, pos - 2));
-                                                newSound.SoundAdvanced.setLoopPoints(loopStart, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
-                                                newSound.SoundAdvanced.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
-                                                newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
-                                                DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly with special loop [" +
-                                                    loopStart + " ~ " + (pos - 1) + "]ms");
+                                                if (newCase.MusicLoopStartOffset.Length > attempts)
+                                                {
+                                                    newSound.SoundAdvanced.setLoopCount(-1);
+                                                    newSound.SoundAdvanced.getLength(out uint pos, FMOD.TIMEUNIT.MS);
+                                                    uint loopStart = (uint)Mathf.RoundToInt(Mathf.Clamp(newCase.MusicLoopStartOffset[attempts] * 1000f, 0, pos - 2));
+                                                    newSound.SoundAdvanced.setLoopPoints(loopStart, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
+                                                    newSound.SoundAdvanced.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
+                                                    newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
+                                                    DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly with special loop [" +
+                                                        loopStart + " ~ " + (pos - 1) + "]ms");
+                                                }
+                                                else
+                                                {
+                                                    newSound.SoundAdvanced.setLoopCount(-1);
+                                                    newSound.SoundAdvanced.getLength(out uint pos, FMOD.TIMEUNIT.MS);
+                                                    newSound.SoundAdvanced.setLoopPoints(0, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
+                                                    newSound.SoundAdvanced.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
+                                                    newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
+                                                    DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly");
+                                                }
+                                                attempts++;
                                             }
                                             else
-                                            {
-                                                newSound.SoundAdvanced.setLoopCount(-1);
-                                                newSound.SoundAdvanced.getLength(out uint pos, FMOD.TIMEUNIT.MS);
-                                                newSound.SoundAdvanced.setLoopPoints(0, FMOD.TIMEUNIT.MS, pos - 1, FMOD.TIMEUNIT.MS);
-                                                newSound.SoundAdvanced.setMode(FMOD.MODE.LOOP_NORMAL | FMOD.MODE._2D);
-                                                newCase.combatMusicLoaded.Add(newSound.SoundAdvanced);
-                                                DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - The corp music for " + shortName + " named " + fileName + " loaded correctly");
-                                            }
-                                            attempts++;
+                                                break;
                                         }
-                                        else
+                                        catch (Exception e)
+                                        {
+                                            DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Error on Music search " + shortName + " | " + e);
                                             break;
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Error on Music search " + shortName + " | " + e);
-                                        break;
+                                        }
                                     }
                                 }
                                 if (newCase.CorpEngine == FactionSubTypes.NULL)
@@ -343,7 +368,7 @@ namespace RandomAdditions
         private static bool GameIsPaused = false;
         private static void Initiate()
         {
-            inst = Instantiate(new GameObject("ManMusicEnginesExt")).AddComponent<ManMusicEnginesExt>();
+            inst = new GameObject("ManMusicEnginesExt").AddComponent<ManMusicEnginesExt>();
             DebugRandAddi.Log("RandomAdditions: ManMusicEnginesExt initated");
             inst.gameObject.SetActive(true);
             //HelperGUI.Init();

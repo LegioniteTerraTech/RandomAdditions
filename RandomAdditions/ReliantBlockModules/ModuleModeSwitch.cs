@@ -10,56 +10,34 @@ public class ModuleModeSwitch : RandomAdditions.ModuleModeSwitch { };
 
 namespace RandomAdditions
 {
+    [Doc("The mode switch options offered by ModuleModeSwitch that allow it to switch based on various world conditions.")]
     public enum ModeSwitchCondition
     {
         //AimedAtTarget,              // - (The gun is aiming directly at the Target)
-        PrimarySecondary,           // - (Fire slow-firing primary and then fire secondary while waiting for primary to cool down)
-        PrimarySecondarySalvo,      // - (Fire all of the burst shots of the slow-recharging primary and then fire secondary while waiting for primary BurstCooldown to finish)
-        DistanceFar,                // - (Switch when target is beyond SetValue)
-        DistanceClose,              // - (Switch when target is below SetValue)
-        TargetSpeedFast,            // - (Target speed exceeds SetValue or projectile max velocity)
-        TargetSpeedSlow,            // - (Target speed below SetValue or projectile max velocity)
-        TargetHeightHigh,           // - (Target is above SetValue altitude above terrain)
-        TargetHeightLow,            // - (Target is below SetValue altitude above terrain)
-        TargetChargePercentAbove,   // - (Target has shields up)
-        TargetChargePercentBelow,   // - (Target does not have shields or enemy batts out)
-        Ability,                    // - Toggle via hotbar ability!
+        [Doc("Fire slow-firing primary and then fire secondary while waiting for primary to cool down")]
+        PrimarySecondary,     
+        [Doc("Fire all of the burst shots of the slow-recharging primary and then fire secondary while waiting for primary BurstCooldown to finish")]
+        PrimarySecondarySalvo,    
+        [Doc("Switch when target is beyond SetValue")] 
+        DistanceFar,
+        [Doc("Switch when target is below SetValue")]
+        DistanceClose,             
+        [Doc("Target speed exceeds SetValue or projectile max velocity")]
+        TargetSpeedFast,         
+        [Doc("Target speed below SetValue or projectile max velocity")]
+        TargetSpeedSlow,            
+        [Doc("Target is above SetValue altitude above terrain")]
+        TargetHeightHigh,          
+        [Doc("Target is above SetValue altitude above terrain")]
+        TargetHeightLow,           
+        [Doc("Target has shields up")]
+        TargetChargePercentAbove,  
+        [Doc("Target does not have shields or enemy batts out")]
+        TargetChargePercentBelow,  
+        [Doc("Toggle via hotbar ability!")]
+        Ability,                 
     }
-    public class ManModeSwitch : MonoBehaviour
-    {
-        public static ManModeSwitch inst;
-
-        public EventNoParams UpdateSwitchCheckFast = new EventNoParams();
-        public EventNoParams UpdateSwitchCheck = new EventNoParams();
-
-        public static void Initiate()
-        {
-            if (inst)
-                return;
-            inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
-            GlobalClock.SlowUpdateEvent.Subscribe(inst.UpdateSlow);
-            DebugRandAddi.Log("RandomAdditions: Created ManModeSwitch.");
-            inst.gameObject.SetActive(true);
-        }
-        public static void DeInit()
-        {
-            if (!inst)
-                return;
-            GlobalClock.SlowUpdateEvent.Unsubscribe(inst.UpdateSlow);
-            Destroy(inst);
-            inst = null;
-            DebugRandAddi.Log("RandomAdditions: DeInit ManModeSwitch.");
-        }
-
-        public void Update()
-        {
-            UpdateSwitchCheckFast.Send();
-        }
-        public void UpdateSlow()
-        {
-            UpdateSwitchCheck.Send();
-        }
-    }
+    [Doc("Add a second Projectile type to your weapon.  Does not work alongside the existing weapon.  For that use ChildModuleWeapon.")]
     public class ModuleModeSwitch : ExtModule, TechAudio.IModuleAudioProvider
     {
         private static Dictionary<string, AbilityToggle> abilityToggles = new Dictionary<string, AbilityToggle>();
@@ -106,38 +84,65 @@ namespace RandomAdditions
         public Event<bool> ModeSwitchEvent = new Event<bool>();
 
         public ModeSwitchCondition ModeSwitch = ModeSwitchCondition.PrimarySecondary;
+        [Doc("The value to check to switch modes to the alternate weapon")]
         public float SetValue = 0;
+        [Doc("The name of the ability of the block to be displayed if ModeSwitch is set to \"Ability\"")]
+        public string m_AbilityName = "Unknown";
+        [Doc("Multiply target velocity strafe axis before checking it")]
+        public float m_StrafeWeight = 8;
 
+        [Doc("The start index of barrels after which should be used for the Auxillary weapon. " +
+            "Ultimately determined by order of declaration from top to bottom page in the JSON. " +
+            "Leave at 0 to use all barrels for both types.")]
         public int AuxillaryBarrelsStartIndex = 0; //The indexes of barrels after which
         //  should be used for the Auxillary weapon. Leave at 0 to use all barrels for both types.
 
-        public string m_AbilityName = "Unknown";
+        [Doc("Alternate weapon - This is the cooldown between every burst shot.")]
         public float m_ShotCooldown = 1f;
+        [Doc("Alternate weapon - The random cooldown factor applied at random at the end of every burst shot")]
         public float m_CooldownVariancePct = 0.05f;
+        [Doc("Alternate weapon - Number of shots before the gun invokes the m_BurstCooldown")]
         public int m_BurstShotCount = 0;
+        [Doc("Alternate weapon - The cooldown applied after all burst shots are used")]
         public float m_BurstCooldown = 1f;
+        [Doc("Alternate weapon - Releasing the fire key makes the bursts immedeately reload with the burst cooldown")]
         public bool m_ResetBurstOnInterrupt = true;
+        [Doc("Alternate weapon - Enable the seeking ability of the projectile - if it has any")]
         public bool m_SeekingRounds = false;
+        [Doc("Alternate weapon - The way this weapon fires it's barrels: \"Sequenced\" or \"AllAtOnce\"")]
         public ModuleWeaponGun.FireControlMode m_FireControlMode = ModuleWeaponGun.FireControlMode.Sequenced;
 
         // Audio
         public TechAudio.SFXType SFXType => m_SwitchSFXType;
         public event Action<TechAudio.AudioTickData, FMODEvent.FMODParams> OnAudioTickUpdate;
+        [Doc("The SFX to play when switching to the alternate weapon.  Handles vanilla deployment sounds.")]
         public TechAudio.SFXType m_SwitchSFXType = TechAudio.SFXType.BFLaserGatlingDeploy;
+        [Doc("Alternate weapon SFX to play when firing")]
         public TechAudio.SFXType m_FireSFXType = TechAudio.SFXType.Default;
         // AudioETC
+        [Doc("Prevent looped SFX from looping normally, might break it!")]
         public bool m_DisableMainAudioLoop = false;
+        [Doc("This doesn't seem to do anything...")]
         public float m_AudioLoopDelay = 0;
 
         // ETC
+        [Doc("Popup the obstructed line-of-sight warning if the weapon is blocked for this long")]
         public float m_RegisterWarningAfter = 1f;
+        [Doc("Rotate the gun aiming back to starting position if not fired for this long")]
         public float m_ResetFiringTAfterNotFiredFor = 1f;
+        [Doc("Set to true if this block has Animator/Animation that is used for spooling up and down before firing")]
         public bool m_HasSpinUpDownAnim = false;
+        [Doc("Set to true if this block has Animator/Animation that is used for the weapon when it fires")]
         public bool m_HasCooldownAnim = false;
+        [Doc("Set to true if this block has Animator/Animation that can cancel spooling up the weapon before firing")]
         public bool m_CanInterruptSpinUpAnim = false;
+        [Doc("Set to true if this block has Animator/Animation that can cancel spooling up the weapon after firing")]
         public bool m_CanInterruptSpinDownAnim = false;
+        [Doc("The animation layer the spin up/down animation uses")]
         public int m_SpinUpAnimLayerIndex = 0;
+        [Doc("The time it takes to spool down")]
         public float m_OverheatTime = 0.01f;
+        [Doc("The time it takes after releasing the fire key before it engages the spool down period")]
         public float m_OverheatPauseWindow = 0.01f;
 
 
@@ -189,7 +194,7 @@ namespace RandomAdditions
 
             CannonBarrel[] BarrelsFetched = block.GetComponentsInChildren<CannonBarrel>();
             int barrelCount = BarrelsFetched.Length;
-            List<CannonBarrel> barrelsTemp = new List<CannonBarrel>();
+            List<CannonBarrel> barrelsTemp = new List<CannonBarrel>();// ONLY ON POOL
             sharedBarrels = (barrelCount <= AuxillaryBarrelsStartIndex || AuxillaryBarrelsStartIndex <= 0) ? true : false;
 
             if (!sharedBarrels)
@@ -224,8 +229,8 @@ namespace RandomAdditions
             }
             else
             {
-                BarrelsMain = BarrelsFetched.ToArray();
-                BarrelsAux = BarrelsFetched.ToArray();
+                BarrelsMain = BarrelsFetched.ToArray(); // ONCE ON CREATION
+                BarrelsAux = BarrelsFetched.ToArray(); // ONCE ON CREATION
             }
             anims = KickStart.FetchAnimettes(transform, AnimCondition.WeaponSwitch);
             if (ModeSwitch == ModeSwitchCondition.Ability)
@@ -269,7 +274,7 @@ namespace RandomAdditions
                 ManModeSwitch.inst.UpdateSwitchCheck.Unsubscribe(OnCheckUpdate);
             else
                 ManModeSwitch.inst.UpdateSwitchCheckFast.Unsubscribe(OnCheckUpdateFast);
-            if (working) 
+            if (working)
             {
                 SwitchMode();
             }
@@ -315,7 +320,7 @@ namespace RandomAdditions
             {
                 var reg = target.EnergyRegulator.Energy(TechEnergy.EnergyType.Electric);
                 if (reg.storageTotal <= 0)
-                return (reg.storageTotal - reg.spareCapacity) / reg.storageTotal;
+                    return (reg.storageTotal - reg.spareCapacity) / reg.storageTotal;
             }
             return 0;
         }
@@ -413,13 +418,20 @@ namespace RandomAdditions
                 this, block, SFXType, working, 0.99f, 0f, 0);
             OnAudioTickUpdate.Send(value, FMODEvent.FMODParams.empty);
         }
+        private Vector3 ApplyWeightForStrafe(Vector3 targPos, Vector3 ourPos)
+        {
+            // Now we get perpendicular angles and multiply that threshold by like 8 to account for strafe missing
+            Vector3 guideVec = targPos - ourPos;
+            Vector3 faceVecCounter = guideVec.normalized * (m_StrafeWeight - 1f);
+            return (guideVec * m_StrafeWeight) - faceVecCounter;
+        }
         public void OnCheckUpdate()
         {
             Tank tech = block.tank;
             Tank target;
             float val;
             float height;
-            switch (ModeSwitch) 
+            switch (ModeSwitch)
             {
                 case ModeSwitchCondition.DistanceClose:
                     if (GetTargetInfoTank(out target))
@@ -495,7 +507,10 @@ namespace RandomAdditions
                             targVelo = target.rbody.velocity;
                         else
                             targVelo = Vector3.zero;
-                        SetMode((targVelo - tankVelo).magnitude >= SetValue);
+
+                        Vector3 strafeThresh = ApplyWeightForStrafe(targVelo, tankVelo);
+
+                        SetMode(strafeThresh.magnitude >= SetValue);
                     }
                     else
                         SetMode(false);
@@ -513,7 +528,10 @@ namespace RandomAdditions
                             targVelo = target.rbody.velocity;
                         else
                             targVelo = Vector3.zero;
-                        SetMode((targVelo - tankVelo).magnitude <= SetValue);
+
+                        Vector3 strafeThresh = ApplyWeightForStrafe(targVelo, tankVelo);
+
+                        SetMode(strafeThresh.magnitude <= SetValue);
                     }
                     else
                         SetMode(false);
@@ -679,6 +697,41 @@ namespace RandomAdditions
             obj1 = obj2;
             obj2 = (T)shiftHold1;
             shiftHold1 = null;
+        }
+    }
+    public class ManModeSwitch : MonoBehaviour
+    {
+        public static ManModeSwitch inst;
+
+        public EventNoParams UpdateSwitchCheckFast = new EventNoParams();
+        public EventNoParams UpdateSwitchCheck = new EventNoParams();
+
+        public static void Initiate()
+        {
+            if (inst)
+                return;
+            inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
+            GlobalClock.SlowUpdateEvent.Subscribe(inst.UpdateSlow);
+            DebugRandAddi.Log("RandomAdditions: Created ManModeSwitch.");
+            inst.gameObject.SetActive(true);
+        }
+        public static void DeInit()
+        {
+            if (!inst)
+                return;
+            GlobalClock.SlowUpdateEvent.Unsubscribe(inst.UpdateSlow);
+            Destroy(inst);
+            inst = null;
+            DebugRandAddi.Log("RandomAdditions: DeInit ManModeSwitch.");
+        }
+
+        public void Update()
+        {
+            UpdateSwitchCheckFast.Send();
+        }
+        public void UpdateSlow()
+        {
+            UpdateSwitchCheck.Send();
         }
     }
 }

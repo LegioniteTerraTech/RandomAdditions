@@ -40,7 +40,7 @@ namespace RandomAdditions
             _Explosions.Add(new KeyValuePair<float, Transform>(50, exploder));
             FetchExplosion(BlockTypes.GSOMGunFixed_111, out exploder);
             _Explosions.Add(new KeyValuePair<float, Transform>(0, exploder));
-            _Explosions = _Explosions.OrderByDescending(x => x.Key).ToList();
+            _Explosions = _Explosions.OrderByDescending(x => x.Key).ToList();// CALLED ONCE
         }
         internal static FieldInfo explode = typeof(Projectile).GetField("m_Explosion", BindingFlags.NonPublic | BindingFlags.Instance);
         private static float FetchExplosion(BlockTypes BT, out Transform exploder)

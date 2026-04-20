@@ -1,7 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
+using System.Security.Cryptography;
 using System.Text;
+using System.Xml.Linq;
 using FMOD.Studio;
 using HarmonyLib;
 using RandomAdditions.Minimap;
@@ -15,6 +20,340 @@ namespace RandomAdditions
 {
     internal static class Patches
     {
+        [HarmonyPatch(typeof(UIItemDisplay))]
+        [HarmonyPatch("Setup", new Type[] { typeof(ItemTypeInfo), typeof(Color), typeof(Color),
+        typeof(string), typeof(Color), typeof(bool), typeof(bool)})]//
+        [HarmonyPriority(-9001)]
+        internal static class AllowModWrenchIconRescale
+        {
+            private static Vector3 defaultScale = Vector3.zero;
+            private static Vector2 defaultOffset = Vector2.zero;
+            internal static void Prefix(UIItemDisplay __instance, Image ___m_ModdedItem)
+            {
+                if (___m_ModdedItem == null)
+                    return;
+                if (defaultScale == Vector3.zero)
+                {
+                    defaultScale = ___m_ModdedItem.transform.localScale;
+                    //defaultOffset = ___m_ModdedItem.rectTransform.anchoredPosition;
+                }
+                ___m_ModdedItem.transform.localScale = defaultScale * (1f / KickStart.ModWrenchScale);
+                //___m_ModdedItem.rectTransform.anchoredPosition = defaultOffset * KickStart.ModWrenchScale;
+            }
+        }
+
+        /* // Test to see if reducing block attachments reduces delayed lag on tech spawn - NO
+        [HarmonyPatch(typeof(BlockManager))]
+        [HarmonyPatch("AddBlockToTech")]//
+        [HarmonyPriority(-9001)]
+        internal static class TryFindForLessLag
+        {
+            static int failInterval = 0;
+            internal static bool Prefix()
+            {
+                failInterval++;
+                if (failInterval > 3)
+                    failInterval = 0;
+                return failInterval == 0;
+            }
+        }//*/
+        /*  // Test to see if TileManager makes delayed lag on tech spawn - NO
+        [HarmonyPatch(typeof(TileManager))]
+        [HarmonyPatch("UpdateTileCache")]//
+        [HarmonyPriority(-9001)]
+        internal static class TileManagerForLessLag
+        {
+            internal static void Prefix(TileManager __instance, Visible visible)
+            {
+                DebugRandAddi.Log("TileManager.UpdateTileCache() nextUpdateTime " + visible.tileCache.nextUpdateTime);
+            }
+        }//*/
+        [HarmonyPatch(typeof(Circuits))]
+        [HarmonyPatch("DoCircuitLoop")]//
+        [HarmonyPriority(-9001)]
+        internal static class CircuitsForLessLag
+        {
+            internal static bool Prefix(Circuits __instance)
+            {
+                return !KickStart.noCircuits || ManNetwork.IsNetworked;
+            }
+        }
+        /*  // Test to see if TechCircuits makes delayed lag on tech spawn - NO
+        [HarmonyPatch(typeof(TechCircuits))]
+        [HarmonyPatch("RebuildCircuitNetworksForDirtyConnexions")]//
+        [HarmonyPriority(-9001)]
+        internal static class CircuitsForLessLag
+        {
+            internal static bool Prefix(Circuits __instance)
+            {
+                return !KickStart.noCircuits || ManNetwork.IsNetworked;
+            }
+        }//*/
+
+        /*
+        public static int UpdateConnexionLinksCalls = 0;
+        [HarmonyPatch(typeof(ModuleCircuitNode))]
+        [HarmonyPatch("UpdateConnexionLinks")]//
+        [HarmonyPriority(-9001)]
+        internal static class DisableModuleCircuitsForFasterBuilding
+        {
+            internal static bool Prefix(ModuleCircuitNode __instance)
+            {
+                UpdateConnexionLinksCalls++;
+                //DebugRandAddi.Log("UpdateConnexionLinks called for " + (__instance.name.NullOrEmpty() ? "<NULL>" : __instance.name));
+                return true;
+            }
+        }//*/
+
+        [HarmonyPatch(typeof(ManEOS))]
+        [HarmonyPatch("DoFullLogin", new Type[] { typeof(string), typeof(string), typeof(Action), })]
+        [HarmonyPriority(-9001)]
+        internal static class ShutUpEOS
+        {
+            internal static bool Prefix(ManEOS __instance, Action onLogAttemptedCallback)
+            {
+                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
+                {
+                    DebugRandAddi.Log("RandomAdditions: ManEOS.DoFullLogin was called!  You don't trust them so we deny the send request");
+                    if (onLogAttemptedCallback != null)
+                        onLogAttemptedCallback();
+                    return false;
+                }
+                return true;
+            }
+        }
+
+
+
+        /*
+        [HarmonyPatch(typeof(BlockManager))]
+        [HarmonyPatch("SetTableSize")]//
+        [HarmonyPriority(-9001)]
+        internal static class TrackWhenWeRescaleBlockTable
+        {
+            public static Stopwatch watch = new Stopwatch();
+            internal static void Prefix(BlockManager __instance, int newSize, TankBlock[,,] ___blockTable)
+            {
+                DebugRandAddi.Log("BlockManager.SetTableSize() Start for size " + newSize + 
+                    " from size " + ___blockTable.GetLength(0));
+                watch.Restart();
+            }
+            internal static void Postfix(BlockManager __instance, int newSize)
+            {
+                watch.Stop();
+                DebugRandAddi.Log("BlockManager.SetTableSize() End at time " + watch.ElapsedMilliseconds + "ms");
+            }
+        }//*/
+
+
+        [HarmonyPatch(typeof(BlockManager))]
+        [HarmonyPatch("CleanupInvalidTechBlocks")]//
+        [HarmonyPriority(-9001)]
+        internal static class ModuleFasteningLinkFix
+        {
+            private static MethodInfo _CleanupInvalidBlockOnTech = AccessTools.Method(typeof(BlockManager), "CleanupInvalidBlockOnTech",
+                new Type[] { typeof(TankBlock), typeof(TechSplitNamer), typeof(bool) });
+            private static MethodInfo _FixupAfterRemovingBlocks = AccessTools.Method(typeof(BlockManager), "FixupAfterRemovingBlocks");
+            private static List<TankBlock> Temp = new List<TankBlock>();
+            internal static bool Prefix(BlockManager __instance, Tank ___tank, List<TankBlock> ___allBlocks)
+            {
+                bool isAnchored = ___tank.IsAnchored;
+                TechSplitNamer techSplitNamer = null;
+                bool flag;
+                do
+                {
+                    flag = false;
+                    try
+                    {
+                        Temp.Clear();
+                        Temp.AddRange(___allBlocks.Where((TankBlock b) => b.NumConnectedAPs == 0 || !b.CanReachRoot()));
+                        int removeCount = Temp.Count();
+                        foreach (var tankBlock in Temp)
+                        {   // Changes it so that it "gives up" on illegal blocks I guess. Better than hanging
+                            _CleanupInvalidBlockOnTech.Invoke(__instance, new object[] { tankBlock, techSplitNamer, isAnchored });
+                            if (___allBlocks.Where((TankBlock b) => b.NumConnectedAPs == 0 || !b.CanReachRoot()).Count() != removeCount)
+                                flag = true;
+                        }
+                    }
+                    catch { }
+                }
+                while (flag);
+                Temp.Clear();
+                _FixupAfterRemovingBlocks.Invoke(__instance, new object[] { false });
+                return false;
+            }
+        }
+
+        public static OrthoRotation SetCorrectRotation(Quaternion changeRot)
+        {
+            Vector3 foA = (changeRot * Vector3.forward).normalized;
+            Vector3 upA = (changeRot * Vector3.up).normalized;
+            //Debug.Log("Architech: SetCorrectRotation - Matching test " + foA + " | " + upA);
+            Quaternion qRot2 = Quaternion.LookRotation(foA, upA);
+            OrthoRotation rot = new OrthoRotation(qRot2);
+            if (rot != qRot2)
+            {
+                bool worked = false;
+                for (int step = 0; step < OrthoRotation.NumDistinctRotations; step++)
+                {
+                    OrthoRotation rotT = new OrthoRotation(OrthoRotation.AllRotations[step]);
+                    bool isForeMatch = (rotT * Vector3.forward).Approximately(foA, 0.35f);
+                    bool isUpMatch = (rotT * Vector3.up).Approximately(upA, 0.35f);
+                    if (isForeMatch && isUpMatch)
+                    {
+                        rot = rotT;
+                        worked = true;
+                        break;
+                    }
+                }
+                if (!worked)
+                {
+                    DebugRandAddi.Log("RandomAdditions: SetCorrectRotation - Matching failed - OrthoRotation is missing edge case " + foA + " | " + upA);
+                }
+            }
+            return rot;
+        }
+
+        [HarmonyPatch(typeof(ModuleFasteningLink))]
+        [HarmonyPatch("ReplacePartsWithWhole")]//
+        [HarmonyPriority(-9001)]
+        internal static class ModuleFasteningLinkFix2
+        {
+            internal static bool Prefix(ModuleFasteningLink __instance, ModuleFasteningLink counterpart,
+               ModuleFasteningLink.LinkParts[] ___m_DetachedBlocks, BlockTypes ___m_CombinedBlock)
+            {
+                TankBlock[] blocksToRemove = new TankBlock[]
+                {
+                    __instance.block,
+                    counterpart.block
+                };
+                TankPreset.BlockSpec[] array = new TankPreset.BlockSpec[1];
+                ModuleFasteningLink.LinkParts linkParts = ___m_DetachedBlocks[0];
+                Vector3 cachedLocalPosition = __instance.block.cachedLocalPosition;
+                OrthoRotation cachedLocalRotation = __instance.block.cachedLocalRotation;
+                byte skinIndex = __instance.block.GetSkinIndex();
+                Quaternion rotation = cachedLocalRotation * Quaternion.Inverse(Quaternion.Euler(linkParts.localRot));
+                array[0] = new TankPreset.BlockSpec
+                {
+                    m_BlockType = ___m_CombinedBlock,
+                    position = cachedLocalPosition + cachedLocalRotation * linkParts.localPos,
+                    orthoRotation = SetCorrectRotation(rotation),
+                    m_SkinID = skinIndex
+                };
+                Singleton.Manager<ManLooseBlocks>.inst.HostReplaceBlock(blocksToRemove, array);
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(ModuleFasteningLink))]
+        [HarmonyPatch("AddBlocksToTech")]//
+        [HarmonyPriority(-9001)]
+        internal static class ModuleFasteningLinkFix3
+        {
+            internal static bool Prefix(ModuleFasteningLink __instance, Tank sourceT, Tank destT, 
+                TankBlock sourceBlock, TankBlock destBlock)
+            {
+                //Quaternion rotationCorrected = Quaternion.Inverse(sourceT.trans.rotation) * destT.trans.rotation;
+                Vector3 cachedLocalPosition = sourceBlock.cachedLocalPosition;
+                Vector3 cachedLocalPosition2 = destBlock.cachedLocalPosition;
+                //cachedLocalPosition + destBlock.cachedLocalRotation * this.m_DetachedBlocks[1].localPos;
+                KeyValuePair<TankBlock, TankPreset.BlockSpec>[] array = 
+                    new KeyValuePair<TankBlock, TankPreset.BlockSpec>[sourceT.blockman.blockCount];
+                int num = 0;
+                foreach (TankBlock tankBlock in sourceT.blockman.IterateBlocks())
+                {
+                    TankPreset.BlockSpec item = default;
+                    item.InitFromBlockState(tankBlock, true);
+                    Vector3 a = sourceT.trans.position + sourceT.trans.rotation * tankBlock.cachedLocalPosition;
+                    Vector3 v = Quaternion.Inverse(destT.trans.rotation) * (a - destT.trans.position);
+                    item.position = v;
+                    Quaternion rhs = sourceT.trans.rotation * tankBlock.cachedLocalRotation;
+                    item.orthoRotation = SetCorrectRotation((Quaternion.Inverse(destT.trans.rotation) * rhs).AlignToAxis());
+                    array[num++] = new KeyValuePair<TankBlock, TankPreset.BlockSpec>(tankBlock, item);
+                }
+                sourceT.blockman.Disintegrate(false, false);
+                using (ManSpawn.PopulateTechHelper populateTechHelper = new ManSpawn.PopulateTechHelper(destT, false, false, null, false, false, true, true, null))
+                {
+                    foreach (KeyValuePair<TankBlock, TankPreset.BlockSpec> valueTuple in array)
+                    {
+                        TankBlock item2 = valueTuple.Key;
+                        TankPreset.BlockSpec item3 = valueTuple.Value;
+                        populateTechHelper.AddBlock(item2, item3, false, null);
+                    }
+                }
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(ModuleFasteningLink))]
+        [HarmonyPatch("Unlink")]//
+        [HarmonyPriority(-9001)]
+        internal static class ModuleFasteningLinkFix4
+        {
+            internal static bool Prefix(ModuleFasteningLink __instance, BlockTypes ___m_CombinedBlock,
+               ModuleFasteningLink.LinkParts[] ___m_DetachedBlocks)
+            {
+                if (!__instance.block.IsAttached || __instance.block.BlockType != ___m_CombinedBlock)
+                    return false;
+                TankPreset.BlockSpec[] array = new TankPreset.BlockSpec[___m_DetachedBlocks.Length];
+                Vector3 cachedLocalPosition = __instance.block.cachedLocalPosition;
+                OrthoRotation cachedLocalRotation = __instance.block.cachedLocalRotation;
+                byte skinIndex = __instance.block.GetSkinIndex();
+                for (int i = 0; i < ___m_DetachedBlocks.Length; i++)
+                {
+                    Quaternion rotation = cachedLocalRotation * Quaternion.Euler(___m_DetachedBlocks[i].localRot);
+                    array[i] = new TankPreset.BlockSpec
+                    {
+                        m_BlockType = ___m_DetachedBlocks[i].type,
+                        position = cachedLocalPosition + cachedLocalRotation * ___m_DetachedBlocks[i].localPos,
+                        orthoRotation = SetCorrectRotation(rotation),
+                        m_SkinID = skinIndex
+                    };
+                }
+                Singleton.Manager<ManLooseBlocks>.inst.HostReplaceBlock(new TankBlock[]
+                {
+                    __instance.block
+                }, array);
+                return false;
+            }
+        }
+        static float tempLinkTime = 0;
+        [HarmonyPatch(typeof(ModuleFasteningLink))]
+        [HarmonyPatch("TryLink")]//
+        [HarmonyPriority(-9001)]
+        internal static class ModuleFasteningLinkSpeedControl
+        {
+            internal static void Prefix(ModuleFasteningLink __instance, ref float ___m_LinkLerpDuration)
+            {
+                if (tempLinkTime == 0)
+                    tempLinkTime = ___m_LinkLerpDuration;
+                if (KickStart.FastenerSpeed != 0)
+                    ___m_LinkLerpDuration = tempLinkTime / ((10f + KickStart.FastenerSpeed) / 10f);
+                else
+                    ___m_LinkLerpDuration = tempLinkTime;
+            }
+        }
+        [HarmonyPatch(typeof(ModuleFasteningLink))]
+        [HarmonyPatch("ContinuouslyTryLinkNearby")]//
+        [HarmonyPriority(-9001)]
+        internal static class ModuleFasteningLinkSpeedControl2
+        {
+            internal static void Prefix(ModuleFasteningLink __instance, ref float ___m_LinkLerpDuration)
+            {
+                if (tempLinkTime == 0)
+                    tempLinkTime = ___m_LinkLerpDuration;
+                if (KickStart.FastenerSpeed != 0)
+                    ___m_LinkLerpDuration = tempLinkTime / ((10f + KickStart.FastenerSpeed) / 10f);
+                else
+                    ___m_LinkLerpDuration = tempLinkTime;
+            }
+        }
+
+
+
+
+
+
+
         [HarmonyPatch(typeof(UITechManagerEntry))]
         [HarmonyPatch("Init")]//
         internal static class GrabUIEntryDetails
@@ -58,7 +397,7 @@ namespace RandomAdditions
                         continue;
                     if (template == null && parent2.name.Contains("SendToSCU"))
                         template = parent2;
-                    DebugRandAddi.Log(parent2.name + " posLoc: " + parent2.localPosition.ToString());
+                    //DebugRandAddi.Log(parent2.name + " posLoc: " + parent2.localPosition.ToString());
                     parent2.localPosition = new Vector3(Mathf.Lerp(244f, 454f, locatorIndex / 4f), 0.6f, 0.0f); 
                     locatorIndex++;
                 }
@@ -110,7 +449,7 @@ namespace RandomAdditions
                     CR.SetPopMaterial(mockIcon, 0);
                     CR.SetMaterial(mockIcon, 0);
                     image.SetAllDirty();
-                    DebugRandAddi.Log("Layer " + image.name);
+                    //DebugRandAddi.Log("Layer " + image.name);
                     if (!image.name.Contains("Button"))
                     { 
                         UnityEngine.Object.Destroy(image.gameObject);
@@ -123,7 +462,7 @@ namespace RandomAdditions
                 CR2.SetPopMaterial(mockIcon, 0);
                 CR2.SetMaterial(mockIcon, 0);
                 newButton.image.SetAllDirty();
-                DebugRandAddi.Log("Created new " + name);
+                DebugRandAddi.Info("Created new " + name);
             }
         }
 

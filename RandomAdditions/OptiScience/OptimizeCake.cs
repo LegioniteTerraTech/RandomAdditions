@@ -59,21 +59,44 @@ namespace RandomAdditions
 				toDo.Add(trans);
 			}
 		}
-		public static void FlagNonRendTrans(Transform trans)
+        /// <summary>
+        /// "cakeslice" spams the logs if it encounters a MeshFilter with no mesh and no "NoOutline" to stop it beforehand.
+        /// Returns true if there is a mesh above
+        /// </summary>
+        /// <param name="trans"></param>
+        /// <returns></returns>
+        public static bool FlagNonRendTrans(Transform trans)
         {
 			if (trans)
 			{
 				if (trans.GetComponent<NoOutline>())
-					return;
-				MeshFilter MF = trans.GetComponent<MeshFilter>();
+					return false;
+				bool hasMeshAboveThis = false;
+                int count = trans.childCount;
+				for (int step = 0; step < count; step++)
+				{	// Go to the top and get if any branch has mesh
+					if (FlagNonRendTrans(trans.GetChild(step)))
+						hasMeshAboveThis = true;
+
+                }
+                MeshFilter MF = trans.GetComponent<MeshFilter>();
 				if (MF)
-				{
+				{	// There is a mesh renderer here!
 					if (MF.sharedMesh == null)
-					{
-						MF.sharedMesh = tempMesh;
+					{   // HAS NO MESH! THIS WILL LOG SPAM SO PUT PLACEHOLDER HERE
+						if (!hasMeshAboveThis)
+						{   // There was no mesh needed to be displayed before this. We flag the end for cakeslice.
+							trans.gameObject.AddComponent<NoOutline>();
+							return false;
+						}
+						else
+                        {	// Cannot use NoOutline as there is a visible mesh above this, so the mesh has to be active
+                            MF.sharedMesh = tempMesh;
+                        }
 					}
 					if (MF.sharedMesh == null)
 						DebugRandAddi.Log("RandomAdditions: OptimizeOutline Failed on " + trans.name);
+					return true;
 				}
 				/*
 				else
@@ -84,10 +107,9 @@ namespace RandomAdditions
 					else
 						Rend = trans.GetComponent<SkinnedMeshRenderer>();
 				}*/
-				int count = trans.childCount;
-				for (int step = 0; step < count; step++)
-					FlagNonRendTrans(trans.GetChild(step));
-			}
+				return hasMeshAboveThis;
+            }
+			return false;
         }
     }
 }

@@ -213,7 +213,7 @@ namespace RandomAdditions
             Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Subscribe(OnPlayerSwap);
             Singleton.Manager<ManPointer>.inst.MouseEvent.Subscribe(OnClick);
 
-            Instantiate(new GameObject()).AddComponent<GUIClock>();
+            new GameObject().AddComponent<GUIClock>();
             GUIWindow = new GameObject();
             GUIWindow.AddComponent<GUIDisplay>();
             GUIWindow.SetActive(false);

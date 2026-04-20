@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using CustomModules.LegacyModule;
+using Ionic.Zlib;
 using UnityEngine;
 
 namespace RandomAdditions
@@ -10,9 +11,15 @@ namespace RandomAdditions
     /// <summary>
     /// ON HIATUS
     /// The main purpose of this is to make blocks load FAR faster for big mods
+    /// - WARNING: Cannot find anything to optimize!?!
     /// </summary>
     internal static class ManRapidModReloader
     {
+        public static void UnpackGzipBlockData()
+        {
+        }
+
+        /*
         public static Dictionary<string, AssetBundleWatcher> managed = null;
         public static void Init()
         {
@@ -31,6 +38,6 @@ namespace RandomAdditions
         }
         public static void ReloadForMod()
         {
-        }
+        }*/
     }
 }

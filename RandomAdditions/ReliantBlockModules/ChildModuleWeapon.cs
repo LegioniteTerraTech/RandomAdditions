@@ -29,10 +29,9 @@ namespace RandomAdditions
       },
      */
 
-    /// <summary>
-    /// Add separate turrets to your turret. Does not support deployment animations.
-    /// Should not be found by the block weapon iterator since it hides in the children.
-    /// </summary>
+    [Doc("Add separate turrets to your turret. Does not support deployment animations.  " +
+        "Should not be found by the block weapon iterator since it hides in the children.  " +
+        "Any block-level modules that work on ModuleWeaponGun will not work on ChildModuleWeapon.")]
     public class ChildModuleWeapon : ChildModule, IModuleWeapon, IChildModuleWeapon, IExtGimbalControl, TechAudio.IModuleAudioProvider
     {
         internal FireData FireDataAlt;       // 
@@ -44,16 +43,25 @@ namespace RandomAdditions
 
         private RACannonBarrel MainGun;       //
         private bool autoFire => m_Automatic || (MW ? MW.m_AutoFire : false);
-        public List<RACannonBarrel> BarrelsMain { get; private set; } = new List<RACannonBarrel>(); //
+        internal List<RACannonBarrel> BarrelsMain { get; private set; } = new List<RACannonBarrel>(); //
 
+
+        [Doc("This is the cooldown between every burst shot.")]
         public float m_ShotCooldown = 1f;
+        [Doc("The cooldown applied after all burst shots are used")]
         public float m_BurstCooldown = 1f;
+        [Doc("Number of shots before the gun invokes the m_BurstCooldown")]
         public int m_BurstShotCount = 0;
+        [Doc("The aiming speed of ALL gimbals this weapon has")]
         public float m_RotateSpeed = 75f;
+        [Doc("Enable the seeking ability of the projectile - if it has any")]
         public bool m_SeekingRounds = false;
+        [Doc("The way this weapon fires it's barrels: \"Sequenced\" or \"AllAtOnce\"")]
         public ModuleWeaponGun.FireControlMode m_FireControlMode = ModuleWeaponGun.FireControlMode.Sequenced;
 
+        [Doc("Fire automaticaly on target sighting, ignoring player controls")]
         public bool m_Automatic = false;
+        [Doc("Only fire if our barrel is directly lined up with the target")]
         public bool m_OnlyFireOnFacing = true;
 
         // Audio
@@ -61,7 +69,9 @@ namespace RandomAdditions
         public TechAudio.SFXType SFXType => m_FireSFXType;
 
         // AudioETC
+        [Doc("Prevent looped SFX from looping normally, might break it!")]
         public bool m_DisableMainAudioLoop = false;
+        [Doc("This doesn't seem to do anything...")]
         public float m_AudioLoopDelay = 0;
 
         private float ReserveControl = 0;
@@ -334,7 +344,7 @@ namespace RandomAdditions
             if (resdisp)
             {
                 FloraFauna FF = FloraFauna.Insure(resdisp);
-                OverrideAndAimAt(FF.target.boundsCentreWorldNoCheck, true);
+                OverrideAndAimAt(FF.target.centrePosition, true);
             }
             if (ReserveControl > 0)
             {

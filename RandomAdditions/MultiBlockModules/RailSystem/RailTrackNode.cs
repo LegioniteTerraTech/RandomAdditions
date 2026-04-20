@@ -6,6 +6,8 @@ using System.Text;
 using TerraTechETCUtil;
 using UnityEngine;
 using UnityEngine.Networking;
+using static BlockPlacementCollector.Collection;
+using static FunctionTree;
 
 namespace RandomAdditions.RailSystem
 {
@@ -431,9 +433,23 @@ namespace RandomAdditions.RailSystem
         {
             return TrackLinks[index];
         }
-        public List<RailConnectInfo> GetALLConnections()
+        public IEnumerable<RailConnectInfo> IterateALLConnections()
         {
-            return TrackLinks.ToList();
+            return TrackLinks;
+        }
+        /// <summary>
+        /// Returns the first match TrackLinks index, otherwise -1.
+        /// </summary>
+        /// <param name="match"></param>
+        /// <returns></returns>
+        public int FindConnection(Predicate<RailConnectInfo> match)
+        {
+            for (int i = 0; i < TrackLinks.Length; i++)
+            {
+                if (match(TrackLinks[i]))
+                    return i;
+            }
+            return -1;
         }
         public bool HasFreeLink()
         {

@@ -103,28 +103,7 @@ namespace RandomAdditions.PatchBatch
                 //DebugRandAddi.Log("RandomAdditions: Cleaned Bug Reporter UI");
 
                 //Setup the UI
-                StringBuilder SB = new StringBuilder();
-                string toSearch = Application.consoleLogPath;
-                bool ignoreThisCase = true;
-
-                int stoppingPos = toSearch.IndexOf("Users") + 6;
-                for (int step = 0; step < toSearch.Length; step++)
-                {
-                    if (stoppingPos <= step)
-                    {
-                        if (stoppingPos == step)
-                        {
-                            SB.Append("userName");
-                        }
-                        //DebugRandAddi.Log("RandomAdditions: " + toSearch[step] + " | " );
-                        if (toSearch[step] == '/')
-                            ignoreThisCase = false;
-                        if (ignoreThisCase)
-                            continue;
-                    }
-                    SB.Append(toSearch[step]);
-                }
-                string outputLogLocation = SB.ToString(); //"(Error on OS fetch request)";
+                string outputLogLocation = Utilities.RemoveUsername(Application.consoleLogPath);
 
 
                 try

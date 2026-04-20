@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using UnityEngine;
 
 namespace RandomAdditions.RailSystem
@@ -112,12 +113,9 @@ namespace RandomAdditions.RailSystem
         private static int GetLinkTrackIndex(RailTrackNode node, RailTrack link)
         {
             DebugRandAddi.Assert(node == null, "RandomAdditions: GetLinkTrackIndex - NODE IS NULL");
-            return node.GetALLConnections().FindIndex(delegate (RailConnectInfo cand)
-            {
-                if (cand.LinkTrack == null)
-                    return false;
-                return cand.LinkTrack == link;
-            });
+            if (link == null)
+                return -1;
+            return node.FindConnection(x => x.LinkTrack == link);
         }
 
         public override bool Equals(object obj)

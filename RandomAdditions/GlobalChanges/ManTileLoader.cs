@@ -117,6 +117,10 @@ namespace RandomAdditions
 
 
 
+        /// <summary>
+        /// CREATES GARBAGE
+        /// </summary>
+        /// <returns></returns>
         public static List<IntVector2> GetAllCenterTileLoadedTiles()
         {
             List<IntVector2> tileLoaders = new List<IntVector2>();
@@ -135,8 +139,7 @@ namespace RandomAdditions
                             {
                                 //bool tileLoader = false;
                                 //bool tileLoaderActive = false;
-                                BlockTypes[] blockTypes = tech.m_TechData.m_BlockSpecs.Select(x => x.m_BlockType).Distinct().ToArray();
-                                foreach (var id in blockTypes)
+                                foreach (var id in tech.m_TechData.m_BlockSpecs.Select(x => x.m_BlockType).Distinct())
                                 {
                                     var prefab = ManSpawn.inst.GetBlockPrefab(id);
                                     ModuleTileLoader MTL = prefab?.GetComponent<ModuleTileLoader>();
@@ -160,7 +163,7 @@ namespace RandomAdditions
             {
                 List<IntVector2> loadTiles = GetAllCenterTileLoadedTiles();
                 if (loadTiles.Count > 0)
-                    inst.TilesNeedLoadedNextLoad = loadTiles.ToArray();
+                    inst.TilesNeedLoadedNextLoad = loadTiles.ToArray();// ONLY ON SAVE
                 ToHashSet(ManWorldTileExt.RequestedLoaded, inst.LoadedTileCoords);
             }
             catch { }

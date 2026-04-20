@@ -41,7 +41,7 @@ namespace RandomAdditions
         public bool AllowToggleAll = false;
         public string[] AnimNames;
         public float[] DefaultState;
-        public float[] ActiveState => controllers.Select(x => x.CurrentTime).ToArray();
+        public float GetActiveState(int index) => controllers[index].CurrentTime;
         [SSaveField]
         public float[] ActiveStateSave = null;
 
@@ -78,7 +78,7 @@ namespace RandomAdditions
             var controlCache = GetComponentsInChildren<AnimetteController>();
             if (controlCache != null)
             {
-                controllers = controlCache.ToList();
+                controllers = controlCache.ToList(); // ONCE ON BLOCK CREATION
             }
             else
                 controllers = new List<AnimetteController>();
@@ -119,7 +119,6 @@ namespace RandomAdditions
         {
             for (int step = 0; step < controllers.Count; step++)
             {
-                ActiveState[step] = DefaultState[step];
                 controllers[step].SetState(DefaultState[step]);
             }
         }
@@ -127,7 +126,7 @@ namespace RandomAdditions
         {
             for (int step = 0; step < controllers.Count; step++)
             {
-                controllers[step].SetState(ActiveState[step]);
+                controllers[step].SetState(GetActiveState(step));
             }
         }
 
@@ -150,8 +149,8 @@ namespace RandomAdditions
             {
                 if (saving)
                 {
-                    this.SerializeToSafeObject(ActiveState);
-                }
+                    this.SerializeToSafeObject(controllers.Select(x => x.CurrentTime).ToArray());
+                }   // ONLY ON SAVE
                 else
                 {
                     this.DeserializeFromSafeObject(ref ActiveStateSave);
@@ -182,7 +181,7 @@ namespace RandomAdditions
                         int index = controllers.IndexOf(AC);
                         if (index != -1)
                         {
-                            controllers[index].RunBool(ActiveState[index] > 0 ? true : false);
+                            controllers[index].RunBool(GetActiveState(index) > 0 ? true : false);
                             return;
                         }
                     }
@@ -194,7 +193,7 @@ namespace RandomAdditions
                     Initiate();
                 playerSelected = this;
                 openTime = 1.35f;
-                UIHelpersExt.ClampMenuToScreen(ref HotWindow, true);
+                UIHelpersExt.ClampGUIToScreen(ref HotWindow, true);
                 GUIWindow.SetActive(true);
             }
         }
@@ -304,10 +303,11 @@ namespace RandomAdditions
             }
             private void OnGUI()
             {
-                if (KickStart.IsIngame && playerSelected?.block?.tank && (openTime > 0 || UIHelpersExt.MouseIsOverSubMenu(HotWindow)))
+                if (KickStart.IsIngame && playerSelected?.block?.tank && 
+                    (openTime > 0 || UIHelpersExt.MouseIsOverGUIMenu(HotWindow)))
                 {
                     Tank playerTank = playerSelected.block.tank;
-                    HotWindow = AltUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "Block Menu", CloseMenu);
+                    HotWindow = AltUI.Window(GUIClikMenuID, HotWindow, GUIHandler, "Block Menu", CloseMenu, true, true);
                 }
                 else
                     CloseGUI();

@@ -29,7 +29,7 @@ namespace RandomAdditions.RailSystem
                     MPB = (MaterialPropertyBlock)typeof(MaterialSwapper).GetField("s_matPropBlock", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
                 }
                 DebugRandAddi.Log("InsureRailIronPrefab init");
-                GameObject Rail = UnityEngine.Object.Instantiate(new GameObject("RailIronPrefab"), null);
+                GameObject Rail = new GameObject("RailIronPrefab");
                 Transform railTrans = Rail.transform;
                 railTrans.localPosition = Vector3.zero;
                 railTrans.localRotation = Quaternion.identity;
@@ -53,7 +53,7 @@ namespace RandomAdditions.RailSystem
         private static int matProp;
         private static MethodInfo MPBReset;
         internal static void ChangeTrackIronGameObject(Transform trans, ref Transform transIron, RailType Type,
-            string name, Vector3[] localPoints, bool RightSide)
+            string name, List<Vector3> localPoints, bool RightSide)
         {
             if (transIron == null)
                 transIron = CreateTrackIronGameObject(trans, name);
@@ -144,7 +144,7 @@ namespace RandomAdditions.RailSystem
                 };
         private static string foundationName = "Foundation";
 
-        internal static void FormTrackIronMesh(RailType Type, MeshFilter MF, Vector3[] localPoints, bool invertAngling)
+        internal static void FormTrackIronMesh(RailType Type, MeshFilter MF, List<Vector3> localPoints, bool invertAngling)
         {
             // VERTICES
             DebugRandAddi.Info("Creating Track Iron...");
@@ -201,7 +201,7 @@ namespace RandomAdditions.RailSystem
 
 
         internal static void ChangeTrackFoundationGameObject(Transform trans, ref Transform transFoundation, 
-            RailType Type, Vector3[] localPoints)
+            RailType Type, List<Vector3> localPoints)
         {
             if (transFoundation == null)
                 CreateTrackFoundationGameObject(trans, ref transFoundation, Type);
@@ -223,7 +223,7 @@ namespace RandomAdditions.RailSystem
             SetTrackFoundationTexture(ref railTrans, Type);
         }
         private static void SetTrackFoundationMesh(ref Transform railTrans,
-            RailType Type, Vector3[] localPoints)
+            RailType Type, List<Vector3> localPoints)
         {
             FormTrackFoundationMesh(Type, railTrans.GetComponent<MeshFilter>(), localPoints);
         }
@@ -232,7 +232,7 @@ namespace RandomAdditions.RailSystem
             Material mat = ManTechMaterialSwap.inst.m_FinalCorpMaterials[(int)FactionSubTypes.GSO];
             railTrans.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
-        private static void FormTrackFoundationMesh(RailType Type, MeshFilter MF, Vector3[] localPoints)
+        private static void FormTrackFoundationMesh(RailType Type, MeshFilter MF, List<Vector3> localPoints)
         {
             // VERTICES
             DebugRandAddi.Info("Creating Track Foundation...");
@@ -290,9 +290,9 @@ namespace RandomAdditions.RailSystem
         /// </summary>
         /// <param name="MF"></param>
         /// <param name="localPoints"></param>
-        private static void FormElongatedPrismFromSpecs(Mesh iron, RailType Type, MeshFilter MF, Vector3[] localPoints)
+        private static void FormElongatedPrismFromSpecs(Mesh iron, RailType Type, MeshFilter MF, List<Vector3> localPoints)
         {
-            int localPointsCount = localPoints.Length;
+            int localPointsCount = localPoints.Count;
             if (localPointsCount == 0)
             {
                 // Nothing to make.  Just Clear.

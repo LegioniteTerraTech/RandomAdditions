@@ -86,7 +86,7 @@ public static class ManSFXExtRand
         InsureInit();
         Tank tank = block.GetComponent<TankBlock>().tank;
         ModContainer MC = ResourcesHelper.GetModContainer(ManMods.inst.GetModNameForBlockID(
-            (BlockTypes)block.GetComponent<Visible>().m_ItemType.ItemType), out _);
+            (BlockTypes)block.GetComponent<Visible>().m_ItemType.ItemType));
         //if (MC != null)
         //    DebugRandAddi.Log("ModContainer " + MC.ModID);
         T type = default;
@@ -256,7 +256,7 @@ public static class ManSFXExtRand
         InsureInit();
         Tank tank = block.GetComponent<TankBlock>().tank;
         ModContainer MC = ResourcesHelper.GetModContainer(ManMods.inst.GetModNameForBlockID(
-            (BlockTypes)block.GetComponent<Visible>().m_ItemType.ItemType), out _);
+            (BlockTypes)block.GetComponent<Visible>().m_ItemType.ItemType));
         //if (MC != null)
         //    DebugRandAddi.Log("ModContainer " + MC.ModID);
         T type = default;

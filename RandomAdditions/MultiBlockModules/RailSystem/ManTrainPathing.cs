@@ -52,7 +52,7 @@ namespace RandomAdditions.RailSystem
             }
             if (list.Count == 0)
                 return null;
-            return list.ToArray();
+            return list.ToArray(); // ONLY ON SAVE
         }
         public static void ResumePathingFromSave(KeyValuePair<int, int>[] pathsSaved)
         {
@@ -593,7 +593,7 @@ namespace RandomAdditions.RailSystem
             {
                 if (trainSearcher.MoveNextStep())
                     return true;
-                if (FinishedRequests.Count == 0)
+                if (!FinishedRequests.Any())
                 {
                     DebugRandAddi.Log("\nOut of possible options at " + (Time.time - startTime) + " seconds");
                     if (finishedEvent != null)
@@ -601,7 +601,7 @@ namespace RandomAdditions.RailSystem
                     return false;
                 }
                 // We have some results to look through
-                FinishedRequests = FinishedRequests.OrderBy(x => x.Value.GetResults()).ToList();
+                FinishedRequests.Sort((x, y) => Mathf.RoundToInt(x.Value.GetResults() * 4f));
 
                 FinishedRequests.FirstOrDefault().Value.SubmitResults();
                 DebugRandAddi.Log("\n(All possible routes busy or obstructed) Train is called to station at " + (Time.time - startTime) + " seconds");
@@ -1182,6 +1182,10 @@ namespace RandomAdditions.RailSystem
                     CompletelyObstructed = true;
                 return true;
             }
+            /// <summary>
+            /// Returns the shortest distance a trip will take
+            /// </summary>
+            /// <returns></returns>
             public float GetResults()
             {
                 if (distFWD < distBKD)

@@ -39,17 +39,17 @@ namespace RandomAdditions
             }
         }
 
-        public static void MakeScenery()
+        public static void MakeScenery(Dictionary<string, TerrainObject> tableMainGame)
         {
             if (Tessellite == null)
             {
-                Tessellite = GenerateSceneryStats("Mod_Tessellite", ChunkTypes._deprecated_SmallMetalOre,
-                    3, healthMulti, 500f, 535f);
+                Tessellite = GenerateSceneryStats("Mod_Tessellite", SceneryTypes.PlumbiteSeam, "grasslands_rock",
+                    ChunkTypes._deprecated_SmallMetalOre, 3, healthMulti, 500f, 535f);
             }
             if (Adaranthite == null)
             {
-                Adaranthite = GenerateSceneryStats("Mod_Adaranthite", ChunkTypes._deprecated_SenseOre,
-                    6, 6f, -3f, 3f);
+                Adaranthite = GenerateSceneryStats("Mod_Adaranthite", SceneryTypes.PlumbiteSeam, "grasslands_rock",
+                    ChunkTypes._deprecated_SenseOre, 6, 6f, -3f, 3f);
             }
         }
 
@@ -82,11 +82,11 @@ namespace RandomAdditions
             }
         }
 
-        private static List<TerrainObject> GenerateSceneryStats(string name, ChunkTypes storedChunkType, 
+        private static List<TerrainObject> GenerateSceneryStats(string name, SceneryTypes copyType, string copyName, ChunkTypes storedChunkType, 
             int countChunks, float healthMultiplier, float minY, float maxY)
         {
             List<TerrainObject> output = new List<TerrainObject>();
-            List<TerrainObject> listCopy = ForceFind(SceneryTypes.PlumbiteSeam, "grasslands_rock");
+            List<TerrainObject> listCopy = ForceFind(copyType, copyName);
             foreach (var item in listCopy)
             {
                 TerrainObject TO = item.UnpooledSpawn(null);
@@ -113,7 +113,7 @@ namespace RandomAdditions
                 Res_YU.SetValue(RD, maxY);
                 output.Add(TO);
             }
-            listALL[SceneryTypes.PlumbiteSeam].Add(name, output);
+            //listALL[SceneryTypes.PlumbiteSeam].Add(name, output);
             return output;
         }
         /// <summary>

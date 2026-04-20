@@ -79,6 +79,15 @@ namespace RandomAdditions
             //TrackTypeFixed(typeof(Visible), "OnFixedUpdate");
             TrackTypeUpdate<ManPointer>("UpdateTargetsFromNearby");
             TrackTypeUpdate<UIMiniMapDisplay>("Update");
+            // ------------------------------------------------------------
+            
+            TrackTypeUpdate<Circuits>("DoCircuitLoop");
+            TrackTypeUpdate<ModuleCircuitNode>("UpdateConnexionLinks");
+            TrackTypeUpdate<TechCircuits>("RebuildCircuitNetworksForDirtyConnexions");
+            TrackTypeUpdate<TechCircuits>("ClearNetworksAndMarkForDeferredNetworkRecalculation");
+
+
+            // ------------------------------------------------------------
             if (KickStart.isNuterraSteamPresent)
             {
                 try
@@ -92,12 +101,17 @@ namespace RandomAdditions
         {
             TrackTypeUpdate(typeof(CustomModules.GameObjectExtensions), "RecursiveFindWithProperties");
         }
+        public static bool State { get; private set; }
         public static void SetActive(bool state)
         {
-            if (state)
-                Init();
-            if (inst)
-                inst.gameObject.SetActive(state);
+            if (State != state)
+            {
+                State = state;
+                if (state)
+                    Init();
+                if (inst)
+                    inst.gameObject.SetActive(state);
+            }
         }
 
 
@@ -106,7 +120,7 @@ namespace RandomAdditions
         public void OnGUI()
         {
             HotWindow = AltUI.Window(13213124, HotWindow, GUIHandler,
-                "Processing", CloseMenu);
+                "Processing", CloseMenu, true, true);
         }
         public void GUIHandler(int ID)
         {
@@ -219,6 +233,10 @@ namespace RandomAdditions
         public static void BeginTrackingUpdate7<T>() => BeginTrackingUpdate_Internal<T>(7);
         public static void BeginTrackingUpdate8<T>() => BeginTrackingUpdate_Internal<T>(8);
         public static void BeginTrackingUpdate9<T>() => BeginTrackingUpdate_Internal<T>(9);
+        public static void BeginTrackingUpdate10<T>() => BeginTrackingUpdate_Internal<T>(10);
+        public static void BeginTrackingUpdate11<T>() => BeginTrackingUpdate_Internal<T>(11);
+        public static void BeginTrackingUpdate12<T>() => BeginTrackingUpdate_Internal<T>(12);
+        public static void BeginTrackingUpdate13<T>() => BeginTrackingUpdate_Internal<T>(13);
         // DeltaTime
         private static void BeginTrackingUpdate_Internal<T>(int index)
         {
@@ -251,6 +269,10 @@ namespace RandomAdditions
         public static void EndTrackingUpdate7<T>() => EndTrackingUpdate_Internal<T>(7);
         public static void EndTrackingUpdate8<T>() => EndTrackingUpdate_Internal<T>(8);
         public static void EndTrackingUpdate9<T>() => EndTrackingUpdate_Internal<T>(9);
+        public static void EndTrackingUpdate10<T>() => EndTrackingUpdate_Internal<T>(10);
+        public static void EndTrackingUpdate11<T>() => EndTrackingUpdate_Internal<T>(11);
+        public static void EndTrackingUpdate12<T>() => EndTrackingUpdate_Internal<T>(12);
+        public static void EndTrackingUpdate13<T>() => EndTrackingUpdate_Internal<T>(13);
         private static void EndTrackingUpdate_Internal<T>(int index)
         {
             Type type = typeof(T);

@@ -333,7 +333,7 @@ namespace RandomAdditions
             }
             Vector3 offset = GetOffset(Mirages.Count);
 
-            GameObject GO = MakeCopyMirageTank(tank.gameObject, tank.trans.position + offset, tank.trans.rotation);
+            GameObject GO = MakeCopyMirageTank(tank.gameObject, tank.trans.position + offset, tank.trans.rotation, tank.CenterOfMass);
             MirageTank MT = GO.AddComponent<MirageTank>();
             InitMirage(MT, offset);
             MT.transform.localScale = Vector3.zero;
@@ -342,22 +342,25 @@ namespace RandomAdditions
 
 
         // MIRAGE MAKER
-        private GameObject MakeCopyMirageTank(GameObject GO, Vector3 worldPos, Quaternion rot)
+        internal static GameObject MakeCopyMirageTank(GameObject GOCopyTarget, Vector3 worldPos, Quaternion rot, Vector3 comWorld)
         {
-            GameObject GOo = Instantiate(new GameObject(GO.name + "_MirageClone"), worldPos, rot, null);
-            RecursiveCopyStart(GO.transform, GOo);
+            GameObject GOo = new GameObject(GOCopyTarget.name + "_MirageClone");
+            GOo.transform.position = worldPos;
+            GOo.transform.rotation = rot;
+            GOo.transform.parent = null;
+            RecursiveCopyStart(GOCopyTarget.transform, GOo, comWorld);
             return GOo;
         }
-        internal void RecursiveCopyStart(Transform transOG, GameObject toAddTo)
+        internal static void RecursiveCopyStart(Transform transOG, GameObject toAddTo, Vector3 comWorld)
         {
             int children = transOG.childCount;
-            Vector3 centerOffset = tank.CenterOfMass;
+            Vector3 centerOffset = comWorld;
             for (int step = 0; step < children; step++)
             {
                 Transform child = transOG.GetChild(step);
                 if (child.GetComponent<HoverBeam>())
                     continue;
-                GameObject newChild = Instantiate(new GameObject(child.name + "_MCOPY"), null);
+                GameObject newChild = new GameObject(child.name + "_MCOPY");
                 Transform newTrans = newChild.transform;
                 newTrans.parent = toAddTo.transform;
                 newTrans.localPosition = child.localPosition - centerOffset;
@@ -369,7 +372,7 @@ namespace RandomAdditions
                 MakeCopyMiragePartPost(child.gameObject, newChild);
             }
         }
-        private void RecursiveCopySimple(Transform transOG, GameObject toAddTo)
+        private static void RecursiveCopySimple(Transform transOG, GameObject toAddTo)
         {
             int children = transOG.childCount;
             for (int step = 0; step < children; step++)
@@ -377,7 +380,7 @@ namespace RandomAdditions
                 Transform child = transOG.GetChild(step);
                 if (child.GetComponent<HoverBeam>())
                     continue;
-                GameObject newChild = Instantiate(new GameObject(child.name + "_MCOPY"), null);
+                GameObject newChild = new GameObject(child.name + "_MCOPY");
                 Transform newTrans = newChild.transform;
                 newTrans.parent = toAddTo.transform;
                 newTrans.localPosition = child.localPosition;
@@ -389,30 +392,7 @@ namespace RandomAdditions
                 MakeCopyMiragePartPost(child.gameObject, newChild);
             }
         }
-
-        private bool MakeCopyMeshAll(Transform child, GameObject toAddTo)
-        {
-            if (!child.gameObject.activeSelf)
-            {
-                DebugRandAddi.Log("Gameobject " + child.name + " was inactive!");
-                return false;
-            }
-            MeshFilter MF = child.GetComponent<MeshFilter>();
-            if (MF == null || !MF.sharedMesh)
-                return false;
-            MeshRenderer MR = child.GetComponent<MeshRenderer>();
-            if (MR == null)
-                return false;
-            MeshFilter added = toAddTo.AddComponent<MeshFilter>();
-            added.sharedMesh = MF.sharedMesh;
-            MeshRenderer added2 = toAddTo.AddComponent<MeshRenderer>();
-            added2.sharedMaterial = MR.sharedMaterial;
-            added2.rendererPriority = MR.rendererPriority;
-            added2.sortingOrder = MR.sortingOrder;
-            return true;
-        }
-
-        private void MakeCopyMiragePart(GameObject OG, GameObject toAddTo)
+        private static void MakeCopyMiragePart(GameObject OG, GameObject toAddTo)
         {
             if (OG == null)
                 return;
@@ -483,7 +463,7 @@ namespace RandomAdditions
                 MH.Init(OG.transform);
             }
         }
-        private void MakeCopyMiragePartPost(GameObject OG, GameObject toAddTo)
+        private static void MakeCopyMiragePartPost(GameObject OG, GameObject toAddTo)
         {
             if (OG == null)
                 return;
@@ -526,6 +506,146 @@ namespace RandomAdditions
         }
 
 
+        internal static void RecursiveCopyStartMeshOnly(Transform transOG, GameObject toAddTo, Vector3 localOffset, OrthoRotation rotation)
+        {
+            Vector3 centerOffset = localOffset;
+
+            GameObject newChild = new GameObject(transOG + "_MCOPY");
+            Transform newTrans = newChild.transform;
+            newTrans.parent = toAddTo.transform;
+            newTrans.localPosition = localOffset;
+            newTrans.localRotation = rotation;
+            newTrans.localScale = Vector3.one;
+            MakeCopyMeshAll(transOG, newChild);
+            MakeCopyMeshPart(transOG.gameObject, newChild);
+            RecursiveCopyMeshOnly(transOG, newChild);
+            MakeCopyMeshPartPost(transOG.gameObject, newChild);
+        }
+        private static void RecursiveCopyMeshOnly(Transform transOG, GameObject toAddTo)
+        {
+            int children = transOG.childCount;
+            for (int step = 0; step < children; step++)
+            {
+                Transform child = transOG.GetChild(step);
+                if (child.GetComponent<HoverBeam>())
+                    continue;
+                GameObject newChild = new GameObject(child.name + "_MCOPY");
+                Transform newTrans = newChild.transform;
+                newTrans.parent = toAddTo.transform;
+                newTrans.localPosition = child.localPosition;
+                newTrans.localRotation = child.localRotation;
+                newTrans.localScale = child.localScale;
+                MakeCopyMeshAll(child, newChild);
+                MakeCopyMeshPart(child.gameObject, newChild);
+                RecursiveCopyMeshOnly(child, newChild);
+                MakeCopyMeshPartPost(child.gameObject, newChild);
+            }
+        }
+        private static void MakeCopyMeshPart(GameObject OG, GameObject toAddTo)
+        {
+            if (OG == null)
+                return;
+
+            var part = OG.GetComponent<ParticleSystem>();
+            var trail = OG.GetComponent<TrailRenderer>();
+            var smoke = OG.GetComponent<SmokeTrail>();
+            if (part || trail || smoke)
+            {
+                GameObject toAddToOld = toAddTo;
+                toAddTo = Instantiate(OG, toAddToOld.transform.parent);
+                Destroy(toAddToOld);
+                int children = toAddTo.transform.childCount;
+                List<Transform> toErad = new List<Transform>();
+                for (int step = 0; step < children; step++)
+                {
+                    toErad.Add(toAddTo.transform.GetChild(step));
+                }
+                toAddTo.transform.DetachChildren();
+                try
+                {
+                    for (int step = 0; step < children; step++)
+                    {
+                        Destroy(toErad[step].gameObject);
+                    }
+                }
+                catch { }
+                toAddTo.transform.localPosition = OG.transform.localPosition;
+                toAddTo.transform.localRotation = OG.transform.localRotation;
+                toAddTo.transform.localScale = OG.transform.localScale;
+                toAddTo.AddComponent<MimicParticles>().Init(part, trail, smoke);
+            }
+        }
+        private static void MakeCopyMeshPartPost(GameObject OG, GameObject toAddTo)
+        {
+            if (OG == null)
+                return;
+            var swap = OG.GetComponent<MaterialSwapper>();
+            if (swap)
+            {
+                Renderer[] matsO = OG.GetComponentsInChildren<Renderer>();
+                Renderer[] mats = toAddTo.GetComponentsInChildren<Renderer>();
+                if (mats != null && matsO != null && mats.Length > 0 && matsO.Length > 0)
+                {
+                    MaterialPropertyBlock MPB = new MaterialPropertyBlock();
+                    int count = mats.Length;
+                    try
+                    {
+                        matsO[0].GetPropertyBlock(MPB);
+                        for (int step = 0; step < count; step++)
+                        {
+                            mats[step].SetPropertyBlock(MPB);
+                        }
+                        toAddTo.GetComponent<Renderer>().SetPropertyBlock(MPB);
+                    }
+                    catch { }
+                }
+            }
+        }
+
+
+        private static bool MakeCopyMeshAll(Transform child, GameObject toAddTo)
+        {
+            if (!child.gameObject.activeSelf)
+            {
+                DebugRandAddi.Log("Gameobject " + child.name + " was inactive!");
+                return false;
+            }
+            MeshFilter MF = child.GetComponent<MeshFilter>();
+            if (MF == null || !MF.sharedMesh)
+                return false;
+            MeshRenderer MR = child.GetComponent<MeshRenderer>();
+            if (MR == null)
+                return false;
+            MeshFilter added = toAddTo.AddComponent<MeshFilter>();
+            added.sharedMesh = MF.sharedMesh;
+            MeshRenderer added2 = toAddTo.AddComponent<MeshRenderer>();
+            added2.sharedMaterial = MR.sharedMaterial;
+            added2.rendererPriority = MR.rendererPriority;
+            added2.sortingOrder = MR.sortingOrder;
+            return true;
+        }
+
+
+        internal static GameObject MakeCopyMirageTankFromSpecs(List<TankPreset.BlockSpec> specs, string name)
+        {
+            GameObject GOo = new GameObject(name + "_MirageClone");
+            foreach (var item in specs)
+            {
+                if (BlockIndexer.StringToBlockType(item.block, out BlockTypes BT))
+                {
+                   var prefab = ManSpawn.inst.GetBlockPrefab(BT);
+                    if (prefab != null)
+                    {
+                        RecursiveCopyStartMeshOnly(prefab.transform, GOo, 
+                            item.position, new OrthoRotation((OrthoRotation.r)item.orthoRotation));
+                    }
+                }
+            }
+            return GOo;
+        }
+
+
+
         //--------------------------------------------
         //   The below holds only facade components
         //--------------------------------------------
@@ -534,7 +654,7 @@ namespace RandomAdditions
         {
             private Tank tech;
             private MirageDestraction controller;
-            private Transform[] allTrans;
+            private List<Transform> allTrans = new List<Transform>();
             private MimicAimer[] aimers;
             private MimicHierachy[] mimics;
             private MimicParticles[] parts;
@@ -601,7 +721,7 @@ namespace RandomAdditions
             {
                 try
                 {
-                    if (allTrans == null)
+                    if (!allTrans.Any())
                     {
                         Transform[] unfiltered = gameObject.GetComponentsInChildren<Transform>();
                         if (unfiltered == null)
@@ -609,22 +729,21 @@ namespace RandomAdditions
                             DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO CHILDREN!!!");
                             return;
                         }
-                        List<Transform> transChecked = new List<Transform>();
+                        allTrans.Clear();
                         foreach (Transform trans in unfiltered)
                         {
                             try
                             {
                                 if (trans.IsNotNull())
-                                    transChecked.Add(trans);
+                                    allTrans.Add(trans);
                             }
                             catch { }
                         }
-                        if (transChecked.Count == 0)
+                        if (!allTrans.Any())
                         {
                             DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
                             return;
                         }
-                        allTrans = transChecked.ToArray();
                     }
                     switch (animState)
                     {
@@ -800,22 +919,12 @@ namespace RandomAdditions
                     if (randTran == null)
                     {
                         //DebugRandAddi.Log("RandomAdditions: MirageTank has encountered null transforms, cleaning up...");
-                        List<Transform> transChecked = new List<Transform>();
-                        foreach (Transform trans in allTrans)
-                        {
-                            try
-                            {
-                                if (trans.IsNotNull())
-                                    transChecked.Add(trans);
-                            }
-                            catch { }
-                        }
-                        if (transChecked.Count == 0)
+                        allTrans.RemoveAll(x => x.IsNull());
+                        if (!allTrans.Any())
                         {
                             DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
                             return;
                         }
-                        allTrans = transChecked.ToArray();
                         randTran = allTrans.GetRandomEntry();
                         if (randTran == null)
                         {
@@ -953,7 +1062,7 @@ namespace RandomAdditions
             private void RefreshVis()
             {
                 DestroyAllChildren();
-                controller.RecursiveCopyStart(tech.trans, gameObject);
+                RecursiveCopyStart(tech.trans, gameObject, tech.CenterOfMass);
                 controller.InitMirage(this, controller.GetOffset(controller.Mirages.IndexOf(this)));
             }
             private void DestroyAllChildren()

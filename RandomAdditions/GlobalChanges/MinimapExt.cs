@@ -203,8 +203,13 @@ namespace RandomAdditions.Minimap
         private static FieldInfo iconClose = typeof(UIMiniMapLayerTech).GetField("m_ClosestIcons", BindingFlags.Instance | BindingFlags.NonPublic);
         private static FieldInfo iconCache = typeof(UIMiniMapLayerTech).GetField("m_IconCache", BindingFlags.Instance | BindingFlags.NonPublic);
         private static Type iconCloseInst = typeof(UIMiniMapLayerTech).GetNestedType("ClosestIcons", BindingFlags.NonPublic);
+        private static MethodInfo iconCloseInstReset = iconCloseInst.GetMethod("Reset", BindingFlags.Public);
         private static Type iconCacheInst = typeof(UIMiniMapLayerTech).GetNestedType("IconCache", BindingFlags.NonPublic);
         private static FieldInfo iconList = iconCacheInst.GetField("icons", BindingFlags.Instance | BindingFlags.NonPublic);
+        
+        /// <summary>
+        ///  MIGHT BE SLOW - CHECK!!!!
+        /// </summary>
         private static void RebuildClosestIcons()
         {
             try
@@ -214,17 +219,21 @@ namespace RandomAdditions.Minimap
                 {
                     UIMiniMapLayerTech layer = instWorld.GetComponentInChildren<UIMiniMapLayerTech>(true);
                     object cache = Activator.CreateInstance(iconCacheInst, true);
-                    iconList.SetValue(cache, new List<UIMiniMapElement>());
+                    //iconList.SetValue(cache, new List<UIMiniMapElement>());
+                    ((List<UIMiniMapElement>)iconList.GetValue(cache)).Clear();
                     iconCache.SetValue(layer, cache);
-                    iconClose.SetValue(layer, Activator.CreateInstance(iconCloseInst, true));
+                    //iconClose.SetValue(layer, Activator.CreateInstance(iconCloseInst, true));
+                    iconCloseInstReset.Invoke(iconClose.GetValue(layer), Array.Empty<object>());
                 }
                 if (instMini != null)
                 {
                     UIMiniMapLayerTech layer = instMini.GetComponentInChildren<UIMiniMapLayerTech>(true);
                     object cache = Activator.CreateInstance(iconCacheInst, true);
-                    iconList.SetValue(cache, new List<UIMiniMapElement>());
+                    //iconList.SetValue(cache, new List<UIMiniMapElement>());
+                    ((List<UIMiniMapElement>)iconList.GetValue(cache)).Clear();
                     iconCache.SetValue(layer, cache);
-                    iconClose.SetValue(layer, Activator.CreateInstance(iconCloseInst, true));
+                    //iconClose.SetValue(layer, Activator.CreateInstance(iconCloseInst, true));
+                    iconCloseInstReset.Invoke(iconClose.GetValue(layer), Array.Empty<object>());
                 }
             }
             catch (Exception e)
@@ -328,7 +337,7 @@ namespace RandomAdditions.Minimap
                         tempCollect.Add(val.Value);
                 }
                 if (tempCollect.Any())
-                    GUIModModal.OpenModal(tracked.ObjectType.ToString(), tempCollect.ToArray(), CanDisplayModal);
+                    GUIModModal.OpenModal(tracked.ObjectType.ToString(), tempCollect.ToArray(), CanDisplayModal);// ONLY ON UI
             }
         }
         private static bool CanDisplayModal()
@@ -759,12 +768,12 @@ namespace RandomAdditions.Minimap
                 }
             }
 
-            internal void UpdateAndSyncMinimapLayers()
+            private void UpdateAndSyncMinimapLayers()
             {
                 int arraySize = LayersIndexed.Count;
                 var array = (UIMiniMapLayer[])layers.GetValue(disp);
                 Array.Resize(ref array, arraySize);
-                var toAdd = LayersIndexed.OrderBy(x => x.Key).ToList();
+                var toAdd = LayersIndexed.OrderBy(x => x.Key).ToList(); // RARE CALL
                 for (int step = 0; step < arraySize; step++)
                 {
                     array[step] = toAdd[step].Value;
@@ -843,7 +852,6 @@ namespace RandomAdditions.Minimap
             private readonly UIMiniMapElement prefab;
             private readonly Stack<UIMiniMapElement> elementsUnused = new Stack<UIMiniMapElement>();
             private readonly Stack<UIMiniMapElement> elementsUsed = new Stack<UIMiniMapElement>();
-            public List<UIMiniMapElement> ElementsActive => elementsUsed.ToList();
 
             internal IconPool(UIMiniMapElement prefab, int initSize)
             {

@@ -61,7 +61,7 @@ namespace RandomAdditions
                 BlockDebug.ThrowWarning(true, "RandomAdditions: ModuleRepairAimer NEEDS a valid TargetAimer in hierarchy!\nCause of error - Block " + gameObject.name);
                 return;
             }
-            gimbals = GetComponentsInChildren<GimbalAimer>().ToList();
+            gimbals = GetComponentsInChildren<GimbalAimer>().ToList();// ONCE ON BLOCK CREATION
 
             Targeter = KickStart.HeavyTransformSearch(transform, "_Target");
             if (Targeter == null)
@@ -218,7 +218,8 @@ namespace RandomAdditions
                 gO = TO.gameObject;
             if (!(bool)gO)
             {
-                gO = Instantiate(new GameObject("HealLine"), transform, false);
+                gO = new GameObject("HealLine");
+                gO.transform.parent = transform;
                 gO.transform.localPosition = Vector3.zero;
                 gO.transform.localRotation = Quaternion.identity;
             }

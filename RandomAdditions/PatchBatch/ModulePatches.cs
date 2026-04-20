@@ -1,15 +1,90 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using System.Reflection;
 using HarmonyLib;
 using TerraTechETCUtil;
+using UnityEngine;
+using static FunctionTree;
 
 namespace RandomAdditions
 {
     internal class ModulePatches
     {
+
+        // MAIN
+        internal static class ModuleHoverPatches
+        {
+
+            internal static Type target = typeof(ModuleHover);
+            internal static void OnAttached_Postfix(ModuleHover __instance)
+            {
+                if (KickStart.smrtHov != 0 && !__instance.GetComponent<HoverOpti>())
+                {
+                    var opti = __instance.gameObject.AddComponent<HoverOpti>();
+                    opti.block = __instance.gameObject.GetComponent<TankBlock>();
+                    if (opti.block == null)
+                        opti.block = __instance.gameObject.GetComponentInChildren<TankBlock>();
+                    if (opti.block == null)
+                        opti.block = __instance.gameObject.GetComponentInParent<TankBlock>();
+                    if (opti.block == null)
+                        throw new NullReferenceException(nameof(opti.block));
+                    opti.OnAttach();
+                    opti.block.AttachedEvent.Subscribe(opti.OnAttach);
+                    opti.block.DetachingEvent.Subscribe(opti.OnDetach);
+                }
+                if (KickStart.hideHov)
+                {
+                    try
+                    {
+                        foreach (var item in __instance.GetComponentsInChildren<ParticleSystem>())
+                        {
+                            item.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+        //*  // Doesn't work, TT is too spagetti coded
+        internal static class HoverJetPatches
+        {
+            internal static Type target = typeof(HoverJet);
+            /// <summary>
+            /// Make it faster. See HoverOpti for more info</summary>
+            [HarmonyPriority(-9001)]
+            internal static bool OnFixedUpdate_Prefix(HoverJet __instance)
+            {
+                return KickStart.smrtHov == 0;
+            }
+            internal static bool EnableJetEffects_Prefix(HoverJet __instance, bool active,
+                ref bool ___m_JetEffectActive, ParticleSystem ___particles)
+            {
+                if (KickStart.hideHov)
+                {
+                    if (___m_JetEffectActive)
+                    {
+                        ___m_JetEffectActive = false;
+                        ___particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                    }
+                    return false;
+                }
+                return true;
+            }
+        }//*/
+
+        internal static class CannonBarrelPatches
+        {
+            internal static Type target = typeof(CannonBarrel);
+            /// <summary>
+            /// Fix ModuleWeaponGun crash due to missing "casingEjectTransform" transform</summary>
+            public static bool EjectCasing_Prefix(CannonBarrel __instance)
+            {
+                return __instance.casingEjectTransform != null;
+            }
+
+        }
+
         internal static class ModuleItemHolderBeamPatches
         {
             internal static Type target = typeof(ModuleItemHolderBeam);
@@ -21,7 +96,7 @@ namespace RandomAdditions
             /// <summary>
             /// PatchModuleItemHolderBeamForStatic
             /// </summary>
-            private static bool UpdateFloat_Prefix(ModuleItemHolderBeam __instance, ref Visible item)
+            internal static bool UpdateFloat_Prefix(ModuleItemHolderBeam __instance, ref Visible item)
             {
                 if (__instance == null || item == null)
                     return true;

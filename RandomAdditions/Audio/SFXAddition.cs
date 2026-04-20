@@ -64,7 +64,7 @@ namespace RandomAdditions
                 return;
             }
 
-            var tempL = new List<ManSFXExtRand.ExtSound>();
+            var tempL = new List<ManSFXExtRand.ExtSound>();// ONLY ON SPAWN
             for (int i = 0; i < Names.Length; i++)
             {
                 if (Names[i].NullOrEmpty())
@@ -93,7 +93,7 @@ namespace RandomAdditions
                         list.Add(TargetFields[i]);
                     }
                     else
-                        exist.Targets.Add(Targets[i], new List<string>() { TargetFields[i] });
+                        exist.Targets.Add(Targets[i], new List<string>() { TargetFields[i] });// RARE
                 }
                 else
                 {
@@ -106,12 +106,12 @@ namespace RandomAdditions
                         Cooldown = Cooldown[i],
                         Targets = new Dictionary<string, List<string>>()
                         {
-                            { Targets[i], new List<string>(){ TargetFields[i] } }
+                            { Targets[i], new List<string>(){ TargetFields[i] } }// RARE
                         }
                     });
                 }
             }
-            Additions = tempL.ToArray();
+            Additions = tempL.ToArray();// ONLY ON SPAWN
             Projectile proj = GetComponent<Projectile>();
             if (proj)
             {
@@ -184,7 +184,7 @@ namespace RandomAdditions
                         PitchVariance = 0.25f,
                         Targets = new Dictionary<string, List<string>>
                         {
-                            { "ModuleWeapon", new List<string>{ "m_FireSFXType" } }
+                            { "ModuleWeapon", new List<string>{ "m_FireSFXType" } }// RARE
                         },
                     }
                 };
@@ -339,7 +339,7 @@ namespace RandomAdditions
         {
             TankBlock block = GetComponent<TankBlock>();
             ModContainer MC = ResourcesHelper.GetModContainer(ManMods.inst.GetModNameForBlockID(
-                (BlockTypes)block.GetComponent<Visible>().m_ItemType.ItemType), out _);
+                (BlockTypes)block.GetComponent<Visible>().m_ItemType.ItemType));
             TechAudio.SFXType SFX;
             Tank tank = block.tank;
             if (MC != null)

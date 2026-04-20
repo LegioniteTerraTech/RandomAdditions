@@ -55,7 +55,7 @@ namespace RandomAdditions
             node = GetComponent<ModuleCircuitNode>();
             bool canFind = true;
             int num = 1;
-            List<Renderer> inputRends = new List<Renderer>();
+            List<Renderer> inputRends = new List<Renderer>();// ONLY ON CREATION
             while (canFind)
             {
                 try
@@ -88,7 +88,7 @@ namespace RandomAdditions
                     recentInStates[step] = false;
                     lastInStates[step] = false;
                 }
-                InStateRends = inputRends.ToArray();
+                InStateRends = inputRends.ToArray(); // ONCE ON CREATION
             }
 
             Transform trans2 = Utilities.HeavyTransformSearch(transform, "m_Output");

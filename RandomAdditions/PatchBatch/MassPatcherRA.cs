@@ -46,14 +46,14 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    DebugRandAddi.Log(modName + ":Could not patch PatchBatch(Edge Cases) " + e);
+                    ManModGUI.ShowErrorPopup(modName + ":Could not patch PatchBatch(Edge Cases) " + e);
                 }
 
                 return true;
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log(modName + ": FAILED ON ALL PATCH ATTEMPTS - CASCADE FAILIURE " + e);
+                ManModGUI.ShowErrorPopup(modName + ": FAILED ON ALL PATCH ATTEMPTS - CASCADE FAILIURE " + e);
             }
             return false;
         }
@@ -78,13 +78,13 @@ namespace RandomAdditions
                 }
                 catch (Exception e)
                 {
-                    DebugRandAddi.Log(modName + ":Could not unpatch PatchBatch(Edge Cases) " + e);
+                    ManModGUI.ShowErrorPopup(modName + ":Could not unpatch PatchBatch(Edge Cases) " + e);
                 }
                 return true;
             }
             catch (Exception e)
             {
-                DebugRandAddi.Log(modName + ": FAILED ON ALL UN-PATCH ATTEMPTS - CASCADE FAILIURE " + e);
+                ManModGUI.ShowErrorPopup(modName + ": FAILED ON ALL UN-PATCH ATTEMPTS - CASCADE FAILIURE " + e);
             }
             return false;
         }
