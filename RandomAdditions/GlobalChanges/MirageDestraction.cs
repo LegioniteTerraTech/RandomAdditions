@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Reflection;
 using UnityEngine;
 using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
-    public class MirageDestraction : Destraction
+    /// <summary>
+    /// Destraction that moves around and spoof it's main tech's location
+    /// <para>To-Do: Make it consume power at some point???</para>
+    /// </summary>
+    public class MirageDestraction : Destraction, ITankCompManList<MirageDestraction, ModuleMirage>
     {
-        public static bool forceDisable = false;
         private MirageType type = MirageType.Circle;
-        private List<ModuleMirage> ModuleMirages = new List<ModuleMirage>();
+        public List<ModuleMirage> Managed { get; set; } = new List<ModuleMirage>();
+
         internal List<MirageTank> Mirages = new List<MirageTank>();
         private TechEnergy reg;
 
@@ -32,67 +34,31 @@ namespace RandomAdditions
         internal float Dispersion = 0;
         private bool dirty = false;
 
-        public static void HandleAddition(Tank tank, ModuleMirage mirage)
+        public void StartManagingPre()
         {
-            if (forceDisable)
-                return;
-            if (tank.IsNull())
-            {
-                DebugRandAddi.Log("RandomAdditions: MirageEffect(HandleAddition) - TANK IS NULL");
-                return;
-            }
-            var dis = tank.GetComponent<MirageDestraction>();
-            if (!(bool)dis)
-            {
-                dis = tank.gameObject.AddComponent<MirageDestraction>();
-                DebugRandAddi.Info("RandomAdditions: MirageEffect - MirageDestraction of " + tank.name + " has been inited");
-                TankDestraction.HandleAddition(tank, dis);
-                dis.reg = tank.EnergyRegulator;
-            }
-            dis.tank = tank;
-
-            if (!dis.ModuleMirages.Contains(mirage))
-            {
-                dis.ModuleMirages.Add(mirage);
-                dis.dirty = true;
-            }
-            else
-                DebugRandAddi.LogError("RandomAdditions: MirageEffect - ModuleMirage of " + mirage.name + " was already added to " + tank.name + " but an add request was given?!?");
-            mirage.distraction = dis;
+            reg = tank.EnergyRegulator;
         }
-        public static void HandleRemoval(Tank tank, ModuleMirage mirage)
+        public void StartManagingPost()
         {
-            if (tank.IsNull())
-            {
-                DebugRandAddi.Log("RandomAdditions: MirageEffect(HandleRemoval) - TANK IS NULL");
-                return;
-            }
+        }
 
-            var dis = tank.GetComponent<MirageDestraction>();
-            if (!(bool)dis)
+        public void StopManaging()
+        {
+            foreach (var item in Mirages)
             {
-                DebugRandAddi.LogError("RandomAdditions: MirageEffect - Got request to remove for tech " + tank.name + " but there's no TankDistraction assigned?!?");
-                return;
+                item.Destroy();
             }
-            if (!dis.ModuleMirages.Remove(mirage))
-                DebugRandAddi.LogError("RandomAdditions: MirageEffect - ModuleMirage of " + mirage.name + " requested removal from " + tank.name + " but no such ModuleMirage is assigned.");
-            else
-            {
-                dis.dirty = true;
-            }
-            mirage.distraction = null;
+            Mirages.Clear();
+            DebugRandAddi.Info("RandomAdditions: MirageEffect - MirageDestraction of " + tank.name + " has been de-inited");
+        }
+        public void AddModule(ModuleMirage eMod)
+        {
+            dirty = true;
+        }
 
-            if (dis.ModuleMirages.Count() == 0)
-            {
-                foreach (var item in dis.Mirages)
-                {
-                    item.Destroy();
-                }
-                dis.Mirages.Clear();
-                DebugRandAddi.Info("RandomAdditions: MirageEffect - MirageDestraction of " + tank.name + " has been de-inited");
-                TankDestraction.HandleRemoval(tank, dis);
-                Destroy(dis);
-            }
+        public void RemoveModule(ModuleMirage eMod)
+        {
+            dirty = true;
         }
 
         internal override void UpdateThis()
@@ -178,16 +144,25 @@ namespace RandomAdditions
             foreach (MirageType item in Enum.GetValues(typeof(MirageType)))
             {
                 int count = 0;
-                foreach (var item2 in ModuleMirages)
+                foreach (var item2 in Managed)
                 {
                     if (item2.MirageType == item)
                         count++;
                 }
                 types.Add(item, count);
             }
-            type = types.OrderByDescending(x => x.Value).FirstOrDefault().Key;
+            int best = int.MinValue;
+            type = default;
+            foreach (var item in types)
+            {
+                if (item.Value > best)
+                {
+                    best = item.Value;
+                    type = item.Key;
+                }
+            }
 
-            foreach (var item in ModuleMirages)
+            foreach (var item in Managed)
             {
                 Strength += item.block.filledCells.Length;
                 AllPower += item.MiragePower;
@@ -646,6 +621,7 @@ namespace RandomAdditions
 
 
 
+
         //--------------------------------------------
         //   The below holds only facade components
         //--------------------------------------------
@@ -721,7 +697,7 @@ namespace RandomAdditions
             {
                 try
                 {
-                    if (!allTrans.Any())
+                    if (allTrans.Count == 0)
                     {
                         Transform[] unfiltered = gameObject.GetComponentsInChildren<Transform>();
                         if (unfiltered == null)
@@ -739,7 +715,7 @@ namespace RandomAdditions
                             }
                             catch { }
                         }
-                        if (!allTrans.Any())
+                        if (allTrans.Count == 0)
                         {
                             DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
                             return;
@@ -920,7 +896,7 @@ namespace RandomAdditions
                     {
                         //DebugRandAddi.Log("RandomAdditions: MirageTank has encountered null transforms, cleaning up...");
                         allTrans.RemoveAll(x => x.IsNull());
-                        if (!allTrans.Any())
+                        if (allTrans.Count == 0)
                         {
                             DebugRandAddi.LogError("RandomAdditions: TankDistraction.MirageTank HAS NO VALID CHILDREN!!!");
                             return;

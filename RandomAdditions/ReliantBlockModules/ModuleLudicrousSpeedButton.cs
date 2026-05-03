@@ -57,6 +57,7 @@ namespace RandomAdditions
             Energy = gameObject.GetComponent<ModuleEnergy>();
             TankBlock.SubToBlockAttachConnected(OnAttach, OnDetach);
             Energy.UpdateConsumeEvent.Subscribe(OnDrain);
+            enabled = false;
         }
         private void OnDrain()
         {
@@ -80,11 +81,15 @@ namespace RandomAdditions
             tonk = transform.root.GetComponent<Tank>();
             tonk.AttachEvent.Subscribe(UpdateAttach);
             tonk.DetachEvent.Subscribe(UpdateDetach);
+            enabled = true;
             lastTechHolderCount = tonk.blockman.IterateBlockComponents<ModuleItemHolderBeam>().Count();
             hint.Show();
         }
         private void OnDetach()
         {
+            enabled = false;
+            tonk.AttachEvent.Unsubscribe(UpdateAttach);
+            tonk.DetachEvent.Unsubscribe(UpdateDetach);
             ResetSpeed();
             tonk = null;
             lastTechHolderCount = 0;

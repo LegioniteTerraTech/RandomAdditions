@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TerraTechETCUtil;
 using UnityEngine;
 
@@ -111,9 +108,11 @@ namespace RandomAdditions
                     ManTechs.inst.TankDriverChangedEvent.Subscribe(Revalidate);
                     break;
             }
+            block.BlockFixedUpdate.Subscribe(OnFixedUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockFixedUpdate.Unsubscribe(OnFixedUpdate);
             switch (VisibleCondition)
             {
                 case TrajectoryVisibility.SameTeam:
@@ -169,7 +168,7 @@ namespace RandomAdditions
         }
 
 
-        public void FixedUpdate()
+        public void OnFixedUpdate()
         {
             Liner.transform.position = ToCastFrom.position;
             Liner.transform.rotation = ToCastFrom.rotation;

@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
-using System.Text;
-using System.Threading.Tasks;
-using System.Reflection;
 using UnityEngine;
 using TerraTechETCUtil;
 
@@ -18,16 +14,6 @@ namespace RandomAdditions
         // Startup
         private static ModHelpers inst;
         private static bool hooked = false;
-        private const int MaxCommandDistance = 9001;//500;
-        /// <summary>
-        /// True (Right, Left) False,
-        /// True   (Down, Up)  False
-        /// </summary>
-        public static Event<bool, bool, RaycastHit> ClickEventSimple = new Event<bool, bool, RaycastHit>();
-        public static bool MouseLeftDown => mouseLeftDown;
-        private static bool mouseLeftDown = false;
-        public static bool MouseRightDown => mouseRightDown;
-        private static bool mouseRightDown = false;
         public static void Initiate()
         {
             if (hooked)
@@ -37,44 +23,6 @@ namespace RandomAdditions
             inst.enabled = true;
             hooked = true;
         }
-        public static void UpdateThis()
-        {
-            if (!ManPauseGame.inst.IsPaused)
-            {
-                bool lD = Input.GetMouseButton(0);
-                if (lD != mouseLeftDown)
-                {
-                    mouseLeftDown = lD;
-                    if (lD)
-                    {
-                        int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerTankIgnoreTerrain.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerLandmark.mask | Globals.inst.layerScenery.mask;
-
-                        RaycastHit rayman;
-                        Physics.Raycast(ManUI.inst.ScreenPointToRay(Input.mousePosition), out rayman, MaxCommandDistance, layerMask, QueryTriggerInteraction.Ignore);
-                        ClickEventSimple.Send(false, true, rayman);
-                    }
-                    else
-                        ClickEventSimple.Send(false, false, default);
-                }
-                bool RD = Input.GetMouseButton(1);
-                if (RD != mouseRightDown)
-                {
-                    mouseRightDown = RD;
-                    if (RD)
-                    {
-                        int layerMask = Globals.inst.layerTank.mask | Globals.inst.layerTankIgnoreTerrain.mask | Globals.inst.layerTerrain.mask | Globals.inst.layerLandmark.mask | Globals.inst.layerScenery.mask;
-
-                        RaycastHit rayman;
-                        Physics.Raycast(ManUI.inst.ScreenPointToRay(Input.mousePosition), out rayman, MaxCommandDistance, layerMask, QueryTriggerInteraction.Ignore);
-                        ClickEventSimple.Send(true, true, rayman);
-                    }
-                    else
-                        ClickEventSimple.Send(true, false, default);
-                }
-            }
-        }
-
-
         // Events
         internal static int allowQuickSnap = 0;
         private static bool cooldown = false;

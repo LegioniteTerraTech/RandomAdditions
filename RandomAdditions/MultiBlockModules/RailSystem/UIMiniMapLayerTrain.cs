@@ -4,7 +4,6 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TerraTechETCUtil;
-using RandomAdditions.Minimap;
 
 namespace RandomAdditions.RailSystem
 {

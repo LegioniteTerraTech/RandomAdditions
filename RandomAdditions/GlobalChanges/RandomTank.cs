@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using TerraTechETCUtil;
 using RandomAdditions.RailSystem;
@@ -16,8 +15,6 @@ namespace RandomAdditions
         //This handles the GUI clock used on the Tank.  Know your time and set your mines
         //  Charge your tech with solars before nightfall.
         private Tank tank;
-        //private ClockManager man;
-        public bool DisplayTimeTank = false;
         private readonly List<ModuleTileLoader> loaders = new List<ModuleTileLoader>();
         private bool isLoading = false;
         private bool isRecycled = true;
@@ -40,7 +37,6 @@ namespace RandomAdditions
         public void Initiate()
         {
             tank = gameObject.GetComponent<Tank>();
-            GlobalClock.tanks.Add(this);
             tank.AnchorEvent.Subscribe(OnAnchor);
             tank.AttachEvent.Subscribe(OnAttach);
             tank.DetachEvent.Subscribe(OnDetach);
@@ -93,10 +89,9 @@ namespace RandomAdditions
             }
             if (!newBlock.visible.damageable.IsAtFullHealth)
             {
-                if (!damagedBlocks.Contains(newBlock))
+                if (damagedBlocks.Add(newBlock))
                 {
                     //DebugRandAddi.Log(tank.name + " - Is new damaged block!");
-                    damagedBlocks.Add(newBlock);
                 }
             }
             //if (newBlock)
@@ -105,8 +100,7 @@ namespace RandomAdditions
         }
         public void OnDetach(TankBlock damagedBlock, Tank tank)
         {
-            if (damagedBlocks.Contains(damagedBlock))
-                damagedBlocks.Remove(damagedBlock);
+            damagedBlocks.Remove(damagedBlock);
             /*
             var fastener = GetComponent<ModuleFasteningLink>();
             if (fastener)
@@ -143,13 +137,7 @@ namespace RandomAdditions
         public void UpdateColliderToggle()
         {
             foreach (var item in tank.blockman.IterateBlocks())
-            {
-                var CS = item.visible.ColliderSwapper;
-                if (CS)
-                {
-                    CS.EnableCollision(!KickStart.ColliderDisable2);
-                }
-            }
+                item.visible.ColliderSwapper?.EnableCollision(!KickStart.ColliderDisable2 || ManNetwork.IsNetworked);
         }
         public void InsureSolverIterations()
         {
@@ -158,17 +146,12 @@ namespace RandomAdditions
             var rbody = GetComponent<Rigidbody>();
             if (rbody && rbody.solverIterations != Optimax.ColTankIterations)
             {
-                //DebugRandAddi.Log("Rbody for tank altered - [" + rbody.solverIterations + " -> " + Optimax.ColTankIterations + "], [" + rbody.solverVelocityIterations + " -> "+ Optimax.ColTankIterations + "]");
+                DebugRandAddi.Info("Rbody for tank altered - [" + rbody.solverIterations + " -> " + Optimax.ColTankIterations + "], [" + rbody.solverVelocityIterations + " -> "+ Optimax.ColTankIterations + "]");
                 rbody.solverIterations = Optimax.ColTankIterations;
                 rbody.solverVelocityIterations = Optimax.VelTankIterations;
             }
         }
 
-
-        internal void ResetUIValid()
-        {
-            DisplayTimeTank = false;
-        }
 
         public static void AddTileLoader(Tank tank, ModuleTileLoader loader)
         {

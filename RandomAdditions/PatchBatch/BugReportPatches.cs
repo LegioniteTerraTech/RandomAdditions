@@ -39,7 +39,7 @@ namespace RandomAdditions.PatchBatch
                     DebugRandAddi.Log("RandomAdditions: Letting the player continue with a crashed STEAM client. " +
                         "Note that this will still force a quit screen under certain conditions.");
 #if !DEBUG
-                if (!ManNetwork.IsNetworked)
+                if (!ManNetwork.IsNetworked || KickStart.isSteamManaged)
                     cat.SetValue(__instance, false);
 #else
                 cat.SetValue(__instance, false);
@@ -96,7 +96,10 @@ namespace RandomAdditions.PatchBatch
                 //reportBox.Find(" Title").GetComponent<Text>().text = "<b>BUG REPORTER [MODDED!]</b>";
 
 #if STEAM
-                UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) Ignore & Continue";
+                if (!ManNetwork.IsNetworked || KickStart.isSteamManaged)
+                    UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) Ignore & Continue";
+                else
+                    UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(Non-TTSMM MP!) Quit Game";
 #else
                 UIObj.transform.Find("ReportLayout").Find("Button Forward").Find("Text").GetComponent<Text>().text = "(CORRUPTION WARNING) CONTINUE ANYWAYS";
 #endif

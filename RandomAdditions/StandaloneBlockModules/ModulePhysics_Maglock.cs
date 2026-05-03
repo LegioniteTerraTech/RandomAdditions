@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using TerraTechETCUtil;
 
@@ -60,13 +58,15 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             enabled = true;
+            block.BlockFixedUpdate.Subscribe(OnFixedUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockFixedUpdate.Unsubscribe(OnFixedUpdate);
             enabled = false;
         }
 
-        public void FixedUpdate()
+        private void OnFixedUpdate()
         {
             if (phyLock.IsAttached)
             {

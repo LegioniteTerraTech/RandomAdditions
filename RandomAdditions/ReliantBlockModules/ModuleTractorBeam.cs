@@ -89,9 +89,13 @@ namespace RandomAdditions
         {
             enabled = true;
             hint.Show();
+            block.BlockUpdate.Subscribe(OnUpdate);
+            block.BlockFixedUpdate.Subscribe(OnFixedUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockFixedUpdate.Unsubscribe(OnFixedUpdate);
+            block.BlockUpdate.Unsubscribe(OnUpdate);
             ReleaseTech();
             enabled = false;
         }
@@ -206,7 +210,7 @@ namespace RandomAdditions
         }
 
 
-        public void FixedUpdate()
+        public void OnFixedUpdate()
         {
             if (heldTech)
             {  
@@ -335,7 +339,7 @@ namespace RandomAdditions
 
 
         // BEAM EFFECT
-        public void Update()
+        public void OnUpdate()
         {
             if (canUseBeam)
             {

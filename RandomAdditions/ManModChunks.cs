@@ -1,11 +1,8 @@
 ﻿using RandomAdditions;
-using RandomAdditions.RailSystem;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using TerraTechETCUtil;
 using SafeSaves;
@@ -41,8 +38,9 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
             throw new NullReferenceException(nameof(ResLook2));
         if (ResRare == null)
             throw new NullReferenceException(nameof(ResRare));
+        /*
         if (poolStart2 == null)
-            throw new NullReferenceException(nameof(poolStart2));
+            throw new NullReferenceException(nameof(poolStart2));//*/
     }
     protected override void Init_Internal()
     {
@@ -70,7 +68,7 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
     private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_ChunkNames", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_ChunkDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly FieldInfo ResRare = typeof(ResourcePickup).GetField("m_ChunkRarity", spamFlags);
-    private static readonly MethodInfo poolStart2 = typeof(ResourcePickup).GetMethod("OnPool", spamFlags);
+    //private static readonly MethodInfo poolStart2 = typeof(ResourcePickup).GetMethod("OnPool", spamFlags);// Already done by "Instance.CreatePool(4)"
 
     private static RecipeTable.RecipeList foundryRecipes;
     private static List<RecipeTable.Recipe> foundryDirect => foundryRecipes.m_Recipes;
@@ -391,7 +389,13 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
     private static bool RecipeExistsInFoundry(ChunkTypes outputChunk)
     {
         int search = (int)outputChunk;
-        return foundryDirect.Exists(x => x.m_OutputItems.First().m_Item.ItemType == search);
+        foreach (var item in foundryDirect)
+        {
+            if (item?.m_OutputItems?.FirstOrDefault() != null &&
+                item.m_OutputItems.First().m_Item.ItemType == search)
+                return true;
+        }
+        return false;
     }
     private static RecipeTable.Recipe AddRecipeFoundryFast(RecipeTable.Recipe.ItemSpec[] inputs, ItemTypeInfo outputChunk)
     {
@@ -721,12 +725,9 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
 
 
                 failPoint++;
-                poolStart.Invoke(vis, new object[] { });
-                failPoint++;
-                poolStart2.Invoke(RP, new object[] { });
-
-                Instance.CreatePool(4);
-                failPoint++;
+                //poolStart.Invoke(vis, new object[] { });// Already done by "Instance.CreatePool(4)"
+                //failPoint++;
+                //poolStart2.Invoke(RP, new object[] { });// Already done by "Instance.CreatePool(4)"
 
                 chunk.prefab = Instance;
                 failPoint++;
@@ -747,7 +748,10 @@ public class ManModChunks : ModLoaderSystem<ManModChunks, ChunkTypes, CustomChun
                 chunk.runtimePrefabBase = InstanceDef;
                 failPoint++;
 
+
                 Active.Add(ID, chunk);
+                failPoint++;
+                Instance.CreatePool(4);
                 failPoint++;
                 DebugRandAddi.Log("Created " + chunk.Name + " instance.");
             }

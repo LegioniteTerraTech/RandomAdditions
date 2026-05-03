@@ -13,8 +13,9 @@ namespace RandomAdditions
 {
     [RequireComponent(typeof(ModuleEnergy))]
     [RequireComponent(typeof(TargetAimer))]
-    public class ModuleRepairAimer : ExtModule
+    public class ModuleRepairAimer : ExtModule, ITankCompManagedHash<TankRepairer, ModuleRepairAimer>
     {
+        public TankRepairer tankMan { get; set; }
         // The module that moves a beam to an allied block's damaged location
         internal ModuleEnergy Energy;
 
@@ -92,14 +93,14 @@ namespace RandomAdditions
         private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleRepairAimer", LOC_ModuleRepairAimer_desc);
         public override void OnAttach()
         {
-            TankRepairer.stat.HandleAddition(this);
+            this.StartManagingHash();
             hint.Show();
         }
 
         public override void OnDetach()
         {
             aimTargBlock = null;
-            TankRepairer.stat.HandleRemoval(this);
+            this.StopManagingHash();
             StopBeam();
         }
 
@@ -301,12 +302,11 @@ namespace RandomAdditions
     }
 
 
-    public class TankRepairer : MonoBehaviour, ITankCompAuto<TankRepairer, ModuleRepairAimer>
+    public class TankRepairer : MonoBehaviour, ITankCompManHash<TankRepairer, ModuleRepairAimer>
     {
-        public static TankRepairer stat => null;
         public TankRepairer Inst => this;
         public Tank tank { get; set; }
-        public HashSet<ModuleRepairAimer> Modules { get; set; } = new HashSet<ModuleRepairAimer>();
+        public HashSet<ModuleRepairAimer> Managed { get; set; } = new HashSet<ModuleRepairAimer>();
         private ModuleRepairAimer primary;
         private bool dirty = false;
 
@@ -321,7 +321,7 @@ namespace RandomAdditions
         }
         public void StartManagingPost()
         {
-            primary = Modules.FirstOrDefault();
+            primary = Managed.FirstOrDefault();
             primary.Energy.UpdateConsumeEvent.Subscribe(UpdatePower);
         }
         public void StopManaging()
@@ -339,7 +339,7 @@ namespace RandomAdditions
             if (primary == rep)
             {
                 primary.Energy.UpdateConsumeEvent.Unsubscribe(UpdatePower);
-                primary = Modules.FirstOrDefault(x => x != rep);
+                primary = Managed.FirstOrDefault(x => x != rep);
                 if (primary)
                     primary.Energy.UpdateConsumeEvent.Subscribe(UpdatePower);
             }
@@ -380,7 +380,7 @@ namespace RandomAdditions
                 {
                     dirty = false;
                     MaxLockOnRange = 0;
-                    foreach (var module in Modules)
+                    foreach (var module in Managed)
                     {
                         if (MaxLockOnRange < module.MaxLockOnRange)
                             MaxLockOnRange = module.MaxLockOnRange;
@@ -408,7 +408,7 @@ namespace RandomAdditions
                         else
                             stepper++;
                     }
-                    foreach (var item in Modules)
+                    foreach (var item in Managed)
                     {
                         //if (!TargetBlocks.Any())
                         //    DebugRandAddi.Log("no stupid blocks left");
@@ -437,7 +437,7 @@ namespace RandomAdditions
                 else if (WasLocked)
                 {
                     WasLocked = false;
-                    foreach (var item in Modules)
+                    foreach (var item in Managed)
                     {
                         item.aimTargBlock = null;
                     }

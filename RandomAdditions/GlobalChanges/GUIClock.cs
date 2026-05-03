@@ -1,16 +1,16 @@
 ﻿using UnityEngine;
 using TerraTechETCUtil;
+using System.Linq;
 
 namespace RandomAdditions
 {
-    public class GUIClock : MonoBehaviour
+    internal class GUIClock : MonoBehaviour
     {
         //Handles the displays for clocks
         private static bool firstLaunch = false;
         public static bool isCurrentlyOpen = false;
         public static bool allowTimeControl = false;
 
-        private static GameObject GUIWindow;
         private static Rect TimeWindow = new Rect(0, 400, 200, 140);   // the "window"
         private static Tank currentTank;
 
@@ -20,8 +20,8 @@ namespace RandomAdditions
         public static int day = 0;
         public static int month = 0;
         public static int year = 0;
-        public static int PosX = 0;
-        public static int PosY = 0;
+        public static float PosX = 0;
+        public static float PosY = 0;
 
         private static GUIClock inst;
 
@@ -29,26 +29,19 @@ namespace RandomAdditions
         {
             if (inst)
                 return;
-            Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Subscribe(OnPlayerSwap);
-
             inst = new GameObject().AddComponent<GUIClock>();
-            GUIWindow = new GameObject();
-            GUIWindow.AddComponent<GUIDisplay>();
-            GUIWindow.SetActive(false);
-            PosX = (Screen.width / 2 - 100);
+            PosX = ManModGUI.GameWindowScaledWidth / 2 - 100;
             PosY = 0;
             TimeWindow = new Rect(PosX, PosY, 200, 140);
+            Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Subscribe(OnPlayerSwap);
         }
         public static void DeInit()
         {
             if (!inst)
                 return;
             Singleton.Manager<ManTechs>.inst.TankDriverChangedEvent.Unsubscribe(OnPlayerSwap);
-
             Destroy(inst.gameObject);
-            Destroy(GUIWindow.gameObject);
             inst = null;
-            GUIWindow = null;
         }
 
         public static void LaunchGUI(TankBlock tonk)
@@ -66,14 +59,14 @@ namespace RandomAdditions
             if (!firstLaunch)
             {
                 firstLaunch = true;
-                PosX = (Screen.width / 2 - 100);
+                PosX = ManModGUI.GameWindowScaledWidth / 2 - 100;
                 PosY = 0;
                 TimeWindow = new Rect(PosX, PosY, 200, 140);
             }
             if (currentTank.IsNotNull())
             {
-                var randTank = RandomTank.Insure(currentTank);
-                if (randTank.DisplayTimeTank)
+                var randTank = currentTank.GetComponent<TankClock>();
+                if (randTank != null && randTank.Managed.Any(x => x.DigitalTime || x.ControlTime))
                 {
                     if (!isCurrentlyOpen)
                     {
@@ -93,8 +86,8 @@ namespace RandomAdditions
                 currentTime = Singleton.Manager<ManTimeOfDay>.inst.TimeOfDay;
                 if (currentTank.IsNotNull())
                 {
-                    var randTank = RandomTank.Insure(currentTank);
-                    if (randTank.DisplayTimeTank)
+                    var randTank = currentTank.GetComponent<TankClock>();
+                    if (randTank.Managed.Any(x => x.DigitalTime || x.ControlTime))
                     {
                         if (!isCurrentlyOpen)
                         {
@@ -116,21 +109,20 @@ namespace RandomAdditions
         }
 
         private const int GUIClockID = 8002;
-        internal class GUIDisplay : MonoBehaviour
+        private void OnGUI()
         {
-            private void OnGUI()
+            if (KickStart.IsIngame && isCurrentlyOpen)
             {
-                if (KickStart.IsIngame && isCurrentlyOpen)
+                AltUI.StartUI();
+                try
                 {
-                    AltUI.StartUI();
-                    try
-                    {
-                        TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>", AltUI.MenuCenter);
-                    }
-                    finally
-                    {
-                        AltUI.EndUI();
-                    }
+                    TimeWindow = GUI.Window(GUIClockID, TimeWindow, GUIHandler, "<b>Time - Hour : " + currentTime + "</b>", AltUI.MenuCenter);
+                    if (UIHelpersExt.MouseIsOverGUIMenu(TimeWindow))
+                        ManModGUI.IsMouseOverAnyModGUI = 4;
+                }
+                finally
+                {
+                    AltUI.EndUI();
                 }
             }
         }
@@ -188,13 +180,10 @@ namespace RandomAdditions
         {
             isCurrentlyOpen = true;
             UpdateInfo();
-            GUIWindow.SetActive(true);
         }
         public static void CloseClockWindow()
         {
             isCurrentlyOpen = false;
-            KickStart.ReleaseControl();
-            GUIWindow.SetActive(false);
         }
     }
 }

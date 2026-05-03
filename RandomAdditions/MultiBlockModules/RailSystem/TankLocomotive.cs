@@ -147,7 +147,7 @@ namespace RandomAdditions.RailSystem
         }
 
 
-        private static TankLocomotive CreateTrain(Tank tank)
+        private static TankLocomotive InitialiseTrain(Tank tank)
         {
             TankLocomotive train = tank.gameObject.AddComponent<TankLocomotive>();
             train.tank = tank;
@@ -171,7 +171,7 @@ namespace RandomAdditions.RailSystem
             }
             return train;
         }
-        private void DestroyTrain()
+        private void DeinitialiseTrain()
         {
             if (tank.GetComponent<TankRailsLocal>())
             {
@@ -208,9 +208,7 @@ namespace RandomAdditions.RailSystem
             }
             var train = tank.GetComponent<TankLocomotive>();
             if (!(bool)train)
-            {
-                train = CreateTrain(tank);
-            }
+                train = InitialiseTrain(tank);
 
             if (!train.EngineBlocks.Contains(engine))
                 train.EngineBlocks.Add(engine);
@@ -238,10 +236,8 @@ namespace RandomAdditions.RailSystem
             engine.engine = null;
             train.TrainPartsDirty = true;
 
-            if (train.BogieBlocks.Count() == 0 && train.EngineBlocks.Count() == 0)
-            {
-                train.DestroyTrain();
-            }
+            if (train.BogieBlocks.Count == 0 && train.EngineBlocks.Count == 0)
+                train.DeinitialiseTrain();
         }
 
         public static void HandleAddition(Tank tank, ModuleRailBogie bogey)
@@ -253,9 +249,7 @@ namespace RandomAdditions.RailSystem
             }
             var train = tank.GetComponent<TankLocomotive>();
             if (!(bool)train)
-            {
-                train = CreateTrain(tank);
-            }
+                train = InitialiseTrain(tank);
 
             if (train.BogieBlocks.Add(bogey))
                 bogey.HierachyBogies.CollectAllBogies(train.Bogies);
@@ -285,10 +279,8 @@ namespace RandomAdditions.RailSystem
             bogey.engine = null;
             train.TrainPartsDirty = true;
 
-            if (train.BogieBlocks.Count() == 0 && train.EngineBlocks.Count() == 0)
-            {
-                train.DestroyTrain();
-            }
+            if (train.BogieBlocks.Count == 0 && train.EngineBlocks.Count == 0)
+                train.DeinitialiseTrain();
         }
 
 
@@ -1444,7 +1436,7 @@ namespace RandomAdditions.RailSystem
                 }
             }
             BogieExtraStickForce /= (Bogies.Count * 4);
-            if (!CentralBogies.Any())
+            if (CentralBogies.Count == 0)
             {
                 throw new Exception("Failed to get any CentralBogies when there are bogies present on the Tech");
             }
@@ -1687,7 +1679,7 @@ namespace RandomAdditions.RailSystem
                         if (bogiesRailLock.Count % 2 == 0)
                         {
                             failLevel += 100;
-                            if (CentralBogies.Any())
+                            if (CentralBogies.Count > 0)
                             {
                                 addedSuspensionForceUnused /= 2;
                                 foreach (var item in CentralBogies)

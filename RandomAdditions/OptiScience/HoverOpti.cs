@@ -13,7 +13,7 @@ using static ManWheels;
 namespace RandomAdditions
 {
     /// <summary>
-    /// BROKEN - NO PERFORMANCE IMPROVEMENT
+    /// Works for now
     /// </summary>
     public class HoverOpti : MonoBehaviour
     {

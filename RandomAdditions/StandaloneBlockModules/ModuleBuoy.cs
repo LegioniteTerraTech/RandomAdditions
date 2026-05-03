@@ -11,8 +11,9 @@ namespace RandomAdditions
     /// <summary>
     /// Make a block float in water.  Does not float on it's own.
     /// </summary>
-    public class ModuleBuoy : ExtModule
+    public class ModuleBuoy : ExtModule, ITankCompManagedHash<TankBuoy, ModuleBuoy>
     {
+        public TankBuoy tankMan { get; set; }
         public override BlockDetails.Flags BlockDetailFlags => BlockDetails.Flags.WaterFloats;
         private bool singleCell;
         private List<Vector3> cellsCache = new List<Vector3>();
@@ -51,12 +52,12 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             //DebugRandAddi.Log("OnAttach - ModuleBuoy");
-            TankBuoy.stat.HandleAddition(this);
+            this.StartManagingHash();
         }
         public override void OnDetach()
         {
             //DebugRandAddi.Log("OnDetach - ModuleBuoy");
-            TankBuoy.stat.HandleRemoval(this);
+            this.StopManagingHash();
         }
 
 
@@ -159,12 +160,11 @@ namespace RandomAdditions
             DebugRandAddi.Assert(upForce > (FloatForce + 1), "Somehow, the float acceleration has bypassed the set amount: " + FloatForce + " vs " + upForce);
         }
     }
-    public class TankBuoy : MonoBehaviour, ITankCompAuto<TankBuoy, ModuleBuoy>
+    public class TankBuoy : MonoBehaviour, ITankCompManHash<TankBuoy, ModuleBuoy>
     {
-        public static ITankCompAuto<TankBuoy, ModuleBuoy> stat => null;
         public TankBuoy Inst => this;
         public Tank tank { get; set; }
-        public HashSet<ModuleBuoy> Modules => buoys;
+        public HashSet<ModuleBuoy> Managed => buoys;
 
         private const float MaxUnsubmergeSpeed = 14;
         private const int MaxBlocksPreciseFloat = 32;

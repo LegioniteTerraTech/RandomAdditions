@@ -1,17 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using HarmonyLib;
-using RandomAdditions.Minimap;
 using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 using TMPro;
 using UnityEngine;
-using static LocalisationEnums;
 
 namespace RandomAdditions.PatchBatch
 {
@@ -194,23 +187,6 @@ namespace RandomAdditions.PatchBatch
                     }
                 }
                 return true;
-            }
-
-        }
-        internal static class UIMiniMapDisplayPatches
-        {
-            internal static Type target = typeof(UIMiniMapDisplay);
-            // Allow train tracks on UI
-            [HarmonyPriority(-9001)]
-            internal static void Show_Postfix(UIMiniMapDisplay __instance)
-            {
-                if ((bool)__instance)
-                {
-                    if (__instance.GetComponent<ManMinimapExt.MinimapExt>())
-                        return;
-                    var instWorld = __instance.gameObject.AddComponent<ManMinimapExt.MinimapExt>();
-                    instWorld.InitInst(__instance);
-                }
             }
 
         }

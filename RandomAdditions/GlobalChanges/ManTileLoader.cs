@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using UnityEngine;
 using SafeSaves;
 using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
+    /// <summary>
+    /// Manager for advanced tile-loading systems
+    /// </summary>
     [AutoSaveManager]
     public class ManTileLoader : MonoBehaviour
     {

@@ -711,7 +711,8 @@ namespace RandomAdditions
             if (inst)
                 return;
             inst = new GameObject("ManModeSwitch").AddComponent<ManModeSwitch>();
-            GlobalClock.SlowUpdateEvent.Subscribe(inst.UpdateSlow);
+            ResourcesHelper.ModsUpdateEvent.Subscribe(inst.OnUpdate);
+            KickStart.SlowUpdateEvent.Subscribe(inst.OnUpdateSlow);
             DebugRandAddi.Log("RandomAdditions: Created ManModeSwitch.");
             inst.gameObject.SetActive(true);
         }
@@ -719,17 +720,18 @@ namespace RandomAdditions
         {
             if (!inst)
                 return;
-            GlobalClock.SlowUpdateEvent.Unsubscribe(inst.UpdateSlow);
+            KickStart.SlowUpdateEvent.Unsubscribe(inst.OnUpdateSlow);
+            ResourcesHelper.ModsUpdateEvent.Unsubscribe(inst.OnUpdate);
             Destroy(inst);
             inst = null;
             DebugRandAddi.Log("RandomAdditions: DeInit ManModeSwitch.");
         }
 
-        public void Update()
+        private void OnUpdate()
         {
             UpdateSwitchCheckFast.Send();
         }
-        public void UpdateSlow()
+        private void OnUpdateSlow()
         {
             UpdateSwitchCheck.Send();
         }

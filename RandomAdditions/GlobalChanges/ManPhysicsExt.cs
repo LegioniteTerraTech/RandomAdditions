@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -17,6 +16,9 @@ namespace RandomAdditions
         AttachedMovement = 3,
     }
 
+    /// <summary>
+    /// Manager for physics couplers and whatnot...
+    /// </summary>
     public class ManPhysicsExt
     {
         public class ModulePhysicsSetMessage : MessageBase
@@ -259,7 +261,7 @@ namespace RandomAdditions
                 if (block.CircuitNode?.Receiver)
                 {
                     LogicConnected = true;
-                    ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, false, false);
+                    this.SubToLogicReceiverFrameUpdate(OnRecCharge, false, false);
                 }
             }
             enabled = true;
@@ -281,7 +283,7 @@ namespace RandomAdditions
             tank.control.driveControlEvent.Unsubscribe(OnInput);
             tank.control.explosiveBoltDetonateEvents[3].Unsubscribe(OnBolt);
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnRecCharge, true, false);
+                this.SubToLogicReceiverFrameUpdate(OnRecCharge, true, false);
             LogicConnected = false;
             DoUnlock();
             tank.CollisionEvent.Unsubscribe(OnCollision);

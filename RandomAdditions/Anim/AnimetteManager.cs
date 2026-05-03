@@ -368,7 +368,6 @@ namespace RandomAdditions
         }
         private static void CloseGUI()
         {
-            KickStart.ReleaseControl();
             GUIWindow.SetActive(false);
             playerSelected = null;
         }

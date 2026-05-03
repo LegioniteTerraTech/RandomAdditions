@@ -20,13 +20,19 @@ namespace RandomAdditions
         public float AimedDownscale = 0.5f;
         public int attempts = stepsAllowedUntilSnap;
 
-        public void OnPool()
+        public void OnPool(TankBlock target)
         {
             if (AimedDownscale < 0.01f || AimedDownscale > 0.5f)
             {
                 //DebugRandAddi.Log("RandomAdditions: TankBlockScaler value is invalid on block " + gameObject.name + "!  Overriding to 0.5!");
                 AimedDownscale = 0.5f;
             }
+            target.AttachedEvent.Subscribe(RescaleSnapToFullOnAttach);
+        }
+        private void RescaleSnapToFullOnAttach()
+        {
+            Downscale = false;
+            RescaleSnap();
         }
 
         public void Rescale(bool downscale)

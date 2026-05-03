@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace RandomAdditions
@@ -34,7 +31,7 @@ namespace RandomAdditions
                 {
                     try
                     {
-                        Collider collodo = IgnoredColliders.ElementAt(step);
+                        Collider collodo = IgnoredColliders[step];
                         foreach (Collider coll in gameObject.GetComponentsInChildren<Collider>())
                         {
                             Physics.IgnoreCollision(collodo, coll, false);

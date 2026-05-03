@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 using Newtonsoft.Json;
 using RandomAdditions;
 using SafeSaves;
 using TerraTechETCUtil;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using static BlockManager;
 
 /// <summary>
 /// Remember that Scenery is stored in the game by it's GameObject name, not by it's own SceneryType 
@@ -37,10 +33,11 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
             throw new NullReferenceException(nameof(ResLook));
         if (ResLook2 == null)
             throw new NullReferenceException(nameof(ResLook2));
+        /*
         if (poolStart2 == null)
             throw new NullReferenceException(nameof(poolStart2));
         if (poolStart3 == null)
-            throw new NullReferenceException(nameof(poolStart3));
+            throw new NullReferenceException(nameof(poolStart3));//*/
     }
     protected override void Init_Internal()
     {
@@ -67,8 +64,8 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
 
     private static readonly FieldInfo ResLook = typeof(StringLookup).GetField("m_SceneryNames", BindingFlags.NonPublic | BindingFlags.Static);
     private static readonly FieldInfo ResLook2 = typeof(StringLookup).GetField("m_SceneryDescriptions", BindingFlags.NonPublic | BindingFlags.Static);
-    private static readonly MethodInfo poolStart2 = typeof(TerrainObject).GetMethod("OnPool", spamFlags);
-    private static readonly MethodInfo poolStart3 = typeof(ResourceDispenser).GetMethod("OnPool", spamFlags);
+    //private static readonly MethodInfo poolStart2 = typeof(TerrainObject).GetMethod("OnPool", spamFlags);// Already done by "Instance.CreatePool(4)"
+    //private static readonly MethodInfo poolStart3 = typeof(ResourceDispenser).GetMethod("OnPool", spamFlags);// Already done by "Instance.CreatePool(4)"
 
 
     protected override void FinalAssignmentStarting()
@@ -332,15 +329,17 @@ public class ManModScenery : ModLoaderSystem<ManModScenery, SceneryTypes, Custom
                 if (TO == null)
                     throw new NullReferenceException("TerrainObject is null");
 
-                poolStart.Invoke(vis, new object[] { });
-                poolStart2.Invoke(TO, new object[] { });
-
-                Instance.CreatePool(4);
+                // Already done by "Instance.CreatePool(4)"
+                //poolStart.Invoke(vis, new object[] { });
+                //poolStart2.Invoke(TO, new object[] { });
 
                 scenery.prefab = TO;
                 Instance.gameObject.SetActive(false);
 
                 Active.Add(ID, scenery);
+
+                Instance.CreatePool(4);
+
             }
             catch (Exception e)
             {

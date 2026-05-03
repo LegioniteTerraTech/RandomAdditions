@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using UnityEngine;
 using TerraTechETCUtil;
 
@@ -232,44 +230,35 @@ namespace RandomAdditions
         {
             return GetTrailColorFromStats(DamageTypeDistrib.Values);
         }
-        public Color GetRandomDamage(float dmgBudgetPercent, out List<WeaponTypeStats> randWeapStats)
+        private static List<WeaponTypeStats> randWeaps = new List<WeaponTypeStats>();
+        public Color GetRandomDamage(float dmgBudgetPercent, List<WeaponTypeStats> randWeapStats)
         {
-            randWeapStats = new List<WeaponTypeStats>();
-            List <WeaponTypeStats> randWeaps = DamageTypeDistrib.Values.ToList(); // CHECK LATER
-            randWeaps.Shuffle();
-            dmgBudgetPercent *= TotalDamage;
-            foreach (var item in randWeaps)
+            randWeapStats.Clear();
+            try
             {
-                float damageCase = Mathf.Min(dmgBudgetPercent, item.Damage);
-                dmgBudgetPercent -= damageCase;
-                randWeapStats.Add(new WeaponTypeStats { SuggestType = item.SuggestType, Damage = damageCase });
-                if (dmgBudgetPercent.Approximately(0))
-                    break;
+                foreach (var item in DamageTypeDistrib.Values)
+                    randWeaps.Add(item);
+                randWeaps.Shuffle();
+                dmgBudgetPercent *= TotalDamage;
+                foreach (var item in randWeaps)
+                {
+                    float damageCase = Mathf.Min(dmgBudgetPercent, item.Damage);
+                    dmgBudgetPercent -= damageCase;
+                    randWeapStats.Add(new WeaponTypeStats { SuggestType = item.SuggestType, Damage = damageCase });
+                    if (dmgBudgetPercent.Approximately(0))
+                        break;
+                }
+            }
+            finally
+            {
+                randWeaps.Clear();
             }
 
             return GetTrailColorFromStats(randWeapStats);
         }
         public virtual void DealDamage(Damageable target, Vector3 hitPos, Vector3 dmgDirect, IEnumerable<WeaponTypeStats> randWeapStats)
         {
-            if (target == null)
-            {
-                foreach (var item in randWeapStats)
-                {
-                    switch (item.SuggestType)
-                    {
-                        case (ManDamage.DamageType)3:// Blast
-                            float damage = item.Damage * m_DamageMulti;
-                            var explos = Pyromanic.SpawnExplosionByStrength(damage, hitPos, true);
-                            if (explos)
-                            {
-                                explos.SetDamageSource(tank);
-                                explos.SetDirectHitTarget(target);
-                            }
-                            break;
-                    }
-                }
-            }
-            else
+            if (target != null)
             {
                 foreach (var item in randWeapStats)
                 {
@@ -296,12 +285,6 @@ namespace RandomAdditions
                             break;
                         case (ManDamage.DamageType)3: // Blast
                             knockback = 0;
-                            var explos = Pyromanic.SpawnExplosionByStrength(damage, hitPos, true);
-                            if (explos)
-                            {
-                                explos.SetDamageSource(tank);
-                                explos.SetDirectHitTarget(target);
-                            }
                             damage *= 0.5f; // Because Explosions are kinda OP
                             break;
                         default:
@@ -311,6 +294,80 @@ namespace RandomAdditions
                     ManDamage.DamageInfo info = new ManDamage.DamageInfo(damage, item.SuggestType, this, tank, hitPos, dmgDirect
                         , knockback, m_PushDuration);
                     ManDamage.inst.DealDamage(info, target);
+                }
+            }
+            // now do explosion
+            foreach (var item in randWeapStats)
+            {
+                float damage = item.Damage * m_DamageMulti;
+                Explosion explos;
+                switch (item.SuggestType)
+                {
+                    case ManDamage.DamageType.Ballistic:
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.Debris_GSO, 
+                            hitPos, true, damage, false);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
+                    case ManDamage.DamageType.Impact:
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.Debris_GC,
+                            hitPos, true, damage, false);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
+                    case ManDamage.DamageType.Energy:
+                        damage = item.Damage * m_DamageMulti;
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.EnergyRed,
+                            hitPos, true, damage, false);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
+                    case (ManDamage.DamageType)3:// Blast
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.Explosive,
+                            hitPos, true, damage, true, dmgType: ManDamage.DamageType.Blast);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
+                    case ManDamage.DamageType.Fire:
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.Oil, 
+                            hitPos, true, damage, false);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
+                    case ManDamage.DamageType.Cutting:
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.Debris_SJ, 
+                            hitPos, true, damage, false);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
+                    case ManDamage.DamageType.Plasma:
+                    case ManDamage.DamageType.Electric:
+                        explos = ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.EnergyBlue, 
+                            hitPos, true, damage, false);
+                        if (explos)
+                        {
+                            explos.SetDamageSource(tank);
+                            explos.SetDirectHitTarget(target);
+                        }
+                        break;
                 }
             }
         }

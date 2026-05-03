@@ -97,9 +97,9 @@ namespace RandomAdditions
         public Sprite ButtonGetIconLock()
         {
             if (lockedRotation)
-                return UIHelpersExt.GetGUIIcon("GUI_Reset");
-            else
                 return UIHelpersExt.GetGUIIcon("ICON_PAUSE");
+            else
+                return UIHelpersExt.GetGUIIcon("GUI_Reset");
         }
        
         /// <summary>
@@ -130,11 +130,13 @@ namespace RandomAdditions
             else
                 ManSFX.inst.PlayMiscSFX(ManSFX.MiscSfxType.AnimCrateOpen, block.centreOfMassWorld);
             lockedRotation = state;
-            enabled = lockedRotation;
+            enabled = !lockedRotation;
         }
 
         public void InsureGUI()
         {
+            if (!PermitLockRotation)
+                return;
             if (buttonGUI == null)
             {
                 buttonGUI = ModuleUIButtons.AddInsure(gameObject, "Lock Rotation", false);
@@ -143,6 +145,8 @@ namespace RandomAdditions
         }
         public void ShowGUI()
         {
+            if (!PermitLockRotation)
+                return;
             DebugRandAddi.Log("ShowGUI() - " + Time.time);
             InsureGUI();
             buttonGUI.Show();
@@ -191,26 +195,22 @@ namespace RandomAdditions
 
         public override void OnAttach()
         {
-            enabled = DefaultLockRotation;
+            enabled = !DefaultLockRotation;
             lockedRotation = DefaultLockRotation;
             foreach (MoveGimbal gimbal in gimbals)
-            {
                 gimbal.ResetAim();
-            }
             block.tank.ResetPhysicsEvent.Subscribe(OnResetTankPHY);
             block.tank.ResetEvent.Subscribe(OnResetTank);
             block.tank.control.driveControlEvent.Subscribe(DriveCommand);
+            block.BlockUpdate.Subscribe(OnUpdate);
             foreach (MoveGimbal gimbal in gimbals)
-            {
                 gimbal.SetTank();
-            }
         }
         public override void OnDetach()
         {
             foreach (MoveGimbal gimbal in gimbals)
-            {
                 gimbal.ResetAim();
-            }
+            block.BlockUpdate.Unsubscribe(OnUpdate);
             block.tank.control.driveControlEvent.Unsubscribe(DriveCommand);
             block.tank.ResetEvent.Unsubscribe(OnResetTank);
             block.tank.ResetPhysicsEvent.Unsubscribe(OnResetTankPHY);
@@ -220,9 +220,7 @@ namespace RandomAdditions
         private void DriveCommand(TankControl.ControlState controlState)
         {
             foreach (MoveGimbal gimbal in gimbals)
-            {
                 gimbal.HandleCommand(controlState);
-            }
             if (UseBoostAndProps && Time.time > nextUpdateTime)
                 DelayedUpdate();
         }
@@ -238,28 +236,22 @@ namespace RandomAdditions
             if (tank != null)
             {
                 foreach (MoveGimbal gimbal in gimbals)
-                {
                     gimbal.ResetTechPhysics(tank);
-                }
             }
         }
 
-        private void Update()
+        private void OnUpdate()
         {
             float rotThisFrame = Time.deltaTime * RotateRate;
             foreach (MoveGimbal gimbal in gimbals)
-            {
                 gimbal.UpdateAim(rotThisFrame);
-            }
         }
         private void DelayedUpdate()
         {
             if (thrusters != null)
             {
                 foreach (var jet in thrusters)
-                {
                     jet.RecalculateThrustDirection();
-                }
             }
             nextUpdateTime = Time.time + updateDelay;
         }

@@ -9,12 +9,12 @@ namespace RandomAdditions.RailSystem
     /// <summary>
     /// For techs that have rails mounted to them
     /// </summary>
-    public class TankRailsLocal : MonoBehaviour, ITankCompAuto<TankRailsLocal, ModuleRailPoint>, IWorldTreadmill
+    public class TankRailsLocal : MonoBehaviour, ITankCompManHash<TankRailsLocal, ModuleRailPoint>, IWorldTreadmill
     {
-        public static ITankCompAuto<TankRailsLocal, ModuleRailPoint> stat => null;
+        public static ITankCompMan<TankRailsLocal, ModuleRailPoint> stat => null;
         public TankRailsLocal Inst => this;
         public Tank tank { get; set; }
-        public HashSet<ModuleRailPoint> Modules { get; set; } = new HashSet<ModuleRailPoint>();
+        public HashSet<ModuleRailPoint> Managed { get; set; } = new HashSet<ModuleRailPoint>();
 
         private Vector3 lastPos = Vector3.zero;
         private bool hasFunicularRailPoint = false;
@@ -43,11 +43,11 @@ namespace RandomAdditions.RailSystem
         }
         public void AddModule(ModuleRailPoint point)
         {
-            point.rails = this;
+            point.tankMan = this;
         }
         public void RemoveModule(ModuleRailPoint point)
         {
-            point.rails = null;
+            point.tankMan = null;
         }
 
         public void HandleCollision(Tank.CollisionInfo collide, Tank.CollisionInfo.Event whack)
@@ -73,7 +73,7 @@ namespace RandomAdditions.RailSystem
 
         public ModuleRailPoint GetFirstPoint()
         {
-            return Modules.FirstOrDefault();
+            return Managed.FirstOrDefault();
         }
 
     }

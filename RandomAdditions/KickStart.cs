@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using HarmonyLib;
 using RandomAdditions.Minimap;
 using RandomAdditions.PatchBatch;
@@ -13,10 +12,6 @@ using RandomAdditions.RailSystem;
 using TerraTech.Network;
 using TerraTechETCUtil;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.Profiling.Memory.Experimental;
-using UnityEngine.UI;
-using static UnityEngine.UI.CanvasScaler;
 
 
 namespace RandomAdditions
@@ -65,7 +60,11 @@ namespace RandomAdditions
         public static bool AllowIngameQuitToDesktop = false;
         public static bool FastestPhysics = false;
         public static bool ColliderDisable2 = false;
+        public static bool OcculsionCulling = false;
         public static bool IDontTrustEpicAtAll = false;
+
+        internal static bool OcculsionCullingInit = false;
+        public static bool TrySaveMyTechs = false;
 
         // CHEATS
 
@@ -94,26 +93,6 @@ namespace RandomAdditions
         public static bool CanUseMenu { get { return !ManPauseGame.inst.IsPaused; } }
         public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
-        public static void ReleaseControl(string Name = null)
-        {
-            string focused = GUI.GetNameOfFocusedControl();
-            if (Name == null)
-            {
-                GUI.FocusControl(null);
-                GUI.UnfocusWindow();
-                GUIUtility.hotControl = 0;
-            }
-            else
-            {
-                if (focused == Name)
-                {
-                    GUI.FocusControl(null);
-                    GUI.UnfocusWindow();
-                    GUIUtility.hotControl = 0;
-                }
-            }
-        }
-
         public static float WaterHeight
         {
             get
@@ -139,12 +118,7 @@ namespace RandomAdditions
             isTweakTechPresent = false;
             isNuterraSteamPresent = false;
 
-            if (!LookForMod("NLogManager"))
-            {
-                isSteamManaged = false;
-            }
-            else
-                isSteamManaged = true;
+            isSteamManaged = LookForMod("NLogManager");
 
             if (!LookForMod("0Harmony"))
             {
@@ -211,6 +185,18 @@ namespace RandomAdditions
 
 
         private static bool OfficialEarlyInited = false;
+        private static void InitOptionConfig()
+        {
+            try
+            {
+                KickStartOptions.TryInitOptionAndConfig();
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.Log("RandomAdditions: Could not init Option & Config since ConfigHelper and/or Nuterra.NativeOptions is absent?");
+                DebugRandAddi.Log(e);
+            }
+        }
         public static void OfficialEarlyInit()
         {
             //Where the fun begins
@@ -220,6 +206,16 @@ namespace RandomAdditions
             {
                 return;
             }
+
+            gamemodeSwitch = new List<string> {
+                    "Don't Skip",
+                    "Last Save",
+                    "Creative",
+                };
+            if (ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
+                gamemodeSwitch.Add("R&D");
+            gamemodeSwitch.Add("Last Save & MP");
+
             try
             { // init changes
                 ManMusicEnginesExt.Subscribe();
@@ -245,7 +241,8 @@ namespace RandomAdditions
 
             try
             {
-                KickStartOptions.TryInitOptionAndConfig();
+                if (ModStatusChecker.IsNativeOptionsPresent && ModStatusChecker.IsConfigHelperPresent)
+                    InitOptionConfig();
             }
             catch (Exception e)
             {
@@ -288,11 +285,53 @@ namespace RandomAdditions
             OfficialEarlyInited = true;
         }
 
+
+        private static bool IsNowQuickStarting = false;
+        public static List<string> gamemodeSwitch = new List<string>();
+        private static DebugGUIQuickStart quickStartLabelTemp = null;
+        internal class DebugGUIQuickStart : MonoBehaviour
+        {
+            public void OnGUI()
+            {
+                AltUI.StartUI();
+                try
+                {
+                    GUILayout.Label("Quickstarting with setting " + gamemodeSwitch[ForceIntoModeStartup] + "...", AltUI.LabelWhiteTitle);
+                    if (!IsNowQuickStarting)
+                        GUILayout.Label("Press [ESC] to cancel", AltUI.LabelGoldTitle);
+                }
+                finally
+                {
+                    AltUI.EndUI();
+                }
+            }
+        }
+        public static void SetQuickStartPopup(bool exist)
+        {
+            if (exist)
+            {
+                if (quickStartLabelTemp == null)
+                {
+                    IsNowQuickStarting = false;
+                    quickStartLabelTemp = new GameObject("TempQuickstart").AddComponent<DebugGUIQuickStart>();
+                }
+            }
+            else
+            {
+                if (quickStartLabelTemp != null)
+                {
+                    UnityEngine.Object.Destroy(quickStartLabelTemp.gameObject);
+                    quickStartLabelTemp = null;
+                }
+            }
+        }
+
         private static bool BypassStartupSkip = false;
         private static void DoBypassStartupSkip()
         {
             ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Back);
             BypassStartupSkip = true;
+            SetQuickStartPopup(false);
             ManModGUI.RemoveEscapeableCallback(DoBypassStartupSkip, true);
         }
         public static void MainOfficialInit()
@@ -329,17 +368,17 @@ namespace RandomAdditions
             //Initiate the madness
             InsurePatches();
             CursorChanger.AddNewCursors();
-            GlobalClock.ClockManager.Initiate();
             ModuleLudicrousSpeedButton.Initiate();
             ManModeSwitch.Initiate();
-            ManTethers.Initiate();
             ModHelpers.Initiate();
             GUIClock.Initiate();
             ManTileLoader.Initiate();
             ManPhysicsExt.InsureInit();
             ManRails.Initiate();
             RandAddDebugGUI.Initiate();
-            ModHelpers.ClickEventSimple.Subscribe(ExtModuleClickable.OnClick);
+            MinimapExtRandi.InitThis();
+            ResourcesHelper.ModsUpdateEvent.Subscribe(UpdateManaged);
+            ManTechs.inst.PlayerTankChangedEvent.Subscribe(PlayerTechUpdate);
 
             // Net hooks
             ModuleHangar.InsureNetHooks();
@@ -351,8 +390,10 @@ namespace RandomAdditions
             ManIngameWiki.RecurseCheckWikiBlockExtModule<ModuleReinforced>();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<SFXAddition>();
             ResourcesHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
+            ManIngameWiki.OnWikiOpened.Subscribe(InsureWikiIsUpToDate);
             RandAddiWiki.InitWiki();
             RandAddiExtendWiki.InitWiki();
+            SlowUpdateEvent.Subscribe(Patches.GrabUIEntryDetails.SlowUpdateThis);
 
 
             // Doesn't work, TT is too spagetti coded
@@ -376,6 +417,7 @@ namespace RandomAdditions
             else if (ForceIntoModeStartup > 0)
             {
                 DebugRandAddi.Log("RandomAdditions: Blocking attract loading...(2)");
+                SetQuickStartPopup(true);
                 ManModGUI.AddEscapeableCallback(DoBypassStartupSkip, true);
                 Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(false);
                 doQuickstart = true;
@@ -386,15 +428,15 @@ namespace RandomAdditions
             ManModChunks.enabled = true;
             ManModScenery.enabled = true;
 
-
-
 #if DEBUG
+            InvokeHelper.InvokeSingleRepeat(GraphicsPhysicsCulling.UpdateCulling, 0f);
+            /*
             var tableCached = SpawnHelper.GetAllTerrainObjectPrefabList();
             DebugRandAddi.Log("Getting scenery...");
             foreach (var kvp in tableCached)
             {
                 DebugRandAddi.Log("- " + kvp.Key + ": " + (kvp.Value.name.NullOrEmpty() ? "<NULL>" : kvp.Value.name));
-            }
+            }//*/
             DebugExtUtilities.AllowEnableDebugGUIMenu_KeypadEnter = true;
             //PrintDataBase();
 #endif
@@ -407,10 +449,19 @@ namespace RandomAdditions
 
             //ResourcesHelper.BlocksPostChangeEvent.Subscribe(GiveMeTheStrongest);
         }
+        internal static void InsureWikiIsUpToDate()
+        {
+            foreach (var item in ResourcesHelper.GetAllMods())
+                if (item.Value?.Contents?.m_Blocks != null && item.Value.Contents.m_Blocks.Any())
+                    ManIngameWiki.InsureWiki(item.Key);
+        }
         internal static void OnModeStart(Mode mode)
         {
 #if DEBUG
-            
+            //DebugRandAddi.LogAll = true;
+            //Debug_TTExt.LogAll = true;
+            //ExplosionHelper.SpawnExplosionByStrength(ExplosionHelper.Type.Oil, Vector3.zero, true, 3000, true);
+
             //Optimax.SetActive(true);
             //ComponentPool.GeneratePoolingAnalysisTool();//!!!!!!!!!!!!!!!!!!!!!!!!!
             //InvokeHelper.InvokeSingleRepeat(CheckTheCalls, 0.01f);
@@ -547,9 +598,12 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Error on ManMusicEnginesExt");
                 DebugRandAddi.Log(e);
             }
-            ModHelpers.ClickEventSimple.Unsubscribe(ExtModuleClickable.OnClick);
+            ManTechs.inst.PlayerTankChangedEvent.Unsubscribe(PlayerTechUpdate);
+            ResourcesHelper.ModsUpdateEvent.Unsubscribe(UpdateManaged);
             ManGameMode.inst.ModeFinishedEvent.Unsubscribe(OnModeEnd);
             ManGameMode.inst.ModeStartEvent.Unsubscribe(OnModeStart);
+            SlowUpdateEvent.Unsubscribe(Patches.GrabUIEntryDetails.SlowUpdateThis);
+            MinimapExtRandi.DeInitThis();
 
             if (smrtHov > 0)
                 HoverOpti.DeInit();
@@ -560,7 +614,7 @@ namespace RandomAdditions
             */
             RandAddDebugGUI.DeInit();
             ManRadio.DeInit();
-            CircuitExt.Unload();
+            //CircuitExt.Unload();
             ManMinimapExt.DeInitAll();
             ManRails.DeInit();
             ManTileLoader.DeInit();
@@ -568,8 +622,11 @@ namespace RandomAdditions
             ManModeSwitch.DeInit();
             ManTethers.DeInit();
             ReplaceManager.RemoveAllBlocks();
+            ManIngameWiki.OnWikiOpened.Unsubscribe(InsureWikiIsUpToDate);
             ResourcesHelper.ModsPreLoadEvent.Unsubscribe(ReplaceManager.RemoveAllBlocks);
-            GlobalClock.ClockManager.DeInit();
+
+            //if (SKU.UsesEOS)
+            //    throw new Exception("Uses EOS is active");
         }
 
         // UNOFFICIAL
@@ -642,11 +699,50 @@ namespace RandomAdditions
 #endif
         }
 #endif
+
+        public static void PlayerTechUpdate(Tank tank, bool state)
+        {
+            foreach (var item in ManTechs.inst.IterateTechs())
+            {
+                if (item)
+                    RandomTank.Insure(item).ReevaluateLoadingDiameter();
+            }
+        }
+
+        public static EventNoParams SlowUpdateEvent = new EventNoParams();
+
+        private const float SlowUpdateTime = 0.6f;
+        private static float SlowUpdate = 0;
+        public static void UpdateManaged()
+        {
+            try
+            {
+                TankBlockScaler.UpdateAll();
+            }
+            catch (Exception e)
+            {
+                DebugRandAddi.LogError("Exception on updating " + nameof(TankBlockScaler) + " - " + e);
+            }
+            if (SlowUpdate < Time.time)
+            {
+                SlowUpdate = Time.time + SlowUpdateTime;
+                try
+                {
+                    SlowUpdateEvent.Send();
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.LogError("Exception on updating " + nameof(SlowUpdateEvent) + " - " + e);
+                }
+            }
+            if (Input.GetKeyDown(KeyCode.F11))
+                Optimax.SetActive(!Optimax.State);
+        }
+
         public static void OnSaveManagers(bool Doing)
         {
             if (Doing)
             {
-                ManModChunks.inst.PrepareForSaving();
                 ManModChunks.inst.PrepareForSaving();
                 ManModScenery.inst.PrepareForSaving();
                 ManTileLoader.OnWorldSave();
@@ -709,41 +805,22 @@ namespace RandomAdditions
             }
         }
 
-        public static bool LookForMod(string name)
-        {
-            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (assembly.FullName.StartsWith(name))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        public static bool LookForMod(string name) => ModStatusChecker.LookForMod(name);
 
-        public static Type LookForType(string name)
-        {
-            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var typeGet = assembly.GetType(name);
-                if (typeGet != null)
-                {
-                    return typeGet;
-                }
-            }
-            return null;
-        }
-        public static Transform HeavyTransformSearch(Transform trans, string name)
+        public static Type LookForType(string name) => ModStatusChecker.LookForType(name);
+        public static Transform HeavyTransformSearch(Transform trans, string name) 
         {
             if (name.NullOrEmpty())
                 return null;
-            return trans.gameObject.GetComponentsInChildren<Transform>().FirstOrDefault(delegate (Transform cand)
+            foreach (var cand in trans.gameObject.GetComponentsInChildren<Transform>())
             {
-                if (cand.name.NullOrEmpty())
-                    return false;
-                return cand.name.CompareTo(name) == 0;
-            });
+                if (!cand.name.NullOrEmpty() && cand.name.CompareTo(name) == 0)
+                    return cand;
+            }
+            return null;
         }
+        public static Transform HeavyTransformSearchGARBAGE(Transform trans, string name) =>
+            Utilities.HeavyTransformSearch(trans, name);
 
         internal static void OpenInExplorer(string directory)
         {
@@ -795,6 +872,7 @@ namespace RandomAdditions
             {
                 if (ForceIntoModeStartup > 0)
                 {
+                    IsNowQuickStarting = true;
                     ManModGUI.RemoveEscapeableCallback(DoBypassStartupSkip, true);
                     if (Input.GetKey(KeyCode.Backspace) || Input.GetKey(KeyCode.Escape) || BypassStartupSkip || Environment.CommandLine.Contains("NoQuickStart"))
                     {
@@ -825,6 +903,7 @@ namespace RandomAdditions
                                     else
                                     {
                                         DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
+                                        SetQuickStartPopup(false);
                                     }
                                     break;
                                 case 2:
@@ -857,6 +936,7 @@ namespace RandomAdditions
                                     else
                                     {
                                         DebugRandAddi.Log("RandomAdditions: Last used save not found.  Aborting...");
+                                        SetQuickStartPopup(false);
                                     }
                                     break;
                                 default:
@@ -882,13 +962,16 @@ namespace RandomAdditions
                                 }
                                 else
                                 {
-                                    ManModGUI.ShowErrorPopup("RandomAdditions: Failed to find save file \"" + 
+                                    ManModGUI.ShowErrorPopup("RandomAdditions: Failed to find save file \"" +
                                         prof.m_LastUsedSaveName + "\", was it deleted or misplaced?");
                                 }
                             }
                         }
                         else
+                        {
                             DebugRandAddi.Log("RandomAdditions: QuickStartGame failed!  User profile is not set!  Cannot Execute!");
+                            SetQuickStartPopup(false);
+                        }
                     }
                 }
             }
@@ -897,11 +980,13 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: Failed in quickstarting " + e);
                 quickData.failedLastBoot = true;
                 quickData.TrySaveToDisk();
+                SetQuickStartPopup(false);
             }
             if (vanillaStartup)
             {
                 ManGameMode.inst.ModeStartEvent.Subscribe(OnFinishedQuickstart);
                 Mode<ModeAttract>.inst.SetCanStartNewAttractModeSequence(true);
+                SetQuickStartPopup(false);
             }
             return vanillaStartup;
         }
@@ -977,6 +1062,7 @@ namespace RandomAdditions
                         ManNetworkLobby.inst.LobbySystem.CreateLobby(MultiplayerModeType.Deathmatch, info.m_LobbyVisibility);
                         break;
                 }
+                SetQuickStartPopup(false);
                 //ManUI.inst.FadeToBlack(0.25f, false);
             });
         }
@@ -984,6 +1070,7 @@ namespace RandomAdditions
         {
             ManUI.inst.ClearFade(1);
             harmonyInstance.MassUnPatchAllWithin(typeof(PatchStartup), ModName);
+            SetQuickStartPopup(false);
             ManGameMode.inst.ModeStartEvent.Unsubscribe(OnFinishedQuickstart);
             doQuickstart = false;
             if (BugReportPatches.UIScreenBugReportPatches.Crashed)
@@ -1156,467 +1243,6 @@ namespace RandomAdditions
 
     }
 
-    public class KickStartOptions
-    {
-#if !STEAM
-        internal static ModHelper.Config.ModConfig config;
-#else
-        internal static ModHelper.ModConfig config;
-#endif
-
-        // NativeOptions Parameters
-        // GENERAL
-        public static Nuterra.NativeOptions.OptionToggle altDateFormat;
-        public static Nuterra.NativeOptions.OptionToggle noCameraShake;
-        public static Nuterra.NativeOptions.OptionToggle scaleBlocksInSCU;
-        public static Nuterra.NativeOptions.OptionToggle realShields;
-        public static Nuterra.NativeOptions.OptionToggle moddedPopupReset;
-        public static Nuterra.NativeOptions.OptionRange modWrenchIconScale;
-
-        public static Nuterra.NativeOptions.OptionRange replaceChance;
-        public static Nuterra.NativeOptions.OptionToggle rpSea;
-        public static Nuterra.NativeOptions.OptionToggle rpLand;
-
-        // CHEATS
-        public static Nuterra.NativeOptions.OptionToggle AlteredVanilla;
-        public static Nuterra.NativeOptions.OptionRange XpMulti;
-        public static Nuterra.NativeOptions.OptionRange BBMulti;
-        public static Nuterra.NativeOptions.OptionRange BlocksMulti;
-
-        // CONTROLS
-        public static Nuterra.NativeOptions.OptionToggle lockP_BoostProps;
-        public static Nuterra.NativeOptions.OptionToggle lockP_Pitch;
-        public static Nuterra.NativeOptions.OptionToggle lockP_Yaw;
-        public static Nuterra.NativeOptions.OptionToggle lockP_Roll;
-        public static Nuterra.NativeOptions.OptionKey hangarKey;
-
-        // DEVELOPMENT
-        public static Nuterra.NativeOptions.OptionToggle fakeOfflineEpic;
-        public static Nuterra.NativeOptions.OptionKey blockSnap;
-        public static Nuterra.NativeOptions.OptionToggle allowQuitFromIngameMenu;
-        public static Nuterra.NativeOptions.OptionToggle allowPopups;
-        public static Nuterra.NativeOptions.OptionList<string> startup;
-        public static Nuterra.NativeOptions.OptionToggle fastPhysics;
-        public static Nuterra.NativeOptions.OptionToggle disColliders;
-        public static Nuterra.NativeOptions.OptionToggle hideHoverParticles;
-        public static Nuterra.NativeOptions.OptionToggle smartCircuits;
-        public static Nuterra.NativeOptions.OptionToggle disableCircuits;
-        public static Nuterra.NativeOptions.OptionRange smartHovers;
-        public static Nuterra.NativeOptions.OptionToggle smartColliders;
-        public static Nuterra.NativeOptions.OptionToggle ignoreAiming;
-
-        public static Nuterra.NativeOptions.OptionRange fastnerFast;
-
-        // Tony Rails
-        public static Nuterra.NativeOptions.OptionRange RailRenderRange;
-        public static Nuterra.NativeOptions.OptionRange RailPathingUpdateSpeed;
-
-
-        private static bool launched = false;
-
-        public static void ResetValues()
-        {
-            AlteredVanilla.Value = RandomWorld.inst.WorldAltered;
-            BBMulti.Value = RandomWorld.inst.LootBBMulti;
-            XpMulti.Value = RandomWorld.inst.LootXpMulti;
-            BlocksMulti.Value = RandomWorld.inst.LootBlocksMulti;
-        }
-
-        public static void ResyncValues()
-        {
-            AlteredVanilla.Value = RandomWorld.inst.WorldAltered;
-            if (RandomWorld.inst.WorldAltered)
-            {
-                RandomWorld.BeginCheating();
-            }
-            else
-            {
-                AlteredVanilla.SetExtraTextUIOnly("Off");
-            }
-            if (RandomWorld.inst.LootBBMulti > 1f)
-                BBMulti.Value = ((RandomWorld.inst.LootBBMulti - 1) / 4) + 1;
-            else
-                BBMulti.Value = RandomWorld.inst.LootBBMulti;
-            if (RandomWorld.inst.LootXpMulti > 1f)
-                XpMulti.Value = ((RandomWorld.inst.LootXpMulti - 1) / 4) + 1;
-            else
-                XpMulti.Value = RandomWorld.inst.LootXpMulti;
-            if (RandomWorld.inst.LootBlocksMulti > 1f)
-                BlocksMulti.Value = ((RandomWorld.inst.LootBlocksMulti - 1) / 4) + 1;
-            else
-                BlocksMulti.Value = RandomWorld.inst.LootBlocksMulti;
-        }
-
-        public static void TryInitOptionAndConfig()
-        {
-            if (launched)
-                return;
-            launched = true;
-            //Initiate the madness
-            try
-            {
-#if !STEAM
-                ModHelper.Config.ModConfig thisModConfig = new ModHelper.ModConfig();
-#else
-                ModHelper.ModConfig thisModConfig = new ModHelper.ModConfig();
-#endif
-                thisModConfig.BindConfig<KickStart>(null, "ImmediateLoadLastSave");
-                thisModConfig.BindConfig<KickStart>(null, "UseAltDateFormat");
-                thisModConfig.BindConfig<KickStart>(null, "NoShake");
-                thisModConfig.BindConfig<KickStart>(null, "AutoScaleBlocksInSCU");
-                thisModConfig.BindConfig<KickStart>(null, "ModWrenchScale");
-#if !STEAM
-                thisModConfig.BindConfig<KickStart>(null, "TrueShields");
-#endif
-                thisModConfig.BindConfig<KickStart>(null, "GlobalBlockReplaceChance");
-                thisModConfig.BindConfig<KickStart>(null, "MandateLandReplacement");
-                thisModConfig.BindConfig<KickStart>(null, "MandateSeaReplacement");
-                thisModConfig.BindConfig<KickStart>(null, "ResetModdedPopups");
-
-                // CONTROLS
-                thisModConfig.BindConfig<KickStart>(null, "LockPropWhenPropBoostOnly");
-                thisModConfig.BindConfig<KickStart>(null, "LockPropPitch");
-                thisModConfig.BindConfig<KickStart>(null, "LockPropRoll");
-                thisModConfig.BindConfig<KickStart>(null, "LockPropYaw");
-                thisModConfig.BindConfig<KickStart>(null, "_hangarButton");
-
-                // DEVELOPMENT
-                thisModConfig.BindConfig<KickStart>(null, "IDontTrustEpicAtAll");
-                thisModConfig.BindConfig<BlockDebug>(null, "DebugPopups");
-                thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
-                thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
-                thisModConfig.BindConfig<KickStart>(null, "AllowIngameQuitToDesktop");
-                thisModConfig.BindConfig<KickStart>(null, "FastestPhysics");
-                thisModConfig.BindConfig<KickStart>(null, "ColliderDisable2");
-
-                thisModConfig.BindConfig<KickStart>(null, "FastenerSpeed");
-
-                thisModConfig.BindConfig<KickStart>(null, "noCircuits");
-                thisModConfig.BindConfig<KickStart>(null, "smrtCircuits");
-                thisModConfig.BindConfig<KickStart>(null, "hideHov");
-                thisModConfig.BindConfig<KickStart>(null, "smrtHov");
-                /*  // Doesn't work, TT is too spagetti coded
-                thisModConfig.BindConfig<KickStart>(null, "smrtCol");
-                thisModConfig.BindConfig<KickStart>(null, "disableAiming");
-                */
-
-                // Tony Rails
-                thisModConfig.BindConfig<ManRails>(null, "MaxRailLoadRange");
-                thisModConfig.BindConfig<ManTrainPathing>(null, "QueueStepRepeatTimes");
-
-
-                config = thisModConfig;
-
-                var RandomProperties = KickStart.ModName + " - General";
-#if !STEAM
-                realShields = new OptionToggle("<b>Use Correct Shield Typing</b> \n[Vanilla has them wrong!] - (Restart to apply changes)", RandomProperties, KickStart.TrueShields);
-                realShields.onValueSaved.AddListener(() => { KickStart.TrueShields = realShields.SavedValue; });
-#endif
-                Nuterra.NativeOptions.OptionToggle togTest = new Nuterra.NativeOptions.OptionToggle("Clock Y/M/D Format", RandomProperties, KickStart.UseAltDateFormat);
-                togTest.onValueSaved.AddListener(() => { KickStart.UseAltDateFormat = togTest.SavedValue; });
-                altDateFormat = togTest;
-                noCameraShake = new Nuterra.NativeOptions.OptionToggle("Disable Damage Feedback Rattle", RandomProperties, KickStart.NoShake);
-                noCameraShake.onValueSaved.AddListener(() => { KickStart.NoShake = noCameraShake.SavedValue; });
-                scaleBlocksInSCU = new Nuterra.NativeOptions.OptionToggle("Shrink Blocks Grabbed by SCU", RandomProperties, KickStart.AutoScaleBlocksInSCU);
-                scaleBlocksInSCU.onValueSaved.AddListener(() => { KickStart.AutoScaleBlocksInSCU = scaleBlocksInSCU.SavedValue; });
-                moddedPopupReset = new Nuterra.NativeOptions.OptionToggle("Reset All Mod Hints", RandomProperties, KickStart.ResetModdedPopups);
-                moddedPopupReset.onValueSaved.AddListener(() => {
-                    if (moddedPopupReset.SavedValue)
-                    {
-                        ExtUsageHint.ResetHints();
-                        moddedPopupReset.ResetValue();
-                    }
-                });
-                modWrenchIconScale = SuperNativeOptions.OptionRangeAutoDisplay("Modded Block Wrench Icon Size",
-                    RandomProperties, KickStart.ModWrenchScale, 0.25f, 1f, 0.125f, (float value) =>
-                    {
-                        return value.ToString("P");
-                    });
-                modWrenchIconScale.onValueSaved.AddListener(() => { KickStart.ModWrenchScale = Mathf.RoundToInt(modWrenchIconScale.SavedValue); });
-
-                var RandomBlocks = KickStart.ModName + " - Population Tweaks";
-                replaceChance = SuperNativeOptions.OptionRangeAutoDisplay("Chance for Custom Block replacement", 
-                    RandomBlocks, KickStart.GlobalBlockReplaceChance, 0, 100, 10, (float value) =>
-                    {
-                        return value.ToString("0") + "%";
-                    });
-                replaceChance.onValueSaved.AddListener(() => { KickStart.GlobalBlockReplaceChance = Mathf.RoundToInt(replaceChance.SavedValue); });
-                rpLand = new Nuterra.NativeOptions.OptionToggle("Force Land Custom Block", RandomBlocks, KickStart.MandateLandReplacement);
-                rpLand.onValueSaved.AddListener(() => { KickStart.MandateLandReplacement = rpLand.SavedValue; });
-                rpSea = new Nuterra.NativeOptions.OptionToggle("Force Sea Custom Block Replacement", RandomBlocks, KickStart.MandateSeaReplacement);
-                rpSea.onValueSaved.AddListener(() => { KickStart.MandateSeaReplacement = rpSea.SavedValue; });
-
-
-                var RandomControls = KickStart.ModName + " - Controls";
-                lockP_BoostProps = new Nuterra.NativeOptions.OptionToggle("Lock Propeller Steering Only When Pressing Prop Button", RandomControls, KickStart.LockPropWhenPropBoostOnly);
-                lockP_BoostProps.onValueSaved.AddListener(() => { KickStart.LockPropWhenPropBoostOnly = lockP_BoostProps.SavedValue; });
-                lockP_Pitch = new Nuterra.NativeOptions.OptionToggle("Lock Propellers Pitch Steering", RandomControls, KickStart.LockPropPitch);
-                lockP_Pitch.onValueSaved.AddListener(() => { KickStart.LockPropPitch = lockP_Pitch.SavedValue; });
-                lockP_Roll = new Nuterra.NativeOptions.OptionToggle("Lock Propellers Roll Steering", RandomControls, KickStart.LockPropRoll);
-                lockP_Roll.onValueSaved.AddListener(() => { KickStart.LockPropRoll = lockP_Roll.SavedValue; });
-                lockP_Yaw = new Nuterra.NativeOptions.OptionToggle("Lock Propellers Yaw Steering", RandomControls, KickStart.LockPropYaw);
-                lockP_Yaw.onValueSaved.AddListener(() => { KickStart.LockPropYaw = lockP_Yaw.SavedValue; });
-
-                hangarKey = new Nuterra.NativeOptions.OptionKey("Hangar Docking Hotkey [+ Left Click]", RandomControls, KickStart.HangarButton);
-                hangarKey.onValueSaved.AddListener(() => {
-                    KickStart.HangarButton = hangarKey.SavedValue;
-                    KickStart._hangarButton = (int)hangarKey.SavedValue;
-                });
-
-                var RandomDev = KickStart.ModName + " - Development";
-
-                fakeOfflineEpic = new Nuterra.NativeOptions.OptionToggle("Force Epic Online Services Offline [Slows MP Lobby Loading!]", RandomDev, KickStart.IDontTrustEpicAtAll);
-                fakeOfflineEpic.onValueSaved.AddListener(() =>
-                {
-                    KickStart.IDontTrustEpicAtAll = fakeOfflineEpic.SavedValue;
-                    if (KickStart.IDontTrustEpicAtAll == true)
-                    {
-                        KickStart.CheckShouldDisableEOS();
-                        if (ManEOS.inst.IsCrossplayRequestedActive)
-                            ManModGUI.ShowErrorPopup("RandomAddtions: Force Epic Online Services Offline cannot do it's job if Crossplay is set to be active.\nMake sure to launch TerraTech WITHOUT Crossplay!");
-                    }
-                });
-                fastPhysics = new Nuterra.NativeOptions.OptionToggle("Fast Physics (MIGHT BREAK GAME)", RandomDev, KickStart.FastestPhysics);
-                fastPhysics.onValueSaved.AddListener(() =>
-                {
-                    KickStart.FastestPhysics = fastPhysics.SavedValue;
-                    Optimax.PrematureOptimization(KickStart.FastestPhysics);
-                });
-                disColliders = new Nuterra.NativeOptions.OptionToggle("Disable Tech Colliders", RandomDev, KickStart.ColliderDisable2);
-                disColliders.onValueSaved.AddListener(() =>
-                {
-                    KickStart.ColliderDisable2 = disColliders.SavedValue;
-                    Optimax.UpdateColliders();
-                });
-                fastnerFast = SuperNativeOptions.OptionRangeAutoDisplay("C&S Fastener Speed", RandomDev, KickStart.FastenerSpeed,
-                    0, 20, 1, (float val) =>
-                    {
-                        if (val == 0)
-                            return "Default";
-                        if (val > 5)
-                            return (10f / (val + 10f)).ToString("P") + " time [UNSAFE]";
-                        return (10f / (val + 10f)).ToString("P") + " time";
-                    });
-                fastnerFast.onValueSaved.AddListener(() =>
-                {
-                    KickStart.FastenerSpeed = Mathf.RoundToInt(fastnerFast.SavedValue);
-                });
-                
-
-                var LagSolutions = KickStart.ModName + " - Lag Reduction";
-                smartCircuits = new Nuterra.NativeOptions.OptionToggle("Smart Circuits (MIGHT BREAK C&S DESIGNS) [REDUCE BIG LAG]", LagSolutions, KickStart.smrtCircuits);
-                smartCircuits.onValueSaved.AddListener(() =>
-                {
-                    KickStart.smrtCircuits = smartCircuits.SavedValue;
-                });
-                disableCircuits = new Nuterra.NativeOptions.OptionToggle("Disable Circuits Entirely (DISABLES C&S) [REDUCES HUGE LAG]", LagSolutions, KickStart.noCircuits);
-                disableCircuits.onValueSaved.AddListener(() =>
-                {
-                    KickStart.noCircuits = disableCircuits.SavedValue;
-                });
-                hideHoverParticles = new Nuterra.NativeOptions.OptionToggle("Hide hover particles [REDUCES SOME LAG]", LagSolutions, KickStart.hideHov);
-                hideHoverParticles.onValueSaved.AddListener(() =>
-                {
-                    KickStart.hideHov = hideHoverParticles.SavedValue;
-                });
-                /*  // Doesn't work, TT is too spagetti coded
-                smartColliders = new Nuterra.NativeOptions.OptionToggle("Smart Tech Colliders [More frames but lag spikes]", LagSolutions, KickStart.smrtCol);
-                smartColliders.onValueSaved.AddListener(() =>
-                {
-                    KickStart.smrtCol = smartColliders.SavedValue;
-                    if (KickStart.smrtCol)
-                        TechColliderIgnorer.Init();
-                    else
-                        TechColliderIgnorer.DeInit();
-                });
-                */
-                smartHovers = SuperNativeOptions.OptionRangeAutoDisplay("Lazy Hovers (LOWERED HOVER RELIABILITY)", LagSolutions, KickStart.smrtHov,
-                    0, 64, 4, (float val) => 
-                    {
-                        if (val == 0)
-                            return "Not Lazy";
-                        return "Only " + val.ToString("0") + " hovers per update";
-                    });
-                smartHovers.onValueSaved.AddListener(() =>
-                {
-                    KickStart.smrtHov = Mathf.RoundToInt(smartHovers.SavedValue);
-                    if (KickStart.smrtHov > 0)
-                        HoverOpti.Init();
-                    else
-                        HoverOpti.DeInit();
-                });
-                ignoreAiming = new Nuterra.NativeOptions.OptionToggle("Disable Tech Aiming [SP]", LagSolutions, KickStart.disableAiming);
-                ignoreAiming.onValueSaved.AddListener(() =>
-                {
-                    KickStart.disableAiming = ignoreAiming.SavedValue;
-                });
-
-
-                try
-                {
-                    KickStartOptionsSafeSaves.TryInitOptionAndConfig(RandomDev, thisModConfig);
-                }
-                catch (Exception e)
-                {
-                    DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup SafeSaves");
-                    DebugRandAddi.Log(e);
-                }
-                allowPopups = new Nuterra.NativeOptions.OptionToggle("Enable custom block debug popups", RandomDev, BlockDebug.DebugPopups);
-                allowPopups.onValueSaved.AddListener(() => { BlockDebug.DebugPopups = allowPopups.SavedValue; });
-                blockSnap = new Nuterra.NativeOptions.OptionKey("Snapshot Block Hotkey [+ Left Click]", RandomDev, KickStart.SnapBlockButton);
-                blockSnap.onValueSaved.AddListener(() => {
-                    KickStart.SnapBlockButton = blockSnap.SavedValue;
-                    KickStart._snapBlockButton = (int)blockSnap.SavedValue;
-                });
-                List<string> gamemodeSwitch = new List<string> {
-                    "Don't Skip",
-                    "Last Save",
-                    "Creative",
-                };
-                if (ManDLC.inst.HasAnyDLCOfType(ManDLC.DLCType.RandD))
-                    gamemodeSwitch.Add("R&D");
-                gamemodeSwitch.Add("Last Save & MP");
-                startup = new Nuterra.NativeOptions.OptionList<string>("Skip Title Screen", RandomDev, gamemodeSwitch, KickStart.ForceIntoModeStartup);
-                startup.onValueSaved.AddListener(() =>
-                {
-                    KickStart.ForceIntoModeStartup = startup.SavedValue;
-                });
-                allowQuitFromIngameMenu = new Nuterra.NativeOptions.OptionToggle("Quit to Desktop Ingame", RandomDev, KickStart.AllowIngameQuitToDesktop);
-                allowQuitFromIngameMenu.onValueSaved.AddListener(() =>
-                {
-                    KickStart.AllowIngameQuitToDesktop = allowQuitFromIngameMenu.SavedValue;
-                    IngameQuit.SetExitButtonIngamePauseMenu(allowQuitFromIngameMenu.SavedValue);
-                });
-
-                var TonyRails = KickStart.ModName + " - Tony Rails";
-                RailRenderRange = SuperNativeOptions.OptionRangeAutoDisplay("Rail Render Range", TonyRails, 
-                    ManRails.MaxRailLoadRange, 250, 750, 50, (float value) =>
-                    {
-                        return value.ToString("0") + "m";
-                    });
-                RailRenderRange.onValueSaved.AddListener(() =>
-                {
-                    ManRails.MaxRailLoadRange = RailRenderRange.SavedValue;
-                    ManRails.MaxRailLoadRangeSqr = ManRails.MaxRailLoadRange * ManRails.MaxRailLoadRange;
-                });
-                RailPathingUpdateSpeed = SuperNativeOptions.OptionRangeAutoDisplay("Train Pathing Speed", TonyRails, 
-                    ManTrainPathing.QueueStepRepeatTimes, 1, 6, 1, (float value) =>
-                    {
-                        return value.ToString("0") + "x";
-                    });
-                RailPathingUpdateSpeed.onValueSaved.AddListener(() =>
-                {
-                    ManTrainPathing.QueueStepRepeatTimes = Mathf.FloorToInt(RailPathingUpdateSpeed.SavedValue);
-                });
-
-                var Cheats = KickStart.ModName + " - Host World Tweaks";
-                AlteredVanilla = new Nuterra.NativeOptions.OptionToggle("Enable (CANNOT BE UNDONE)", Cheats, RandomWorld.inst.WorldAltered);
-                AlteredVanilla.onValueSaved.AddListener(() =>
-                {
-                    if (AlteredVanilla.Value)
-                    {
-                        RandomWorld.BeginCheating();
-                        RandomWorld.inst.WorldAltered = true;
-                    }
-                });
-                AlteredVanilla.SetExtraTextUIOnly("Off");
-                BlocksMulti = SuperNativeOptions.OptionRangeAutoDisplay("Mission Random Blocks Multiplier [0-1-40x]", 
-                    Cheats, RandomWorld.inst.LootBlocksMulti, 0, 10.75f, 0.25f,
-                    (float value) => {
-                        if (value > 1f)
-                            return (((value - 1) * 4) + 1);
-                        else
-                            return value;
-                    });
-                BlocksMulti.onValueSaved.AddListener(() => { 
-                    if (BlocksMulti.SavedValue > 1f)
-                        RandomWorld.inst.LootBlocksMulti = ((BlocksMulti.SavedValue - 1) * 4) + 1;
-                    else
-                        RandomWorld.inst.LootBlocksMulti = BlocksMulti.SavedValue;
-                });
-                XpMulti = SuperNativeOptions.OptionRangeAutoDisplay("Mission Xp Multiplier [0-1-40x]", Cheats, 
-                    RandomWorld.inst.LootXpMulti, 0, 10.75f, 0.25f,
-                    (float value) => {
-                        if (value > 1f)
-                            return (((value - 1) * 4) + 1);
-                        else
-                            return value;
-                    });
-                XpMulti.onValueSaved.AddListener(() => {
-                    if (XpMulti.SavedValue > 1f)
-                        RandomWorld.inst.LootXpMulti = ((XpMulti.SavedValue - 1) * 4) + 1;
-                    else
-                        RandomWorld.inst.LootXpMulti = XpMulti.SavedValue;
-                });
-                BBMulti = SuperNativeOptions.OptionRangeAutoDisplay("Mission Build Bucks Multiplier [0-1-40x]", Cheats,
-                    RandomWorld.inst.LootBBMulti, 0, 10.75f, 0.25f,
-                    (float value) => {
-                        if (value > 1f)
-                            return (((value - 1) * 4) + 1);
-                        else
-                            return value;
-                    });
-                BBMulti.onValueSaved.AddListener(() => {
-                    if (BBMulti.SavedValue > 1f)
-                        RandomWorld.inst.LootBBMulti = ((BBMulti.SavedValue - 1) * 4) + 1;
-                    else
-                        RandomWorld.inst.LootBBMulti = BBMulti.SavedValue; 
-                });
-
-                Nuterra.NativeOptions.NativeOptionsMod.onOptionsSaved.AddListener(() => { config.WriteConfigJsonFile(); });
-                if (KickStart.ColliderDisable2)
-                    Optimax.UpdateColliders();
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup");
-                DebugRandAddi.Log(e);
-            }
-
-        }
-
-        public static void TrySaveConfigData()
-        {
-            try
-            {
-                config.WriteConfigJsonFile();
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.Log("RandomAdditions: Error on Config Saving");
-                DebugRandAddi.Log(e);
-            }
-
-        }
-
-    }
-
-    public class KickStartOptionsSafeSaves
-    {
-        public static Nuterra.NativeOptions.OptionToggle saveExternal;
-#if !STEAM
-        public static void TryInitOptionAndConfig(string RandomDev, ModHelper.Config.ModConfig thisModConfig)
-#else
-        public static void TryInitOptionAndConfig(string RandomDev, ModHelper.ModConfig thisModConfig)
-#endif
-        {
-            //Initiate the madness
-            try
-            {
-                thisModConfig.BindConfig<SafeSaves.ManSafeSaves>(null, "DisableExternalBackupSaving");
-                saveExternal = new Nuterra.NativeOptions.OptionToggle("Save Mod Information in External File", RandomDev, SafeSaves.ManSafeSaves.DisableExternalBackupSaving);
-                saveExternal.onValueSaved.AddListener(() => { SafeSaves.ManSafeSaves.DisableExternalBackupSaving = saveExternal.SavedValue; });
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.Log("RandomAdditions: Error on Option & Config setup SafeSaves");
-                DebugRandAddi.Log(e);
-            }
-
-        }
-
-    }
-
     internal static class ExtraExtensions
     {
         /// <summary>
@@ -1652,53 +1278,6 @@ namespace RandomAdditions
                     depthTracker.Add(new KeyValuePair<int, T>(depth, fetch));
                 GetComponentsLowestFirstRecurse<T>(transCase, depth + 1, ref depthTracker);
             }
-        }
-
-        public static IEnumerable<T> IterateExtModules<T>(this BlockManager BM) where T : ExtModule
-        {
-            foreach (var item in BM.IterateBlocks())
-            {
-                T get = item.GetComponent<T>();
-                if (get)
-                    yield return get;
-            }
-        }
-        public static IEnumerable<T> IterateChildModules<T>(this BlockManager BM) where T : ExtModule
-        {
-            foreach (var item in BM.IterateBlocks())
-            {
-                T[] get = item.GetComponentsInChildren<T>();
-                if (get != null)
-                {
-                    foreach (var child in get)
-                    {
-                        if (child)
-                            yield return child;
-                    }
-                }
-            }
-        }
-        public static List<T> GetExtModules<T>(this BlockManager BM) where T : ExtModule
-        {
-            List<T> got = new List<T>();
-            foreach (var item in BM.IterateBlocks())
-            {
-                T get = item.GetComponent<T>();
-                if (get)
-                    got.Add(get);
-            }
-            return got;
-        }
-        public static List<T> GetChildModules<T>(this BlockManager BM) where T : ChildModule
-        {
-            List<T> got = new List<T>();
-            foreach (var item in BM.IterateBlocks())
-            {
-                T[] get = item.GetComponentsInChildren<T>();
-                if (get != null)
-                    got.AddRange(get);
-            }
-            return got;
         }
 
         public static bool CanDamageBlock(this Projectile inst, Damageable damageable)
@@ -1747,76 +1326,6 @@ namespace RandomAdditions
                 DebugRandAddi.Log("RandomAdditions: no tank!");
             return true;
         }
-
-        public static bool WithinBox(this Vector3 vec, float extents)
-        {
-            return vec.x >= -extents && vec.x <= extents && vec.y >= -extents && vec.y <= extents && vec.z >= -extents && vec.z <= extents;
-        }
-
-        private static FieldInfo blockFlags = typeof(TankBlock).GetField("m_Flags", BindingFlags.NonPublic | BindingFlags.Instance);
-        public static void TrySetBlockFlag(this TankBlock block, TankBlock.Flags flag, bool trueState)
-        {
-            if (block == null)
-                throw new NullReferenceException("TrySetBlockFlag was given a NULL block to handle!");
-            TankBlock.Flags val = (TankBlock.Flags)blockFlags.GetValue(block);
-            if (val.GetSetFlag(flag, trueState))
-            {
-                blockFlags.SetValue(block, val);
-                DebugRandAddi.Info("TrySetBlockFlag " + val + ", value: " + trueState);
-            }
-        }
-       
-
-        public static ManSaveGame.StoredTech GetUnloadedTech(this TrackedVisible TV)
-        {
-            if (TV.visible != null)
-                return null;
-            try
-            {
-                if (Singleton.Manager<ManSaveGame>.inst.CurrentState.m_StoredTiles.TryGetValue(TV.GetWorldPosition().TileCoord, out var val))
-                {
-                    if (val.m_StoredVisibles.TryGetValue(1, out List<ManSaveGame.StoredVisible> techs))
-                    {
-                        var techD = techs.Find(x => x.m_ID == TV.ID);
-                        if (techD != null && (techD is ManSaveGame.StoredTech tech))
-                        {
-                            return tech;
-                        }
-                    }
-                }
-            }
-            catch { }
-            return null;
-        }
-
-
-        public static bool SubToLogicReceiverCircuitUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, 
-            bool unsub, bool collectAPSpecificData) where T : ExtModule
-        {
-            if (module.block.CircuitNode?.Receiver)
-            {
-                if (unsub)
-                    module.block.CircuitNode?.Receiver.UnSubscribeFromChargeData(null, OnRec, null, null);
-                else
-                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, OnRec, null, null, collectAPSpecificData);
-                return true;
-            }
-            return false;
-        }
-        public static bool SubToLogicReceiverFrameUpdate<T>(this T module, Action<Circuits.BlockChargeData> OnRec, 
-            bool unsub, bool collectAPSpecificData) where T : ExtModule
-        {
-            if (module.block.CircuitNode?.Receiver)
-            {
-                if (unsub)
-                    module.block.CircuitNode?.Receiver.UnSubscribeFromChargeData(null, null, null, OnRec);
-                else
-                    module.block.CircuitNode?.Receiver.SubscribeToChargeData(null, null, null, OnRec, collectAPSpecificData);
-                return true;
-            }
-            return false;
-        }
-
 
         public static float GetMaxStableForceThisFixedFrame(this Rigidbody rbody)
         {

@@ -21,7 +21,7 @@ namespace RandomAdditions.RailSystem
     /// </summary>
     [AutoSaveComponent]
     [RequireComponent(typeof(ModuleCircuitNode), typeof(ModuleCircuitReceiver), typeof(ModuleCircuitDispensor))]
-    public class ModuleRailPoint : ExtModule, ICircuitDispensor
+    public class ModuleRailPoint : ExtModule, ITankCompManagedHash<TankRailsLocal, ModuleRailPoint>, ICircuitDispensor
     {
 
         internal RailTrackNode Node = null;
@@ -38,7 +38,9 @@ namespace RandomAdditions.RailSystem
         public bool AllowTrainCalling = true;
         public int[] LocalTechConnectionAPs;
 
-        public TankRailsLocal rails;
+        Tank ITankCompManaged<TankRailsLocal, ModuleRailPoint>.tank => tank;
+
+        public TankRailsLocal tankMan { get; set; } = null;
         public bool CreateTrackStop => SingleLinkHub;
 
         public List<Transform> LinkHubs = new List<Transform>();
@@ -319,7 +321,7 @@ namespace RandomAdditions.RailSystem
                 if (TrainCallAPIndexes != null || TrainStopAPIndexes != null)
                 {
                     LogicConnected = true;
-                    if (!ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, false, true))
+                    if (!this.SubToLogicReceiverFrameUpdate(OnChargeChanged, false, true))
                         DebugRandAddi.Log("FAILED TO REGISTER " + GetType().ToString() + ", TO CS!!!");
                 }
                 else
@@ -337,7 +339,7 @@ namespace RandomAdditions.RailSystem
             ManRails.AddStation(this);
             block.serializeEvent.Subscribe(OnSaveSerialization);
             block.serializeTextEvent.Subscribe(OnTechSnapSerialization);
-            TankRailsLocal.stat.HandleAddition(this);
+            this.StartManagingHash();
             Invoke("CheckAvailability", 0.01f);
             if (ManSpawn.inst.IsTechSpawning)
                 ManRails.LastPlacedRecentCache = null;
@@ -347,7 +349,7 @@ namespace RandomAdditions.RailSystem
         {
             //DebugRandAddi.Log("OnDetach");
             ManCustomSkins.inst.TankBlockPaintedEvent.Unsubscribe(OnPainted);
-            TankRailsLocal.stat.HandleRemoval(this);
+            this.StopManagingHash();
             block.serializeTextEvent.Unsubscribe(OnTechSnapSerialization);
             block.serializeEvent.Unsubscribe(OnSaveSerialization);
             ManRails.RemoveStation(this);
@@ -356,7 +358,7 @@ namespace RandomAdditions.RailSystem
             SetAvailability(false, false);
             tank.Anchors.AnchorEvent.Unsubscribe(OnAnchor);
             if (LogicConnected)
-                ExtraExtensions.SubToLogicReceiverFrameUpdate(this, OnChargeChanged, true, true);
+                this.SubToLogicReceiverFrameUpdate(OnChargeChanged, true, true);
             lastCachedConnections.Remove(this);
             LogicConnected = false;
         }

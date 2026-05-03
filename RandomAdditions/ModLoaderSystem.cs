@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Reflection;
 using RandomAdditions;
 using TerraTechETCUtil;
@@ -9,7 +7,6 @@ using SafeSaves;
 using UnityEngine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using UnityEngine.UI;
 using System.IO;
 
 public class JSONConverterUniversal : JsonConverter
@@ -104,7 +101,7 @@ public abstract class ModLoaderSystem<T, V, A> where T : ModLoaderSystem<T, V, A
     protected abstract string leadingFileName { get; }
     protected const BindingFlags spamFlags = BindingFlags.NonPublic | BindingFlags.Instance;
     protected static readonly FieldInfo healthMain = typeof(Damageable).GetField("m_OrigMaxHealth", spamFlags);
-    protected static readonly MethodInfo poolStart = typeof(Visible).GetMethod("OnPool", spamFlags);
+    //protected static readonly MethodInfo poolStart = typeof(Visible).GetMethod("OnPool", spamFlags);// Already done by "Instance.CreatePool(4)"
     public static bool enabled = false;
 
     public abstract string LogDirectoryName { get; }

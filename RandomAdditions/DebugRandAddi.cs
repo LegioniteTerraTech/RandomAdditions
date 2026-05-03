@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using TerraTechETCUtil;
 using UnityEngine;
 
@@ -13,7 +10,7 @@ namespace RandomAdditions
 
         internal static bool ShouldLog = true;
         internal static bool ShouldLogRails = true;
-        internal const bool LogAll = false;
+        internal static bool LogAll = false;
         private const bool LogDev = false;
 
         internal static void Info(string message)

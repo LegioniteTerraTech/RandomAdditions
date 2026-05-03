@@ -243,10 +243,7 @@ namespace RandomAdditions
             }
         }
 
-        internal virtual TankBlock[] GetReachableConnections()
-        {
-            return GetAllAttachedAPNeighboors();
-        }
+        internal virtual IEnumerable<TankBlock> GetReachableConnections() => IterateAllAttachedAPNeighboors();
 
         /// <summary>
         /// CALL THIS WHEN CONNECTING/DISCONNECTING THIS FROM A ModulePartWeapon!
@@ -289,10 +286,10 @@ namespace RandomAdditions
         {
             if (assigned)
                 return;
-            var neighboors = GetAllAttachedAPNeighboors();
+            var neighboors = IterateAllAttachedAPNeighboors();
             if (neighboors != null)
             {
-                DebugRandAddi.Log("HandleSearch returned " + neighboors.Length + " results");
+                DebugRandAddi.Log("HandleSearch returned " + neighboors.Count() + " results");
                 foreach (var item in neighboors)
                 {
                     var module = item.GetComponent<ModulePartWeapon>();
@@ -324,10 +321,10 @@ namespace RandomAdditions
                 DebugRandAddi.Log("NotifyOthersConnect cannot fire without assigned being set to a valid instance");
                 return;
             }
-            var neighboors = GetAllAttachedAPNeighboors();
+            var neighboors = IterateAllAttachedAPNeighboors();
             if (neighboors != null)
             {
-                DebugRandAddi.Log("NotifyOthersConnect returned " + neighboors.Length + " results");
+                DebugRandAddi.Log("NotifyOthersConnect returned " + neighboors.Count() + " results");
                 foreach (var item in neighboors)
                 {
                     var module = item.GetComponent<T>();
@@ -344,7 +341,7 @@ namespace RandomAdditions
         internal override void OnDetachUpdateConnections()
         {
             recursed = true;
-            var neighboors = GetAllAttachedAPNeighboors();
+            var neighboors = IterateAllAttachedAPNeighboors();
             if (neighboors != null)
             {
                 //DebugRandAddi.Log("OnDetachUpdateConnections has " + neighboors.Length + " nearby");
@@ -444,7 +441,7 @@ namespace RandomAdditions
             Vector3 forwardsNode = block.cachedLocalPosition + block.cachedLocalRotation * Vector3.forward;
             return tank.blockman.GetBlockAtPosition(forwardsNode);
         }
-        internal override TankBlock[] GetReachableConnections()
+        internal override IEnumerable<TankBlock> GetReachableConnections()
         {
             List<TankBlock> blocks = new List<TankBlock>();// WIP
 
@@ -452,11 +449,11 @@ namespace RandomAdditions
             if (blockRemote)
                 blocks.Add(blockRemote);
 
-            TankBlock[] getCase = GetAllAttachedAPNeighboors();
+            var getCase = IterateAllAttachedAPNeighboors();
             if (getCase != null)
                 blocks.AddRange(getCase);
             if (blocks.Count > 0)
-                return blocks.ToArray();// WIP
+                return blocks;// WIP
             return null;
         }
     }

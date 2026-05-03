@@ -151,6 +151,7 @@ namespace RandomAdditions
             visible.RecycledEvent.Subscribe(OnRecycle);
             FloraFauna.Insure(resdisp);
             m_Automatic = true;
+            enabled = true;
         }
         private void OnRecycle(Visible vis)
         {
@@ -164,6 +165,7 @@ namespace RandomAdditions
         {
             if (block)
             {
+                enabled = false;
                 MW = block.GetComponent<ModuleWeapon>();
                 if (!(bool)MW)
                 {
@@ -184,7 +186,6 @@ namespace RandomAdditions
         }
         public override void OnAttach()
         {
-            enabled = true;
             if (tank)
                 tank.TechAudio.AddModule(this);
             else
@@ -193,9 +194,11 @@ namespace RandomAdditions
             {
                 gimbal.ResetAim();
             }
+            block.BlockUpdate.Subscribe(OnUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockUpdate.Unsubscribe(OnUpdate);
             foreach (ExtGimbalAimer gimbal in gimbals)
             {
                 gimbal.ResetAim();
@@ -208,7 +211,6 @@ namespace RandomAdditions
                 tank.TechAudio.RemoveModule(this);
             else
                 SFXHelpers.UnregisterFloatingSFX(transform, this);
-            enabled = false;
         }
 
 
@@ -333,9 +335,12 @@ namespace RandomAdditions
                 return true;
         }
 
+        /// <summary>
+        /// FOR FAUNA ONLY
+        /// </summary>
+        private void Update() => OnUpdate();
 
-
-        private void Update()
+        private void OnUpdate()
         {
             AimHandle();
             if (cooldown > 0)

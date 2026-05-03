@@ -2,15 +2,10 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using TerraTechETCUtil;
 using UnityEngine;
-using UnityEngine.UI;
-using static TerraTechETCUtil.ManIngameWiki;
 
 namespace RandomAdditions
 {
@@ -51,9 +46,8 @@ namespace RandomAdditions
             GUILayout.BeginVertical(AltUI.TextfieldBlackHuge);
             GUILayout.Label("Modding Helpers", AltUI.LabelBlueTitle);
             if (AltUI.Button("Show Performance", ManSFX.UISfxType.PopUpOpen, AltUI.ButtonOrangeLarge))
-            {
                 Optimax.SetActive(!Optimax.State);
-            }
+            AltUI.Tooltip.GUITooltip("You can also open this with <b>F11</b>");
 #if DEBUG
             if (AltUI.Button("Print all SFX data in Logs", ManSFX.UISfxType.AcceptMission, AltUI.ButtonOrangeLarge))
             {

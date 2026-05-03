@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static LocalisationEnums;
 using TerraTechETCUtil;
 using static TerraTechETCUtil.ManIngameWiki;
@@ -39,7 +36,7 @@ namespace RandomAdditions
             {
                 WikiPageGroup WPGAdvanced = new WikiPageGroup(wiki.ModID, LOC_Advanced);
                 var advMain = new WikiPageInfo(wiki.ModID, LOC_Advanced_desc, null, DisplayAdvMain, WPGAdvanced);
-                WPGAdvanced.onOpen = () => { advMain.GoHere(); };
+                WPGAdvanced.onOpen = advMain.GoHere;
                 AutoPopulateWikiAdvanced(wiki, WPGAdvanced);
                 AutoPopulateWikiMultiTechs(wiki, WPGAdvanced);
             }
@@ -67,7 +64,7 @@ namespace RandomAdditions
         {
             WikiPageGroup WPGMultiTechs = new WikiPageGroup(wiki.ModID, LOC_MultiTechs, null, group);
             var MTMain = new WikiPageInfo(wiki.ModID, LOC_MultiTechs_desc, null, DisplayMTMain, WPGMultiTechs);
-            WPGMultiTechs.onOpen = () => { MTMain.GoHere(); };
+            WPGMultiTechs.onOpen = MTMain.GoHere;
             new WikiPageInfo(wiki.ModID, "Tread-Tech", null, DisplayTreadTech, WPGMultiTechs);
             new WikiPageInfo(wiki.ModID, "Axial Stabilizer", null, DisplayAxialStabilizer, WPGMultiTechs);
             new WikiPageInfo(wiki.ModID, "HaVCS", null, DisplayHaVCS, WPGMultiTechs);

@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Reflection;
-using System.IO;
 using TerraTechETCUtil;
-using FMOD;
 using UnityEngine;
-using Newtonsoft.Json;
 using RandomAdditions;
-using static ManMap;
 
 /// <summary>
 /// Note: Assigning sounds should only happen ONCE - That is the first time it is needed.
@@ -243,7 +238,7 @@ public static class ManSFXExtRand
                     break;
                 }
             }
-            if (!techAudioExt.Any())
+            if (techAudioExt.Count == 0)
             {
                 DebugRandAddi.Info("Removed ExtSounds from " + sound.Name);
                 lib.Remove(tank);
@@ -406,7 +401,7 @@ public static class ManSFXExtRand
                     break;
                 }
             }
-            if (!techAudioExt.Any())
+            if (techAudioExt.Count == 0)
             {
                 DebugRandAddi.Info("Removed ExtSounds from " + sound.Name);
                 lib.Remove(tank);
@@ -555,7 +550,7 @@ public static class ManSFXExtRand
                 {
                     if (data.isNoteOn && soundGroup.sounders.Count <= ExtSoundGroupMulti.MaxGroups)
                     {   // Try and reserve a sound maker
-                        if (soundGroup.sounders.Any() && soundGroup.sounders.First().Value == 0)
+                        if (soundGroup.sounders.Count > 0 && soundGroup.sounders.First().Value == 0)
                         {
                             sound = soundGroup.Sounds[1];
                             soundGroup.sounders.Add(data.block, 1);

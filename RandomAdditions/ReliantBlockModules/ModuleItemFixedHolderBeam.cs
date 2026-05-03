@@ -46,9 +46,13 @@ namespace RandomAdditions
         public override void OnAttach()
         {
             tank.Holders.HBEvent.Subscribe(OnHeartbeat);
+            block.BlockUpdate.Subscribe(OnUpdate);
+            block.BlockFixedUpdate.Subscribe(OnFixedUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockFixedUpdate.Unsubscribe(OnFixedUpdate);
+            block.BlockUpdate.Unsubscribe(OnUpdate);
             tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
 
             int countCheck = HeldVis.Count;
@@ -218,7 +222,7 @@ namespace RandomAdditions
 
         }
 
-        public void Update()
+        private void OnUpdate()
         {
             if (FixateToTech && block.IsAttached)
             {
@@ -234,7 +238,7 @@ namespace RandomAdditions
                 }
             }
         }
-        public void FixedUpdate()
+        private void OnFixedUpdate()
         {
             if (FixateToTech && block.IsAttached)
             {

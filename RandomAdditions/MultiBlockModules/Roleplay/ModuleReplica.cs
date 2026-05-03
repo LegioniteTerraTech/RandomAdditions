@@ -1,13 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using SafeSaves;
 using TerraTechETCUtil;
 using UnityEngine;
-using static Crate;
 
 namespace RandomAdditions
 {
@@ -83,9 +78,9 @@ namespace RandomAdditions
         public void OnGUI()
         {
             if (DoShowTheGUI)
-                AltUI.Window(90132433, ourRect, ShowTheGUI, block.name, 
-                    () => { DoShowTheGUI = false; }, true, true);
+                AltUI.Window(90132433, ourRect, ShowTheGUI, block.name, HideTheGUI, true, true);
         }
+        private void HideTheGUI() => DoShowTheGUI = false;
         private string floatString = string.Empty;
         protected virtual void ShowTheGUI(int id)
         {

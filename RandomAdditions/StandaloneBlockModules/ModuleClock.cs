@@ -3,14 +3,79 @@ using UnityEngine;
 using SafeSaves;
 using TerraTechETCUtil;
 using System.Collections.Generic;
+using System.Linq;
 
 public class ModuleClock : RandomAdditions.ModuleClock { };
 namespace RandomAdditions
 {
+    public class TankClock : MonoBehaviour, ITankCompManHash<TankClock, ModuleClock>
+    {
+        public Tank tank { get; set; }
+        public HashSet<ModuleClock> Managed {  get; private set; } = new HashSet<ModuleClock>();
+
+        public void AddModule(ModuleClock eMod)
+        {
+        }
+
+        public void RemoveModule(ModuleClock eMod)
+        {
+            GlobalClock.UiDirty = true;
+        }
+
+        public void StartManagingPre()
+        {
+            GlobalClock.Initiate();
+        }
+        public void StartManagingPost()
+        {
+            GlobalClock.tanks.Add(this);
+        }
+
+        public void StopManaging()
+        {
+            GlobalClock.tanks.Remove(this);
+            if (!GlobalClock.tanks.Any())
+                GlobalClock.DeInit();
+        }
+
+        internal void GetSaveStateClocks(ref int time)
+        {
+            foreach (var clunk in Managed)
+            {
+                if (clunk.ControlTime && clunk.IsAttached)
+                {
+                    time = clunk.SavedTime;
+                    break;
+                }
+            }
+        }
+        internal bool UpdateClockVisuals()
+        {
+            bool timeControl = false;
+            foreach (ModuleClock clunk in Managed)
+            {
+                if (clunk.IsAttached)
+                {
+                    if (!timeControl)
+                        timeControl = clunk.SetClock();
+                    else
+                        clunk.SetClock();
+                }
+            }
+            return timeControl;
+        }
+        internal void SetSaveStateClocks(int time)
+        {
+            foreach (var clunk in Managed)
+                clunk.SavedTime = time;
+        }
+    }
     [AutoSaveComponent]
     [RequireComponent(typeof(ModuleCircuitNode))]
-    public class ModuleClock : ExtModule, ICircuitDispensor
+    public class ModuleClock : ExtModule, ITankCompManagedHash<TankClock, ModuleClock>, ICircuitDispensor
     {
+        public TankClock tankMan { get; set; }
+
         // The module that handles the visualization of time through a clock interface.
         public bool DisplayTime = true;     // Rotate a GameObject called "TimeObject" depending on the time
         public bool DigitalTime = false;    // Display on a "HUD" window?
@@ -54,7 +119,7 @@ namespace RandomAdditions
         private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleClock", LOC_ModuleClock_desc);
         public override void OnAttach()
         {
-            GlobalClock.ClockManager.AddClock(this);
+            this.StartManagingHash();
             if (ControlTime)
             {
                 block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
@@ -71,7 +136,6 @@ namespace RandomAdditions
 
         public override void OnDetach()
         {
-            GlobalClock.ClockManager.RemoveClock(this);
             if (tank.PlayerFocused)
                 GlobalClock.SetByGUI = true;
             if (ControlTime)
@@ -79,6 +143,7 @@ namespace RandomAdditions
                 block.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
                 block.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec, bool>(OnSerializeText));
             }
+            this.StopManagingHash();
         }
 
         [Serializable]
@@ -164,10 +229,6 @@ namespace RandomAdditions
             }
             if (DigitalTime)
             {   // Load a little HUD window with the time
-                if (tank.IsNotNull())
-                {
-                    RandomTank.Insure(tank).DisplayTimeTank = true;
-                }
             }
             /*
             if (ControlTime)

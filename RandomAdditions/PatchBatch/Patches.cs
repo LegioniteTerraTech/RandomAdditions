@@ -1,150 +1,94 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Reflection.Emit;
-using System.Security.Cryptography;
-using System.Text;
-using System.Xml.Linq;
-using FMOD.Studio;
 using HarmonyLib;
 using RandomAdditions.Minimap;
 using TerraTechETCUtil;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using static ManTechMaterialSwap;
 
 namespace RandomAdditions
 {
     internal static class Patches
     {
-        [HarmonyPatch(typeof(UIItemDisplay))]
-        [HarmonyPatch("Setup", new Type[] { typeof(ItemTypeInfo), typeof(Color), typeof(Color),
-        typeof(string), typeof(Color), typeof(bool), typeof(bool)})]//
+        // ------------------  BUG FIXES  ------------------
+
+        [HarmonyPatch(typeof(ManVisible))]
+        [HarmonyPatch("UnregisterColliderToVisibleLookup")]//
         [HarmonyPriority(-9001)]
-        internal static class AllowModWrenchIconRescale
+        internal static class StopRemovalOfNonExistantColliders
         {
-            private static Vector3 defaultScale = Vector3.zero;
-            private static Vector2 defaultOffset = Vector2.zero;
-            internal static void Prefix(UIItemDisplay __instance, Image ___m_ModdedItem)
+            private static Dictionary<Collider, Visible> EmergencyLookup = null;
+            internal static bool Prefix(ManVisible __instance, Collider c,
+               ref Dictionary<Collider, Visible> ___m_ColliderToVisibleLookup)
             {
-                if (___m_ModdedItem == null)
-                    return;
-                if (defaultScale == Vector3.zero)
+                try
                 {
-                    defaultScale = ___m_ModdedItem.transform.localScale;
-                    //defaultOffset = ___m_ModdedItem.rectTransform.anchoredPosition;
+                    if (___m_ColliderToVisibleLookup == null)
+                    {
+                        DebugRandAddi.Assert("ManVisible.m_ColliderToVisibleLookup is NULL??? - MAKING NEW");
+                        ___m_ColliderToVisibleLookup = new Dictionary<Collider, Visible>();
+                    }
+                    if (c?.gameObject?.name == null)
+                    {
+                        DebugRandAddi.Assert("Collider is NULL??? Running a sanity check NOW");
+
+                        if (EmergencyLookup == null)
+                            EmergencyLookup = new Dictionary<Collider, Visible>();
+                        foreach (var item in ___m_ColliderToVisibleLookup)
+                        {
+                            if (item.Key != null && item.Key != null)
+                                EmergencyLookup.Add(item.Key, item.Value);
+                            else
+                                DebugRandAddi.Log(" - INVALID: " + (item.Key?.name == null ? "<NULL>" : item.Key.name) + ", " +
+                                    (item.Value?.name == null ? "<NULL>" : item.Value.name));
+                        }
+                        if (___m_ColliderToVisibleLookup.Count != EmergencyLookup.Count)
+                            DebugRandAddi.Log("Removed " + (___m_ColliderToVisibleLookup.Count - EmergencyLookup.Count) + " invalid entries");
+                        var temp = ___m_ColliderToVisibleLookup;
+                        temp.Clear();
+                        ___m_ColliderToVisibleLookup = EmergencyLookup;
+                        EmergencyLookup = temp;
+                        return false;
+                    }
                 }
-                ___m_ModdedItem.transform.localScale = defaultScale * (1f / KickStart.ModWrenchScale);
-                //___m_ModdedItem.rectTransform.anchoredPosition = defaultOffset * KickStart.ModWrenchScale;
-            }
-        }
-
-        /* // Test to see if reducing block attachments reduces delayed lag on tech spawn - NO
-        [HarmonyPatch(typeof(BlockManager))]
-        [HarmonyPatch("AddBlockToTech")]//
-        [HarmonyPriority(-9001)]
-        internal static class TryFindForLessLag
-        {
-            static int failInterval = 0;
-            internal static bool Prefix()
-            {
-                failInterval++;
-                if (failInterval > 3)
-                    failInterval = 0;
-                return failInterval == 0;
-            }
-        }//*/
-        /*  // Test to see if TileManager makes delayed lag on tech spawn - NO
-        [HarmonyPatch(typeof(TileManager))]
-        [HarmonyPatch("UpdateTileCache")]//
-        [HarmonyPriority(-9001)]
-        internal static class TileManagerForLessLag
-        {
-            internal static void Prefix(TileManager __instance, Visible visible)
-            {
-                DebugRandAddi.Log("TileManager.UpdateTileCache() nextUpdateTime " + visible.tileCache.nextUpdateTime);
-            }
-        }//*/
-        [HarmonyPatch(typeof(Circuits))]
-        [HarmonyPatch("DoCircuitLoop")]//
-        [HarmonyPriority(-9001)]
-        internal static class CircuitsForLessLag
-        {
-            internal static bool Prefix(Circuits __instance)
-            {
-                return !KickStart.noCircuits || ManNetwork.IsNetworked;
-            }
-        }
-        /*  // Test to see if TechCircuits makes delayed lag on tech spawn - NO
-        [HarmonyPatch(typeof(TechCircuits))]
-        [HarmonyPatch("RebuildCircuitNetworksForDirtyConnexions")]//
-        [HarmonyPriority(-9001)]
-        internal static class CircuitsForLessLag
-        {
-            internal static bool Prefix(Circuits __instance)
-            {
-                return !KickStart.noCircuits || ManNetwork.IsNetworked;
-            }
-        }//*/
-
-        /*
-        public static int UpdateConnexionLinksCalls = 0;
-        [HarmonyPatch(typeof(ModuleCircuitNode))]
-        [HarmonyPatch("UpdateConnexionLinks")]//
-        [HarmonyPriority(-9001)]
-        internal static class DisableModuleCircuitsForFasterBuilding
-        {
-            internal static bool Prefix(ModuleCircuitNode __instance)
-            {
-                UpdateConnexionLinksCalls++;
-                //DebugRandAddi.Log("UpdateConnexionLinks called for " + (__instance.name.NullOrEmpty() ? "<NULL>" : __instance.name));
-                return true;
-            }
-        }//*/
-
-        [HarmonyPatch(typeof(ManEOS))]
-        [HarmonyPatch("DoFullLogin", new Type[] { typeof(string), typeof(string), typeof(Action), })]
-        [HarmonyPriority(-9001)]
-        internal static class ShutUpEOS
-        {
-            internal static bool Prefix(ManEOS __instance, Action onLogAttemptedCallback)
-            {
-                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
-                {
-                    DebugRandAddi.Log("RandomAdditions: ManEOS.DoFullLogin was called!  You don't trust them so we deny the send request");
-                    if (onLogAttemptedCallback != null)
-                        onLogAttemptedCallback();
+                catch
+                {   // Crashed in there somehow - the best course of action is to ABORT
                     return false;
                 }
                 return true;
             }
         }
 
-
-
-        /*
-        [HarmonyPatch(typeof(BlockManager))]
-        [HarmonyPatch("SetTableSize")]//
+        [HarmonyPatch(typeof(TechDataAvailValidation))]
+        [HarmonyPatch("RecordBlockData")]//
         [HarmonyPriority(-9001)]
-        internal static class TrackWhenWeRescaleBlockTable
+        internal static class TrySaveTechs
         {
-            public static Stopwatch watch = new Stopwatch();
-            internal static void Prefix(BlockManager __instance, int newSize, TankBlock[,,] ___blockTable)
+            private static TechData weDid;
+            internal static void Postfix(TechDataAvailValidation __instance, ref TechData tech,
+               Dictionary<BlockTypes, TechDataAvailValidation.BlockTypeAvailability> ___m_BlockAvailability)
             {
-                DebugRandAddi.Log("BlockManager.SetTableSize() Start for size " + newSize + 
-                    " from size " + ___blockTable.GetLength(0));
-                watch.Restart();
+                if (KickStart.TrySaveMyTechs && weDid != tech)
+                {
+                    weDid = tech;
+                    bool saveMe = false;
+                    foreach (var item in ___m_BlockAvailability)
+                    {
+                        if (item.Value.availability == TechDataAvailValidation.BlockAvailableState.NotAvailableInGame)
+                        {
+                            saveMe = true;
+                            break;
+                        }
+                    }
+                    if (saveMe)
+                    {
+                        if (TechRescuer.TryRescue(tech))
+                            __instance.RecordBlockData(tech);// relog AGAIN  
+                    }
+                }
             }
-            internal static void Postfix(BlockManager __instance, int newSize)
-            {
-                watch.Stop();
-                DebugRandAddi.Log("BlockManager.SetTableSize() End at time " + watch.ElapsedMilliseconds + "ms");
-            }
-        }//*/
-
+        }
 
         [HarmonyPatch(typeof(BlockManager))]
         [HarmonyPatch("CleanupInvalidTechBlocks")]//
@@ -166,13 +110,23 @@ namespace RandomAdditions
                     try
                     {
                         Temp.Clear();
-                        Temp.AddRange(___allBlocks.Where((TankBlock b) => b.NumConnectedAPs == 0 || !b.CanReachRoot()));
-                        int removeCount = Temp.Count();
+                        foreach (TankBlock tankBlock in ___allBlocks)
+                        {
+                            if (tankBlock.NumConnectedAPs == 0 || !tankBlock.CanReachRoot())
+                                Temp.Add(tankBlock);
+                        }
+                        int removeCount = Temp.Count;
                         foreach (var tankBlock in Temp)
                         {   // Changes it so that it "gives up" on illegal blocks I guess. Better than hanging
                             _CleanupInvalidBlockOnTech.Invoke(__instance, new object[] { tankBlock, techSplitNamer, isAnchored });
-                            if (___allBlocks.Where((TankBlock b) => b.NumConnectedAPs == 0 || !b.CanReachRoot()).Count() != removeCount)
-                                flag = true;
+                            int removeCount2 = 0;
+                            foreach (var item in ___allBlocks)
+                            {
+                                if (item.NumConnectedAPs == 0 || !item.CanReachRoot())
+                                    removeCount2++;
+                            }
+                            if (removeCount2 != removeCount)
+                                flag = true; // removed.
                         }
                     }
                     catch { }
@@ -249,14 +203,14 @@ namespace RandomAdditions
         [HarmonyPriority(-9001)]
         internal static class ModuleFasteningLinkFix3
         {
-            internal static bool Prefix(ModuleFasteningLink __instance, Tank sourceT, Tank destT, 
+            internal static bool Prefix(ModuleFasteningLink __instance, Tank sourceT, Tank destT,
                 TankBlock sourceBlock, TankBlock destBlock)
             {
                 //Quaternion rotationCorrected = Quaternion.Inverse(sourceT.trans.rotation) * destT.trans.rotation;
                 Vector3 cachedLocalPosition = sourceBlock.cachedLocalPosition;
                 Vector3 cachedLocalPosition2 = destBlock.cachedLocalPosition;
                 //cachedLocalPosition + destBlock.cachedLocalRotation * this.m_DetachedBlocks[1].localPos;
-                KeyValuePair<TankBlock, TankPreset.BlockSpec>[] array = 
+                KeyValuePair<TankBlock, TankPreset.BlockSpec>[] array =
                     new KeyValuePair<TankBlock, TankPreset.BlockSpec>[sourceT.blockman.blockCount];
                 int num = 0;
                 foreach (TankBlock tankBlock in sourceT.blockman.IterateBlocks())
@@ -349,18 +303,224 @@ namespace RandomAdditions
         }
 
 
+        [HarmonyPatch(typeof(ManTechMaterialSwap))]
+        [HarmonyPriority(9001)]
+        [HarmonyPatch("GetMaterial")]//
+        private static class TempPreventBlockCrashDueToNullMaterial
+        {
+            private static bool Prefix(ManTechMaterialSwap __instance, ref Material currentMaterial, ref Material __result)
+            {
+                if (currentMaterial == null)
+                {
+                    __result = null;
+                    return false;
+                }
+                return true;
+            }
+        }
+
+
+        /// <summary>
+        /// This solely exists because there exists edge-cases where the MaterialSwapper can get called on m_Renderers which have had one of their
+        ///   listed renderers removed by inproperly setup blocks that have a render that removed AFTER they are spawned!  
+        ///   May have a performance hit when handling C&S and I don't like that at all but better than a crash!
+        /// </summary>
+        [HarmonyPatch(typeof(MaterialSwapper))]
+        [HarmonyPriority(9001)]
+        [HarmonyPatch("SetMaterialPropertiesOnRenderers", new Type[] { typeof(float), typeof(float),
+        typeof(Vector2),typeof(MaterialSwapper.VariableColorOverrides),typeof(List<Renderer>),})]
+        private static class MaterialSwapperFix
+        {
+            internal static void Prefix(ref List<Renderer> renderers)
+            {
+                renderers.RemoveAll(renderer =>
+                {
+                    if (renderer == null)
+                    {
+                        DebugRandAddi.Assert("Null renderer in SetMaterialPropertiesOnRenderers call.\nWE SHOULD NOT BE LOOKING FOR THESE!!! - " +
+                            StackTraceUtility.ExtractStackTrace());
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
 
 
 
+        // ------------------  PERFORMANCE  ------------------
+
+        /* // Test to see if reducing block attachments reduces delayed lag on tech spawn - NO
+        [HarmonyPatch(typeof(BlockManager))]
+        [HarmonyPatch("AddBlockToTech")]//
+        [HarmonyPriority(-9001)]
+        internal static class TryFindForLessLag
+        {
+            static int failInterval = 0;
+            internal static bool Prefix()
+            {
+                failInterval++;
+                if (failInterval > 3)
+                    failInterval = 0;
+                return failInterval == 0;
+            }
+        }//*/
+        /*  // Test to see if TileManager makes delayed lag on tech spawn - NO
+        [HarmonyPatch(typeof(TileManager))]
+        [HarmonyPatch("UpdateTileCache")]//
+        [HarmonyPriority(-9001)]
+        internal static class TileManagerForLessLag
+        {
+            internal static void Prefix(TileManager __instance, Visible visible)
+            {
+                DebugRandAddi.Log("TileManager.UpdateTileCache() nextUpdateTime " + visible.tileCache.nextUpdateTime);
+            }
+        }//*/
+        [HarmonyPatch(typeof(Circuits))]
+        [HarmonyPatch("DoCircuitLoop")]//
+        [HarmonyPriority(-9001)]
+        internal static class CircuitsForLessLag
+        {
+            internal static bool Prefix(Circuits __instance)
+            {
+                return !KickStart.noCircuits || ManNetwork.IsNetworked;
+            }
+        }
+        /*  // Test to see if TechCircuits makes delayed lag on tech spawn - NO
+        [HarmonyPatch(typeof(TechCircuits))]
+        [HarmonyPatch("RebuildCircuitNetworksForDirtyConnexions")]//
+        [HarmonyPriority(-9001)]
+        internal static class CircuitsForLessLag
+        {
+            internal static bool Prefix(Circuits __instance)
+            {
+                return !KickStart.noCircuits || ManNetwork.IsNetworked;
+            }
+        }//*/
+
+        /*
+        public static int UpdateConnexionLinksCalls = 0;
+        [HarmonyPatch(typeof(ModuleCircuitNode))]
+        [HarmonyPatch("UpdateConnexionLinks")]//
+        [HarmonyPriority(-9001)]
+        internal static class DisableModuleCircuitsForFasterBuilding
+        {
+            internal static bool Prefix(ModuleCircuitNode __instance)
+            {
+                UpdateConnexionLinksCalls++;
+                //DebugRandAddi.Log("UpdateConnexionLinks called for " + (__instance.name.NullOrEmpty() ? "<NULL>" : __instance.name));
+                return true;
+            }
+        }//*/
+
+        [HarmonyPatch(typeof(ManEOS))]
+        [HarmonyPatch("DoFullLogin", new Type[] { typeof(string), typeof(string), typeof(Action), })]
+        [HarmonyPriority(-9001)]
+        internal static class ShutUpEOS
+        {
+            internal static bool Prefix(ManEOS __instance, Action onLogAttemptedCallback)
+            {
+                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
+                {
+                    DebugRandAddi.Log("RandomAdditions: ManEOS.DoFullLogin was called!  You don't trust them so we deny the send request");
+                    if (onLogAttemptedCallback != null)
+                        onLogAttemptedCallback();
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        /*
+        [HarmonyPatch(typeof(BlockManager))]
+        [HarmonyPatch("SetTableSize")]//
+        [HarmonyPriority(-9001)]
+        internal static class TrackWhenWeRescaleBlockTable
+        {
+            public static Stopwatch watch = new Stopwatch();
+            internal static void Prefix(BlockManager __instance, int newSize, TankBlock[,,] ___blockTable)
+            {
+                DebugRandAddi.Log("BlockManager.SetTableSize() Start for size " + newSize + 
+                    " from size " + ___blockTable.GetLength(0));
+                watch.Restart();
+            }
+            internal static void Postfix(BlockManager __instance, int newSize)
+            {
+                watch.Stop();
+                DebugRandAddi.Log("BlockManager.SetTableSize() End at time " + watch.ElapsedMilliseconds + "ms");
+            }
+        }//*/
+
+
+
+
+
+        // ------------------  NEW FEATURES  ------------------
+
+        [HarmonyPatch(typeof(UIItemDisplay))]
+        [HarmonyPatch("Setup", new Type[] { typeof(ItemTypeInfo), typeof(Color), typeof(Color),
+        typeof(string), typeof(Color), typeof(bool), typeof(bool)})]//
+        [HarmonyPriority(-9001)]
+        internal static class AllowModWrenchIconRescale
+        {
+            private static Vector3 defaultScale = Vector3.zero;
+            private static Vector2 defaultOffset = Vector2.zero;
+            internal static void Prefix(UIItemDisplay __instance, Image ___m_ModdedItem)
+            {
+                if (___m_ModdedItem == null)
+                    return;
+                if (defaultScale == Vector3.zero)
+                {
+                    defaultScale = ___m_ModdedItem.transform.localScale;
+                    //defaultOffset = ___m_ModdedItem.rectTransform.anchoredPosition;
+                }
+                ___m_ModdedItem.transform.localScale = defaultScale * KickStart.ModWrenchScale;
+                //___m_ModdedItem.rectTransform.anchoredPosition = defaultOffset * KickStart.ModWrenchScale;
+            }
+        }
 
 
         [HarmonyPatch(typeof(UITechManagerEntry))]
         [HarmonyPatch("Init")]//
         internal static class GrabUIEntryDetails
         {
+            internal class TrackedJumpState
+            {
+                public Button button;
+                public TrackedVisible TV;
+                public TooltipComponent TC;
+                public Image img;
+                public void UpdateJumpState()
+                {
+                    bool canJump = MinimapExtRandi.CanTeleportSafely(TV);
+                    button.interactable = canJump;
+                    if (canJump)
+                    {
+                        LOC_DirectControl.SetTextAuto(TC);
+                        TC.SetMode(UITooltipOptions.Default);
+                        img.color = mockColor;
+                    }
+                    else
+                    {
+                        LOC_DirectControlNotAvail.SetTextAuto(TC);
+                        TC.SetMode(UITooltipOptions.Warning);
+                        img.color = AltUI.ColorDefaultEnemy;
+                    }
+                }
+            }
+            private static List<TrackedJumpState> tracked = new List<TrackedJumpState>();
+            internal static void SlowUpdateThis()
+            {
+                tracked.RemoveAll(x => x.button == null);
+                foreach (var state in tracked)
+                    state.UpdateJumpState();
+            }
+
             const string name = "JumpTo_Button";
             static FieldInfo TargetInfo = typeof(UITechManagerEntry).GetField("m_TrackedVis", BindingFlags.Instance | BindingFlags.NonPublic);
             static Material mockIcon = null;
+            static Sprite mockSprite = null;
+            static Color mockColor = default;
             private static LocExtStringMod LOC_DirectControl = new LocExtStringMod(new Dictionary<LocalisationEnums.Languages, string>()
         {
             { LocalisationEnums.Languages.US_English, "Assume Direct Control"},
@@ -386,7 +546,7 @@ namespace RandomAdditions
                         return;
                     }
                 }
-                DebugRandAddi.Log("Creating new " + name);
+                DebugRandAddi.Info("Creating new " + name);
                 Transform template = null;
                 int locatorIndex = 0;
                 for (int i = 0; i < ToCopy.Length; i++)
@@ -398,7 +558,7 @@ namespace RandomAdditions
                     if (template == null && parent2.name.Contains("SendToSCU"))
                         template = parent2;
                     //DebugRandAddi.Log(parent2.name + " posLoc: " + parent2.localPosition.ToString());
-                    parent2.localPosition = new Vector3(Mathf.Lerp(244f, 454f, locatorIndex / 4f), 0.6f, 0.0f); 
+                    parent2.localPosition = new Vector3(Mathf.Lerp(244f, 454f, locatorIndex / 4f), 0.6f, 0.0f);
                     locatorIndex++;
                 }
                 Transform parentMain = __instance.transform;
@@ -414,47 +574,46 @@ namespace RandomAdditions
                 TooltipComponent newTooltip = GO.GetComponentInChildren<TooltipComponent>();
                 if (newTooltip == null)
                     throw new NullReferenceException("newTooltip");
-                bool canJump = ManMinimapExt.CanTeleportSafely(tv);
-                newButton.interactable = canJump;
-                if (canJump)
-                {
-                    LOC_DirectControl.SetTextAuto(newTooltip);
-                    newTooltip.SetMode(UITooltipOptions.Default);
-                }
-                else
-                {
-                    LOC_DirectControlNotAvail.SetTextAuto(newTooltip);
-                    newTooltip.SetMode(UITooltipOptions.Warning);
-                }
                 GO.name = name;
                 GO.transform.localPosition = new Vector3(Mathf.Lerp(244f, 454f, locatorIndex / 4f), 0.6f, 0.0f);//404.0f
                 Button.ButtonClickedEvent BCE = new Button.ButtonClickedEvent();
                 BCE.AddListener(() =>
                 {
                     TrackedVisible TV = (TrackedVisible)TargetInfo.GetValue(__instance);
-                    ManMinimapExt.MinimapExt.TryJumpPlayer(TV);
+                    MinimapExtRandi.TryJumpPlayer(TV);
                     ManSFX.inst.PlayUISFX(ManSFX.UISfxType.Enter);
                 });
                 newButton.onClick = BCE;
-                if (mockIcon == null)
-                {
-                    mockIcon = new Material(newImages[0].material.shader);
-                    mockIcon.mainTexture = UIHelpersExt.GetGUIIcon("HUD_Slider_Graphics_01_1").texture;
-                }
+                Image IHide = null;
                 foreach (Image image in newImages)
                 {
-                    // SETTING IMAGE DOES NOT WORK FOR SOME STUPID REASON
-                    image.material = mockIcon;
-                    CanvasRenderer CR = image.GetComponent<CanvasRenderer>();
-                    CR.SetPopMaterial(mockIcon, 0);
-                    CR.SetMaterial(mockIcon, 0);
-                    image.SetAllDirty();
-                    //DebugRandAddi.Log("Layer " + image.name);
                     if (!image.name.Contains("Button"))
-                    { 
-                        UnityEngine.Object.Destroy(image.gameObject);
+                    {
+                        if (mockIcon == null)
+                        {
+                            mockColor = image.color;
+                            mockIcon = new Material(newImages[0].material.shader);
+                            mockSprite = UIHelpersExt.GetGUIIcon("HUD_Slider_Graphics_01_1");
+                            mockIcon.mainTexture = mockSprite.texture;
+                        }
+                        image.material = mockIcon;
+                        image.sprite = mockSprite;
+                        CanvasRenderer CR = image.GetComponent<CanvasRenderer>();
+                        CR.SetPopMaterial(mockIcon, 0);
+                        CR.SetMaterial(mockIcon, 0);
+                        CR.SetTexture(mockIcon.mainTexture);
+                        image.SetAllDirty();
+                        IHide = image;
                     }
                 }
+                TrackedJumpState TJS = new TrackedJumpState()
+                {
+                    button = newButton,
+                    TC = newTooltip,
+                    TV = tv,
+                    img = IHide,
+                };
+                tracked.Add(TJS);
                 // SETTING IMAGE DOES NOT WORK FOR SOME STUPID REASON
                 //Utilities.LogGameObjectHierachy(newButton.gameObject);
                 newButton.image.material = mockIcon;
@@ -477,60 +636,6 @@ namespace RandomAdditions
             }
         }*/
 
-        [HarmonyPatch(typeof(ManRadar))]
-        [HarmonyPatch("IconTypeCount", MethodType.Getter)]//
-        internal static class ExtendRadarIconsCount
-        {
-            internal static bool Prefix(TooltipComponent __instance, ref int __result)
-            {
-                if (ManMinimapExt.AddedMinimapIndexes < ManMinimapExt.VanillaMapIconCount)
-                    __result = ManMinimapExt.VanillaMapIconCount;
-                else
-                    __result = ManMinimapExt.AddedMinimapIndexes;
-                //DebugRandAddi.Log("IconTypeCount returned " + __result);
-                return false;
-            }
-        }
-        [HarmonyPatch(typeof(TooltipComponent))]
-        [HarmonyPatch("OnPointerEnter")]//
-        internal static class CatchHoverInMapUI
-        {
-            internal static void Prefix(TooltipComponent __instance)
-            {
-                if (__instance?.gameObject && __instance.gameObject.GetComponent<UIMiniMapElement>())
-                    ManMinimapExt.LastModaledTarget = __instance.gameObject.GetComponent<UIMiniMapElement>();
-            }
-        }
-        [HarmonyPatch(typeof(TooltipComponent))]
-        [HarmonyPatch("OnPointerExit")]//
-        internal static class CatchHoverInMapUI2
-        {
-            internal static void Prefix(TooltipComponent __instance)
-            {
-                if (__instance?.gameObject && __instance.gameObject.GetComponent<UIMiniMapElement>())
-                    if (ManMinimapExt.LastModaledTarget == __instance.gameObject.GetComponent<UIMiniMapElement>())
-                        ManMinimapExt.LastModaledTarget = null;
-            }
-        }
-        /*
-        [HarmonyPatch(typeof(UIHUDWorldMap))]
-        [HarmonyPatch("TryGetWaypoint")]//
-        internal static class LaunchModalOnMap
-        {
-            internal static void Prefix(GameObject cursorGO)
-            {
-                if (cursorGO != null)
-                {
-                    UIMiniMapElement uiminiMapElement = cursorGO.GetComponent<UIMiniMapElement>();
-                    if (uiminiMapElement?.TrackedVis != null && 
-                        !(uiminiMapElement.TrackedVis.ObjectType == ObjectTypes.Waypoint || 
-                        uiminiMapElement.TrackedVis.RadarType == RadarTypes.MapNavTarget))
-                    {
-                        ManMinimapExt.BringUpMinimapModal(uiminiMapElement);
-                    }
-                }
-            }
-        }*/
         [HarmonyPatch(typeof(EncounterDetails))]
         [HarmonyPatch("AmountToAwardFromPool", MethodType.Getter)]//
         internal static class AllowAdjustableLoot
@@ -558,11 +663,11 @@ namespace RandomAdditions
             private static void Postfix(ref int __result)
             {
                 if (RandomWorld.inst.WorldAltered)
-                __result = Mathf.RoundToInt(__result * RandomWorld.inst.LootXpMulti);
+                    __result = Mathf.RoundToInt(__result * RandomWorld.inst.LootXpMulti);
             }
         }
         [HarmonyPatch(typeof(TechAudio))]
-        [HarmonyPatch("PlayOneshot", new Type[] { typeof(TechAudio.AudioTickData), typeof(FMODEvent.FMODParams)})]//
+        [HarmonyPatch("PlayOneshot", new Type[] { typeof(TechAudio.AudioTickData), typeof(FMODEvent.FMODParams) })]//
         internal static class PlaySoundProperly
         {
             private static bool Prefix(ref TechAudio.AudioTickData data, ref FMODEvent.FMODParams additionalParam)
@@ -619,28 +724,10 @@ namespace RandomAdditions
         }
 
 
-        /*
-        [HarmonyPatch(typeof(StringLookup))]
-        [HarmonyPatch("GetString")]//
-        private class ShoehornText
-        {
-            private static bool Prefix(Localisation __instance, ref string bank, ref string id, ref string __result)
-            {
-                if (id == "MOD")
-                {
-                    __result = bank;
-                    return false;
-                }
-                return true;
-            }
-        }*/
 
-        //-----------------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------------
-        // Custom Block Modules
 
+
+        // ------------------  NEW AUDIO FOR COMBAT THEMES AND ENGINES  ------------------
 
         // Trying to change this will put a huge strain on the game
         /*
@@ -689,23 +776,6 @@ namespace RandomAdditions
 
 
         // LEGACY - From  LocalCorpAudioExt, now merged!
-
-        [HarmonyPatch(typeof(ManTechMaterialSwap))]
-        [HarmonyPriority(9001)]
-        [HarmonyPatch("GetMaterial")]//
-        private static class TempPreventBlockCrashDueToNullMaterial
-        {
-            private static bool Prefix(ManTechMaterialSwap __instance, ref Material currentMaterial, ref Material __result)
-            {
-                if (currentMaterial == null)
-                {
-                    __result = null;
-                    return false;
-                }
-                return true;
-            }
-        }
-
         private static int corpsVanilla = Enum.GetValues(typeof(FactionSubTypes)).Length;
         [HarmonyPatch(typeof(ManMusic))]
         [HarmonyPriority(9001)]
@@ -797,35 +867,6 @@ namespace RandomAdditions
         }
 
 
-        /// <summary>
-        /// This solely exists because there exists edge-cases where the MaterialSwapper can get called on m_Renderers which have had one of their
-        ///   listed renderers removed by inproperly setup blocks that have a render that removed AFTER they are spawned!  
-        ///   May have a performance hit when handling C&S and I don't like that at all but better than a crash!
-        /// </summary>
-        [HarmonyPatch(typeof(MaterialSwapper))]
-        [HarmonyPriority(9001)]
-        [HarmonyPatch("SetMaterialPropertiesOnRenderers", new Type[] { typeof(float), typeof(float),
-        typeof(Vector2),typeof(MaterialSwapper.VariableColorOverrides),typeof(List<Renderer>),})]
-        private static class MaterialSwapperFix
-        {
-            internal static void Prefix(ref List<Renderer> renderers)
-            {
-                renderers.RemoveAll(renderer =>
-                {
-                    if (renderer == null)
-                    {
-                        DebugRandAddi.Assert("Null renderer in SetMaterialPropertiesOnRenderers call.\nWE SHOULD NOT BE LOOKING FOR THESE!!! - " +
-                            StackTraceUtility.ExtractStackTrace());
-                        return true;
-                    }
-                    return false;
-                } );
-            }
-        }
-        
-
-
-
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnSpawn")]//
         private static class MakeRev
@@ -877,7 +918,5 @@ namespace RandomAdditions
                 }
             }
         }
-
-
     }
 }

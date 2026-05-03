@@ -145,6 +145,10 @@
       <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\UnityEngine.UIModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="uScriptAssembly">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\TerraTech\TerraTechWin64_Data\Managed\uScriptAssembly.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)'=='Steam'OR'$(Configuration)'=='SteamDev'">
     <!--> zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz </!-->
@@ -220,6 +224,7 @@
     <Compile Include="Audio\CorpExtAudioJSON.cs" />
     <Compile Include="Audio\ManMusicEnginesExt.cs" />
     <Compile Include="Audio\ManSFXExtRand.cs" />
+    <Compile Include="Audio\SFXPlayNow.cs" />
     <Compile Include="Audio\TechExtAudio.cs" />
     <Compile Include="Audio\TechExtAudioState.cs" />
     <Compile Include="Audio\TechExtEngine.cs" />
@@ -235,23 +240,25 @@
     <Compile Include="Audio\SFXAddition.cs" />
     <Compile Include="GameFixes\ModdedBlockFixes.cs" />
     <Compile Include="GlobalChanges\RandomWorld.cs" />
+    <Compile Include="KickStartOptions.cs" />
     <Compile Include="LocHelper.cs" />
     <Compile Include="MultiBlockModules\Roleplay\ManReplicas.cs" />
     <Compile Include="MultiBlockModules\Roleplay\ModuleReplica.cs" />
     <Compile Include="MultiBlockModules\Roleplay\ModuleReplicaImgUp.cs" />
     <Compile Include="MultiBlockModules\Roleplay\ModuleReplicaPoster.cs" />
     <Compile Include="MultiBlockModules\Roleplay\ModuleTrajectoryReplica.cs" />
+    <Compile Include="OptiScience\GraphicsPhysicsCulling.cs" />
     <Compile Include="OptiScience\HoverOpti.cs" />
     <None Include="OptiScience\TechColliderIgnorer.cs" />
+    <Compile Include="TechRescuer.cs" />
     <Compile Include="TempPortedGUI.cs" />
     <Compile Include="TonyRailsWiki.cs" />
     <None Include="ManModRecipes.cs" />
     <Compile Include="ManModScenery.cs" />
     <Compile Include="ManModChunks.cs" />
     <Compile Include="GlobalChanges\ManPhysicsExt.cs" />
-    <Compile Include="GlobalChanges\MinimapExt.cs" />
-    <Compile Include="GlobalChanges\Pyromanic.cs" />
-    <Compile Include="GlobalChanges\ITankCompAuto.cs" />
+    <Compile Include="GlobalChanges\MinimapExtRandi.cs" />
+    <Compile Include="GlobalChanges\ITankCompMan.cs" />
     <Compile Include="GlobalChanges\IngameQuit.cs" />
     <Compile Include="ManRapidModReloader.cs" />
     <Compile Include="ModLoaderSystem.cs" />
@@ -309,7 +316,6 @@
     <Compile Include="ReliantBlockModules\ModuleUIButtons.cs" />
     <None Include="SceneryModules\SceneryWeaponGun.cs" />
     <Compile Include="StandaloneBlockModules\ModuleBuoy.cs" />
-    <Compile Include="StandaloneBlockModules\ExtModuleClickable.cs" />
     <Compile Include="StandaloneBlockModules\ModuleEnergyMiner.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHangar.cs" />
     <Compile Include="StandaloneBlockModules\ModuleHardpoint.cs" />
@@ -334,7 +340,7 @@
     <Compile Include="DebugRandAddi.cs" />
     <Compile Include="Anim\AnimetteRotator.cs" />
     <Compile Include="Anim\AnimetteNumber.cs" />
-    <Compile Include="Audio\ManExtSounds.cs" />
+    <Compile Include="Audio\OverrideAudio.cs" />
     <Compile Include="GlobalChanges\MirageDestraction.cs" />
     <Compile Include="GlobalChanges\RandomTank.cs" />
     <Compile Include="GlobalChanges\TankDistraction.cs" />

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 namespace RandomAdditions
 {
     //OBSOLETE!
+    [Obsolete]
     class ModuleCustomDamageType
     {
     }

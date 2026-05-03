@@ -160,43 +160,6 @@ namespace RandomAdditions
             DebugRandAddi.Info("AddElement() - Added Button " + Name() + " for " + block.name);
             return madnessElements[pos];
         }
-
-        public static GUI_BM_Element MakeElement(string Name, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
-        {
-            return new GUI_BM_Element_Simple()
-            {
-                Name = Name,
-                OnIcon = sprite,
-                OnDesc = sliderDescIfIsSlider,
-                ClampSteps = numClampSteps,
-                LastVal = 0,
-                OnSet = onTriggered,
-            };
-        }
-        public static GUI_BM_Element MakeElement(LocExtString Name, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
-        {
-            return new GUI_BM_Element_Complex()
-            {
-                Name = Name.ToString,
-                OnIcon = sprite,
-                OnDesc = sliderDescIfIsSlider,
-                ClampSteps = numClampSteps,
-                LastVal = 0,
-                OnSet = onTriggered,
-            };
-        }
-        public static GUI_BM_Element MakeElement(Func<string> Name, Func<float, float> onTriggered, Func<Sprite> sprite, Func<string> sliderDescIfIsSlider = null, int numClampSteps = 0)
-        {
-            return new GUI_BM_Element_Complex()
-            {
-                Name = Name,
-                OnIcon = sprite,
-                OnDesc = sliderDescIfIsSlider,
-                ClampSteps = numClampSteps,
-                LastVal = 0,
-                OnSet = onTriggered,
-            };
-        }
         public void OnElementChanged()
         {
             if (ModularMenu.GUIIsOpen())

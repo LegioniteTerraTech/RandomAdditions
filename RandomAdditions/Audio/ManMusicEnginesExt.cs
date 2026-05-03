@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using System.Reflection;
-using System.Diagnostics;
-using System.Text;
 using UnityEngine;
 using Newtonsoft.Json;
 using FMODUnity;
 using TerraTechETCUtil;
-using FMOD;
 
 namespace RandomAdditions
 {

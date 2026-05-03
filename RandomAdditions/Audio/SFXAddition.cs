@@ -1,14 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Reflection;
-using System.IO;
 using TerraTechETCUtil;
-using FMOD;
 using UnityEngine;
 using Newtonsoft.Json;
-using RandomAdditions;
 
 public class SFXAddition : RandomAdditions.SFXAddition { };
 namespace RandomAdditions
@@ -183,11 +178,11 @@ namespace RandomAdditions
                         MaxInstances = 1,
                         PitchVariance = 0.25f,
                         Targets = new Dictionary<string, List<string>>
-                        {
-                            { "ModuleWeapon", new List<string>{ "m_FireSFXType" } }// RARE
-                        },
-                    }
-                };
+                            {
+                                { "ModuleWeapon", new List<string>{ "m_FireSFXType" } }// RARE
+                            },
+                        }
+                    };
                     DebugRandAddi.Log(JsonConvert.SerializeObject(soundsTemp, Formatting.Indented));
                     return;
                 }

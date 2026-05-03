@@ -125,6 +125,8 @@ namespace RandomAdditions.PhysicsTethers
 
         public static void Initiate()
         {
+            if (ActiveTethers != null)
+                return;
             ActiveTethers = new List<ModuleTechTether>();
             TethersJustDetached = new Dictionary<ModuleTechTether, ModuleTechTether>();
             LinkedTethers = new HashSet<TetherPair>();
@@ -136,11 +138,18 @@ namespace RandomAdditions.PhysicsTethers
         }
         public static void DeInit()
         {
+            if (ActiveTethers == null)
+                return;
+            netHook.Disable();
             ManUpdate.inst.RemoveAction(ManUpdate.Type.Update, ManUpdate.Order.Last, new Action(OnUpdate));
             ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.Last, new Action(OnFixedUpdatePost));
             ManUpdate.inst.RemoveAction(ManUpdate.Type.FixedUpdate, ManUpdate.Order.First, new Action(OnFixedUpdatePre));
             //Singleton.Manager<ManPointer>.inst.MouseEvent.Unsubscribe(OnClick);
+            LinkedTethers.Clear();
             LinkedTethers = null;
+            TethersJustDetached.Clear();
+            TethersJustDetached = null;
+            ActiveTethers.Clear();
             ActiveTethers = null;
         }
         public static void OnClick(ManPointer.Event mEvent, bool down, bool clicked)
@@ -538,6 +547,7 @@ namespace RandomAdditions.PhysicsTethers
             protected override void Pool()
             {
                 enabled = true;
+                ManTethers.Initiate();
                 try
                 {
                     tetherPoint = KickStart.HeavyTransformSearch(transform, "_Tether");
@@ -632,12 +642,12 @@ namespace RandomAdditions.PhysicsTethers
                 tank.TechAudio.AddModule(this);
                 tank.CollisionEvent.Subscribe(OnCollisionTank);
                 if (block.CircuitNode?.Receiver)
-                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, false, true);
+                    this.SubToLogicReceiverCircuitUpdate(OnRecCharge, false, true);
             }
             public override void OnDetach()
             {
                 if (block.CircuitNode?.Receiver)
-                    ExtraExtensions.SubToLogicReceiverCircuitUpdate(this, OnRecCharge, true, true);
+                    this.SubToLogicReceiverCircuitUpdate(OnRecCharge, true, true);
                 tank.CollisionEvent.Unsubscribe(OnCollisionTank);
                 tank.TechAudio.RemoveModule(this);
 

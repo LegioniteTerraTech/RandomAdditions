@@ -111,6 +111,8 @@ namespace RandomAdditions
         {
             enabled = true;
             hint.Show();
+            block.BlockUpdate.Subscribe(OnUpdate);
+            block.BlockFixedUpdate.Subscribe(OnFixedUpdate);
         }
         public override void OnDetach()
         {
@@ -120,6 +122,8 @@ namespace RandomAdditions
             if (generateSpinners != null)
                 foreach (Spinner SPN in generateSpinners)
                     SPN.SetAutoSpin(false);
+            block.BlockFixedUpdate.Unsubscribe(OnFixedUpdate);
+            block.BlockUpdate.Unsubscribe(OnUpdate);
             enabled = false;
             isBoostingNow = false;
         }
@@ -153,7 +157,7 @@ namespace RandomAdditions
                 isBoostingNow = false;
         }
 
-        public void Update()
+        private void OnUpdate()
         {
             if (Audio != null)
             {
@@ -171,7 +175,7 @@ namespace RandomAdditions
             }
         }
 
-        public void FixedUpdate()
+        private void OnFixedUpdate()
         {
             if (!ManPauseGame.inst.IsPaused && updateDelayClock > updateDelay && IsBoostPossible())
             {

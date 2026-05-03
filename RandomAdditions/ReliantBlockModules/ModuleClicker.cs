@@ -99,9 +99,10 @@ namespace RandomAdditions
             else
                 BlockDebug.ThrowWarning(false, "ModuleClicker has no valid Animettes");
             if (!block)
-                throw new NullReferenceException("ModuleClicker is present on a GameObject that is not a legitimate block.  This is illegal");
+                throw new NullReferenceException("ModuleClicker is present on a GameObject that is not a legitimate block.  This is illegal and unsupported");
             if (ModuleUIButtons.PropertyGrabber.GetMethod.Invoke(block, new object[0] { }) != null)
-                DebugRandAddi.LogError("ModuleClicker set a new menu to a block that already has a menu -  this is not recommended");
+                DebugRandAddi.LogError("ModuleClicker set a new menu to a block that already has a menu \"" + 
+                    ((transform?.name == null) ? "<NULL>" : transform.name) +"\" -  this is not recommended");
             ModuleUIButtons.PropertyGrabber.SetMethod.Invoke(block, new object[] { this });
         }
         public void ForceUpdate()
@@ -272,7 +273,6 @@ namespace RandomAdditions
         }
         private static void CloseGUI()
         {
-            KickStart.ReleaseControl();
             GUIWindow.SetActive(false);
             playerSelected = null;
         }

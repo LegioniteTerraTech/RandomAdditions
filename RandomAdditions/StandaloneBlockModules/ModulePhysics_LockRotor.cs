@@ -93,9 +93,11 @@ namespace RandomAdditions
             phyLock.axis = tank.trans.InverseTransformVector(RotateAxis.forward);
             phyLock.axis2 = tank.trans.InverseTransformVector(RotateAxis.up);
             tank.control.driveControlEvent.Subscribe(ControlUpdate);
+            block.BlockFixedUpdate.Subscribe(OnFixedUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockFixedUpdate.Unsubscribe(OnFixedUpdate);
             tank.control.driveControlEvent.Unsubscribe(ControlUpdate);
             enabled = false;
             base.OnDetach();
@@ -105,7 +107,7 @@ namespace RandomAdditions
         {
             lastControl = ctrl.InputRotation;
         }
-        public void FixedUpdate()
+        private void OnFixedUpdate()
         {
             if (phyLock.IsAttached)
             {

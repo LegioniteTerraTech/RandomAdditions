@@ -3,7 +3,6 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using TerraTechETCUtil;
-using static Singleton;
 
 public class TorpedoProjectile : RandomAdditions.TorpedoProjectile { };
 namespace RandomAdditions

@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using UnityEngine;
 using TerraTechETCUtil;
 
 namespace RandomAdditions
 {
+    /*
     public class ModuleSoundOverride : ExtModule
     {
         internal FMODEventInstance sound;
@@ -14,7 +13,7 @@ namespace RandomAdditions
 
     public class ManExtSounds
     {
-    }
+    }*/
     public static class OverrideAudio
     {
         private static readonly FieldInfo

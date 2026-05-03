@@ -5,13 +5,10 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
-using UnityEngine.EventSystems;
 using SafeSaves;
 using TerraTechETCUtil;
 using Newtonsoft.Json;
 using Ionic.Zlib;
-using RandomAdditions.Minimap;
-using System.Xml.Linq;
 using System.Text;
 
 namespace RandomAdditions.RailSystem
@@ -305,7 +302,7 @@ namespace RandomAdditions.RailSystem
                 return 0;
             }, ShowCanConnect);
 
-            ModHelpers.ClickEventSimple.Subscribe(inst.OnClick);
+            InvokeHelper.ClickEventSimple.Subscribe(inst.OnClick);
 
             MaxRailLoadRangeSqr = MaxRailLoadRange * MaxRailLoadRange;
             DebugRandAddi.Log("RandomAdditions: Init ManRails");
@@ -424,7 +421,7 @@ namespace RandomAdditions.RailSystem
                 {
                     inst.gameObject.SetActive(false);
                     DebugRandAddi.Log("RandomAdditions: De-Init ManRails");
-                    ModHelpers.ClickEventSimple.Unsubscribe(inst.OnClick);
+                    InvokeHelper.ClickEventSimple.Unsubscribe(inst.OnClick);
                     UIMiniMapLayerTrain.RemoveAllPre();
 
                     ManMinimapExt.RemoveMinimapInteractable(ObjectTypes.Vehicle, StringCanConnect());
@@ -1374,6 +1371,7 @@ namespace RandomAdditions.RailSystem
             GameObject prefabSide = new GameObject("Side1");
             prefabSide.layer = 0;
             Transform transSide = prefabSide.transform;
+            transSide.SetParent(transMain);
             transSide.localPosition = new Vector3(dualOffset, 0.2f, 0);
             transSide.localRotation = Quaternion.identity;
             transSide.localScale = Vector3.one;

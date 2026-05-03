@@ -10,6 +10,9 @@ public class ModuleHardpoint : RandomAdditions.ModuleHardpoint { }
 
 namespace RandomAdditions
 {
+    /// <summary>
+    /// Adds and removes GameObjects based on attached APs
+    /// </summary>
     [Serializable]
     public class ModuleHardpoint : ExtModule
     {

@@ -11,8 +11,103 @@ namespace RandomAdditions
 {
     internal class ModulePatches
     {
+        public static HashSet<BubbleShield> bubbleShields = new HashSet<BubbleShield>();
 
-        // MAIN
+        // ------------------  BUG FIXES  ------------------
+        internal static class CannonBarrelPatches
+        {
+            internal static Type target = typeof(CannonBarrel);
+            /// <summary>
+            /// Fix ModuleWeaponGun crash due to missing "casingEjectTransform" transform</summary>
+            public static bool EjectCasing_Prefix(CannonBarrel __instance)
+            {
+                return __instance.casingEjectTransform != null;
+            }
+
+        }
+
+
+
+
+        // ------------------  PERFORMANCE  ------------------
+        internal static class ModuleShieldGeneratorPatches
+        {
+
+            internal static Type target = typeof(ModuleShieldGenerator);
+            private static bool permissiable = false;
+            private static void IgnoreAllBlocksIfNeeded(Collider ignorer)
+            {
+                if (ignorer == null)
+                    return;
+                foreach (var item in ManTechs.inst.IterateTechs())
+                {
+                    if (item == null)
+                        continue;
+                    foreach (var item2 in item.blockman.IterateBlocks())
+                    {
+                        try
+                        {
+                            item2.IgnoreCollision(ignorer, true);
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            internal static void UpdateCollisionCache_Prefix(ModuleShieldGenerator __instance, ref bool enable,
+                BubbleShield ___m_Shield)
+            {
+                if (!permissiable)
+                    enable = false;
+                switch ((BlockTypes)__instance.block.visible.ItemType)
+                {
+                    case BlockTypes.GC_SamSite_Shield_222:
+                    case BlockTypes.GC_SamSite_Shield_AC_222:
+                    case BlockTypes.GC_SamSite_Shield_LaserLab_222:
+                    case BlockTypes.GC_SamSite_Shield_TeslaTurret_222:
+                    case BlockTypes.EXP_RRLab_Forcefield:
+                    case BlockTypes.EXP_RRLab_Forcefield_Maze:
+                        break;
+                    default: // Remove disabled useless laggy trigger collider
+                        if (___m_Shield.RepulsorTechTrigger != null)
+                        {
+                            UnityEngine.Object.Destroy(___m_Shield.RepulsorTechTrigger);
+                        }
+                        if (permissiable && ___m_Shield.RepulsorBulletTrigger != null)
+                        {
+                            if (!bubbleShields.Contains(___m_Shield))
+                            {
+                                //InvokeHelper.InvokeNextUpdate(() => IgnoreAllBlocksIfNeeded(___m_Shield.RepulsorBulletTrigger));
+                            }
+                        }
+                        break;
+                }
+            }
+
+            private static bool prevState = false;
+            internal static void OnUpdateConsumeEnergy_Prefix(ModuleShieldGenerator __instance)
+            {
+                prevState = __instance.IsPowered;
+            }
+            internal static void OnUpdateConsumeEnergy_Postfix(ModuleShieldGenerator __instance)
+            {
+                if (prevState != __instance.IsPowered)
+                {   // It turned on/off. Toggle the laggy colliders!
+                    permissiable = true;
+                    try
+                    {
+                        if (__instance.IsPowered)
+                            __instance.UpdateCollisionCache(true);
+                        else
+                            __instance.UpdateCollisionCache(false);
+                    }
+                    finally
+                    {
+                        permissiable = false;
+                    }
+                }
+            }
+        }
         internal static class ModuleHoverPatches
         {
 
@@ -46,7 +141,6 @@ namespace RandomAdditions
                 }
             }
         }
-        //*  // Doesn't work, TT is too spagetti coded
         internal static class HoverJetPatches
         {
             internal static Type target = typeof(HoverJet);
@@ -71,18 +165,6 @@ namespace RandomAdditions
                 }
                 return true;
             }
-        }//*/
-
-        internal static class CannonBarrelPatches
-        {
-            internal static Type target = typeof(CannonBarrel);
-            /// <summary>
-            /// Fix ModuleWeaponGun crash due to missing "casingEjectTransform" transform</summary>
-            public static bool EjectCasing_Prefix(CannonBarrel __instance)
-            {
-                return __instance.casingEjectTransform != null;
-            }
-
         }
 
         internal static class ModuleItemHolderBeamPatches
@@ -190,6 +272,10 @@ namespace RandomAdditions
             }
         }
 
+
+
+
+        // ------------------  NEW FEATURES  ------------------
         internal static class BoosterJetPatches
         {
             internal static Type target = typeof(BoosterJet);
@@ -198,14 +284,7 @@ namespace RandomAdditions
             /// RunModuleBoosterBurner</summary>
             private static void OnFixedUpdate_Prefix(BoosterJet __instance)
             {
-                if (__instance == null)
-                    return;
-                var ModuleCheck = __instance.gameObject.GetComponent<BurnerJet>();
-                if (ModuleCheck != null)
-                {
-                    ModuleCheck.InsureInit(__instance);
-                    ModuleCheck.Run(__instance.IsFiring);
-                }
+                __instance?.GetComponent<BurnerJet>()?.InsureInitAndRun(__instance);
             }
 
         }
@@ -554,9 +633,7 @@ namespace RandomAdditions
                 if (TankCheck != null)
                 {
                     if (TankCheck.TakeControl())
-                    {
                         __result = true;
-                    }
                 }
             }
 

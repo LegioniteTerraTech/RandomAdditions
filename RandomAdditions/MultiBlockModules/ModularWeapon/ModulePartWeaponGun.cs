@@ -118,6 +118,7 @@ namespace RandomAdditions
             }
             barrelsTemp[0].Setup(false);
             FallbackBarrel = barrelsTemp[0];
+            block.BlockUpdate.Subscribe(OnUpdate);
         }
 
         public override void AttachEvent()
@@ -135,7 +136,7 @@ namespace RandomAdditions
         }
 
 
-        private void Update()
+        private void OnUpdate()
         {
             if (doSpool != tank.control.FireControl)
             {
@@ -562,7 +563,7 @@ namespace RandomAdditions
     public class DynamicProjectile : ExtProj
     {
         public ModulePartWeaponGun weap;
-        public List<WeaponTypeStats> stats;
+        public List<WeaponTypeStats> stats = new List<WeaponTypeStats>();
         public override void Impact(Collider other, Damageable damageable, Vector3 hitPoint, ref bool ForceDestroy)
         {
             if (ForceDestroy)
@@ -724,8 +725,7 @@ namespace RandomAdditions
                         _ = DP.PB;
                     }
                     DP.weap = partWeap;
-                    Color col = partWeap.GetRandomDamage(partWeap.m_RandomRoundBudgetPercent, out List<WeaponTypeStats> stats);
-                    DP.stats = stats;
+                    Color col = partWeap.GetRandomDamage(partWeap.m_RandomRoundBudgetPercent, DP.stats);
                     if (LR)
                     {
                         LR.startWidth = partWeap.shellScale;

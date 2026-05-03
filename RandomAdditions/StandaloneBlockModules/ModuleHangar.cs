@@ -61,7 +61,6 @@ namespace RandomAdditions
 
         private const float DelayedUpdateDelay = 0.5f;
 
-        internal Tank tank => block.tank;
         private bool isSaving = false;
 
         private Transform HangarEntry;
@@ -195,7 +194,7 @@ namespace RandomAdditions
             catch { }
             if (HangarEntry == null)
             {
-                HangarEntry = this.transform;
+                HangarEntry = transform;
                 BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Entry\" for the hangar enterance!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
 
@@ -216,7 +215,7 @@ namespace RandomAdditions
             catch { }
             if (HangarInside == null)
             {
-                HangarInside = this.transform;
+                HangarInside = transform;
                 BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleHangar NEEDS a GameObject in hierarchy named \"_Inside\" for the hangar inside!\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
             }
 
@@ -280,9 +279,11 @@ namespace RandomAdditions
             block.serializeEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             //block.serializeTextEvent.Subscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             hint.Show();
+            block.BlockUpdate.Subscribe(OnUpdate);
         }
         public override void OnDetach()
         {
+            block.BlockUpdate.Unsubscribe(OnUpdate);
             block.serializeEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             //block.serializeTextEvent.Unsubscribe(new Action<bool, TankPreset.BlockSpec>(OnSerialize));
             TankWantsToDock = null;
@@ -325,7 +326,7 @@ namespace RandomAdditions
             HangarStoredVolume = 0;
             enabled = false;
         }
-        internal void Update()
+        private void OnUpdate()
         {
             if (nextTime < Time.time)
             {

@@ -284,11 +284,13 @@ namespace RandomAdditions
             //TankBlock.serializeTextEvent.Subscribe(OnSerializeText);
             TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
 
+            TankBlock.BlockUpdate.Subscribe(OnUpdate);
             ResetGaugesAndDisplays();
             hint.Show();
         }
         public override void OnDetach()
         {
+            TankBlock.BlockUpdate.Unsubscribe(OnUpdate);
             TankBlock.serializeEvent.Unsubscribe(OnSerialize);
             //TankBlock.serializeTextEvent.Unsubscribe(OnSerializeText);
 
@@ -907,7 +909,7 @@ namespace RandomAdditions
         /// <summary>
         /// Run chunk "animator" module and update displays
         /// </summary>
-        private void Update()
+        private void OnUpdate()
         {
             int fireTimes = AbsorbAnimating.Count;
             for (int step = 0; step < fireTimes; step++)

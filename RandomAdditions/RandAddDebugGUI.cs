@@ -107,7 +107,7 @@ namespace RandomAdditions
 
         internal class GUIManagedProjectiles
         {
-            private static List<ProjBase> pool = null;
+            private static HashSet<ProjBase> pool = null;
             private static bool display = false;
 
             public static void GUIGetTotalManaged()
@@ -125,7 +125,7 @@ namespace RandomAdditions
                     {
                         for (int step = 0; step < pool.Count; step++)
                         {
-                            var item = pool[step];
+                            var item = pool.ElementAt(step);
                             if (item != null)
                             {
                                 GUILayout.BeginHorizontal();

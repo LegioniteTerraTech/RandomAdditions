@@ -9,7 +9,7 @@ namespace RandomAdditions
     /// <summary>
     /// WIP - An auto Miner which can be placed on specific scenery types to mine special ores that needs energy to work
     /// </summary>
-    public class ModuleEnergyMiner
+    public class ModuleEnergyMiner : ModuleItemProducer
     {
     }
 }

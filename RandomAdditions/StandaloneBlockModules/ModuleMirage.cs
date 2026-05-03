@@ -21,9 +21,12 @@ namespace RandomAdditions
         // XForm,
       },
     */
-    public class ModuleMirage : ExtModule
+    /// <summary>
+    /// Make fake dupes of your tech to fake TECH radar
+    /// </summary>
+    public class ModuleMirage : ExtModule, ITankCompManagedList<MirageDestraction, ModuleMirage>
     {
-        internal MirageDestraction distraction;
+        public MirageDestraction tankMan { get; set; }
 
         public MirageType MirageType = MirageType.Circle;
         public float MiragePower = 10;
@@ -43,13 +46,13 @@ namespace RandomAdditions
         {
             // MP not supported correctly rn
             if (!ManNetwork.IsNetworked)
-                MirageDestraction.HandleAddition(tank, this);
+                this.StartManagingList();
         }
         public override void OnDetach()
         {
             // MP not supported correctly rn
             if (!ManNetwork.IsNetworked)
-                MirageDestraction.HandleRemoval(tank, this);
+                this.StopManagingList();
         }
     }
     public enum MirageType

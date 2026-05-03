@@ -1,41 +1,33 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Timers;
-using FMOD;
 using HarmonyLib;
-using RandomAdditions.Minimap;
-using RandomAdditions.RailSystem;
-using SafeSaves;
 using TerraTechETCUtil;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using static Mode;
-using static Tank.CollisionInfo;
 
 namespace RandomAdditions
 {
     internal class GlobalPatches
     {
-        // BUGFIXES
+        // Note: add MonoBehaviourEvent<T> patches that disables it on creation, but enables it if there is subscribers and disables if none
 
+
+        // BUGFIXES
+        /*
         internal static class SeeIfPoolLaggy
         {
             internal static Type target = typeof(ComponentPool);
 
 
-            /* // Turning off the repooler does indeed increase lag
-            [HarmonyPriority(-9001)]
-            internal static bool LateUpdate_Prefix(ComponentPool __instance)
-            {
-                return false;
-            }//*/
+            // Turning off the repooler does indeed increase lag
+            //[HarmonyPriority(-9001)]
+            //internal static bool LateUpdate_Prefix(ComponentPool __instance)
+            //{
+            //    return false;
+            //}
             
 
             public static Stopwatch watch = new Stopwatch();
@@ -108,7 +100,7 @@ namespace RandomAdditions
                 if (watch.ElapsedMilliseconds > 5)
                     DebugRandAddi.Log("ComponentPool.LookupPool() took " + watch.ElapsedMilliseconds + "ms on path " + StackTraceUtility.ExtractStackTrace());
             }
-        }
+        }//*/
 
         internal static class FuckYouEpicOnlineServices
         {
@@ -342,20 +334,19 @@ namespace RandomAdditions
                     setComp.AimedDownscale = Mathf.Min(Mathf.Max(0.001f, 1 / Mathf.Max(Mathf.Max(bound.x, bound.y), bound.z)) / 2, 0.5f);
                 }
                 var run = block.GetComponent<TankBlockScaler>();
-                run.OnPool();
+                run.OnPool(__instance);
                 run.enabled = false;
 
                 var rp = block.GetComponent<ModuleReplace>();
                 if ((bool)rp)
                     rp.Init(__instance);
-
-                InvokeHelper.Invoke(OnPool_Delayed, 3, __instance);
             }
-            [HarmonyPriority(-9001)]
-            internal static void OnPool_Delayed(TankBlock block)
+            /*
+            internal static void OnAttach_Postfix(TankBlock __instance)
             {
-                new WikiPageBlock((int)block.GetComponent<Visible>().ItemType, block.name);
-            }
+                foreach (var item in ModulePatches.bubbleShields.Where(x => x?.RepulsorBulletTrigger != null))
+                    __instance.IgnoreCollision(item.RepulsorBulletTrigger, true);
+            }//*/
 
             /// <summary>
             /// PatchAllBlocksForPainting
@@ -368,6 +359,10 @@ namespace RandomAdditions
                 {
                     if (__instance?.transform != null)
                         ModdedBlockFixes.FixBlock(__instance);
+#if DEBUG
+                    if (KickStart.OcculsionCullingInit && !__instance.GetComponent<GraphicsPhysicsCulling.BlockRenderBounds>())
+                        GraphicsPhysicsCulling.BlockRenderBounds.PoolInit(__instance);
+#endif
                 }
                 catch (Exception e)
                 {
@@ -536,24 +531,21 @@ namespace RandomAdditions
             /// PatchDamageableRA
             /// </summary>
             [HarmonyPriority(-9001)]
-            private static bool Damage_Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
+            internal static void Damage_Prefix(Damageable __instance, ref ManDamage.DamageInfo info)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Damageable Damage(ModuleReinforced)");
                 if (__instance == null)
-                    return true;
+                    return;
                 var multi = __instance.GetComponent<ModuleReinforced>();
                 if (multi != null)
-                {
                     info = multi.RecalcDamage(ref info);
-                }
-                return true;
             }
 
             /// <summary>
             /// PatchDamageableChange
             /// </summary>
             [HarmonyPriority(-9001)]
-            private static void OnPool_Prefix(Damageable __instance)
+            internal static void OnPool_Prefix(Damageable __instance)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Damageable OnPool(ModuleReinforced)");
                 var modifPresent = __instance.gameObject.GetComponent<ModuleReinforced>();
@@ -565,9 +557,7 @@ namespace RandomAdditions
                         //DebugRandAddi.Log("RandomAdditions: Damageable Switched to " + __instance.DamageableType);
                     }
                     else if (modifPresent.UseMultipliers)
-                    {
                         __instance.DamageableType = ManDamage.DamageableType.Standard;
-                    }
                 }
             }
 
@@ -584,12 +574,10 @@ namespace RandomAdditions
             /// PatchDamageableRA
             /// </summary>
             [HarmonyPriority(-9001)]
-            private static bool OnDamaged_Prefix(ModuleDamage __instance, ref ManDamage.DamageInfo info)
+            internal static bool OnDamaged_Prefix(ModuleDamage __instance, ref ManDamage.DamageInfo info)
             {
                 if (__instance.GetComponent<ModuleReinforced>() != null)
-                {
                     return info.Damage > 0;
-                }
                 return true;
             }
         }
@@ -600,7 +588,7 @@ namespace RandomAdditions
             /// PatchShieldsToActuallyBeShieldTyping
             /// </summary>
             /// <param name="__instance"></param>
-            private static void OnSpawn_Postfix(BubbleShield __instance)
+            internal static void OnSpawn_Postfix(BubbleShield __instance)
             {
                 try
                 {
@@ -635,52 +623,12 @@ namespace RandomAdditions
                 return true;
             }
         }*/
-        internal static class NetPlayerPatches
-        {
-            internal static Type target = typeof(NetPlayer);
-            private static void OnStartClient_Postfix(NetPlayer __instance)
-            {
-                int counter = 0;
-                foreach (var item in ManModNetwork.hooks)
-                {
-                    if (item.Value.ClientRecieves())
-                    {
-                        ManNetwork.inst.SubscribeToClientMessage(__instance.netId, (TTMsgType)item.Key, new ManNetwork.MessageHandler(item.Value.OnToClientReceive_Internal));
-                        DebugRandAddi.Log("Client Subscribed " + item.Value.ToString() + " to network under ID " + item.Key);
-                        counter++;
-                    }
-                }
-                DebugRandAddi.Log("Client subscribed " + counter + " hooks.");
-            }
-            private static void OnStartServer_Postfix(NetPlayer __instance)
-            {
-                if (!ManModNetwork.HostExists)
-                {
-                    DebugRandAddi.Log("Host started, hooked ManModNetwork update broadcasting to " + __instance.netId.ToString());
-                    ManModNetwork.Host = __instance.netId;
-                    ManModNetwork.HostExists = true;
-
-                    int counter = 0;
-                    foreach (var item in ManModNetwork.hooks)
-                    {
-                        if (item.Value.ServerRecieves()) 
-                        {
-                            ManNetwork.inst.SubscribeToServerMessage(__instance.netId, (TTMsgType)item.Key, new ManNetwork.MessageHandler(item.Value.OnToServerReceive_Internal));
-                            DebugRandAddi.Log("Server Subscribed " + item.Value.ToString() + " to network under ID " + item.Key);
-                            counter++;
-                        }
-                    }
-                    DebugRandAddi.Log("Server subscribed " + counter + " hooks.");
-                }
-            }
-        }
-
         internal static class TechAudioPatches
         {
             internal static Type target = typeof(TechAudio);
 
             [HarmonyPriority(-9001)]
-            private static bool OnModuleTickData_Prefix(ref TechAudio.AudioTickData tickData, ref FMODEvent.FMODParams additionalParam)
+            internal static bool OnModuleTickData_Prefix(ref TechAudio.AudioTickData tickData, ref FMODEvent.FMODParams additionalParam)
             {
                 if ((int)tickData.sfxType < 0)
                 {

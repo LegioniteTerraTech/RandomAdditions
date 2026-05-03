@@ -63,7 +63,7 @@ namespace RandomAdditions
         {
             hint.Show();
         }
-        public void InsureInit(BoosterJet jet)
+        private void InsureInit(BoosterJet jet)
         {
             if (isSetup)
                 return;
@@ -191,9 +191,10 @@ namespace RandomAdditions
         }
 
 
-        public void Run(bool Active)
+        public void InsureInitAndRun(BoosterJet jet)
         {
-            if (Active)
+            InsureInit(jet);
+            if (jet.IsFiring)
             {
                 if (TimeStep <= 0)
                 {

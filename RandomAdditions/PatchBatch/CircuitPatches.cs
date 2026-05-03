@@ -122,6 +122,23 @@ namespace RandomAdditions
                 }
             }
         }
+        /*
+        internal static class TechCircuitsPatches
+        {
+            internal static Type target = typeof(TechCircuits);
+            private static List<TechCircuits>
+
+            [HarmonyPriority(-9001)]
+            internal static void PropagateHighestNetworkChargesToLinkedNetworksThenReleaseCharges_Prefix(TechCircuits __instance,
+                m_SortedNetworks)
+            {
+                var hook = __instance.GetComponent<ModuleCircuitExt>();
+                if (hook && hook.OutCharge > strength)
+                {
+                    strength = hook.OutCharge;
+                }
+            }
+        }*/
 
         internal static class ModuleCircuitReceiverPatches
         {
