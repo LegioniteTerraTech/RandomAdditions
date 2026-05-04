@@ -688,16 +688,5 @@ namespace RandomAdditions
             }
             */
         }
-        internal static class TerrainObjectTablePatches
-        {
-            internal static Type target = typeof(TerrainObjectTable);
-
-            [HarmonyPriority(-9001)]
-            internal static void InitLookupTable_Postfix(Dictionary<string, TerrainObject> ___m_GUIDToPrefabLookup)
-            {
-                ManModScenery.AddOurSceneryNOW(___m_GUIDToPrefabLookup);
-            }
-        }
-
     }
 }

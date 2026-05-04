@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace RandomAdditions
 {
-    internal class DebugRandAddi : MonoBehaviour
+    internal class DebugRandAddi
     {
         private const string modName = "RandomAdditions";
 
@@ -82,23 +82,7 @@ namespace RandomAdditions
             ManModGUI.ShowErrorPopup(Warning, IsSeriousError, OnFixRequested);
         }
 
-        internal static void DrawDirIndicator(Vector3 posScene, Vector3 vectorWorld, Color color, float duration = 2)
-        {
-            GameObject gO = new GameObject("DebugLine");
-
-            var lr = gO.GetComponent<LineRenderer>();
-            if (!(bool)lr)
-            {
-                lr = gO.AddComponent<LineRenderer>();
-                lr.material = new Material(Shader.Find("Sprites/Default"));
-                lr.positionCount = 2;
-                lr.startWidth = 0.5f;
-            }
-            lr.startColor = color;
-            lr.endColor = color;
-            Vector3[] vecs = new Vector3[2] { posScene, vectorWorld + posScene };
-            lr.SetPositions(vecs);
-            Destroy(gO, duration);
-        }
+        internal static void DrawDirIndicator(Vector3 posScene, Vector3 vectorWorld, Color color, float duration = 2) =>
+            DebugExtUtilities.DrawDirIndicator(posScene, vectorWorld, color, duration);
     }
 }

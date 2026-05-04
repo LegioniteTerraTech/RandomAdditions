@@ -93,7 +93,7 @@ namespace RandomAdditions
         public static bool CanUseMenu { get { return !ManPauseGame.inst.IsPaused; } }
         public static bool IsIngame { get { return !ManPauseGame.inst.IsPaused && !ManPointer.inst.IsInteractionBlocked; } }
 
-        public static float WaterHeight
+        internal static float WaterHeight
         {
             get
             {
@@ -112,7 +112,7 @@ namespace RandomAdditions
         internal static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
         //private static bool patched = false;
         internal static bool isSteamManaged = false;
-        public static bool VALIDATE_MODS()
+        private static bool VALIDATE_MODS()
         {
             isWaterModPresent = false;
             isTweakTechPresent = false;
@@ -197,7 +197,7 @@ namespace RandomAdditions
                 DebugRandAddi.Log(e);
             }
         }
-        public static void OfficialEarlyInit()
+        internal static void OfficialEarlyInit()
         {
             //Where the fun begins
             DebugRandAddi.Log("RandomAdditions: OfficialEarlyInit");
@@ -275,19 +275,12 @@ namespace RandomAdditions
             {
                 DebugRandAddi.Log("RandomAdditions: Error on Prepping Quick Start: " + e);
             }
-            if (!OfficialEarlyInited)
-            {
-                ManModChunks.RenewOldChunks();
-            }
-#if DEBUG
-            PrepExternalChunksAndScenery();
-#endif
             OfficialEarlyInited = true;
         }
 
 
         private static bool IsNowQuickStarting = false;
-        public static List<string> gamemodeSwitch = new List<string>();
+        internal static List<string> gamemodeSwitch = new List<string>();
         private static DebugGUIQuickStart quickStartLabelTemp = null;
         internal class DebugGUIQuickStart : MonoBehaviour
         {
@@ -306,7 +299,7 @@ namespace RandomAdditions
                 }
             }
         }
-        public static void SetQuickStartPopup(bool exist)
+        private static void SetQuickStartPopup(bool exist)
         {
             if (exist)
             {
@@ -334,7 +327,7 @@ namespace RandomAdditions
             SetQuickStartPopup(false);
             ManModGUI.RemoveEscapeableCallback(DoBypassStartupSkip, true);
         }
-        public static void MainOfficialInit()
+        internal static void MainOfficialInit()
         {
             //SafeSaves.DebugSafeSaves.LogAll = true;
             //Where the fun begins
@@ -424,9 +417,6 @@ namespace RandomAdditions
             }
             ManGameMode.inst.ModeStartEvent.Subscribe(OnModeStart);
             ManGameMode.inst.ModeFinishedEvent.Subscribe(OnModeEnd);
-
-            ManModChunks.enabled = true;
-            ManModScenery.enabled = true;
 
 #if DEBUG
             InvokeHelper.InvokeSingleRepeat(GraphicsPhysicsCulling.UpdateCulling, 0f);
@@ -525,32 +515,9 @@ namespace RandomAdditions
         }
 #endif
 
-        public static void PrepExternalChunksAndScenery(bool reload = false)
-        {
-            try
-            {
-                ManModChunks.SanityCheck();
-                ManModChunks.PrepareAllChunks(reload);
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.FatalError("Failed to launch " + nameof(ManModChunks) + " - " + e);
-                ManModChunks.enabled = false;
-            }
-            try
-            {
-                ManModScenery.SanityCheck();
-                ManModScenery.PrepareAllScenery(reload);
-            }
-            catch (Exception e)
-            {
-                DebugRandAddi.FatalError("Failed to launch " + nameof(ManModScenery) + " - " + e);
-                ManModScenery.enabled = false;
-            }
-        }
 
 #if DEBUG
-        public static void PrintSoundDataBase()
+        internal static void PrintSoundDataBase()
         {
             var m_ParamDatabase = typeof(FMODEventInstance).GetField("m_ParamDatabase", BindingFlags.Static | BindingFlags.NonPublic);
             var database = (Dictionary<string, Dictionary<string, int>>)m_ParamDatabase.GetValue(null);
@@ -567,7 +534,7 @@ namespace RandomAdditions
 #endif
 
 #if STEAM
-        public static void DeInitALL()
+        internal static void DeInitALL()
         {
             if (patched)
             {
@@ -713,7 +680,7 @@ namespace RandomAdditions
 
         private const float SlowUpdateTime = 0.6f;
         private static float SlowUpdate = 0;
-        public static void UpdateManaged()
+        private static void UpdateManaged()
         {
             try
             {
@@ -739,12 +706,10 @@ namespace RandomAdditions
                 Optimax.SetActive(!Optimax.State);
         }
 
-        public static void OnSaveManagers(bool Doing)
+        private static void OnSaveManagers(bool Doing)
         {
             if (Doing)
             {
-                ManModChunks.inst.PrepareForSaving();
-                ManModScenery.inst.PrepareForSaving();
                 ManTileLoader.OnWorldSave();
                 ManRails.PrepareForSaving();
                 RandomWorld.PrepareForSaving();
@@ -764,8 +729,6 @@ namespace RandomAdditions
                 EmergPatches.FinishedSaving();
                 ManRails.FinishedSaving();
                 ManTileLoader.OnWorldFinishSave();
-                ManModChunks.inst.FinishedSaving();
-                ManModScenery.inst.FinishedSaving();
                 RandomWorld.FinishedSaving();
                 string prevName = quickData.lastMPSaveName;
                 int prevMode = quickData.gameMode;
@@ -786,12 +749,10 @@ namespace RandomAdditions
                 }
             }
         }
-        public static void OnLoadManagers(bool Doing)
+        private static void OnLoadManagers(bool Doing)
         {
             if (Doing)
             {
-                ManModChunks.inst.PrepareForLoading();
-                ManModScenery.inst.PrepareForLoading();
                 EmergPatches.PrepareForLoading();
             }
             else
@@ -799,16 +760,14 @@ namespace RandomAdditions
                 EmergPatches.FinishedLoading();
                 ManTileLoader.OnWorldLoad();
                 ManRails.FinishedLoading();
-                ManModChunks.inst.FinishedLoading();
-                ManModScenery.inst.FinishedLoading();
                 RandomWorld.FinishedLoading();
             }
         }
 
-        public static bool LookForMod(string name) => ModStatusChecker.LookForMod(name);
+        internal static bool LookForMod(string name) => ModStatusChecker.LookForMod(name);
 
-        public static Type LookForType(string name) => ModStatusChecker.LookForType(name);
-        public static Transform HeavyTransformSearch(Transform trans, string name) 
+        internal static Type LookForType(string name) => ModStatusChecker.LookForType(name);
+        internal static Transform HeavyTransformSearch(Transform trans, string name) 
         {
             if (name.NullOrEmpty())
                 return null;
@@ -819,7 +778,7 @@ namespace RandomAdditions
             }
             return null;
         }
-        public static Transform HeavyTransformSearchGARBAGE(Transform trans, string name) =>
+        internal static Transform HeavyTransformSearchGARBAGE(Transform trans, string name) =>
             Utilities.HeavyTransformSearch(trans, name);
 
         internal static void OpenInExplorer(string directory)
@@ -855,8 +814,8 @@ namespace RandomAdditions
         // Additional section for immedeate game entering
         public static bool didQuickstart = false;
         private static bool doQuickstart = false;
-        public static bool ShouldHoldOffWeAreQuickStarting() => doQuickstart;
-        public static bool QuickStartGame()
+        internal static bool ShouldHoldOffWeAreQuickStarting() => doQuickstart;
+        internal static bool QuickStartGame()
         {
             if (didQuickstart)
                 return true;
@@ -1066,7 +1025,7 @@ namespace RandomAdditions
                 //ManUI.inst.FadeToBlack(0.25f, false);
             });
         }
-        public static void OnFinishedQuickstart(Mode unused)
+        private static void OnFinishedQuickstart(Mode unused)
         {
             ManUI.inst.ClearFade(1);
             harmonyInstance.MassUnPatchAllWithin(typeof(PatchStartup), ModName);
