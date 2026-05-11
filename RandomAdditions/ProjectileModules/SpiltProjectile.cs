@@ -54,36 +54,33 @@ namespace RandomAdditions
 
         private Transform direct;
         private ModuleWeapon weap;
+        private FireData nestedFireData;
         private bool Fired = false;
-        private float Timer = 0;
-
-        private static FieldInfo weapon = typeof(Projectile).GetField("m_Weapon", BindingFlags.NonPublic | BindingFlags.Instance);
+        private float DeployTime = 0;
 
         public override void PrePool(Projectile proj)
         {
 
         }
 
-        public override void Fire(FireData fireData)
+        public override void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
         {
-            weap = (ModuleWeapon)weapon.GetValue(PB.project);
-
-            if (SpawnAmount > 100)
-                SpawnAmount = 100;
+            weap = firingPiece;
 
             Fired = false;
+
             if (DeployInFlight)
-                Timer = 0;
+                DeployTime = Time.time + ShotCooldown;
             
             direct = transform.Find("_splitSpawn");
             if (!(bool)direct)
                 direct = transform;
 
-            var fire = GetComponent<FireData>();
-            if ((bool)fire)
+            nestedFireData = GetComponent<FireData>();
+            if ((bool)nestedFireData)
             {
-                SplitPayload = fire.m_BulletPrefab;
-                SplitCasing = fire.m_BulletCasingPrefab;
+                SplitPayload = nestedFireData.m_BulletPrefab;
+                SplitCasing = nestedFireData.m_BulletCasingPrefab;
                 //DebugRandAddi.Log("RandomAdditions: SpiltProjectile - Grabbed FireData for " + gameObject.name);
             }
             else
@@ -106,11 +103,10 @@ namespace RandomAdditions
 
         public void Deploy()
         {
-            var fire = GetComponent<FireData>();
-            if ((bool)fire)
+            if ((bool)nestedFireData)
             {
                 //DebugRandAddi.Log("RandomAdditions: Fired SpiltProjectile on " + gameObject.name);
-                float velocityHandler = fire.m_MuzzleVelocity;
+                float velocityHandler = nestedFireData.m_MuzzleVelocity;
                 if (velocityHandler < 0.1)
                     velocityHandler = 0.1f;
                 Vector3 tankVeloCancel;
@@ -121,12 +117,11 @@ namespace RandomAdditions
 
                 Vector3 fireVelo = direct.forward + ((PB.project.rbody.velocity - tankVeloCancel) / velocityHandler);
 
-
                 for (int step = 0; step < SpawnAmount; step++)
                 {
                     WeaponRound weaponRound = SplitPayload.Spawn(Singleton.dynamicContainer, direct.position, direct.rotation);
 
-                    weaponRound.Fire(fireVelo, transform, fire, weap, PB.shooter, UseSeeking);
+                    weaponRound.Fire(fireVelo, transform, nestedFireData, weap, PB.shooter, UseSeeking);
                     ManCombat.Projectiles.RegisterWeaponRound(weaponRound);
                 }
             }
@@ -138,12 +133,11 @@ namespace RandomAdditions
         {
             if (!DeployInFlight)
                 return;
-            if (Timer > ShotCooldown)
+            if (DeployTime <= Time.time)
             {
                 Deploy();
-                Timer = 0;
+                DeployTime = Time.time + ShotCooldown;
             }
-            Timer += Time.deltaTime;
         }
     }
 }

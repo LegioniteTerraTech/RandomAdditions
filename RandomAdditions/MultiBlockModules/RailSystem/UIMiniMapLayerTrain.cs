@@ -38,7 +38,7 @@ namespace RandomAdditions.RailSystem
 		{
 			ClearAllIcons();
 		}
-		protected override void Recycle()
+		protected override void DoRecycle()
 		{
 			PurgeAllIcons();
 			layersManaged.Remove(this);

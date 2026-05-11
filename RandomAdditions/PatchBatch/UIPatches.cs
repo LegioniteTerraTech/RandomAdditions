@@ -12,7 +12,7 @@ namespace RandomAdditions.PatchBatch
     {
 #if !STEAM
         /// <summary>
-        /// Will be implemented later on.... - might already be in CHECK
+        /// IT IS NOW IN!!!
         /// </summary>
         internal static class WikiPageBlockPatches
         {

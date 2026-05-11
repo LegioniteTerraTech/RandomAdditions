@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -12,6 +13,8 @@ using RandomAdditions.RailSystem;
 using TerraTech.Network;
 using TerraTechETCUtil;
 using UnityEngine;
+using UnityEngine.Scripting;
+using UnityEngineInternal;
 
 
 namespace RandomAdditions
@@ -57,6 +60,8 @@ namespace RandomAdditions
         public static bool MandateSeaReplacement = true;
         public static bool MandateLandReplacement = false;
         public static int ForceIntoModeStartup = 0;
+        public static int SaveMyTechMax = 0;
+        public static bool OverrideTechMax = false;
         public static bool AllowIngameQuitToDesktop = false;
         public static bool FastestPhysics = false;
         public static bool ColliderDisable2 = false;
@@ -108,6 +113,8 @@ namespace RandomAdditions
             }
         }
 
+
+
         private static bool patched = false;
         internal static Harmony harmonyInstance = new Harmony("legionite.randomadditions");
         //private static bool patched = false;
@@ -148,6 +155,18 @@ namespace RandomAdditions
             {
                 DebugRandAddi.Log("RandomAdditions: Found NuterraSteam!  Making sure blocks work!");
                 isNuterraSteamPresent = true;
+                int NuterraSteamCount = 0;
+                foreach (var item in ManMods.inst.IterateActiveMods())
+                {
+                    if (item.ModID.StartsWith("NuterraSteam"))
+                    {
+                        //DebugRandAddi.Log($"{item.ModID} - NuterraSteam?");
+                        NuterraSteamCount++;
+                    }
+                    //else DebugRandAddi.Log($"{item.ModID}");
+                }
+                if (NuterraSteamCount > 1)
+                    ManModGUI.ShowErrorPopup("You have both NuterraSteams installed.  Please only pick one. Running both at once will cause many issues!");
             }
             if (LookForMod("NoBugReporter"))
             {
@@ -334,9 +353,7 @@ namespace RandomAdditions
 #if STEAM
             DebugRandAddi.Log("RandomAdditions: MAIN (Steam Workshop Version) startup");
             if (!VALIDATE_MODS())
-            {
                 return;
-            }
             if (!OfficialEarlyInited)
             {
                 DebugRandAddi.Log("RandomAdditions: MainOfficialInit was called before OfficialEarlyInit was finished?! Trying OfficialEarlyInit AGAIN");
@@ -370,7 +387,7 @@ namespace RandomAdditions
             ManRails.Initiate();
             RandAddDebugGUI.Initiate();
             MinimapExtRandi.InitThis();
-            ResourcesHelper.ModsUpdateEvent.Subscribe(UpdateManaged);
+            InvokeHelper.ModsUpdateEvent.Subscribe(UpdateManaged);
             ManTechs.inst.PlayerTankChangedEvent.Subscribe(PlayerTechUpdate);
 
             // Net hooks
@@ -382,7 +399,7 @@ namespace RandomAdditions
             IngameQuit.Initiate();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<ModuleReinforced>();
             ManIngameWiki.RecurseCheckWikiBlockExtModule<SFXAddition>();
-            ResourcesHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
+            InvokeHelper.ModsPreLoadEvent.Subscribe(ReplaceManager.RemoveAllBlocks);
             ManIngameWiki.OnWikiOpened.Subscribe(InsureWikiIsUpToDate);
             RandAddiWiki.InitWiki();
             RandAddiExtendWiki.InitWiki();
@@ -416,8 +433,23 @@ namespace RandomAdditions
                 doQuickstart = true;
             }
             ManGameMode.inst.ModeStartEvent.Subscribe(OnModeStart);
+            ManGameMode.inst.ModeSwitchEvent.Subscribe(OnModeSwitch);
             ManGameMode.inst.ModeFinishedEvent.Subscribe(OnModeEnd);
 
+            GC.Collect();
+            if (timeToBootEst == null)
+            {
+                timeToBootEst = new Stopwatch();
+                timeToBootEst.Start();
+            }
+            if (MemorySafetyOffSuperLoading)
+            {
+                DebugRandAddi.Log("RandomAdditions: RAPID-LOADING WITH GC DISABLE IS ENABLED");
+                MSC = CollectMemoryDelayed();
+                InvokeHelper.InvokeCoroutine(MSC);
+                GarbageCollector.GCMode = GarbageCollector.Mode.Disabled;
+                Application.lowMemory += CollectMemoryNOW;
+            }
 #if DEBUG
             InvokeHelper.InvokeSingleRepeat(GraphicsPhysicsCulling.UpdateCulling, 0f);
             /*
@@ -445,8 +477,74 @@ namespace RandomAdditions
                 if (item.Value?.Contents?.m_Blocks != null && item.Value.Contents.m_Blocks.Any())
                     ManIngameWiki.InsureWiki(item.Key);
         }
+#if DEBUG
+        private static bool MemorySafetyOffSuperLoading = false;
+        // for some stupid reason, turning memory management off in unity slowly fails to collect all garbage after turning it back on
+#else
+        private static bool MemorySafetyOffSuperLoading = false;
+#endif
+        private static void ModeSwitchSanityCheck()
+        {
+            if (MemorySafetyOffSuperLoading)
+            {
+                Application.lowMemory -= CollectMemoryNOW;
+                GarbageCollector.GCMode = GarbageCollector.Mode.Enabled;
+                DebugRandAddi.Assert("RandomAdditions: RAPID-LOADING WITH GC DISABLE IS FINISHED, returning to normal loading");
+                InvokeHelper.CancelCoroutine(MSC);
+                GarbageCollector.GCMode = GarbageCollector.Mode.Enabled;
+                MSC = null;
+                MemorySafetyOffSuperLoading = false;
+            }
+            GC.Collect();//22125ms - time to beat
+            if (timeToBootEst != null)
+            {
+                timeToBootEst.Stop();
+                DebugRandAddi.Log("RandomAdditions: Loading took estimated " + timeToBootEst.ElapsedMilliseconds + "ms.");
+                timeToBootEst = null;
+            }
+        }
+        private static Stopwatch timeToBootEst = null;
+        private static IEnumerator MSC = null;
+        private static long MemoryWarningLevel = 2415919104;//5368709120; 5GB
+        private static float warner = 1.5f;
+        private static IEnumerator CollectMemoryDelayed()
+        {
+            while (true)
+            {
+                yield return new WaitForSecondsRealtime(warner);
+                long memCurrent = GC.GetTotalMemory(false);
+                DebugRandAddi.Log("RandomAdditions: MEMORY USE IS " + memCurrent + " BYTES");
+                if (MemoryWarningLevel < memCurrent)
+                {
+                    //DebugRandAddi.Log("RandomAdditions: MEMORY threashold IS " + MemoryWarningLevel + " BYTES");
+                    CollectMemoryNOW();
+                    warner = 1.5f;
+                }
+                else
+                    warner = 1f;
+            }
+        }
+        private static void CollectMemoryNOW()
+        {
+            GarbageCollector.GCMode = GarbageCollector.Mode.Enabled;
+            GC.Collect();
+            DebugRandAddi.Log("RandomAdditions: COLLECTING GARBAGE NOW");
+            if (MemorySafetyOffSuperLoading)
+                GarbageCollector.GCMode = GarbageCollector.Mode.Disabled;
+        }
+
+        private static void CheckTheCalls()
+        {
+            /*
+            if (Patches.UpdateConnexionLinksCalls > 0)
+            {
+                DebugRandAddi.Log("UpdateConnexionLinksCalls count " + Patches.UpdateConnexionLinksCalls);
+                Patches.UpdateConnexionLinksCalls = 0;
+            }//*/
+        }
         internal static void OnModeStart(Mode mode)
         {
+            ModeSwitchSanityCheck();
 #if DEBUG
             //DebugRandAddi.LogAll = true;
             //Debug_TTExt.LogAll = true;
@@ -459,17 +557,13 @@ namespace RandomAdditions
             //ManRandDScript.inst.ActiveScriptObject = null;
 #endif
         }
-        private static void CheckTheCalls()
+        internal static void OnModeSwitch()
         {
-            /*
-            if (Patches.UpdateConnexionLinksCalls > 0)
-            {
-                DebugRandAddi.Log("UpdateConnexionLinksCalls count " + Patches.UpdateConnexionLinksCalls);
-                Patches.UpdateConnexionLinksCalls = 0;
-            }//*/
+            ModeSwitchSanityCheck();
         }
         internal static void OnModeEnd(Mode mode)
         {
+            ModeSwitchSanityCheck();
         }
 
 
@@ -566,8 +660,9 @@ namespace RandomAdditions
                 DebugRandAddi.Log(e);
             }
             ManTechs.inst.PlayerTankChangedEvent.Unsubscribe(PlayerTechUpdate);
-            ResourcesHelper.ModsUpdateEvent.Unsubscribe(UpdateManaged);
+            InvokeHelper.ModsUpdateEvent.Unsubscribe(UpdateManaged);
             ManGameMode.inst.ModeFinishedEvent.Unsubscribe(OnModeEnd);
+            ManGameMode.inst.ModeSwitchEvent.Unsubscribe(OnModeSwitch);
             ManGameMode.inst.ModeStartEvent.Unsubscribe(OnModeStart);
             SlowUpdateEvent.Unsubscribe(Patches.GrabUIEntryDetails.SlowUpdateThis);
             MinimapExtRandi.DeInitThis();
@@ -590,7 +685,7 @@ namespace RandomAdditions
             ManTethers.DeInit();
             ReplaceManager.RemoveAllBlocks();
             ManIngameWiki.OnWikiOpened.Unsubscribe(InsureWikiIsUpToDate);
-            ResourcesHelper.ModsPreLoadEvent.Unsubscribe(ReplaceManager.RemoveAllBlocks);
+            InvokeHelper.ModsPreLoadEvent.Unsubscribe(ReplaceManager.RemoveAllBlocks);
 
             //if (SKU.UsesEOS)
             //    throw new Exception("Uses EOS is active");

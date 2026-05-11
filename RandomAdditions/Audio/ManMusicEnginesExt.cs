@@ -1,16 +1,35 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
-using UnityEngine;
-using Newtonsoft.Json;
+using System.Security.Cryptography.X509Certificates;
 using FMODUnity;
+using Newtonsoft.Json;
 using TerraTechETCUtil;
+using UnityEngine;
 
 namespace RandomAdditions
 {
-    internal class ManMusicEnginesExt : MonoBehaviour
+    internal class ManMusicEnginesExt : MonoBehaviour, IModPreloadable
     {
+        ModDataHandle IModPreloadable.ModHandle => KickStartRandomAdditions.oInst;
+        bool IModPreloadable.ChainFail => false;
+        void IModPreloadable.OnFail() { }
+        string IModPreloadable.Subject => "Injecting modded corp audio - ";
+        string IModPreloadable.InProgress => InProgress;
+        float IModPreloadable.EstPercentDone => EstPercentDone;
+        int IModPreloadable.EstNumSteps => EstNumSteps;
+        int IModPreloadable.EstNumStepsIterator => EstNumStepsIterator;
+        IEnumerator IModPreloadable.GetEnumerator() => IterateRefreshModCorpAudio();
+
+        static string InProgress = null;
+        static float EstPercentDone = 1f;
+        static int EstNumSteps = 1;
+        static int EstNumStepsIterator = 0;
+
+
 
         private const float EngineSFXDistance = 50;
 
@@ -26,7 +45,7 @@ namespace RandomAdditions
 
         internal void RefreshModCorpAudio_Queued(Mode mode)
         {
-            RefreshModCorpAudio();
+            //RefreshModCorpAudio();
         }
         public static AudioInst FetchSoundFast(ModContainer MC, string wavNameWithExt)
         {
@@ -40,11 +59,32 @@ namespace RandomAdditions
         /// Credit to Exund for looking to FMOD!
         /// </summary>
         internal void RefreshModCorpAudio()
+        {
+            if (ManGameMode.inst.GetModePhase() != ManGameMode.GameState.InGame)
+                InvokeHelper.PreloadThis(inst);
+            else
+                InvokeHelper.InvokeCoroutine(IterateRefreshModCorpAudio());
+        }
+        internal IEnumerator IterateRefreshModCorpAudio()
         {   //
             sys = RuntimeManager.LowlevelSystem;
             TechExtAudio.ResetAll();
             corps.Clear();
             int count = 0;
+            EstNumSteps = 0;
+            foreach (var item in ResourcesHelper.IterateAllMods())
+            {
+                ModContainer MC = item.Value;
+                if (MC != null)
+                {
+                    count++;
+                    if (MC.Contents?.m_Corps != null)
+                        EstNumSteps += MC.Contents.m_Corps.Count;
+                }
+            }
+            InProgress = "Initializing...";
+            EstPercentDone = 0;
+            yield return new WaitForEndOfFrame();
             foreach (var item in ResourcesHelper.IterateAllMods())
             {
                 ModContainer MC = item.Value;
@@ -66,10 +106,21 @@ namespace RandomAdditions
                                 };
                                 string shortName = corp.m_ShortName;
                                 DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Attempting to register " + shortName + ".");
+                                string fileData = null;
+                                InProgress = corp.m_DisplayName;
+                                EstNumStepsIterator++;
+                                EstPercentDone = EstNumStepsIterator / (float)EstNumSteps;
+                                yield return new WaitForEndOfFrame();
                                 try
                                 {
-                                    string fileData = ResourcesHelper.FetchTextData(MC, shortName + ".json", MC.AssetBundlePath);
-
+                                    fileData = ResourcesHelper.FetchTextData(MC, InProgress, MC.AssetBundlePath);
+                                }
+                                catch (Exception e)
+                                {
+                                    DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - Error on Json fetch " + cCorp + " | " + e);
+                                }
+                                try
+                                {
                                     if (fileData == null)
                                         DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - There is no audio json for " + cCorp);
                                     else
@@ -175,6 +226,7 @@ namespace RandomAdditions
             }
             DebugRandAddi.Log("RandomAdditions: RegisterModCorpAudio - searched (" + count + ") available mods");
 
+            InProgress = null;
             OnProfileDelta(ManProfile.inst.GetCurrentUser());
             TechExtAudio.CalibrateAll();
         }

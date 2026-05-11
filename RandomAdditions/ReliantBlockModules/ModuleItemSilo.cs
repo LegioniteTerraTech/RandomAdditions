@@ -131,7 +131,6 @@ namespace RandomAdditions
         }
 
 
-        private TankBlock TankBlock;
         private ModuleItemStore itemStore;
         private ModuleItemHolder itemHold;
         private Transform siloSpawn;
@@ -167,8 +166,6 @@ namespace RandomAdditions
 
         protected override void Pool()
         {
-            TankBlock = gameObject.GetComponent<TankBlock>();
-
             gauges = gameObject.transform.GetComponentsInChildren<SiloGauge>().ToList(); // ONCE ON BLOCK CREATION
             disps = gameObject.transform.GetComponentsInChildren<SiloDisplay>().ToList(); // ONCE ON BLOCK CREATION
             itemStore = gameObject.GetComponent<ModuleItemStore>();
@@ -186,7 +183,7 @@ namespace RandomAdditions
                         possibleAPs = stack.apConnectionIndices.Length;
                     if (!stack.CanAcceptObjectType(ObjectTypes.Block))
                     {
-                        BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle blocks instead of chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 1!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + gameObject.name);
+                        BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle blocks instead of chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 1!</b>\nThis operation cannot be handled automatically.\nCause of error - Block " + block.name);
                         break;
                     }
                 }
@@ -199,7 +196,7 @@ namespace RandomAdditions
                         possibleAPs = stack.apConnectionIndices.Length;
                     if (!stack.CanAcceptObjectType(ObjectTypes.Chunk))
                     {
-                        BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 0!</b>\nThis operation cannot be handled automatically.\n  Cause of error - Block " + TankBlock.name);
+                        BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemHolder to handle chunks to operate.\n<b>Set ModuleItemHolder's m_AcceptFlags to 0!</b>\nThis operation cannot be handled automatically.\n  Cause of error - Block " + block.name);
                         break;
                     }
                 }
@@ -219,7 +216,7 @@ namespace RandomAdditions
             DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Set stacks capacity to " + (StackSet * 2));
             if (gauges.Count == 0)
             {
-                DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - There are no gauges on this silo.\n  Block " + TankBlock.name);
+                DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - There are no gauges on this silo.\n  Block " + block.name);
             }
             else
             {
@@ -230,7 +227,7 @@ namespace RandomAdditions
             }
             if (disps.Count == 0)
             {
-                DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Block " + TankBlock.name);
+                DebugRandAddi.Info("RandomAdditions: ModuleItemSilo - Detected no displays on silo.\n  Block " + block.name);
             }
             else
             {
@@ -241,27 +238,27 @@ namespace RandomAdditions
             }
             if (siloSpawn.IsNull())
             {
-                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - SILO SPAWN NOT SET!!!  defaulting to center of silo! \n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - SILO SPAWN NOT SET!!!  defaulting to center of silo! \n  Cause of error - Block " + block.name);
                 siloSpawn = transform;
             }
             if (input.IsNull())
             {
-                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - INPUT NOT SET!!!  defaulting to the spot _siloSpawn is set to! \n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: ModuleItemSilo - INPUT NOT SET!!!  defaulting to the spot _siloSpawn is set to! \n  Cause of error - Block " + block.name);
                 input = siloSpawn;
             }
             if (output.IsNull())
             {
-                DebugRandAddi.Log("RandomAdditions: OUTPUT SPAWN NOT SET!!!  defaulting to the spot _siloSpawn is set to!\n  Cause of error - Block " + TankBlock.name);
+                DebugRandAddi.Log("RandomAdditions: OUTPUT SPAWN NOT SET!!!  defaulting to the spot _siloSpawn is set to!\n  Cause of error - Block " + block.name);
                 output = siloSpawn;
             }
             if (itemStore.IsNull())
             {
                 //DebugRandAddi.Log("RandomAdditions: ModuleItemSilo NEEDS ModuleItemStore to operate correctly.  If you are doing this without ModuleItemStore, you are doing it WRONG!!!  THE RESOURCES WILL HANDLE BADLY!!!");
-                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.\n  Cause of error - Block " + TankBlock.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo NEEDS ModuleItemStore to operate correctly.\n  Cause of error - Block " + block.name);
             }
             if (MaxCapacity <= 0)
             {
-                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\n  Cause of error - Block " + TankBlock.name);
+                BlockDebug.ThrowWarning(true, "RandomAdditions: \nModuleItemSilo cannot have a MaxCapacity below or equal to zero!\n  Cause of error - Block " + block.name);
             }
             ResetGaugesAndDisplays();
         }
@@ -274,24 +271,25 @@ namespace RandomAdditions
                             "または" + AltUI.ObjectiveString("ブロック") + "の積み重ねを安全に内部に保持します"},
         });
         private static ExtUsageHint.UsageHint hint = new ExtUsageHint.UsageHint(KickStart.ModID, "ModuleItemSilo", LOC_ModuleItemSilo_desc);
+
         public override void OnAttach()
         {
             if (StackSet == 0)
                 itemHold.OverrideStackCapacity(16);
             else
                 itemHold.OverrideStackCapacity(StackSet * 2);  //  MUST be at least 2
-            TankBlock.serializeEvent.Subscribe(OnSerialize);
+            block.serializeEvent.Subscribe(OnSerialize);
             //TankBlock.serializeTextEvent.Subscribe(OnSerializeText);
-            TankBlock.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
+            block.tank.Holders.HBEvent.Subscribe(OnHeartbeat);
 
-            TankBlock.BlockUpdate.Subscribe(OnUpdate);
+            block.BlockUpdate.Subscribe(OnUpdate);
             ResetGaugesAndDisplays();
             hint.Show();
         }
         public override void OnDetach()
         {
-            TankBlock.BlockUpdate.Unsubscribe(OnUpdate);
-            TankBlock.serializeEvent.Unsubscribe(OnSerialize);
+            block.BlockUpdate.Unsubscribe(OnUpdate);
+            block.serializeEvent.Unsubscribe(OnSerialize);
             //TankBlock.serializeTextEvent.Unsubscribe(OnSerializeText);
 
             //DebugRandAddi.Log("RandomAdditions: isSaving " + isSaving);
@@ -317,7 +315,7 @@ namespace RandomAdditions
                 GetChunkCountPercent = (float)SavedCount / (float)MaxCapacity;
                 ResetGaugesAndDisplays();
             }
-            TankBlock.tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
+            tank.Holders.HBEvent.Unsubscribe(OnHeartbeat);
         }
         private void OnHeartbeat(int HartC, TechHolders.Heartbeat HartStep)
         {
@@ -664,7 +662,7 @@ namespace RandomAdditions
             TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(block.damage, TechAudio.SFXType.ItemResourceConsumed);
             try
             {
-                TankBlock.tank.TechAudio.PlayOneshot(sound);
+                block.tank.TechAudio.PlayOneshot(sound);
             }
             catch { }
 
@@ -690,7 +688,7 @@ namespace RandomAdditions
             TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(block.damage, TechAudio.SFXType.ItemResourceProduced);
             try
             {
-                TankBlock.tank.TechAudio.PlayOneshot(sound);
+                block.tank.TechAudio.PlayOneshot(sound);
             }
             catch { }
             if (ImmedeateOutput)
@@ -1114,7 +1112,7 @@ namespace RandomAdditions
 
             if (!StoresBlocksInsteadOfChunks)
             {   // Chunk ejection
-                if (DestroyContentsOnDestruction && TankBlock.damage.AboutToDie)
+                if (DestroyContentsOnDestruction && block.damage.AboutToDie)
                 {
                     DebugRandAddi.Log("RandomAdditions: Silo " + gameObject.name + " is unstable on death and has destroyed all their stored contents!");
                     SavedCount = 0;
@@ -1141,7 +1139,7 @@ namespace RandomAdditions
             TechAudio.AudioTickData sound = TechAudio.AudioTickData.ConfigureOneshot(block.damage, TechAudio.SFXType.LightMachineGun);
             try
             {
-                TankBlock.tank.TechAudio.PlayOneshot(sound);
+                tank.TechAudio.PlayOneshot(sound);
             }
             catch { }
             while (SavedCount > MaxCapacity)
@@ -1177,7 +1175,7 @@ namespace RandomAdditions
                     //DebugRandAddi.Log("RandomAdditions: isSaving " + tile.IsCreated + tile.IsLoaded + tile.IsPopulated);
                     if (Singleton.Manager<ManPointer>.inst.targetVisible)
                     {
-                        if (!Singleton.Manager<ManPointer>.inst.targetVisible.block == TankBlock)
+                        if (!Singleton.Manager<ManPointer>.inst.targetVisible.block == block)
                         {
                             isSaving = true;// only disable ejecting when the world is removed
                         }
@@ -1192,7 +1190,7 @@ namespace RandomAdditions
                             BlockTypeString = bloc.name;
                         if (this.SerializeToSafe())
                         {
-                            DebugRandAddi.Log("SAVING " + TankBlock.name);
+                            DebugRandAddi.Log("SAVING " + block.name);
                             DebugRandAddi.Log("Block type is " + GetBlockType);
                         }
                     }
@@ -1204,7 +1202,7 @@ namespace RandomAdditions
                         isSaving = false;
                         if (!block.tank.FirstUpdateAfterSpawn)
                             return; // we ignore undo / swap
-                        DebugRandAddi.Log("LOADING " + TankBlock.name);
+                        DebugRandAddi.Log("LOADING " + block.name);
                         DebugRandAddi.Log("Block type prev is " + GetBlockType);
                         if (this.DeserializeFromSafe())
                         {
@@ -1226,11 +1224,11 @@ namespace RandomAdditions
             {
                 if (saving)
                 {   // On Snapshot saving
-                    DebugRandAddi.Assert(true, "SAVING(text) " + TankBlock.name);
+                    DebugRandAddi.Assert(true, "SAVING(text) " + block.name);
                 }
                 else
                 {   //Load from Snapshot
-                    DebugRandAddi.Assert(true, "LOADING(text) " + TankBlock.name);
+                    DebugRandAddi.Assert(true, "LOADING(text) " + block.name);
                 }
             }
             catch { }

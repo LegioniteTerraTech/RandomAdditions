@@ -12,44 +12,46 @@ namespace RandomAdditions
         internal static class ProjectilePatches
         {
             internal static Type target = typeof(Projectile);
-            static FieldInfo death = typeof(Projectile).GetField("m_LifeTime", BindingFlags.NonPublic | BindingFlags.Instance);
+            public static void Fire_Postfix(Projectile __instance)
+            {
+                // WIP
+            }
 
             /// <summary>
             /// PatchProjectileCollisionForOverride
             /// On Direct Hit
             /// </summary>
-            private static void HandleCollision_Postfix(Projectile __instance)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            internal static void HandleCollision_Postfix(Projectile __instance, SeekingProjectile ___m_SeekingProjectile)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Projectile HandleCollision(KeepSeekingProjectile)");
-                var ModuleCheck = __instance.gameObject.GetComponent<KeepSeekingProjectile>();
-                if (ModuleCheck != null)
+                if (___m_SeekingProjectile != null)
                 {
-                    var validation = __instance.gameObject.GetComponent<SeekingProjectile>();
-                    if (validation)
-                    {
-                        validation.enabled = ModuleCheck.wasThisSeeking; //Keep going!
-                    }
-                    else
-                    {
+                    var ModuleCheck = __instance.GetComponent<KeepSeekingProjectile>();
+                    if (ModuleCheck)
+                        ___m_SeekingProjectile.enabled = ModuleCheck.wasThisSeeking; //Keep going!
+                }
+                else
+                {
+                    if (BlockDebug.DebugPopups && __instance.GetComponent<KeepSeekingProjectile>())
                         DebugRandAddi.Log("RandomAdditions: Projectile " + __instance.name + " Does not have a SeekingProjectile to go with KeepSeekingProjectile!");
-                    }
                 }
             }
 
             /// <summary>
             /// PatchProjectileForSplit
             /// </summary>
-            private static bool SpawnExplosion_Prefix(Projectile __instance, ref Vector3 explodePos, ref Damageable directHitTarget)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
+            internal static bool SpawnExplosion_Prefix(Projectile __instance, ref Vector3 explodePos, ref Damageable directHitTarget)//ref Vector3 hitPoint, ref Tank Shooter, ref ModuleWeapon m_Weapon, ref int m_Damage, ref ManDamage.DamageType m_DamageType
             {
                 bool directHit = (bool)directHitTarget;
-                var Split = __instance.GetComponent<SpiltProjectile>();
+                var PB = __instance.GetPB();
+                var Split = PB.GetProjComponent<SpiltProjectile>();
                 if ((bool)Split)
                 {
                     Split.Explode_Internal(directHit);
                 }
                 try // Handle ModuleReinforced
                 {
-                    var ModuleCheck = __instance.GetComponent<OHKOProjectile>();
+                    var ModuleCheck = PB.GetProjComponent<OHKOProjectile>();
                     if (!directHit || ModuleCheck)
                         return true;
                     var modifPresent = directHitTarget.GetComponent<ModuleReinforced>();
@@ -75,22 +77,16 @@ namespace RandomAdditions
             /// <summary>
             /// PatchLockOn
             /// </summary>
-            private static bool GetManualTarget_Prefix(SeekingProjectile __instance, ref Visible __result)
+            internal static bool GetManualTarget_Prefix(SeekingProjectile __instance, ref Visible __result)
             {
-                var ModuleCheck = __instance.gameObject.GetComponent<SeekingProjectileIgnoreLock>();
-                if (ModuleCheck != null)
-                {
-                    __result = null;
-                    return false;
-                }
-                return true;
+                return __instance.GetComponent<SeekingProjectileIgnoreLock>() == null;
             }
 
             //Allow lock-on to be fooled correctly
             /// <summary>
             /// PatchLockOnAimToMiss
             /// </summary>
-            private static bool GetTargetAimPosition_Prefix(SeekingProjectile __instance, ref Vector3 __result)
+            internal static bool GetTargetAimPosition_Prefix(SeekingProjectile __instance, ref Vector3 __result)
             {
                 Visible vis = (Visible)targ.Invoke(__instance, new object[] { });
                 if (vis)
@@ -116,13 +112,7 @@ namespace RandomAdditions
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched MissileProjectile DeactivateBoosters(TorpedoProjectile)");
                 if (KickStart.isWaterModPresent)
-                {
-                    var ModuleCheck = __instance.gameObject.GetComponent<TorpedoProjectile>();
-                    if (ModuleCheck != null)
-                    {
-                        ModuleCheck.KillSubmergedThrust();
-                    }
-                }
+                    __instance.GetComponent<TorpedoProjectile>()?.KillSubmergedThrust();
             }
 
             // make MissileProjectle obey KeepSeekingProjectile
@@ -134,7 +124,7 @@ namespace RandomAdditions
             private static bool OnDelayedDeathSet_Prefix(MissileProjectile __instance)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched MissileProjectile OnDelayedDeathSet(KeepSeekingProjectile)");
-                var ModuleCheck = __instance.gameObject.GetComponent<KeepSeekingProjectile>();
+                var ModuleCheck = __instance.GetComponent<KeepSeekingProjectile>();
                 if (ModuleCheck != null)
                 {
                     if (ModuleCheck.KeepBoosting)

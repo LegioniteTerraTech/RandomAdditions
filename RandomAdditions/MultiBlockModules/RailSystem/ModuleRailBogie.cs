@@ -137,6 +137,7 @@ namespace RandomAdditions
         }
         protected override void Pool()
         {
+            BlockDebug.DebugPopups = true;
             ManRails.InitExperimental();
             InsureInit();
             enabled = false;
@@ -265,9 +266,16 @@ namespace RandomAdditions
                 }
 
                 List<ParticleSystem> BogieWheelSparks = new List<ParticleSystem>();
+                List<ParticleSystem> BogieWheelDust = new List<ParticleSystem>();
                 canFind = true;
                 num = 1;
-                ParticleSystem wheelSparks = ManSpawn.inst.GetBlockPrefab(BlockTypes.GCWheel_Stupid_588).GetComponent<ModuleWheels>().m_SuspensionSparkParticlesPrefab;
+                var pregab = ManSpawn.inst.GetBlockPrefab(BlockTypes.GCWheel_Stupid_588).GetComponent<ModuleWheels>();
+                if (pregab == null)
+                    throw new NullReferenceException(nameof(pregab));
+                ParticleSystem wheelSparks = pregab.m_SuspensionSparkParticlesPrefab;
+                //if (wheelSparks == null) throw new NullReferenceException(nameof(wheelSparks));
+                ParticleSystem wheelDust = pregab.m_DustParticlesPrefab;
+                //if (wheelDust == null) throw new NullReferenceException(nameof(wheelDust));    
                 while (canFind)
                 {
                     try
@@ -280,12 +288,12 @@ namespace RandomAdditions
                         if (trans)
                         {
                             num++;
+                            Transform prevParent = trans.parent;
+                            string prevName = trans.name;
+                            Vector3 prevPos = trans.localPosition;
+                            Quaternion prevRot = trans.localRotation;
                             if (!trans.GetComponent<ParticleSystem>())
                             {
-                                Transform prevParent = trans.parent;
-                                string prevName = trans.name;
-                                Vector3 prevPos = trans.localPosition;
-                                Quaternion prevRot = trans.localRotation;
                                 trans.SetParent(null);
                                 DestroyImmediate(trans.gameObject);
                                 trans = wheelSparks.UnpooledSpawn(null, false).transform;
@@ -330,6 +338,19 @@ namespace RandomAdditions
                             BogieWheelSparks.Add(PS);
                             DebugRandAddi.Info("RandomAdditions: ModuleRailBogie added a _bogieWheelSparks to " + gameObject.name
                                 + " is rend null: " + PSR.IsNull());
+
+                            var dustParticles = wheelDust.UnpooledSpawn(null, false);
+                            var dustTrans = dustParticles.transform;
+                            dustTrans.SetParent(prevParent);
+                            dustTrans.localPosition = prevPos;
+                            dustTrans.localRotation = prevRot;
+                            dustTrans.localScale = Vector3.one;
+                            GameObject dustGO = dustParticles.gameObject;
+                            dustParticles.SetEmissionEnabled(true);
+                            dustGO.SetActive(true);
+                            MM = dustParticles.main;
+                            MM.startSize = BogieWheelRadius * 1f;
+                            BogieWheelDust.Add(dustParticles);
                         }
                         else
                         {
@@ -337,7 +358,11 @@ namespace RandomAdditions
                             canFind = false;
                         }
                     }
-                    catch { canFind = false; }
+                    catch (Exception e)
+                    {
+                        canFind = false;
+                        //DebugRandAddi.Assert("m_DustParticlesPrefab " + e);
+                    }
                 }
 
                 List<ParticleSystem> BogieWheelSlowParticles = new List<ParticleSystem>();
@@ -371,7 +396,7 @@ namespace RandomAdditions
                     catch { canFind = false; }
                 }
                 HierachyBogies = new RailBogie(this, null, BogieCenter, BogieVisual, BogieRemote, BogieSuspensionCollider,
-                    BogieMotors, BogieWheels, BogieWheelSparks, BogieWheelSlowParticles, BogieDetachedCollider);
+                    BogieMotors, BogieWheels, BogieWheelSparks, BogieWheelSlowParticles, BogieWheelDust, BogieDetachedCollider);
             }
 
 
@@ -895,11 +920,12 @@ namespace RandomAdditions
             private List<Transform> BogieWheels;
             private List<ParticleSystem> BogieWheelSparks;
             private List<ParticleSystem> BogieWheelSlowParticles;
+            private List<ParticleSystem> BogieWheelDust;
             private Collider BogieDetachedCollider;
 
             internal RailBogie(ModuleRailBogie module, Schnabel parent, Transform BogieCenter, Transform BogieVisual, Transform BogieRemote,
                 SphereCollider BogieSuspensionCollider, GameObject BogieMotors, List<Transform> BogieWheels,
-                List<ParticleSystem> BogieWheelSparks, List<ParticleSystem> BogieWheelSlowParticles,
+                List<ParticleSystem> BogieWheelSparks, List<ParticleSystem> BogieWheelSlowParticles, List<ParticleSystem> BogieWheelDust,
                 Collider BogieDetachedCollider) : base(module, parent, BogieCenter, BogieVisual, BogieRemote)
             {
                 this.BogieSuspensionCollider = BogieSuspensionCollider;
@@ -907,6 +933,7 @@ namespace RandomAdditions
                 this.BogieWheels = BogieWheels;
                 this.BogieWheelSparks = BogieWheelSparks;
                 this.BogieWheelSlowParticles = BogieWheelSlowParticles;
+                this.BogieWheelDust = BogieWheelDust;
                 this.BogieDetachedCollider = BogieDetachedCollider;
             }
 
@@ -1258,17 +1285,20 @@ namespace RandomAdditions
             }
             private void OnRerailVisualBogey()
             {
-                ForceSparks = true;
+                ForceSparks = true; 
+                UpdateWheelDust(false);
                 UpdateWheelSparks(true);
                 BogieRescale = ManRails.GetRailRescale(main.RailSystemType, CurrentSegment.Type);
                 BogieVisual.localScale = Vector3.one * BogieRescale;
                 InvokeHelper.CancelInvoke(StopForceSparks);
                 InvokeHelper.Invoke(StopForceSparks, 0.35f);
+
             }
             private void StopForceSparks()
             {
                 ForceSparks = false;
                 UpdateWheelSparks(false);
+                UpdateWheelDust(false);
             }
             internal void ResetVisualBogey(bool instant = false)
             {
@@ -1280,7 +1310,7 @@ namespace RandomAdditions
                 if (instant)
                 {
                     ForceSparks = false;
-                    BogieVisual.localRotation = Quaternion.LookRotation(new Vector3(1, 0, 1).normalized, Vector3.up);
+                    BogieVisual.localRotation = Utilities.LookRot(new Vector3(1, 0, 1).normalized, Vector3.up);
                     DeltaRailPosition = 0;
                 }
                 else
@@ -1292,6 +1322,7 @@ namespace RandomAdditions
                 }
                 UpdateSlowParticles(false);
                 UpdateWheelSparks(false);
+                //UpdateWheelDust(false);
             }
             public void DerailBogey()
             {
@@ -1445,6 +1476,7 @@ namespace RandomAdditions
                 if (BogieLockAttachDuration > 0)
                     BogieLockAttachDuration -= Time.deltaTime;
                 //DebugRandAddi.Log("bogieHorizontalDrift - is " + bogieHorizontalDrift + " and delta is " + driftDelta);
+                UpdateWheelDust(false);
             }
 
             private Vector3 lastPos = Vector3.zero;
@@ -1467,12 +1499,14 @@ namespace RandomAdditions
                         UpdateSlowParticles(!driveDirection.ApproxZero() && rate <= 0.2f);
                         UpdateWheelSparks(Mathf.Abs(wheelSlip / Time.deltaTime) >= WheelSlipSkidSparksMinSpeed ||
                             Mathf.Abs(posNew.x / Time.deltaTime) >= WheelSlipSkidSparksMinSpeed);
+                        UpdateWheelDust(rate > 0.125f || Mathf.Abs(wheelSlip) > 0.025f);
                     }
                     else
                     {   // Loose spinning
                         spinZ = BogieVisual.InverseTransformVector(driveDirection * main.BogieLooseWheelTravelRate).z;
                         UpdateSlowParticles(false);
                         UpdateWheelSparks(false);
+                        UpdateWheelDust(false);
                     }
                 }
                 else
@@ -1483,6 +1517,7 @@ namespace RandomAdditions
                     rate = Mathf.Clamp01(Mathf.Abs(spinZ / main.BogieLooseWheelTravelRate));
                     UpdateSlowParticles(false);
                     UpdateWheelSparks(Mathf.Abs(posNew.x / Time.deltaTime) >= WheelSlipSkidSparksMinSpeed);
+                    UpdateWheelDust(rate > 0.125f);
                 }
                 if (Vector3.Dot(tank.rootBlockTrans.forward, BogieVisual.forward) < 0)
                 {
@@ -1590,7 +1625,7 @@ namespace RandomAdditions
                     Direct = -BogieCenter.InverseTransformDirection(tank.rootBlockTrans.forward).SetY(0).normalized;
                 else
                     Direct = BogieCenter.InverseTransformDirection(tank.rootBlockTrans.forward).SetY(0).normalized;
-                Quaternion aimedLook = Quaternion.LookRotation(Direct, Vector3.up);
+                Quaternion aimedLook = Utilities.LookRot(Direct, Vector3.up);
                 float angle = Mathf.Abs(Quaternion.Angle(BogieVisual.localRotation, aimedLook));
                 if (angle > 0.75f)
                 {
@@ -1638,6 +1673,62 @@ namespace RandomAdditions
                         }
                     }
                     isSparking = stopping;
+                }
+            }
+            private bool isDusting = false;
+            private void UpdateWheelDust(bool state)
+            {
+                if (state)
+                {
+                    if (!QualitySettingsExtended.WheelParticlesEnabled)
+                        state = false;
+                    Vector3 lhs = main.block.trans.position - Singleton.cameraTrans.position;
+                    if (Vector3.Dot(lhs, Singleton.cameraTrans.forward) < 0f || lhs.magnitude > Globals.inst.m_WheelDustCullingDistance)
+                        state = false;
+                }
+                if (state != isDusting)
+                {
+                    if (state)
+                    {
+                        //DebugRandAddi.Log("dusting!");
+                        foreach (var item in BogieWheelDust)
+                        {
+                            item.SetEmissionEnabled(true);
+                            item.Play(true);
+                        }
+                    }
+                    else
+                    {
+                        //DebugRandAddi.Assert("Stop dusting!");
+                        foreach (var item in BogieWheelDust)
+                        {
+                            item.SetEmissionEnabled(false);
+                            item.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                        }
+                    }
+                    isDusting = state;
+                }
+                if (state)
+                {
+                    Color color = default;
+                    ManWorld.CachedBiomeBlendWeights cachedBiomeBlendWeights = main.tank.BiomeWeightsAtPositionThisFrame();
+                    if (cachedBiomeBlendWeights.SetPieceBiomeWeight > 0.5f)
+                        color = cachedBiomeBlendWeights.SetPieceBiome.DustVFXColor;
+                    else
+                    {
+                        for (int j = cachedBiomeBlendWeights.NumWeights - 1; j >= 0; j--)
+                        {
+                            Biome biome = cachedBiomeBlendWeights.Biome(j);
+                            if (biome != null)
+                                color = color.Add(biome.DustVFXColor.ScaleRGBA(cachedBiomeBlendWeights.Weight(j)));
+                        }
+                    }
+                    foreach (var item in BogieWheelDust)
+                    {
+                        //item.transform.localPosition = Vector3.zero;
+                        var a = item.main;
+                        a.startColor = color;
+                    }
                 }
             }
 

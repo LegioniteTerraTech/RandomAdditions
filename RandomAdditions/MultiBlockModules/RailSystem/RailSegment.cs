@@ -662,12 +662,12 @@ namespace RandomAdditions.RailSystem
             if (posPercent <= 0.96f)
             {
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent + 0.04f);
-                bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogey.rotation = Utilities.LookRot((p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             else
             {
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent - 0.04f);
-                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogey.rotation = Utilities.LookRot(-(p2 - bogey.position).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             return bogey.rotation * Vector3.up;
         }
@@ -707,12 +707,12 @@ namespace RandomAdditions.RailSystem
             if (posPercent <= 0.96f)
             {
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent + 0.04f);
-                bogeyPhysics.rotation = Quaternion.LookRotation((p2 - targetPos).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogeyPhysics.rotation = Utilities.LookRot((p2 - targetPos).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             else
             {
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent - 0.04f);
-                bogeyPhysics.rotation = Quaternion.LookRotation(-(p2 - targetPos).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
+                bogeyPhysics.rotation = Utilities.LookRot(-(p2 - targetPos).normalized, EvaluateSegmentUprightAtPositionFastWorld(posPercent));
             }
             return RB.railLocked ? (bogeyPhysics.rotation * Vector3.up) : Vector3.zero;
         }
@@ -738,13 +738,13 @@ namespace RandomAdditions.RailSystem
                     Vector3 posB = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
                     p2 = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
                     bogey.position = (posB + p2) / 2;
-                    bogey.rotation = Quaternion.LookRotation((p2 - posB).normalized, upright);
+                    bogey.rotation = Utilities.LookRot((p2 - posB).normalized, upright);
                     eject = false;
                 }
                 else
                 {   // Overshoot low end
                     p2 = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
-                    bogey.rotation = Quaternion.LookRotation((p2 - bogey.position).normalized, upright);
+                    bogey.rotation = Utilities.LookRot((p2 - bogey.position).normalized, upright);
                     eject = !Track.SegExists(SegIndex, -1);
                     /*
                     if (eject)
@@ -757,7 +757,7 @@ namespace RandomAdditions.RailSystem
             else
             {   // Overshoot high end
                 p2 = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
-                bogey.rotation = Quaternion.LookRotation(-(p2 - bogey.position).normalized, upright);
+                bogey.rotation = Utilities.LookRot(-(p2 - bogey.position).normalized, upright);
                 eject = !Track.SegExists(SegIndex, 1);
                 /*
                 if (eject)
@@ -780,12 +780,12 @@ namespace RandomAdditions.RailSystem
             if (posPercent > 1 - bogieForwards)
             {
                 position = EvaluateSegmentAtPositionFastWorld(posPercent - bogieForwards);
-                bogey.rotation = Quaternion.LookRotation(-(position - bogey.position).normalized, Vector3.up);
+                bogey.rotation = Utilities.LookRot(-(position - bogey.position).normalized, Vector3.up);
             }
             else
             {
                 position = EvaluateSegmentAtPositionFastWorld(posPercent + bogieForwards);
-                bogey.rotation = Quaternion.LookRotation((position - bogey.position).normalized, Vector3.up);
+                bogey.rotation = Utilities.LookRot((position - bogey.position).normalized, Vector3.up);
             }
         }
         public void TryApproximateBogieToTrack(ModuleRailBogie.RailBogie MRB, Transform bogey, out Vector3 BogeyPosLocal, 

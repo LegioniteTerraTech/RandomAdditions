@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using RandomAdditions.RailSystem;
 using TerraTechETCUtil;
 using UnityEngine;
-using static RandomAdditions.Patches;
 
 namespace RandomAdditions
 {
@@ -47,6 +47,8 @@ namespace RandomAdditions
         public static Nuterra.NativeOptions.OptionToggle allowQuitFromIngameMenu;
         public static Nuterra.NativeOptions.OptionToggle customBlockDebugPopups;
         public static Nuterra.NativeOptions.OptionList<string> startup;
+        public static Nuterra.NativeOptions.OptionList<string> SaveMyLargeTechs;
+        public static Nuterra.NativeOptions.OptionToggle BypassLargeTechSetting;
         public static Nuterra.NativeOptions.OptionToggle fastPhysics;
         public static Nuterra.NativeOptions.OptionToggle OccuCull;
         public static Nuterra.NativeOptions.OptionRange OccuCullVisDepth;
@@ -140,6 +142,8 @@ namespace RandomAdditions
                 thisModConfig.BindConfig<BlockDebug>(null, "DebugPopups");
                 thisModConfig.BindConfig<KickStart>(null, "_snapBlockButton");
                 thisModConfig.BindConfig<KickStart>(null, "ForceIntoModeStartup");
+                thisModConfig.BindConfig<KickStart>(null, "SaveMyTechMax");
+                thisModConfig.BindConfig<KickStart>(null, "OverrideTechMax");
                 thisModConfig.BindConfig<KickStart>(null, "AllowIngameQuitToDesktop");
                 thisModConfig.BindConfig<KickStart>(null, "FastestPhysics");
                 thisModConfig.BindConfig<KickStart>(null, "ColliderDisable2");
@@ -370,6 +374,22 @@ namespace RandomAdditions
                 {
                     KickStart.ForceIntoModeStartup = startup.SavedValue;
                     KickStart.quickData.failedLastBoot = false;
+                });
+                List<string> lister = new List<string>()
+                {
+                    "64x64x64",
+                    "128x128x128",
+                    "256x256x256",
+                };
+                SaveMyLargeTechs = new Nuterra.NativeOptions.OptionList<string>("R&D Fallback Tech Size [CAN CAUSE CRASH]", RandomDev, lister, KickStart.SaveMyTechMax);
+                SaveMyLargeTechs.onValueSaved.AddListener(() =>
+                {
+                    KickStart.SaveMyTechMax = SaveMyLargeTechs.SavedValue;
+                });
+                BypassLargeTechSetting = new Nuterra.NativeOptions.OptionToggle("Override R&D Tech Size with above", RandomDev, KickStart.OverrideTechMax);
+                BypassLargeTechSetting.onValueSaved.AddListener(() =>
+                {
+                    KickStart.OverrideTechMax = BypassLargeTechSetting.SavedValue;
                 });
                 allowQuitFromIngameMenu = new Nuterra.NativeOptions.OptionToggle("Quit to Desktop Ingame", RandomDev, KickStart.AllowIngameQuitToDesktop);
                 allowQuitFromIngameMenu.onValueSaved.AddListener(() =>

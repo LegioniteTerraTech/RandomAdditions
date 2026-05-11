@@ -44,13 +44,13 @@ namespace RandomAdditions
         {
             try 
             { 
-                gameObject.GetComponent<Rigidbody>().mass = Mathf.Max(ProjectileMass, 0.00123f);
-                DebugRandAddi.Info("RandomAdditions: Set projectile mass to " + gameObject.GetComponent<Rigidbody>().mass);
+                PB.rbody.mass = Mathf.Max(ProjectileMass, 0.00123f);
+                DebugRandAddi.Info("RandomAdditions: Set projectile mass to " + PB.rbody.mass);
             }
             catch { DebugRandAddi.Log("RandomAdditions: Could not set host projectile mass!"); }
         }
 
-        public override void Fire(FireData fireData)
+        public override void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
         {
             if (PB.shooter != null && CustomGravity && CustomGravityFractionSpeed)
             {

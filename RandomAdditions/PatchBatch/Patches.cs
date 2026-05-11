@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using RandomAdditions.Minimap;
 using TerraTechETCUtil;
 using UnityEngine;
 using UnityEngine.UI;
+using static WaterMod.SurfacePool;
 
 namespace RandomAdditions
 {
@@ -143,7 +145,7 @@ namespace RandomAdditions
             Vector3 foA = (changeRot * Vector3.forward).normalized;
             Vector3 upA = (changeRot * Vector3.up).normalized;
             //Debug.Log("Architech: SetCorrectRotation - Matching test " + foA + " | " + upA);
-            Quaternion qRot2 = Quaternion.LookRotation(foA, upA);
+            Quaternion qRot2 = Utilities.LookRot(foA, upA);
             OrthoRotation rot = new OrthoRotation(qRot2);
             if (rot != qRot2)
             {
@@ -349,7 +351,6 @@ namespace RandomAdditions
 
 
         // ------------------  PERFORMANCE  ------------------
-
         /* // Test to see if reducing block attachments reduces delayed lag on tech spawn - NO
         [HarmonyPatch(typeof(BlockManager))]
         [HarmonyPatch("AddBlockToTech")]//
@@ -865,7 +866,22 @@ namespace RandomAdditions
                 return true;
             }
         }
-
+        [HarmonyPatch(typeof(ManSpawn))]
+        [HarmonyPatch("Mode.IManagerModeEvents.ModeStart")]//
+        internal static class BlockManagerFix
+        {
+            //16_777_216 vs 262_144 is BIG
+            [HarmonyPriority(-9001)]
+            internal static void Prefix()
+            {
+                ManSpawn.inst.BlockLimit = BlockManager.DefaultBlockLimit;
+            }
+            [HarmonyPriority(-9001)]
+            internal static void Postfix()
+            {
+                EmergPatches.ApplySettings();
+            }
+        }
 
         [HarmonyPatch(typeof(Tank))]
         [HarmonyPatch("OnSpawn")]//

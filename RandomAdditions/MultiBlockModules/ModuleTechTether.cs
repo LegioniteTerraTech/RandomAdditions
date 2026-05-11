@@ -889,7 +889,7 @@ namespace RandomAdditions.PhysicsTethers
                     {
                         Quaternion main = block.cachedLocalRotation;
                         Quaternion other = MTT.block.cachedLocalRotation;
-                        offset = Quaternion.LookRotation(Quaternion.FromToRotation(main * Vector3.forward, other * Vector3.back) * Vector3.forward);
+                        offset = Utilities.LookRot(Quaternion.FromToRotation(main * Vector3.forward, other * Vector3.back) * Vector3.forward);
                         return MTT;
                     }
                 }
@@ -1047,9 +1047,9 @@ namespace RandomAdditions.PhysicsTethers
                     var ConnectedOther = Connection.GetOpposingSide(this);
                     if (tetherUpright)
                     {
-                        tetherUpright.localRotation = Quaternion.LookRotation(Vector3.forward, tetherUpright.parent.InverseTransformDirection(Vector3.up));
+                        tetherUpright.localRotation = Utilities.LookRot(Vector3.forward, tetherUpright.parent.InverseTransformDirection(Vector3.up));
                         Vector3 lookVec = tetherConnector.parent.InverseTransformDirection(ConnectedOther.tetherEnd.position - tetherEnd.position);
-                        tetherConnector.localRotation = Quaternion.LookRotation(lookVec, Vector3.up);
+                        tetherConnector.localRotation = Utilities.LookRot(lookVec, Vector3.up);
                         tetherConnectorEnd.localPosition = tetherConnectorEnd.localPosition.SetZ(linkDistance);
                     }
                     if (canUseBeam)

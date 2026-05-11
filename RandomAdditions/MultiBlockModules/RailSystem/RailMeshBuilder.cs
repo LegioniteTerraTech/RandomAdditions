@@ -301,7 +301,7 @@ namespace RandomAdditions.RailSystem
             }
 
             // Set up the starting vertices
-            Quaternion quat = Quaternion.LookRotation((localPoints[0] - localPoints[1]).normalized, Vector3.up);
+            Quaternion quat = Utilities.LookRot((localPoints[0] - localPoints[1]).normalized, Vector3.up);
             verts.Clear();
             for (int step = 0; step < prefabFrameStart.Length; step++)
             {
@@ -315,19 +315,19 @@ namespace RandomAdditions.RailSystem
             // Set up the middle vertices
             for (int step = 1; step < localPointsCount - 2; step++)
             {
-                quat = Quaternion.LookRotation((localPoints[step - 1] - localPoints[step + 1]).normalized, Vector3.up);
+                quat = Utilities.LookRot((localPoints[step - 1] - localPoints[step + 1]).normalized, Vector3.up);
                 for (int step2 = 0; step2 < prefabFrameSection.Length; step2++)
                 {
                     verts.Add(localPoints[step] + (quat * prefabFrameSection[step2]));
                 }
             }
             // Set up the end vertices
-            quat = Quaternion.LookRotation((localPoints[localPointsCount - 2] - localPoints[localPointsCount - 1]).normalized, Vector3.up);
+            quat = Utilities.LookRot((localPoints[localPointsCount - 2] - localPoints[localPointsCount - 1]).normalized, Vector3.up);
             for (int step2 = 0; step2 < prefabFrameSection.Length; step2++)
             {
                 verts.Add(localPoints[localPointsCount - 1] + (quat * prefabFrameSection[step2]));
             }
-            quat = Quaternion.LookRotation((localPoints[localPointsCount - 1] - localPoints[localPointsCount - 2]).normalized, Vector3.up);
+            quat = Utilities.LookRot((localPoints[localPointsCount - 1] - localPoints[localPointsCount - 2]).normalized, Vector3.up);
             for (int step = 0; step < prefabFrameEnd.Length; step++)
             {
                 verts.Add(localPoints[localPointsCount - 1] + (quat * prefabFrameEnd[step]));
@@ -373,7 +373,7 @@ namespace RandomAdditions.RailSystem
             //DebugRandAddi.Log("Making Normals...");
             Normals.Clear();
             // Set up starting normals
-            quat = Quaternion.LookRotation((localPoints[0] - localPoints[1]).normalized, Vector3.up);
+            quat = Utilities.LookRot((localPoints[0] - localPoints[1]).normalized, Vector3.up);
             for (int step = 0; step < frameEndNormals.Length; step++)
             {
                 Normals.Add(localPoints[0] + (quat * frameEndNormals[step]));
@@ -386,7 +386,7 @@ namespace RandomAdditions.RailSystem
             // Set up middle normals
             for (int step = 1; step < localPointsCount - 2; step++)
             {
-                quat = Quaternion.LookRotation((localPoints[step - 1] - localPoints[step + 1]).normalized, Vector3.up);
+                quat = Utilities.LookRot((localPoints[step - 1] - localPoints[step + 1]).normalized, Vector3.up);
                 for (int step2 = 0; step2 < frameSectionNormals.Length; step2++)
                 {
                     Normals.Add(localPoints[step] + (quat * frameSectionNormals[step2]));
@@ -394,12 +394,12 @@ namespace RandomAdditions.RailSystem
             }
             // Set up end normals
             
-            quat = Quaternion.LookRotation((localPoints[localPointsCount - 2] - localPoints[localPointsCount - 1]).normalized, Vector3.up);
+            quat = Utilities.LookRot((localPoints[localPointsCount - 2] - localPoints[localPointsCount - 1]).normalized, Vector3.up);
             for (int step2 = 0; step2 < frameSectionNormals.Length; step2++)
             {
                 Normals.Add(localPoints[localPointsCount - 1] + (quat * frameSectionNormals[step2]));
             }
-            quat = Quaternion.LookRotation((localPoints[localPointsCount - 1] - localPoints[localPointsCount - 2]).normalized, Vector3.up);
+            quat = Utilities.LookRot((localPoints[localPointsCount - 1] - localPoints[localPointsCount - 2]).normalized, Vector3.up);
             for (int step = 0; step < frameEndNormals.Length; step++)
             {
                 Normals.Add(localPoints[localPointsCount - 1] + (quat * frameEndNormals[step]));

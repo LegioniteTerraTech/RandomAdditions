@@ -72,6 +72,7 @@ namespace RandomAdditions.RailSystem
         {
             //DebugRandAddi.Log("UpdateTrackVisual");
             ClearAllSegmentDetails();
+            int MaxPermissablePoints = 64;
             if (Track.ShowRailTies)
             {
                 if (ManRails.railTypeStats.TryGetValue(Type, out var RSS) &&
@@ -101,7 +102,7 @@ namespace RandomAdditions.RailSystem
                     Vector3 posPrev = EvaluateSegmentAtPositionFastLocal(0);
                     Vector3 pos = EvaluateSegmentAtPositionFastLocal(0.01f);
                     Vector3 upright;
-                    Quaternion quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(0));
+                    Quaternion quat = Utilities.LookRot(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(0));
                     Vector3 ironOffset = quat * crossVec;
                     Vector3 extender = (posPrev - pos).normalized * 0.05f;
                     leftIronPoints.Add(posPrev + ironOffset + extender);
@@ -110,23 +111,92 @@ namespace RandomAdditions.RailSystem
                     //CreateRailCross(prefab, pos, quat);
 
                     DebugRandAddi.Info("UpdateSegmentVisuals - RailSegment length is " + AlongTrackDist + " | space " + Space);
+                    int weWantThisManyPoints = Mathf.CeilToInt((AlongTrackDist - RSS.railCrossLength) / RSS.railCrossLength);
+                    if (weWantThisManyPoints > MaxPermissablePoints)
+                    {
+                        DebugRandAddi.Assert("UpdateSegmentVisuals - Assert: railtrack demanding unreasonable point count of " + 
+                            weWantThisManyPoints + " vs " + MaxPermissablePoints + ", ignoring entirely");
+                    }
+                    else
+                    {
+                        for (float dist = RSS.railCrossLength; dist < AlongTrackDist - RSS.railCrossLength; dist += RSS.railCrossLength)
+                        {
+                            float posWeight = (float)dist / AlongTrackDist;
+                            posPrev = EvaluateSegmentAtPositionFastLocal(posWeight - 0.01f);
+                            pos = EvaluateSegmentAtPositionFastLocal(posWeight + 0.01f);
+                            upright = EvaluateSegmentUprightAtPositionFastLocal(posWeight);
+                            quat = Utilities.LookRot(pos - posPrev, upright);
+                            ironOffset = quat * crossVec;
+                            leftIronPoints.Add(pos + ironOffset);
+                            rightIronPoints.Add(pos - ironOffset);
+                            foundationPoints.Add(pos);
+                            CreateTrackCross(railCrossPrefab, pos, quat);
+                        }
+                        posPrev = EvaluateSegmentAtPositionFastLocal(0.99f);
+                        pos = EvaluateSegmentAtPositionFastLocal(1);
+                        quat = Utilities.LookRot(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(1));
+                        ironOffset = quat * crossVec;
+                        extender = (pos - posPrev).normalized * 0.05f;
+                        leftIronPoints.Add(pos + ironOffset + extender);
+                        rightIronPoints.Add(pos - ironOffset + extender);
+                        foundationPoints.Add(pos + extender);
 
+                        RailMeshBuilder.ChangeTrackIronGameObject(transform, ref leftIron, Type, "leftIron",
+                            leftIronPoints, false);
+                        RailMeshBuilder.ChangeTrackIronGameObject(transform, ref rightIron, Type, "rightIron",
+                            rightIronPoints, true);
+                        RailMeshBuilder.SetTrackSkin(transform, Type, skinIndex);
+                        if (Track.Space == RailSpace.World)
+                            RailMeshBuilder.ChangeTrackFoundationGameObject(transform, ref railFoundation, Type,
+                                foundationPoints);
+                    }
+                }
+                else
+                    DebugRandAddi.Assert("UpdateTrackVisual could not get prefab for " + Type.ToString());
+            }
+            else
+            {
+                RailTypeStats RSS = ManRails.railTypeStats[Type];
+                leftIronPoints.Clear();
+                rightIronPoints.Clear();
+                foundationPoints.Clear();
+                Vector3 crossVec = Vector3.left * RSS.railCrossHalfWidth;
+                Vector3 posPrev = EvaluateSegmentAtPositionFastLocal(0);
+                Vector3 pos = EvaluateSegmentAtPositionFastLocal(0.01f);
+                Vector3 upright;
+                Quaternion quat = Utilities.LookRot(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(0));
+                Vector3 ironOffset = quat * crossVec;
+                Vector3 extender = (posPrev - pos).normalized * 0.05f;
+                leftIronPoints.Add(posPrev + ironOffset + extender);
+                rightIronPoints.Add(posPrev - ironOffset + extender);
+                foundationPoints.Add(posPrev + extender);
+                //CreateRailCross(prefab, pos, quat);
+
+                DebugRandAddi.Info("UpdateSegmentVisuals - RailSegment length is " + AlongTrackDist + " | space " + Space);
+
+                int weWantThisManyPoints = Mathf.CeilToInt((AlongTrackDist - RSS.railCrossLength) / RSS.railCrossLength);
+                if (weWantThisManyPoints > MaxPermissablePoints)
+                {
+                    DebugRandAddi.Assert("UpdateSegmentVisuals - Assert: railtrack demanding unreasonable point count of " +
+                        weWantThisManyPoints + " vs " + MaxPermissablePoints + ", ignoring entirely");
+                }
+                else
+                {
                     for (float dist = RSS.railCrossLength; dist < AlongTrackDist - RSS.railCrossLength; dist += RSS.railCrossLength)
                     {
                         float posWeight = (float)dist / AlongTrackDist;
                         posPrev = EvaluateSegmentAtPositionFastLocal(posWeight - 0.01f);
                         pos = EvaluateSegmentAtPositionFastLocal(posWeight + 0.01f);
                         upright = EvaluateSegmentUprightAtPositionFastLocal(posWeight);
-                        quat = Quaternion.LookRotation(pos - posPrev, upright);
+                        quat = Utilities.LookRot(pos - posPrev, upright);
                         ironOffset = quat * crossVec;
                         leftIronPoints.Add(pos + ironOffset);
                         rightIronPoints.Add(pos - ironOffset);
                         foundationPoints.Add(pos);
-                        CreateTrackCross(railCrossPrefab, pos, quat);
                     }
                     posPrev = EvaluateSegmentAtPositionFastLocal(0.99f);
                     pos = EvaluateSegmentAtPositionFastLocal(1);
-                    quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(1));
+                    quat = Utilities.LookRot(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(1));
                     ironOffset = quat * crossVec;
                     extender = (pos - posPrev).normalized * 0.05f;
                     leftIronPoints.Add(pos + ironOffset + extender);
@@ -142,58 +212,6 @@ namespace RandomAdditions.RailSystem
                         RailMeshBuilder.ChangeTrackFoundationGameObject(transform, ref railFoundation, Type,
                             foundationPoints);
                 }
-                else
-                    DebugRandAddi.Assert("UpdateTrackVisual could not get prefab for " + Type.ToString());
-            }
-            else
-            {
-                RailTypeStats RSS = ManRails.railTypeStats[Type];
-                leftIronPoints.Clear();
-                rightIronPoints.Clear();
-                foundationPoints.Clear();
-                Vector3 crossVec = Vector3.left * RSS.railCrossHalfWidth;
-                Vector3 posPrev = EvaluateSegmentAtPositionFastLocal(0);
-                Vector3 pos = EvaluateSegmentAtPositionFastLocal(0.01f);
-                Vector3 upright;
-                Quaternion quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(0));
-                Vector3 ironOffset = quat * crossVec;
-                Vector3 extender = (posPrev - pos).normalized * 0.05f;
-                leftIronPoints.Add(posPrev + ironOffset + extender);
-                rightIronPoints.Add(posPrev - ironOffset + extender);
-                foundationPoints.Add(posPrev + extender);
-                //CreateRailCross(prefab, pos, quat);
-
-                DebugRandAddi.Info("UpdateSegmentVisuals - RailSegment length is " + AlongTrackDist + " | space " + Space);
-
-                for (float dist = RSS.railCrossLength; dist < AlongTrackDist - RSS.railCrossLength; dist += RSS.railCrossLength)
-                {
-                    float posWeight = (float)dist / AlongTrackDist;
-                    posPrev = EvaluateSegmentAtPositionFastLocal(posWeight - 0.01f);
-                    pos = EvaluateSegmentAtPositionFastLocal(posWeight + 0.01f);
-                    upright = EvaluateSegmentUprightAtPositionFastLocal(posWeight);
-                    quat = Quaternion.LookRotation(pos - posPrev, upright);
-                    ironOffset = quat * crossVec;
-                    leftIronPoints.Add(pos + ironOffset);
-                    rightIronPoints.Add(pos - ironOffset);
-                    foundationPoints.Add(pos);
-                }
-                posPrev = EvaluateSegmentAtPositionFastLocal(0.99f);
-                pos = EvaluateSegmentAtPositionFastLocal(1);
-                quat = Quaternion.LookRotation(pos - posPrev, EvaluateSegmentUprightAtPositionFastLocal(1));
-                ironOffset = quat * crossVec;
-                extender = (pos - posPrev).normalized * 0.05f;
-                leftIronPoints.Add(pos + ironOffset + extender);
-                rightIronPoints.Add(pos - ironOffset + extender);
-                foundationPoints.Add(pos + extender);
-
-                RailMeshBuilder.ChangeTrackIronGameObject(transform, ref leftIron, Type, "leftIron",
-                    leftIronPoints, false);
-                RailMeshBuilder.ChangeTrackIronGameObject(transform, ref rightIron, Type, "rightIron",
-                    rightIronPoints, true);
-                RailMeshBuilder.SetTrackSkin(transform, Type, skinIndex);
-                if (Track.Space == RailSpace.World)
-                    RailMeshBuilder.ChangeTrackFoundationGameObject(transform, ref railFoundation, Type,
-                        foundationPoints);
             }
         }
 

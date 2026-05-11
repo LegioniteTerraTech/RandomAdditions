@@ -41,7 +41,7 @@ namespace RandomAdditions
         internal static RaycastHit[] targHit = new RaycastHit[32];
 
 
-        public override void Fire(FireData fireData)
+        public override void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
         {
             PB.rbody.useGravity = false;
             PB.rbody.angularVelocity = Vector3.zero;
@@ -63,7 +63,7 @@ namespace RandomAdditions
                     facing = PB.rbody.velocity;
                     launchVelo = (PB.rbody.velocity * 0.01f) + Vector3.zero;
                 }
-                transform.rotation = Quaternion.LookRotation(facing.normalized);
+                transform.rotation = Utilities.LookRot(facing.normalized);
                 PB.rbody.velocity = launchVelo;
 
                 float distEnd = MaxRange;

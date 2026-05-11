@@ -605,13 +605,13 @@ namespace RandomAdditions.RailSystem
         public float GetBogiePosition(ModuleRailBogie bogie)
         {
             Vector3 fwd = GetTankDriveForwardsInRelationToMaster();
-            return (Quaternion.Inverse(Quaternion.LookRotation(fwd)) * bogie.block.trans.localPosition).z;
+            return (Quaternion.Inverse(Utilities.LookRot(fwd)) * bogie.block.trans.localPosition).z;
         }
         public ModuleRailBogie.RailBogie TryGetLeadingBogie(bool Backwards = false)
         {
             float best;
             ModuleRailBogie.RailBogie bestVal = null;
-            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(GetTankDriveForwardsInRelationToMaster()));
+            Quaternion fwdRot = Quaternion.Inverse(Utilities.LookRot(GetTankDriveForwardsInRelationToMaster()));
             if (Backwards)
             {  // Get leastmost z in relation to Master orientation
                 best = float.MaxValue;
@@ -653,7 +653,7 @@ namespace RandomAdditions.RailSystem
         {
             float bestZ;
             ModuleRailBogie.RailBogie bestVal = null;
-            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(GetTankDriveForwardsInRelationToMaster()));
+            Quaternion fwdRot = Quaternion.Inverse(Utilities.LookRot(GetTankDriveForwardsInRelationToMaster()));
             if (Backwards)
             {   // Get leastmost z in relation to Master orientation
                 bestZ = float.MaxValue;
@@ -699,7 +699,7 @@ namespace RandomAdditions.RailSystem
         {
             //DebugRandAddi.Log("IterateBogiesBehind");
             TankLocomotive locoCur = bogie.engine;
-            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+            Quaternion fwdRot = Quaternion.Inverse(Utilities.LookRot(locoCur.GetTankDriveForwardsInRelationToMaster()));
             Vector3 bogiePos = fwdRot * bogie.GetBogieBlockMassPosLocal;
             foreach (var item in locoCur.bogiesRailLock)
             {
@@ -731,7 +731,7 @@ namespace RandomAdditions.RailSystem
                         {
                             // Transfer our ref bogie to the next tech's space before changing space
                             bogiePos = (rotToOtherTechSpace * (bogiePos - (fwdRot * MTT.GetTetherBlockMassPosLocal))) + MTT2.GetTetherBlockMassPosLocal;
-                            fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+                            fwdRot = Quaternion.Inverse(Utilities.LookRot(locoCur.GetTankDriveForwardsInRelationToMaster()));
                             foreach (var item in locoCur.bogiesRailLock)
                             {
                                 if (item != null)
@@ -758,7 +758,7 @@ namespace RandomAdditions.RailSystem
         {
             //DebugRandAddi.Log("IterateBogiesAhead");
             TankLocomotive locoCur = bogie.engine;
-            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+            Quaternion fwdRot = Quaternion.Inverse(Utilities.LookRot(locoCur.GetTankDriveForwardsInRelationToMaster()));
             Vector3 bogiePos = fwdRot * bogie.GetBogieBlockMassPosLocal;
             foreach (var item in locoCur.bogiesRailLock)
             {
@@ -790,7 +790,7 @@ namespace RandomAdditions.RailSystem
                         {
                             // Transfer our ref bogie to the next tech's space before changing space
                             bogiePos = (rotToOtherTechSpace * (bogiePos - (fwdRot * MTT.GetTetherBlockMassPosLocal))) + MTT2.GetTetherBlockMassPosLocal;
-                            fwdRot = Quaternion.Inverse(Quaternion.LookRotation(locoCur.GetTankDriveForwardsInRelationToMaster()));
+                            fwdRot = Quaternion.Inverse(Utilities.LookRot(locoCur.GetTankDriveForwardsInRelationToMaster()));
                             foreach (var item in locoCur.bogiesRailLock)
                             {
                                 if (item != null)
@@ -863,7 +863,7 @@ namespace RandomAdditions.RailSystem
             ModuleTechTether bestVal = null;
             if (!prevIterated.Add(this))
                 return null;
-            Quaternion fwdRot = Quaternion.Inverse(Quaternion.LookRotation(GetTankDriveForwardsInRelationToMaster()));
+            Quaternion fwdRot = Quaternion.Inverse(Utilities.LookRot(GetTankDriveForwardsInRelationToMaster()));
             Vector3 cabFwd = tank.rootBlockTrans.forward;
             if (Backwards)
             {
@@ -930,7 +930,7 @@ namespace RandomAdditions.RailSystem
                     if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                         Vector3.Dot(cabFwd, item2.trans.forward) < -0.75f)
                     {
-                        Vector3 pos = Quaternion.Inverse(Quaternion.LookRotation(fwd)) * t.GetTetherBlockMassPosLocal;
+                        Vector3 pos = Quaternion.Inverse(Utilities.LookRot(fwd)) * t.GetTetherBlockMassPosLocal;
                         if (bestZ >= pos.z && bestX > Mathf.Abs(pos.x - xAlignment))
                         {
                             if (bestZ > pos.z)
@@ -957,7 +957,7 @@ namespace RandomAdditions.RailSystem
                     if (t && (!LinkedOnly || (t.IsTetherConnected && t.GetOtherSideTech()?.GetComponent<TankLocomotive>())) &&
                         Vector3.Dot(cabFwd, item2.trans.forward) > 0.75f)
                     {
-                        Vector3 pos = Quaternion.Inverse(Quaternion.LookRotation(fwd)) * t.GetTetherBlockMassPosLocal;
+                        Vector3 pos = Quaternion.Inverse(Utilities.LookRot(fwd)) * t.GetTetherBlockMassPosLocal;
                         if (bestZ <= pos.z && bestX > Mathf.Abs(pos.x - xAlignment))
                         {
                             if (bestZ < pos.z)
@@ -1918,7 +1918,7 @@ namespace RandomAdditions.RailSystem
             {
                 forwardsAim = -MRB.BogieRemote.forward;
             }
-            Vector3 turnVal = Quaternion.LookRotation(
+            Vector3 turnVal = Utilities.LookRot(
                 cab.InverseTransformDirection(forwardsAim.normalized),
                 cab.InverseTransformDirection(uprightSuggestion)).eulerAngles;
 
@@ -1945,7 +1945,7 @@ namespace RandomAdditions.RailSystem
         private void MultiBogeyFixedUpdateAlignment()
         {
             Vector3 forwardsAim = cab.forward;
-            Vector3 turnVal = Quaternion.LookRotation(
+            Vector3 turnVal = Utilities.LookRot(
                 cab.InverseTransformDirection(forwardsAim.normalized),
                 cab.InverseTransformDirection(uprightSuggestion)).eulerAngles;
 

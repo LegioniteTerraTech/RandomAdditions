@@ -254,7 +254,7 @@ namespace RandomAdditions
         public void ResetTechPhysics(Tank tank)
         {   // get the vector FROM TANK COM TO THIS
             tankCOMLocal = transform.parent.InverseTransformVector(transform.position - tank.WorldCenterOfMass);
-            startRotCab = Quaternion.LookRotation(
+            startRotCab = Utilities.LookRot(
                 transform.parent.InverseTransformDirection(MSL.tank.rootBlockTrans.forward),
                 transform.parent.InverseTransformDirection(MSL.tank.rootBlockTrans.up));
         }
@@ -379,7 +379,7 @@ namespace RandomAdditions
                     SurfaceCollider = raycastHit.collider;
                     SurfaceColliderStepPos = SurfaceCollider.transform.InverseTransformPoint(raycastHit.point);
                     LegVisualPositionLocal += raycastHit.distance * Foot.ourTrans.up;
-                    Foot.ourTrans.rotation = Quaternion.LookRotation(Vector3.RotateTowards(Foot.ourTrans.forward, 
+                    Foot.ourTrans.rotation = Utilities.LookRot(Vector3.RotateTowards(Foot.ourTrans.forward, 
                         raycastHit.normal, 45f * Mathf.Deg2Rad, 2f), transform.forward);
                 }
                 else if (GroundContact)
@@ -472,7 +472,7 @@ namespace RandomAdditions
             parent.originalRot = child.ourTrans.localRotation;
             if (uprightEnds)
             {
-                parent.activeRot = Quaternion.LookRotation(Vector3.up, Vector3.back);
+                parent.activeRot = Utilities.LookRot(Vector3.up, Vector3.back);
             }
             else
             {   // Assume forwards extending legs

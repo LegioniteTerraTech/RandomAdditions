@@ -279,7 +279,7 @@ namespace RandomAdditions
                     Vector3 scaleParentToLocal = transform.parent.InverseTransformVector(transform.parent.lossyScale);
                     forward.Scale(scaleParentToLocal);
                     up.Scale(scaleParentToLocal);*/
-                    transform.rotation = Quaternion.LookRotation(forward.normalized, up.normalized);
+                    transform.rotation = Utilities.LookRot(forward.normalized, up.normalized);
                 }
             }
         }
@@ -304,7 +304,7 @@ namespace RandomAdditions
             }
             Vector3 forward = baseTrans.TransformDirection(AimRotForwards.normalized);
             Vector3 up = baseTrans.TransformDirection(AimRotUp.normalized);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(forward.normalized, up.normalized), RotRate * Time.deltaTime);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, Utilities.LookRot(forward.normalized, up.normalized), RotRate * Time.deltaTime);
         }
         public void UnApply()
         {

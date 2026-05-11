@@ -790,7 +790,7 @@ namespace RandomAdditions
                             offsetLocal.x = Mathf.Lerp(offsetLocal.x, offsetRand.x, 0.05f);
                             offsetLocal.z = Mathf.Lerp(offsetLocal.z, offsetRand.z, 0.05f);
                             offsetLocal.y = Mathf.Lerp(offsetLocal.y, offsetRand.y, 0.05f);
-                            OGRotation = Quaternion.RotateTowards(OGRotation, Quaternion.LookRotation(forward.normalized, Up), spedC);
+                            OGRotation = Quaternion.RotateTowards(OGRotation, Utilities.LookRot(forward.normalized, Up), spedC);
                         }
                         offsetYVelo = 0;
                         pos = tech.WorldCenterOfMass + (OGRotation * offset) + offsetLocal;
@@ -802,7 +802,7 @@ namespace RandomAdditions
                             Vector2 cRot = (OGRotation * Vector3.forward).ToVector2XZ().normalized;
                             Vector2 forwardFlat = tech.trans.forward.ToVector2XZ().normalized;
                             float spedC = sped * Mathf.Min(1.1f - Vector2.Dot(cRot, forwardFlat), 1);
-                            OGRotation = Quaternion.RotateTowards(OGRotation, Quaternion.LookRotation(forwardFlat.ToVector3XZ(), Vector3.up), spedC);
+                            OGRotation = Quaternion.RotateTowards(OGRotation, Utilities.LookRot(forwardFlat.ToVector3XZ(), Vector3.up), spedC);
 
                             offsetLocal.x = Mathf.Lerp(offsetLocal.x, 0, 0.1f);
                             offsetLocal.z = Mathf.Lerp(offsetLocal.z, 0, 0.1f);

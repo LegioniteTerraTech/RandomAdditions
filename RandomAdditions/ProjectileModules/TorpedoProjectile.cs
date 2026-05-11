@@ -138,7 +138,7 @@ namespace RandomAdditions
                 anim = KickStart.FetchAnimette(transform, "_subProp", AnimCondition.TorpedoProjectile);
             }
         }
-        public override void Fire(FireData fireData)
+        public override void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
         {
             killThrust = false;
             SetAnimation(true);

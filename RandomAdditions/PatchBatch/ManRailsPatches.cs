@@ -28,13 +28,12 @@ namespace RandomAdditions
                 }
             }
 
-            private static FieldInfo dr = typeof(TechAudio).GetField("m_Drive", BindingFlags.NonPublic | BindingFlags.Instance);
-            private static FieldInfo tr = typeof(TechAudio).GetField("m_Turn", BindingFlags.NonPublic | BindingFlags.Instance);
             [HarmonyPriority(-9001)]
-            private static bool OnControlInput_Prefix(TechAudio __instance, ref TankControl.ControlState data)
+            private static bool OnControlInput_Prefix(TechAudio __instance, ref TankControl.ControlState data,
+                 ref float ___m_Drive, ref float ___m_Turn)
             {
-                dr.SetValue(__instance, (data.InputMovement + data.Throttle).magnitude);
-                tr.SetValue(__instance, data.InputRotation.magnitude);
+                ___m_Drive = (data.InputMovement + data.Throttle).magnitude;
+                ___m_Turn = data.InputRotation.magnitude;
                 return false;
             }
         }

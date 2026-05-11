@@ -23,13 +23,13 @@ namespace RandomAdditions
             {
                 return __instance.casingEjectTransform != null;
             }
-
         }
 
 
 
 
         // ------------------  PERFORMANCE  ------------------
+        /* // malfunctioned.  not worth it to maintain
         internal static class ModuleShieldGeneratorPatches
         {
 
@@ -107,7 +107,7 @@ namespace RandomAdditions
                     }
                 }
             }
-        }
+        }//*/
         internal static class ModuleHoverPatches
         {
 
@@ -171,14 +171,12 @@ namespace RandomAdditions
         {
             internal static Type target = typeof(ModuleItemHolderBeam);
 
-            private static FieldInfo lockGet = typeof(ModuleItemHolderBeam).GetField("m_HeldPhysicsItems", BindingFlags.NonPublic | BindingFlags.Instance);
-            private static FieldInfo scaleGet = typeof(ModuleItemHolderBeam).GetField("m_ScaleChanged", BindingFlags.NonPublic | BindingFlags.Instance);
-
             //Allow disabling of physics on mobile bases
             /// <summary>
             /// PatchModuleItemHolderBeamForStatic
             /// </summary>
-            internal static bool UpdateFloat_Prefix(ModuleItemHolderBeam __instance, ref Visible item)
+            internal static bool UpdateFloat_Prefix(ModuleItemHolderBeam __instance, ref Visible item, 
+                HashSet<Visible> ___m_HeldPhysicsItems, ref bool ___m_ScaleChanged)
             {
                 if (__instance == null || item == null)
                     return true;
@@ -187,11 +185,10 @@ namespace RandomAdditions
                 {
                     if (item.rbody != null)
                     {
-                        HashSet<Visible> m_HeldPhysicsItems = (HashSet<Visible>)lockGet.GetValue(__instance);
-                        if ((bool)item.pickup && m_HeldPhysicsItems != null)
+                        if ((bool)item.pickup && ___m_HeldPhysicsItems != null)
                         {
                             item.pickup.ClearRigidBody(true);
-                            m_HeldPhysicsItems.Remove(item);
+                            ___m_HeldPhysicsItems.Remove(item);
                         }
                         /*
                         else if ((bool)item.block)
@@ -206,13 +203,10 @@ namespace RandomAdditions
                         }
                         //DebugRandAddi.Log("RandomAdditions: Overwrote trac beams to remain on");
                     }
-                    bool m_ScaleChanged = (bool)scaleGet.GetValue(__instance);
-
-                    if (m_ScaleChanged)
+                    if (___m_ScaleChanged)
                     {
                         item.trans.SetLocalScaleIfChanged(new Vector3(1f, 1f, 1f));
-                        m_ScaleChanged = false;
-                        scaleGet.SetValue(__instance, m_ScaleChanged);
+                        ___m_ScaleChanged = false;
                     }
                     return false;
                 }

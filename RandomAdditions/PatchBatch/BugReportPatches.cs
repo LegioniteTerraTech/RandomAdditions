@@ -23,13 +23,12 @@ namespace RandomAdditions.PatchBatch
         {
             internal static bool Crashed = false;
             internal static Type target = typeof(UIScreenBugReport);
-            private static FieldInfo cat = typeof(UIScreenBugReport).GetField("m_ErrorCatcher", BindingFlags.NonPublic | BindingFlags.Instance);
             /// <summary>
             /// AllowBypass
             /// IMPORTANT
             /// </summary>
             [HarmonyPriority(-9001)]
-            internal static void Show_Prefix(UIScreenBugReport __instance)
+            internal static void Show_Prefix(UIScreenBugReport __instance, ref bool ___m_ErrorCatcher)
             {   //Custom error menu
                 Crashed = true;
 #if STEAM
@@ -40,9 +39,9 @@ namespace RandomAdditions.PatchBatch
                         "Note that this will still force a quit screen under certain conditions.");
 #if !DEBUG
                 if (!ManNetwork.IsNetworked || KickStart.isSteamManaged)
-                    cat.SetValue(__instance, false);
+                    ___m_ErrorCatcher = false;
 #else
-                cat.SetValue(__instance, false);
+                ___m_ErrorCatcher = false;
 #endif
 
 #else
@@ -70,15 +69,13 @@ namespace RandomAdditions.PatchBatch
             /// DO NEXT OF ABOVE
             /// </summary>
             [HarmonyPriority(-9001)]
-            internal static void Set_Postfix(UIScreenBugReport __instance)
+            internal static void Set_Postfix(UIScreenBugReport __instance, Text ___m_Description)
             {
                 //Custom error menu
                 //  Credit to Exund who provided the nesseary tools to get this working nicely!
                 //DebugRandAddi.Log("RandomAdditions: Fired error menu"); 
-                FieldInfo errorGet = typeof(UIScreenBugReport).GetField("m_Description", BindingFlags.NonPublic | BindingFlags.Instance);
                 var UIMan = Singleton.Manager<ManUI>.inst;
                 var UIObj = UIMan.GetScreen(ManUI.ScreenType.BugReport).gameObject;
-                Text bugReport = (Text)errorGet.GetValue(__instance);
 
                 //ETC
                 //Text newError = (string)textGet.GetValue(bugReport);
@@ -113,10 +110,10 @@ namespace RandomAdditions.PatchBatch
                 {   //<color=#f23d3dff></color> - tried that but it's too hard to read
                     string latestError = KickStart.logMan.GetComponent<LogHandler>().GetErrors();
 #if STEAM
-                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a modded game which the developers cannot manage!</b>  " +
+                    ___m_Description.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a modded game which the developers cannot manage!</b>  " +
                         "\nTake note of all your mods and send the attached Bug Report (make sure your name isn't in it!) below in the Official TerraTech Discord, in #modding-help or in Random Additions' Bug Reports thread.";
 #else
-                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  " +
+                    ___m_Description.text = "<b>Well F*bron. TerraTech has crashed.</b> \n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b>  " +
                         "\n<b>Make sure your name isn't in the Report below first,</b> then take note of all your mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial.";
 #endif
 
@@ -151,7 +148,7 @@ namespace RandomAdditions.PatchBatch
                 catch
                 {
                     DebugRandAddi.Log("RandomAdditions: FAILIURE ON FETCHING LOG!");
-                    bugReport.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b> \nTake note of all your unofficial mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
+                    ___m_Description.text = "<b>Well F*bron. TerraTech has crashed.</b> \n\n<b>This is a MODDED GAME AND THE DEVS CAN'T FIX MODDED GAMES!</b> \nTake note of all your unofficial mods and send the attached Bug Report below in the Official TerraTech Discord, in #modding-unofficial. \n\nThe log file is at: " + outputLogLocation;
                     var errorList = UnityEngine.Object.Instantiate(reportBox.Find("Explanation"), UIObj.transform, false);
                     Vector3 offset = errorList.localPosition;
                     offset.y -= 340;

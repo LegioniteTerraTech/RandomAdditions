@@ -22,8 +22,7 @@ namespace RandomAdditions
             private static void OnPool_Postfix(Tank __instance)
             {
                 //DebugRandAddi.Log("RandomAdditions: Patched Tank OnPool(TimeTank)");
-                var ModuleAdd2 = __instance.gameObject.AddComponent<RandomTank>();
-                ModuleAdd2.Initiate();
+                __instance.gameObject.AddComponent<RandomTank>().Initiate();
             }
 
             [HarmonyPriority(-9001)]

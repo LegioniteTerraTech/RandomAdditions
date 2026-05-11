@@ -45,35 +45,56 @@ namespace RandomAdditions
             if (inst != null)
                 inst.RaDSizeLimit = 0;
         }
+
+        /// <summary>
+        /// delay till AFTER they set to prevent mem overload
+        /// </summary>
+        internal static void ApplySettings()
+        {
+            if (ManGameMode.inst.GetCurrentGameType() == ManGameMode.GameType.RaD)
+            {
+                try
+                {
+                    if (HasSizeLimitSet() && KickStart.OverrideTechMax)
+                    {
+                        Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", inst.RaDSizeLimit);
+                        ManSpawn.inst.BlockLimit = inst.RaDSizeLimit;
+                        DebugRandAddi.Log("EmergPatchSizeLimit - Resync BuildSizeLimit to " + inst.RaDSizeLimit);
+                    }
+                    else
+                    {
+                        int limitSet;
+                        switch (KickStart.SaveMyTechMax)
+                        {
+                            case 1:
+                                limitSet = 128;
+                                break;
+                            case 2:
+                                limitSet = 256;
+                                break;
+                            default:
+                                limitSet = 64;
+                                break;
+                        }
+                        Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", limitSet);
+                        ManSpawn.inst.BlockLimit = limitSet;
+                        DebugRandAddi.Assert("EmergPatchSizeLimit - WE SHALL DEFAULT TO " + limitSet + " TO PREVENT TECH LOSS!!!");
+                        TrySaveAndLockSizeLimit(limitSet);
+                    }
+                }
+                catch (Exception e)
+                {
+                    DebugRandAddi.LogError("EmergPatchSizeLimit - error " + e);
+                }
+            }
+        }
         internal static void FinishedLoading()
         {
             if (inst == null)
                 inst = new EmergPatches();
             try
             {
-                if (ManGameMode.inst.GetCurrentGameType() == ManGameMode.GameType.RaD)
-                {
-                    try
-                    {
-                        if (HasSizeLimitSet())
-                        {
-                            Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", inst.RaDSizeLimit);
-                            ManSpawn.inst.BlockLimit = inst.RaDSizeLimit;
-                            DebugRandAddi.Log("EmergPatchSizeLimit - Resync BuildSizeLimit to " + inst.RaDSizeLimit);
-                        }
-                        else
-                        {
-                            Singleton.Manager<ManGameMode>.inst.AddModeInitSetting("BuildSizeLimit", 256);
-                            ManSpawn.inst.BlockLimit = 256;
-                            DebugRandAddi.Assert("EmergPatchSizeLimit - WE SHALL DEFAULT TO 256 TO PREVENT TECH LOSS!!!");
-                            TrySaveAndLockSizeLimit(256);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        DebugRandAddi.LogError("EmergPatchSizeLimit - error " + e);
-                    }
-                }
+                /**/
             }
             catch (Exception e2)
             {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using HarmonyLib;
+using TerraTech.Network;
 using TerraTechETCUtil;
 using TMPro;
 using UnityEngine;
@@ -102,7 +103,26 @@ namespace RandomAdditions
             }
         }//*/
 
-        internal static class FuckYouEpicOnlineServices
+        /*
+        internal static class ScrewYouEpicOnlineServices2
+        {
+            internal static Type target = typeof(LobbySystem);
+
+            /// <param name="__instance"></param>
+            [HarmonyPriority(-9001)]
+            internal static void CreateLobbySystem_Postfix(LobbySystem __result)
+            {
+                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
+                {
+                    if (__result is PlatformLobbySystem_EOS)
+                    {
+                        ManModGUI.ShowErrorPopup("Screw EOS, why is it starting on our Steam client when crossplay is disabled????");
+                        throw new NullReferenceException("Screw EOS, why is it starting on our Steam client when crossplay is disabled????");
+                    }
+                }
+            }
+        }//*/
+        internal static class ScrewYouEpicOnlineServices
         {
             internal static Type target = typeof(ManEOS);
 
@@ -110,14 +130,21 @@ namespace RandomAdditions
             [HarmonyPriority(-9001)]
             internal static bool SetOfflineMode_Prefix(ManEOS __instance, bool isOffline)
             {
-                if (SKU.IsSteam && KickStart.IDontTrustEpicAtAll)
+                if (KickStart.IDontTrustEpicAtAll)
                 {
-                    if (!isOffline)
+                    if (SKU.IsSteam)
                     {
-                        DebugRandAddi.Assert("RandomAdditions: ManEOS.SetOfflineMode was called!  You don't trust them so we deny the re-enable request");
+                        if (!isOffline)
+                        {
+                            DebugRandAddi.Assert("RandomAdditions: ManEOS.SetOfflineMode was called!  You don't trust them so we deny the re-enable request");
 
-                        return false;
+                            return false;
+                        }
                     }
+                    if (SKU.IsEpicGS)
+                        DebugRandAddi.Assert("RandomAdditions: IDontTrustEpicAtAll is true but we are on Epic Games Store!?! Bypass request ignored entirely.");
+                    else
+                        DebugRandAddi.Assert("RandomAdditions: IDontTrustEpicAtAll is true but we are on a non epic platform?");
                 }
                 return true;
             }
@@ -652,6 +679,8 @@ namespace RandomAdditions
             /// Insure we load SFX of corps properly!
             /// </summary>
             /// <param name="__instance"></param>
+
+            [HarmonyPriority(-91)]
             internal static void InjectModdedCorps_Postfix(ManMods __instance)
             {
                 ManMusicEnginesExt.inst.RefreshModCorpAudio();
@@ -660,6 +689,7 @@ namespace RandomAdditions
             /// <summary>
             /// Inject in the new custom recipes
             /// </summary>
+            [HarmonyPriority(-90001)]
             internal static void InjectModdedBlocks_Prefix(ManMods __instance)
             { 
 

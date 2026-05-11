@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using TerraTechETCUtil;
 using UnityEngine;
 using static CheckpointChallenge;
 using static ManUpdate;
@@ -275,7 +276,7 @@ namespace RandomAdditions.RailSystem
             if (dummyPositionerTrans == null)
                 dummyPositionerTrans = new GameObject("dummyPositionerTrans").transform;
             dummyPositionerTrans.position = StartNode.GetLinkCenter(StartConnectionIndex).ScenePosition;
-            dummyPositionerTrans.rotation = Quaternion.LookRotation(
+            dummyPositionerTrans.rotation = Utilities.LookRot(
                 StartNode.GetLinkForward(StartConnectionIndex), StartNode.GetLinkUp(StartConnectionIndex));
             return dummyPositionerTrans;
         }

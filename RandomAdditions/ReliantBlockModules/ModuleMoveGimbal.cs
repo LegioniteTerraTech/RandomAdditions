@@ -318,7 +318,7 @@ namespace RandomAdditions
         public void ResetTechPhysics(Tank tank)
         {   // get the vector FROM TANK COM TO THIS
             tankCOMLocal = transform.parent.InverseTransformVector(transform.position - tank.WorldCenterOfMass);
-            startRotCab = Quaternion.LookRotation(
+            startRotCab = Utilities.LookRot(
                 transform.parent.InverseTransformDirection(MMG.tank.rootBlockTrans.forward),
                 transform.parent.InverseTransformDirection(MMG.tank.rootBlockTrans.up));
         }

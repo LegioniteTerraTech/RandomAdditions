@@ -8,7 +8,7 @@ using TerraTechETCUtil;
 namespace RandomAdditions
 {
     /// <summary>
-    /// WIP
+    /// WIP, not even partially implemented yet!!!
     /// </summary>
     public class LaserRiderProjectile : ExtProj
     {

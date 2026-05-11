@@ -11,12 +11,10 @@ namespace RandomAdditions
         /*
            "RandomAdditions.LanceProjectile": {},// Phase without the mass lag.
          */
-        static FieldInfo collodo = typeof(Projectile).GetField("m_Collider", BindingFlags.NonPublic | BindingFlags.Instance);
-
         public override void PrePool(Projectile proj)
         {
             //DebugRandAddi.Log("RandomAdditions: Patched Projectile OnPool(LanceProjectile)");
-            Collider fetchedCollider = (Collider)collodo.GetValue(proj);
+            Collider fetchedCollider = (Collider)ManExtProj.ProjCollider.GetValue(proj);
             fetchedCollider.isTrigger = true;// Make it not collide
             DebugRandAddi.LogDevOnly("RandomAdditions: Overwrote Collision for LanceProjectile");
         }

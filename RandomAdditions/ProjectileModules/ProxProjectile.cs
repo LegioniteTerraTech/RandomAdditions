@@ -33,7 +33,7 @@ namespace RandomAdditions
             anim = KickStart.FetchAnimette(transform, "_ImpactAnim", AnimCondition.ProxProjectile);
             ProximityRangeSq = ProximityRange * ProximityRange;
         }
-        public override void Fire(FireData fireData)
+        public override void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
         {
             if (anim)
                 anim.SetState(0);

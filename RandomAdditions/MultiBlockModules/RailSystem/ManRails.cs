@@ -1408,7 +1408,7 @@ namespace RandomAdditions.RailSystem
                 node.stopperInst = transStop.gameObject;
                 node.stopperInst.SetActive(true);
                 transStop.position = pos;
-                transStop.rotation = Quaternion.LookRotation(forwards, upwards);
+                transStop.rotation = Utilities.LookRot(forwards, upwards);
                 return true;
             }
             return false;

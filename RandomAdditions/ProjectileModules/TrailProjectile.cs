@@ -103,7 +103,7 @@ namespace RandomAdditions
         private float trailingCurTime = 0;
         private float trailingCooldownTime = 0;
 
-        public override void Fire(FireData fireData)
+        public override void Fire(FireData fireData, Tank shooter, ModuleWeapon firingPiece)
         {
             PB.rbody.useGravity = wasGrav;
             if (hasEmiss)

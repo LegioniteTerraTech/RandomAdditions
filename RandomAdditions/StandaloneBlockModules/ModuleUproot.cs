@@ -183,7 +183,7 @@ namespace RandomAdditions
         {
             if (LastDamageParticlesTime <= Time.time)
             {
-                SpawnHelper.SpawnResourceNodeExplosion(impactPos, resDisp);
+                SpawnHelper.SpawnResourceNodeExplosion(resDisp, impactPos);
                 LastDamageParticlesTime = Time.time + 0.333f;
             }
         }
@@ -237,7 +237,7 @@ namespace RandomAdditions
                     ST = SceneryTypes.ConeTree;
                     break;
             }
-            SpawnHelper.SpawnResourceNodeSnapTerrain(scenePos, ST, SpawnHelper.FirstBiomesByType[BT].name);
+            SpawnHelper.SpawnResourceNode(ST, scenePos);
         }
     }
 }
